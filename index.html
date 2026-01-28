@@ -859,6 +859,214 @@
       transform: scale(1.05);
       box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
   }
+  /* ===========================================
+     ESTILOS PARA AS NOVAS FUNCIONALIDADES
+     =========================================== */
+  
+  /* Estilo para o alerta de consumo alto */
+  .alert-consumo-alto {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      border: 3px solid var(--danger);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  .alert-consumo-alto .alert-icon {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 10px;
+  }
+  .alert-consumo-alto .alert-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--danger);
+      text-align: center;
+      margin-bottom: 10px;
+  }
+  .alert-consumo-alto .alert-message {
+      font-size: 14px;
+      text-align: center;
+      color: #991b1b;
+      line-height: 1.6;
+  }
+  .alert-consumo-alto .consumo-info {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+  }
+  .alert-consumo-alto .consumo-item {
+      text-align: center;
+  }
+  .alert-consumo-alto .consumo-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 5px;
+  }
+  .alert-consumo-alto .consumo-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--danger);
+  }
+
+  /* Estilo para o histórico de abastecimentos */
+  .historico-container {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  }
+  .historico-header {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--accent);
+      margin-bottom: 15px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+  }
+  .historico-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+  }
+  .historico-item {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      border-left: 4px solid var(--accent);
+      transition: all 0.3s;
+      cursor: pointer;
+  }
+  .historico-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .historico-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+  }
+  .historico-item-data {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--primary);
+  }
+  .historico-item-valor {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--accent);
+  }
+  .historico-item-detalhes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      font-size: 11px;
+      color: #64748b;
+  }
+  .historico-item-detalhe {
+      display: flex;
+      flex-direction: column;
+  }
+  .historico-item-detalhe-label {
+      font-size: 10px;
+      margin-bottom: 2px;
+  }
+  .historico-item-detalhe-value {
+      font-weight: bold;
+      color: var(--primary);
+  }
+  .historico-media-km {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      text-align: center;
+  }
+  .historico-media-label {
+      font-size: 11px;
+      color: #065f46;
+      margin-bottom: 5px;
+  }
+  .historico-media-value {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--success);
+  }
+
+  /* Estilo para o alerta de já abasteceu hoje */
+  .alert-ja-abasteceu {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 3px solid var(--warning);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  }
+  .alert-ja-abasteceu .alert-icon {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 10px;
+  }
+  .alert-ja-abasteceu .alert-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--warning);
+      text-align: center;
+      margin-bottom: 10px;
+  }
+  .alert-ja-abasteceu .alert-message {
+      font-size: 14px;
+      text-align: center;
+      color: #92400e;
+      line-height: 1.6;
+  }
+  .alert-ja-abasteceu .ultimo-abastecimento {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+  }
+  .alert-ja-abasteceu .abast-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+  }
+  .alert-ja-abasteceu .abast-item {
+      text-align: center;
+  }
+  .alert-ja-abasteceu .abast-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 5px;
+  }
+  .alert-ja-abasteceu .abast-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--warning);
+  }
+
+  /* Classes de consumo */
+  .consumo-alto {
+      color: var(--danger) !important;
+  }
+  .consumo-normal {
+      color: var(--success) !important;
+  }
+  .consumo-bom {
+      color: #059669 !important;
+  }
 </style>
 
 <!-- Modal para Edição de Usuários -->
@@ -1292,6 +1500,9 @@
     <div class="card no-print">
       <h3>⛽ NOVO ABASTECIMENTO</h3>
       
+      <!-- CONTAINER PARA ALERTAS DINÂMICOS -->
+      <div id="alertas-abastecimento"></div>
+      
       <!-- Scanner QR Code -->
       <div class="qr-scanner-container" id="qr-scanner-area" style="display:none;">
         <h4>📷 ESCANEIE O QR CODE DO VEÍCULO</h4>
@@ -1308,7 +1519,7 @@
       <div class="grid-form">
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
+          <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -1353,11 +1564,11 @@
         </div>
         <div>
           <label>KM ATUAL *</label>
-          <input type="number" id="f-km" placeholder="0" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
+          <input type="number" id="f-km" placeholder="0" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>LITROS *</label>
-          <input type="number" id="f-lit" placeholder="0.00" step="0.01" min="0" oninput="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
+          <input type="number" id="f-lit" placeholder="0.00" step="0.01" min="0" oninput="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>VALOR TOTAL (R$)</label>
@@ -1383,6 +1594,10 @@
         <h4 style="font-size:12px; margin:0 0 10px 0; color:#64748b;">📊 PREVISÃO DE CONSUMO</h4>
         <div id="previsao-content"></div>
       </div>
+      
+      
+      <!-- RESULTADO DO CÁLCULO DE MÉDIA KM/L -->
+      <div id="resultado-media-kml" style="display:none;"></div>
       
       <button class="btn-save" id="btn-registrar" onclick="processar()">✔️ REGISTRAR ABASTECIMENTO</button>
     </div>
@@ -7302,7 +7517,440 @@
       return;
     }
     
-    tbody.innerHTML = '';
+  // ===========================================
+  // NOVAS FUNCIONALIDADES IMPLEMENTADAS
+  // ===========================================
+  
+  // 1. VERIFICAR SE O VEÍCULO JÁ ABASTECEU HOJE
+  async function verificarAbastecimentoHoje(placa) {
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0).getTime();
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).getTime();
+    
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('veiculo')
+      .equalTo(placa)
+      .once('value');
+    
+    if (snapshot.exists()) {
+      let abastecimentoHoje = null;
+      
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        const dataAbast = new Date(abast.data).getTime();
+        
+        if (dataAbast >= inicioDia && dataAbast <= fimDia) {
+          abastecimentoHoje = abast;
+        }
+      });
+      
+      return abastecimentoHoje;
+    }
+    
+    return null;
+  }
+  
+  // 2. BUSCAR ÚLTIMOS 5 ABASTECIMENTOS DO VEÍCULO
+  async function buscarUltimosAbastecimentos(placa, limite = 5) {
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('veiculo')
+      .equalTo(placa)
+      .once('value');
+    
+    const abastecimentos = [];
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        abastecimentos.push(abast);
+      });
+    }
+    
+    // Ordenar por data (mais recentes primeiro)
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    // Retornar apenas os últimos N
+    return abastecimentos.slice(0, limite);
+  }
+  
+  // 3. CALCULAR MÉDIA KM/L DO VEÍCULO
+  async function calcularMediaKmLVeiculo(placa) {
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('veiculo')
+      .equalTo(placa)
+      .once('value');
+    
+    let somaKmL = 0;
+    let contador = 0;
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        if (abast.kmPorLitro && abast.kmPorLitro > 0 && abast.status === STATUS.AUTORIZADO) {
+          somaKmL += abast.kmPorLitro;
+          contador++;
+        }
+      });
+    }
+    
+    return contador > 0 ? (somaKmL / contador) : 0;
+  }
+  
+  // 4. VERIFICAR SE CONSUMO ESTÁ ALTO (comparar com média histórica)
+  async function verificarConsumoAlto(placa, kmAtual, litros) {
+    // Buscar último abastecimento
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('veiculo')
+      .equalTo(placa)
+      .once('value');
+    
+    if (!snapshot.exists()) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    const abastecimentos = [];
+    snapshot.forEach(snap => {
+      const abast = snap.val();
+      if (abast.kmAtual && abast.litros && abast.status === STATUS.AUTORIZADO) {
+        abastecimentos.push(abast);
+      }
+    });
+    
+    if (abastecimentos.length === 0) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    // Ordenar por data
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    const ultimoAbast = abastecimentos[0];
+    const kmPercorrido = kmAtual - ultimoAbast.kmAtual;
+    
+    if (kmPercorrido <= 0 || litros <= 0) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    const consumoAtual = kmPercorrido / litros;
+    const mediaHistorica = await calcularMediaKmLVeiculo(placa);
+    
+    // Se consumo atual for 20% menor que a média, gerar alerta
+    if (mediaHistorica > 0 && consumoAtual < (mediaHistorica * 0.8)) {
+      return {
+        alerta: true,
+        consumoAtual: consumoAtual,
+        mediaHistorica: mediaHistorica,
+        mensagem: `⚠️ ATENÇÃO! O consumo está ${((1 - (consumoAtual / mediaHistorica)) * 100).toFixed(0)}% ABAIXO DA MÉDIA!`
+      };
+    }
+    
+    return { alerta: false, mensagem: '' };
+  }
+  
+  // 5. EXIBIR ALERTAS E HISTÓRICO AO SELECIONAR VEÍCULO
+  async function verificarVeiculoSelecionado() {
+    const placa = document.getElementById('abast-veiculo').value;
+    const containerAlertas = document.getElementById('alertas-abastecimento');
+    
+    // Limpar alertas anteriores
+    containerAlertas.innerHTML = '';
+    
+    if (!placa) {
+      return;
+    }
+    
+    // ALERTA 1: Verificar se já abasteceu hoje
+    const abastHoje = await verificarAbastecimentoHoje(placa);
+    
+    if (abastHoje) {
+      const dataHoje = new Date(abastHoje.data);
+      const horaFormatada = dataHoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      containerAlertas.innerHTML += `
+        <div class="alert-ja-abasteceu">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-title">VEÍCULO JÁ FOI ABASTECIDO HOJE!</div>
+          <div class="alert-message">
+            Este veículo já recebeu abastecimento hoje às <strong>${horaFormatada}</strong>.<br>
+            Tem certeza que deseja registrar um novo abastecimento?
+          </div>
+          <div class="ultimo-abastecimento">
+            <div style="font-size:12px; font-weight:bold; color:var(--warning); margin-bottom:10px; text-align:center;">
+              📋 ÚLTIMO ABASTECIMENTO
+            </div>
+            <div class="abast-info">
+              <div class="abast-item">
+                <div class="abast-label">⛽ LITROS</div>
+                <div class="abast-value">${abastHoje.litros.toFixed(2)}L</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">💰 VALOR</div>
+                <div class="abast-value">R$ ${abastHoje.valor.toFixed(2)}</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">🛣️ KM</div>
+                <div class="abast-value">${abastHoje.kmAtual.toFixed(1)}</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">🏪 POSTO</div>
+                <div class="abast-value">${abastHoje.posto || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // HISTÓRICO: Buscar e exibir últimos 5 abastecimentos
+    const ultimos = await buscarUltimosAbastecimentos(placa, 5);
+    
+    if (ultimos.length > 0) {
+      let htmlHistorico = `
+        <div class="historico-container">
+          <div class="historico-header">
+            📊 ÚLTIMOS ${ultimos.length} ABASTECIMENTOS DESTE VEÍCULO
+          </div>
+          <div class="historico-lista">
+      `;
+      
+      for (const abast of ultimos) {
+        const dataAbast = new Date(abast.data);
+        const dataFormatada = dataAbast.toLocaleDateString('pt-BR');
+        const horaFormatada = dataAbast.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        
+        htmlHistorico += `
+          <div class="historico-item">
+            <div class="historico-item-header">
+              <div class="historico-item-data">📅 ${dataFormatada} ${horaFormatada}</div>
+              <div class="historico-item-valor">💰 R$ ${abast.valor.toFixed(2)}</div>
+            </div>
+            <div class="historico-item-detalhes">
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">LITROS</div>
+                <div class="historico-item-detalhe-value">⛽ ${abast.litros.toFixed(2)}L</div>
+              </div>
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">KM</div>
+                <div class="historico-item-detalhe-value">🛣️ ${abast.kmAtual.toFixed(1)}</div>
+              </div>
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">KM/L</div>
+                <div class="historico-item-detalhe-value">📊 ${abast.kmPorLitro ? abast.kmPorLitro.toFixed(2) : 'N/A'}</div>
+              </div>
+            </div>
+            ${abast.posto ? `<div style="font-size:10px; color:#64748b; margin-top:5px;">🏪 ${abast.posto}</div>` : ''}
+          </div>
+        `;
+      }
+      
+      // Calcular e exibir média
+      const mediaKmL = await calcularMediaKmLVeiculo(placa);
+      
+      if (mediaKmL > 0) {
+        let classeMedia = 'consumo-normal';
+        if (mediaKmL < 8) classeMedia = 'consumo-alto';
+        else if (mediaKmL >= 12) classeMedia = 'consumo-bom';
+        
+        htmlHistorico += `
+          </div>
+          <div class="historico-media-km">
+            <div class="historico-media-label">MÉDIA DE CONSUMO DO VEÍCULO</div>
+            <div class="historico-media-value ${classeMedia}">${mediaKmL.toFixed(2)} KM/L</div>
+          </div>
+        </div>
+        `;
+      } else {
+        htmlHistorico += '</div></div>';
+      }
+      
+      containerAlertas.innerHTML += htmlHistorico;
+    }
+  }
+  
+  // 6. CALCULAR KM/L EM TEMPO REAL
+  async function calcularMediaKmL() {
+    const placa = document.getElementById('abast-veiculo').value;
+    const kmAtual = parseFloat(document.getElementById('abast-km').value);
+    const litros = parseFloat(document.getElementById('abast-litros').value);
+    
+    const resultadoDiv = document.getElementById('resultado-media-kml');
+    
+    if (!placa || !kmAtual || !litros) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Buscar último abastecimento
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('veiculo')
+      .equalTo(placa)
+      .once('value');
+    
+    if (!snapshot.exists()) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    const abastecimentos = [];
+    snapshot.forEach(snap => {
+      const abast = snap.val();
+      if (abast.kmAtual && abast.status === STATUS.AUTORIZADO) {
+        abastecimentos.push(abast);
+      }
+    });
+    
+    if (abastecimentos.length === 0) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Ordenar por data
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    const ultimoAbast = abastecimentos[0];
+    const kmPercorrido = kmAtual - ultimoAbast.kmAtual;
+    
+    if (kmPercorrido <= 0) {
+      resultadoDiv.innerHTML = `
+        <div class="warning-box">
+          <strong>⚠️ ATENÇÃO!</strong><br>
+          A quilometragem atual (${kmAtual.toFixed(1)} km) não pode ser menor ou igual à do último abastecimento (${ultimoAbast.kmAtual.toFixed(1)} km).
+        </div>
+      `;
+      resultadoDiv.style.display = 'block';
+      return;
+    }
+    
+    const kmPorLitro = kmPercorrido / litros;
+    const mediaHistorica = await calcularMediaKmLVeiculo(placa);
+    
+    // Determinar classe de consumo
+    let classeConsumo = 'consumo-normal';
+    let mensagemConsumo = 'CONSUMO NORMAL';
+    let corFundo = '#eff6ff';
+    let corBorda = '#3b82f6';
+    
+    if (kmPorLitro < 8) {
+      classeConsumo = 'consumo-alto';
+      mensagemConsumo = 'CONSUMO ALTO - ATENÇÃO!';
+      corFundo = '#fee2e2';
+      corBorda = '#ef4444';
+    } else if (kmPorLitro >= 12) {
+      classeConsumo = 'consumo-bom';
+      mensagemConsumo = 'CONSUMO EXCELENTE!';
+      corFundo = '#d1fae5';
+      corBorda = '#22c55e';
+    }
+    
+    // Verificar se está muito abaixo da média
+    const verificacao = await verificarConsumoAlto(placa, kmAtual, litros);
+    
+    let htmlResultado = `
+      <div style="background:${corFundo}; border:3px solid ${corBorda}; border-radius:12px; padding:20px; margin-top:20px;">
+        <div style="text-align:center; margin-bottom:15px;">
+          <div style="font-size:14px; color:#64748b; margin-bottom:5px;">📊 CONSUMO CALCULADO</div>
+          <div style="font-size:36px; font-weight:bold;" class="${classeConsumo}">${kmPorLitro.toFixed(2)} KM/L</div>
+          <div style="font-size:12px; color:#64748b; margin-top:5px;">${mensagemConsumo}</div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; background:white; border-radius:8px; padding:15px;">
+          <div style="text-align:center;">
+            <div style="font-size:11px; color:#64748b;">KM PERCORRIDOS</div>
+            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${kmPercorrido.toFixed(1)} KM</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:11px; color:#64748b;">LITROS ABASTECIDOS</div>
+            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${litros.toFixed(2)} L</div>
+          </div>
+        </div>
+    `;
+    
+    if (mediaHistorica > 0) {
+      const diferenca = ((kmPorLitro - mediaHistorica) / mediaHistorica) * 100;
+      const sinalDiferenca = diferenca >= 0 ? '+' : '';
+      
+      htmlResultado += `
+        <div style="background:white; border-radius:8px; padding:15px; margin-top:10px;">
+          <div style="font-size:11px; color:#64748b; text-align:center; margin-bottom:5px;">
+            COMPARAÇÃO COM MÉDIA HISTÓRICA
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">MÉDIA HISTÓRICA</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--success);">${mediaHistorica.toFixed(2)} KM/L</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">DIFERENÇA</div>
+              <div style="font-size:18px; font-weight:bold; color:${diferenca < 0 ? 'var(--danger)' : 'var(--success)'};">
+                ${sinalDiferenca}${diferenca.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    htmlResultado += '</div>';
+    
+    // Se houver alerta de consumo alto
+    if (verificacao.alerta) {
+      htmlResultado = `
+        <div class="alert-consumo-alto">
+          <div class="alert-icon">🚨</div>
+          <div class="alert-title">ALERTA DE CONSUMO ELEVADO!</div>
+          <div class="alert-message">
+            ${verificacao.mensagem}<br>
+            Verifique possíveis problemas mecânicos ou condições de uso do veículo.
+          </div>
+          <div class="consumo-info">
+            <div class="consumo-item">
+              <div class="consumo-label">CONSUMO ATUAL</div>
+              <div class="consumo-value">${verificacao.consumoAtual.toFixed(2)} KM/L</div>
+            </div>
+            <div class="consumo-item">
+              <div class="consumo-label">MÉDIA HISTÓRICA</div>
+              <div class="consumo-value" style="color:var(--success);">${verificacao.mediaHistorica.toFixed(2)} KM/L</div>
+            </div>
+          </div>
+        </div>
+      ` + htmlResultado;
+    }
+    
+    resultadoDiv.innerHTML = htmlResultado;
+    resultadoDiv.style.display = 'block';
+  }
+  
+  // 7. ATUALIZAR A FUNÇÃO DE CÁLCULO DE ESTATÍSTICAS DO VEÍCULO
+  async function calcularEstatisticasVeiculo(placa) {
+    const snapshot = await db.ref('abastecimentos').orderByChild('veiculo').equalTo(placa).once('value');
+    
+    let totalAbastecimentos = 0;
+    let gastoTotal = 0;
+    let somaKmL = 0;
+    let contadorKmL = 0;
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        if (abast.status === STATUS.AUTORIZADO) {
+          totalAbastecimentos++;
+          gastoTotal += abast.valor;
+          
+          if (abast.kmPorLitro && abast.kmPorLitro > 0) {
+            somaKmL += abast.kmPorLitro;
+            contadorKmL++;
+          }
+        }
+      });
+    }
+    
+    const mediaKmL = contadorKmL > 0 ? (somaKmL / contadorKmL) : 0;
+    
+    return {
+      totalAbastecimentos,
+      gastoTotal,
+      mediaKmL
+    };
+  }
     
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
@@ -7549,5 +8197,416 @@
   }
   
 
+  // ADAPTAÇÃO DAS FUNÇÕES PARA OS IDS CORRETOS DO SISTEMA
+  
+  // Wrapper para pegar a placa do campo correto
+  function obterPlacaSelecionada() {
+    return document.getElementById('f-placa').value.trim().toUpperCase();
+  }
+  
+  // Wrapper para pegar KM atual
+  function obterKmAtual() {
+    return parseFloat(document.getElementById('f-km').value) || 0;
+  }
+  
+  // Wrapper para pegar litros
+  function obterLitros() {
+    return parseFloat(document.getElementById('f-lit').value) || 0;
+  }
+  
+  // Função adaptada de verificarVeiculoSelecionado
+  async function verificarVeiculoSelecionado() {
+    const placa = obterPlacaSelecionada();
+    const containerAlertas = document.getElementById('alertas-abastecimento');
+    
+    // Limpar alertas anteriores
+    if (containerAlertas) {
+      containerAlertas.innerHTML = '';
+    }
+    
+    if (!placa || placa.length < 7) {
+      return;
+    }
+    
+    // Verificar se já abasteceu hoje
+    const abastHoje = await verificarAbastecimentoHoje(placa);
+    
+    if (abastHoje && containerAlertas) {
+      const dataHoje = new Date(abastHoje.data);
+      const horaFormatada = dataHoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      containerAlertas.innerHTML += `
+        <div class="alert-ja-abasteceu">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-title">VEÍCULO JÁ FOI ABASTECIDO HOJE!</div>
+          <div class="alert-message">
+            Este veículo já recebeu abastecimento hoje às <strong>${horaFormatada}</strong>.<br>
+            Tem certeza que deseja registrar um novo abastecimento?
+          </div>
+          <div class="ultimo-abastecimento">
+            <div style="font-size:12px; font-weight:bold; color:var(--warning); margin-bottom:10px; text-align:center;">
+              📋 ÚLTIMO ABASTECIMENTO
+            </div>
+            <div class="abast-info">
+              <div class="abast-item">
+                <div class="abast-label">⛽ LITROS</div>
+                <div class="abast-value">${abastHoje.litros ? abastHoje.litros.toFixed(2) : '0.00'}L</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">💰 VALOR</div>
+                <div class="abast-value">R$ ${abastHoje.valor ? abastHoje.valor.toFixed(2) : '0.00'}</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">🛣️ KM</div>
+                <div class="abast-value">${abastHoje.km ? abastHoje.km.toFixed(1) : '0.0'}</div>
+              </div>
+              <div class="abast-item">
+                <div class="abast-label">🏪 POSTO</div>
+                <div class="abast-value">${abastHoje.posto || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Buscar e exibir últimos 5 abastecimentos
+    const ultimos = await buscarUltimosAbastecimentos(placa, 5);
+    
+    if (ultimos.length > 0 && containerAlertas) {
+      let htmlHistorico = `
+        <div class="historico-container">
+          <div class="historico-header">
+            📊 ÚLTIMOS ${ultimos.length} ABASTECIMENTOS DESTE VEÍCULO
+          </div>
+          <div class="historico-lista">
+      `;
+      
+      for (const abast of ultimos) {
+        const dataAbast = new Date(abast.data);
+        const dataFormatada = dataAbast.toLocaleDateString('pt-BR');
+        const horaFormatada = dataAbast.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        
+        htmlHistorico += `
+          <div class="historico-item">
+            <div class="historico-item-header">
+              <div class="historico-item-data">📅 ${dataFormatada} ${horaFormatada}</div>
+              <div class="historico-item-valor">💰 R$ ${abast.valor ? abast.valor.toFixed(2) : '0.00'}</div>
+            </div>
+            <div class="historico-item-detalhes">
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">LITROS</div>
+                <div class="historico-item-detalhe-value">⛽ ${abast.litros ? abast.litros.toFixed(2) : '0.00'}L</div>
+              </div>
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">KM</div>
+                <div class="historico-item-detalhe-value">🛣️ ${abast.km ? abast.km.toFixed(1) : '0.0'}</div>
+              </div>
+              <div class="historico-item-detalhe">
+                <div class="historico-item-detalhe-label">KM/L</div>
+                <div class="historico-item-detalhe-value">📊 ${abast.kml ? abast.kml.toFixed(2) : 'N/A'}</div>
+              </div>
+            </div>
+            ${abast.posto ? `<div style="font-size:10px; color:#64748b; margin-top:5px;">🏪 ${abast.posto}</div>` : ''}
+          </div>
+        `;
+      }
+      
+      // Calcular e exibir média
+      const mediaKmL = await calcularMediaKmLVeiculo(placa);
+      
+      if (mediaKmL > 0) {
+        let classeMedia = 'consumo-normal';
+        if (mediaKmL < 8) classeMedia = 'consumo-alto';
+        else if (mediaKmL >= 12) classeMedia = 'consumo-bom';
+        
+        htmlHistorico += `
+          </div>
+          <div class="historico-media-km">
+            <div class="historico-media-label">MÉDIA DE CONSUMO DO VEÍCULO</div>
+            <div class="historico-media-value ${classeMedia}">${mediaKmL.toFixed(2)} KM/L</div>
+          </div>
+        </div>
+        `;
+      } else {
+        htmlHistorico += '</div></div>';
+      }
+      
+      containerAlertas.innerHTML += htmlHistorico;
+    }
+  }
+  
+  // Função adaptada de calcularMediaKmL
+  async function calcularMediaKmL() {
+    const placa = obterPlacaSelecionada();
+    const kmAtual = obterKmAtual();
+    const litros = obterLitros();
+    
+    const resultadoDiv = document.getElementById('resultado-media-kml');
+    
+    if (!resultadoDiv) {
+      return;
+    }
+    
+    if (!placa || !kmAtual || !litros || placa.length < 7) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Buscar último abastecimento
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('placa')
+      .equalTo(placa)
+      .once('value');
+    
+    if (!snapshot.exists()) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    const abastecimentos = [];
+    snapshot.forEach(snap => {
+      const abast = snap.val();
+      if (abast.km) {
+        abastecimentos.push(abast);
+      }
+    });
+    
+    if (abastecimentos.length === 0) {
+      resultadoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Ordenar por data
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    const ultimoAbast = abastecimentos[0];
+    const kmPercorrido = kmAtual - ultimoAbast.km;
+    
+    if (kmPercorrido <= 0) {
+      resultadoDiv.innerHTML = `
+        <div class="warning-box">
+          <strong>⚠️ ATENÇÃO!</strong><br>
+          A quilometragem atual (${kmAtual.toFixed(1)} km) não pode ser menor ou igual à do último abastecimento (${ultimoAbast.km.toFixed(1)} km).
+        </div>
+      `;
+      resultadoDiv.style.display = 'block';
+      return;
+    }
+    
+    const kmPorLitro = kmPercorrido / litros;
+    const mediaHistorica = await calcularMediaKmLVeiculo(placa);
+    
+    // Determinar classe de consumo
+    let classeConsumo = 'consumo-normal';
+    let mensagemConsumo = 'CONSUMO NORMAL';
+    let corFundo = '#eff6ff';
+    let corBorda = '#3b82f6';
+    
+    if (kmPorLitro < 8) {
+      classeConsumo = 'consumo-alto';
+      mensagemConsumo = 'CONSUMO ALTO - ATENÇÃO!';
+      corFundo = '#fee2e2';
+      corBorda = '#ef4444';
+    } else if (kmPorLitro >= 12) {
+      classeConsumo = 'consumo-bom';
+      mensagemConsumo = 'CONSUMO EXCELENTE!';
+      corFundo = '#d1fae5';
+      corBorda = '#22c55e';
+    }
+    
+    // Verificar se está muito abaixo da média
+    const verificacao = await verificarConsumoAlto(placa, kmAtual, litros);
+    
+    let htmlResultado = `
+      <div style="background:${corFundo}; border:3px solid ${corBorda}; border-radius:12px; padding:20px; margin-top:20px;">
+        <div style="text-align:center; margin-bottom:15px;">
+          <div style="font-size:14px; color:#64748b; margin-bottom:5px;">📊 CONSUMO CALCULADO</div>
+          <div style="font-size:36px; font-weight:bold;" class="${classeConsumo}">${kmPorLitro.toFixed(2)} KM/L</div>
+          <div style="font-size:12px; color:#64748b; margin-top:5px;">${mensagemConsumo}</div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; background:white; border-radius:8px; padding:15px;">
+          <div style="text-align:center;">
+            <div style="font-size:11px; color:#64748b;">KM PERCORRIDOS</div>
+            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${kmPercorrido.toFixed(1)} KM</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:11px; color:#64748b;">LITROS ABASTECIDOS</div>
+            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${litros.toFixed(2)} L</div>
+          </div>
+        </div>
+    `;
+    
+    if (mediaHistorica > 0) {
+      const diferenca = ((kmPorLitro - mediaHistorica) / mediaHistorica) * 100;
+      const sinalDiferenca = diferenca >= 0 ? '+' : '';
+      
+      htmlResultado += `
+        <div style="background:white; border-radius:8px; padding:15px; margin-top:10px;">
+          <div style="font-size:11px; color:#64748b; text-align:center; margin-bottom:5px;">
+            COMPARAÇÃO COM MÉDIA HISTÓRICA
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">MÉDIA HISTÓRICA</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--success);">${mediaHistorica.toFixed(2)} KM/L</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">DIFERENÇA</div>
+              <div style="font-size:18px; font-weight:bold; color:${diferenca < 0 ? 'var(--danger)' : 'var(--success)'};">
+                ${sinalDiferenca}${diferenca.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    htmlResultado += '</div>';
+    
+    // Se houver alerta de consumo alto
+    if (verificacao.alerta) {
+      htmlResultado = `
+        <div class="alert-consumo-alto">
+          <div class="alert-icon">🚨</div>
+          <div class="alert-title">ALERTA DE CONSUMO ELEVADO!</div>
+          <div class="alert-message">
+            ${verificacao.mensagem}<br>
+            Verifique possíveis problemas mecânicos ou condições de uso do veículo.
+          </div>
+          <div class="consumo-info">
+            <div class="consumo-item">
+              <div class="consumo-label">CONSUMO ATUAL</div>
+              <div class="consumo-value">${verificacao.consumoAtual.toFixed(2)} KM/L</div>
+            </div>
+            <div class="consumo-item">
+              <div class="consumo-label">MÉDIA HISTÓRICA</div>
+              <div class="consumo-value" style="color:var(--success);">${verificacao.mediaHistorica.toFixed(2)} KM/L</div>
+            </div>
+          </div>
+        </div>
+      ` + htmlResultado;
+    }
+    
+    resultadoDiv.innerHTML = htmlResultado;
+    resultadoDiv.style.display = 'block';
+  }
+  
+  // Funções auxiliares adaptadas
+  async function verificarConsumoAlto(placa, kmAtual, litros) {
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('placa')
+      .equalTo(placa)
+      .once('value');
+    
+    if (!snapshot.exists()) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    const abastecimentos = [];
+    snapshot.forEach(snap => {
+      const abast = snap.val();
+      if (abast.km && abast.litros) {
+        abastecimentos.push(abast);
+      }
+    });
+    
+    if (abastecimentos.length === 0) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    const ultimoAbast = abastecimentos[0];
+    const kmPercorrido = kmAtual - ultimoAbast.km;
+    
+    if (kmPercorrido <= 0 || litros <= 0) {
+      return { alerta: false, mensagem: '' };
+    }
+    
+    const consumoAtual = kmPercorrido / litros;
+    const mediaHistorica = await calcularMediaKmLVeiculo(placa);
+    
+    if (mediaHistorica > 0 && consumoAtual < (mediaHistorica * 0.8)) {
+      return {
+        alerta: true,
+        consumoAtual: consumoAtual,
+        mediaHistorica: mediaHistorica,
+        mensagem: `⚠️ ATENÇÃO! O consumo está ${((1 - (consumoAtual / mediaHistorica)) * 100).toFixed(0)}% ABAIXO DA MÉDIA!`
+      };
+    }
+    
+    return { alerta: false, mensagem: '' };
+  }
+  
+  async function calcularMediaKmLVeiculo(placa) {
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('placa')
+      .equalTo(placa)
+      .once('value');
+    
+    let somaKmL = 0;
+    let contador = 0;
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        if (abast.kml && abast.kml > 0) {
+          somaKmL += abast.kml;
+          contador++;
+        }
+      });
+    }
+    
+    return contador > 0 ? (somaKmL / contador) : 0;
+  }
+  
+  async function buscarUltimosAbastecimentos(placa, limite = 5) {
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('placa')
+      .equalTo(placa)
+      .once('value');
+    
+    const abastecimentos = [];
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        abastecimentos.push(abast);
+      });
+    }
+    
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    return abastecimentos.slice(0, limite);
+  }
+  
+  async function verificarAbastecimentoHoje(placa) {
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+    
+    const snapshot = await db.ref('abastecimentos')
+      .orderByChild('placa')
+      .equalTo(placa)
+      .once('value');
+    
+    if (snapshot.exists()) {
+      let abastecimentoHoje = null;
+      
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        const dataAbast = new Date(abast.data);
+        
+        if (dataAbast >= inicioDia && dataAbast <= fimDia) {
+          abastecimentoHoje = abast;
+        }
+      });
+      
+      return abastecimentoHoje;
+    }
+    
+    return null;
+  }
 </script>
-
