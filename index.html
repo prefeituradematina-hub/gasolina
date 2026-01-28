@@ -1677,6 +1677,375 @@
           position: sticky;
       }
   }
+  
+  /* ===========================================
+     MODO ESCURO (DARK MODE)
+     =========================================== */
+  
+  /* Variáveis para Dark Mode */
+  :root[data-theme="dark"] {
+      --primary: #f8fafc;
+      --primary-bg: #0f172a;
+      --accent: #60a5fa;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --bg: #1e293b;
+      --card-bg: #334155;
+      --border: #475569;
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --hover: #475569;
+      --shadow: rgba(0, 0, 0, 0.5);
+  }
+  
+  [data-theme="dark"] body {
+      background-color: var(--bg);
+      color: var(--text);
+  }
+  
+  [data-theme="dark"] .card,
+  [data-theme="dark"] .stat-card,
+  [data-theme="dark"] .modal-content {
+      background-color: var(--card-bg);
+      color: var(--text);
+      border-color: var(--border);
+  }
+  
+  [data-theme="dark"] .top-bar {
+      background-color: var(--card-bg);
+      border-color: var(--border);
+  }
+  
+  [data-theme="dark"] .tab-btn {
+      background: var(--hover);
+      color: var(--text);
+  }
+  
+  [data-theme="dark"] .tab-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+  }
+  
+  [data-theme="dark"] input,
+  [data-theme="dark"] select,
+  [data-theme="dark"] textarea {
+      background-color: var(--primary-bg);
+      color: var(--text);
+      border-color: var(--border);
+  }
+  
+  [data-theme="dark"] input:focus,
+  [data-theme="dark"] select:focus,
+  [data-theme="dark"] textarea:focus {
+      border-color: var(--accent);
+      background-color: var(--card-bg);
+  }
+  
+  [data-theme="dark"] table {
+      background-color: var(--card-bg);
+  }
+  
+  [data-theme="dark"] thead {
+      background-color: var(--primary-bg);
+  }
+  
+  [data-theme="dark"] tbody tr:hover {
+      background-color: var(--hover);
+  }
+  
+  /* Toggle Switch para Dark Mode */
+  .theme-toggle {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 30px;
+  }
+  
+  .theme-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+  }
+  
+  .theme-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: .4s;
+      border-radius: 30px;
+  }
+  
+  .theme-slider:before {
+      position: absolute;
+      content: "☀️";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+  }
+  
+  input:checked + .theme-slider {
+      background-color: #475569;
+  }
+  
+  input:checked + .theme-slider:before {
+      transform: translateX(30px);
+      content: "🌙";
+  }
+  
+  .theme-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+  }
+  
+  /* DASHBOARD E MELHORIAS VISUAIS */
+  .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+  }
+  
+  .btn-quick-action {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: bold;
+  }
+  
+  .btn-quick-action:hover {
+      background: var(--accent);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+  }
+  
+  .quick-icon {
+      font-size: 36px;
+  }
+  
+  .quick-text {
+      font-size: 12px;
+  }
+  
+  .top-veiculo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent);
+      transition: all 0.3s;
+  }
+  
+  .top-veiculo-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .top-veiculo-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+  }
+  
+  .top-veiculo-rank {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--accent);
+      width: 40px;
+      text-align: center;
+  }
+  
+  .top-veiculo-nome {
+      font-weight: bold;
+      font-size: 13px;
+  }
+  
+  .top-veiculo-valor {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--danger);
+  }
+  
+  .alerta-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      transition: all 0.3s;
+      cursor: pointer;
+  }
+  
+  .alerta-item.warning {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+  }
+  
+  .alerta-item.danger {
+      background: #fee2e2;
+      border-left: 4px solid var(--danger);
+  }
+  
+  .alerta-item.info {
+      background: #dbeafe;
+      border-left: 4px solid var(--accent);
+  }
+  
+  .alerta-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .alerta-icon {
+      font-size: 24px;
+  }
+  
+  .alerta-texto {
+      flex: 1;
+      font-size: 12px;
+      line-height: 1.4;
+  }
+  
+  /* Busca Global */
+  .search-global-container {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+  }
+  
+  .search-global {
+      width: 100%;
+      padding: 12px 40px 12px 40px;
+      border: 2px solid #e2e8f0;
+      border-radius: 24px;
+      font-size: 14px;
+      transition: all 0.3s;
+  }
+  
+  .search-global:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: #64748b;
+      pointer-events: none;
+  }
+  
+  .search-clear {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: #64748b;
+      cursor: pointer;
+      display: none;
+  }
+  
+  .search-global:not(:placeholder-shown) ~ .search-clear {
+      display: block;
+  }
+  
+  .search-results {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 8px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+  }
+  
+  .search-results.show {
+      display: block;
+  }
+  
+  .search-result-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      transition: all 0.2s;
+  }
+  
+  .search-result-item:hover {
+      background: #f8fafc;
+  }
+  
+  .search-result-type {
+      font-size: 10px;
+      color: #64748b;
+      margin-bottom: 4px;
+  }
+  
+  .search-result-title {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 2px;
+  }
+  
+  .search-result-desc {
+      font-size: 11px;
+      color: #64748b;
+  }
+  
+  .search-no-results {
+      padding: 40px;
+      text-align: center;
+      color: #64748b;
+  }
+  
+  /* Animações */
+  .fade-in {
+      animation: fadeIn 0.5s ease-in;
+  }
+  
+  @keyframes fadeIn {
+      from {
+          opacity: 0;
+          transform: translateY(20px);
+      }
+      to {
+          opacity: 1;
+          transform: translateY(0);
+      }
+  }
 </style>
 
 <!-- Modal para Edição de Usuários -->
@@ -9219,5 +9588,618 @@
     
     return null;
   }
+  // ===========================================
+  // MODO ESCURO
+  // ===========================================
+  
+  function initDarkMode() {
+    // Carregar preferência salva
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+      toggle.checked = savedTheme === 'dark';
+    }
+  }
+  
+  function toggleDarkMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    mostrarNotificacao(`✨ TEMA ${newTheme === 'dark' ? 'ESCURO' : 'CLARO'} ATIVADO!`, 'success');
+  }
+  
+  // ===========================================
+  // DASHBOARD
+  // ===========================================
+  
+  let chartDashboardSemanal = null;
+  
+  async function carregarDashboard() {
+    await carregarEstatisticasDashboard();
+    await carregarGraficoDashboardSemanal();
+    await carregarTopVeiculos();
+    await carregarAlertasDashboard();
+    await carregarUltimosAbastecimentosDashboard();
+  }
+  
+  async function carregarEstatisticasDashboard() {
+    // Total de veículos
+    const veiculosSnap = await db.ref('veiculos').once('value');
+    const totalVeiculos = veiculosSnap.exists() ? Object.keys(veiculosSnap.val()).length : 0;
+    animateCounter('dash-total-veiculos', totalVeiculos);
+    
+    // Abastecimentos hoje
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0).getTime();
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).getTime();
+    
+    const abastSnap = await db.ref('abastecimentos').once('value');
+    let abastHoje = 0;
+    let gastoHoje = 0;
+    
+    if (abastSnap.exists()) {
+      abastSnap.forEach(snap => {
+        const abast = snap.val();
+        const dataAbast = new Date(abast.data).getTime();
+        
+        if (dataAbast >= inicioDia && dataAbast <= fimDia && abast.status === STATUS.AUTORIZADO) {
+          abastHoje++;
+          gastoHoje += abast.valor || 0;
+        }
+      });
+    }
+    
+    animateCounter('dash-abast-hoje', abastHoje);
+    document.getElementById('dash-gasto-hoje').textContent = 'R$ ' + gastoHoje.toFixed(2);
+    
+    // Pendentes
+    const pendentesSnap = await db.ref('abastecimentos').orderByChild('status').equalTo(STATUS.PENDENTE).once('value');
+    const totalPendentes = pendentesSnap.exists() ? Object.keys(pendentesSnap.val()).length : 0;
+    animateCounter('dash-pendentes', totalPendentes);
+  }
+  
+  async function carregarGraficoDashboardSemanal() {
+    const hoje = new Date();
+    const labels = [];
+    const valores = [];
+    
+    // Últimos 7 dias
+    for (let i = 6; i >= 0; i--) {
+      const data = new Date(hoje);
+      data.setDate(data.getDate() - i);
+      
+      const dia = data.getDate();
+      const mes = data.getMonth() + 1;
+      labels.push(`${dia}/${mes}`);
+      
+      const inicioDia = new Date(data.getFullYear(), data.getMonth(), data.getDate(), 0, 0, 0).getTime();
+      const fimDia = new Date(data.getFullYear(), data.getMonth(), data.getDate(), 23, 59, 59).getTime();
+      
+      let gastodia = 0;
+      const snapshot = await db.ref('abastecimentos').once('value');
+      
+      if (snapshot.exists()) {
+        snapshot.forEach(snap => {
+          const abast = snap.val();
+          const dataAbast = new Date(abast.data).getTime();
+          
+          if (dataAbast >= inicioDia && dataAbast <= fimDia && abast.status === STATUS.AUTORIZADO) {
+            gastodia += abast.valor || 0;
+          }
+        });
+      }
+      
+      valores.push(gastodia);
+    }
+    
+    if (chartDashboardSemanal) {
+      chartDashboardSemanal.destroy();
+    }
+    
+    const ctx = document.getElementById('grafico-dashboard-semanal');
+    if (ctx) {
+      chartDashboardSemanal = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'GASTO DIÁRIO (R$)',
+            data: valores,
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: '#3b82f6',
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return 'R$ ' + value.toFixed(2);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+  
+  async function carregarTopVeiculos() {
+    const container = document.getElementById('dash-top-veiculos');
+    if (!container) return;
+    
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    
+    const veiculosGasto = {};
+    
+    const snapshot = await db.ref('abastecimentos').once('value');
+    
+    if (snapshot.exists()) {
+      snapshot.forEach(snap => {
+        const abast = snap.val();
+        const dataAbast = new Date(abast.data);
+        
+        if (dataAbast.getMonth() === mesAtual && 
+            dataAbast.getFullYear() === anoAtual && 
+            abast.status === STATUS.AUTORIZADO) {
+          
+          if (!veiculosGasto[abast.placa]) {
+            veiculosGasto[abast.placa] = 0;
+          }
+          veiculosGasto[abast.placa] += abast.valor || 0;
+        }
+      });
+    }
+    
+    // Ordenar e pegar top 5
+    const top5 = Object.entries(veiculosGasto)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    if (top5.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">SEM DADOS ESTE MÊS</div></div>';
+      return;
+    }
+    
+    let html = '';
+    top5.forEach((item, index) => {
+      const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+      html += `
+        <div class="top-veiculo-item fade-in">
+          <div class="top-veiculo-info">
+            <div class="top-veiculo-rank">${medals[index]}</div>
+            <div class="top-veiculo-nome">${item[0]}</div>
+          </div>
+          <div class="top-veiculo-valor">R$ ${item[1].toFixed(2)}</div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html;
+  }
+  
+  async function carregarAlertasDashboard() {
+    const container = document.getElementById('dash-alertas');
+    if (!container) return;
+    
+    let html = '';
+    let temAlertas = false;
+    
+    // Verificar solicitações pendentes
+    const pendentesSnap = await db.ref('abastecimentos').orderByChild('status').equalTo(STATUS.PENDENTE).once('value');
+    if (pendentesSnap.exists()) {
+      const total = Object.keys(pendentesSnap.val()).length;
+      html += `
+        <div class="alerta-item warning fade-in" onclick="trocarAba('solicitacoes')">
+          <div class="alerta-icon">⏳</div>
+          <div class="alerta-texto">
+            <strong>${total} SOLICITAÇÃO(ÕES) PENDENTE(S)</strong><br>
+            Aguardando autorização
+          </div>
+        </div>
+      `;
+      temAlertas = true;
+    }
+    
+    // Verificar veículos com consumo alto hoje
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0).getTime();
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).getTime();
+    
+    const abastHojeSnap = await db.ref('abastecimentos').once('value');
+    let veiculosConsumoAlto = [];
+    
+    if (abastHojeSnap.exists()) {
+      for (const snap of Object.values(abastHojeSnap.val())) {
+        const abast = snap;
+        const dataAbast = new Date(abast.data).getTime();
+        
+        if (dataAbast >= inicioDia && dataAbast <= fimDia && abast.kml && abast.kml < 8) {
+          veiculosConsumoAlto.push(abast.placa);
+        }
+      }
+    }
+    
+    if (veiculosConsumoAlto.length > 0) {
+      html += `
+        <div class="alerta-item danger fade-in">
+          <div class="alerta-icon">🚨</div>
+          <div class="alerta-texto">
+            <strong>${veiculosConsumoAlto.length} VEÍCULO(S) COM CONSUMO ALTO HOJE</strong><br>
+            ${veiculosConsumoAlto.slice(0, 3).join(', ')}${veiculosConsumoAlto.length > 3 ? '...' : ''}
+          </div>
+        </div>
+      `;
+      temAlertas = true;
+    }
+    
+    // Alerta informativo se tudo ok
+    if (!temAlertas) {
+      html = `
+        <div class="alerta-item info fade-in">
+          <div class="alerta-icon">✅</div>
+          <div class="alerta-texto">
+            <strong>TUDO CERTO!</strong><br>
+            Não há alertas no momento
+          </div>
+        </div>
+      `;
+    }
+    
+    container.innerHTML = html;
+  }
+  
+  async function carregarUltimosAbastecimentosDashboard() {
+    const tbody = document.getElementById('dash-ultimos-abast');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    const snapshot = await db.ref('abastecimentos').once('value');
+    
+    if (!snapshot.exists()) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="empty-state">
+            <div class="empty-state-text">NENHUM ABASTECIMENTO REGISTRADO</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    const abastecimentos = [];
+    snapshot.forEach(snap => {
+      abastecimentos.push(snap.val());
+    });
+    
+    // Ordenar por data (mais recentes primeiro)
+    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    // Pegar últimos 10
+    const ultimos10 = abastecimentos.slice(0, 10);
+    
+    for (const abast of ultimos10) {
+      const data = new Date(abast.data);
+      const dataFormatada = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      let statusBadge = '';
+      if (abast.status === STATUS.PENDENTE) {
+        statusBadge = '<span class="status-chip pendente">⏳ PENDENTE</span>';
+      } else if (abast.status === STATUS.AUTORIZADO) {
+        statusBadge = '<span class="status-chip autorizado">✅ AUTORIZADO</span>';
+      } else if (abast.status === STATUS.NEGADO) {
+        statusBadge = '<span class="status-chip negado">❌ NEGADO</span>';
+      }
+      
+      tbody.innerHTML += `
+        <tr class="fade-in">
+          <td>${dataFormatada}</td>
+          <td><strong>${abast.placa || 'N/A'}</strong></td>
+          <td>${(abast.litros || 0).toFixed(2)}L</td>
+          <td><strong style="color:var(--success);">R$ ${(abast.valor || 0).toFixed(2)}</strong></td>
+          <td>${abast.kml ? abast.kml.toFixed(2) + ' KM/L' : 'N/A'}</td>
+          <td>${abast.user || 'N/A'}</td>
+          <td>${statusBadge}</td>
+        </tr>
+      `;
+    }
+  }
+  
+  // ===========================================
+  // BUSCA GLOBAL
+  // ===========================================
+  
+  let searchTimeout = null;
+  
+  function initBuscaGlobal() {
+    const searchInput = document.getElementById('search-global');
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      const query = this.value.trim();
+      
+      if (query.length < 2) {
+        document.getElementById('search-results').classList.remove('show');
+        return;
+      }
+      
+      searchTimeout = setTimeout(() => {
+        buscarGlobal(query);
+      }, 300);
+    });
+    
+    // Fechar ao clicar fora
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.search-global-container')) {
+        document.getElementById('search-results').classList.remove('show');
+      }
+    });
+  }
+  
+  async function buscarGlobal(query) {
+    const resultsContainer = document.getElementById('search-results');
+    if (!resultsContainer) return;
+    
+    const queryUpper = query.toUpperCase();
+    let results = [];
+    
+    // Buscar em veículos
+    const veiculosSnap = await db.ref('veiculos').once('value');
+    if (veiculosSnap.exists()) {
+      veiculosSnap.forEach(snap => {
+        const veiculo = snap.val();
+        if (veiculo.modelo.includes(queryUpper) || veiculo.placa.includes(queryUpper)) {
+          results.push({
+            type: '🚗 VEÍCULO',
+            title: `${veiculo.modelo} - ${veiculo.placa}`,
+            desc: `${veiculo.ano} | ${veiculo.cor}`,
+            action: () => trocarAba('veiculos')
+          });
+        }
+      });
+    }
+    
+    // Buscar em abastecimentos
+    const abastSnap = await db.ref('abastecimentos').once('value');
+    if (abastSnap.exists()) {
+      let count = 0;
+      abastSnap.forEach(snap => {
+        if (count >= 5) return; // Limitar a 5 resultados
+        
+        const abast = snap.val();
+        if (abast.placa && abast.placa.includes(queryUpper)) {
+          const data = new Date(abast.data).toLocaleDateString('pt-BR');
+          results.push({
+            type: '⛽ ABASTECIMENTO',
+            title: `${abast.placa} - ${data}`,
+            desc: `R$ ${abast.valor.toFixed(2)} | ${abast.litros.toFixed(2)}L`,
+            action: () => trocarAba('abastecimento')
+          });
+          count++;
+        }
+      });
+    }
+    
+    // Buscar em VIPs
+    const vipsSnap = await db.ref('pessoas_vip').once('value');
+    if (vipsSnap.exists()) {
+      vipsSnap.forEach(snap => {
+        const vip = snap.val();
+        if (vip.nome.includes(queryUpper)) {
+          results.push({
+            type: '👑 VIP',
+            title: vip.nome,
+            desc: vip.cargo,
+            action: () => trocarAba('pessoas-vip')
+          });
+        }
+      });
+    }
+    
+    // Exibir resultados
+    if (results.length === 0) {
+      resultsContainer.innerHTML = `
+        <div class="search-no-results">
+          <div style="font-size:48px; margin-bottom:10px;">🔍</div>
+          <div>NENHUM RESULTADO ENCONTRADO</div>
+          <div style="font-size:11px; margin-top:5px;">Tente outro termo</div>
+        </div>
+      `;
+    } else {
+      let html = '';
+      results.forEach(result => {
+        html += `
+          <div class="search-result-item" onclick='${result.action.toString().match(/\{(.*)\}/)[1]}'>
+            <div class="search-result-type">${result.type}</div>
+            <div class="search-result-title">${result.title}</div>
+            <div class="search-result-desc">${result.desc}</div>
+          </div>
+        `;
+      });
+      resultsContainer.innerHTML = html;
+    }
+    
+    resultsContainer.classList.add('show');
+  }
+  
+  function limparBusca() {
+    const searchInput = document.getElementById('search-global');
+    if (searchInput) {
+      searchInput.value = '';
+      document.getElementById('search-results').classList.remove('show');
+    }
+  }
+  
+  // ===========================================
+  // ATALHOS DE TECLADO
+  // ===========================================
+  
+  function initAtalhospTeclado() {
+    document.addEventListener('keydown', function(e) {
+      // Ctrl+N - Novo abastecimento
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        trocarAba('abastecimento');
+        mostrarNotificacao('⌨️ ATALHO: NOVO ABASTECIMENTO', 'info');
+      }
+      
+      // Ctrl+V - Novo veículo
+      if (e.ctrlKey && e.key === 'v') {
+        e.preventDefault();
+        trocarAba('veiculos');
+        mostrarNotificacao('⌨️ ATALHO: VEÍCULOS', 'info');
+      }
+      
+      // Ctrl+F - Buscar
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        const searchInput = document.getElementById('search-global');
+        if (searchInput) {
+          searchInput.focus();
+          mostrarNotificacao('⌨️ ATALHO: BUSCA', 'info');
+        }
+      }
+      
+      // / - Busca rápida
+      if (e.key === '/' && !e.target.matches('input, textarea')) {
+        e.preventDefault();
+        const searchInput = document.getElementById('search-global');
+        if (searchInput) searchInput.focus();
+      }
+      
+      // Esc - Fechar modais e busca
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(modal => {
+          modal.style.display = 'none';
+        });
+        limparBusca();
+      }
+      
+      // Ctrl+H - Home/Dashboard
+      if (e.ctrlKey && e.key === 'h') {
+        e.preventDefault();
+        trocarAba('dashboard');
+        mostrarNotificacao('⌨️ ATALHO: DASHBOARD', 'info');
+      }
+    });
+  }
+  
+  // ===========================================
+  // UTILITÁRIOS
+  // ===========================================
+  
+  // Animar contador
+  function animateCounter(elementId, targetValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const startValue = 0;
+    const duration = 1000;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / duration, 1);
+      
+      const currentValue = Math.floor(progress * (targetValue - startValue) + startValue);
+      element.textContent = currentValue;
+      
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        element.textContent = targetValue;
+      }
+    }
+    
+    requestAnimationFrame(update);
+  }
+  
+  // Criar confetes
+  function criarConfetes() {
+    const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
+    
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * window.innerWidth + 'px';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        document.body.appendChild(confetti);
+        
+        setTimeout(() => confetti.remove(), 3000);
+      }, i * 30);
+    }
+  }
+  
+  // Adicionar classe fade-in aos elementos
+  function addFadeInAnimation() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('fade-in');
+        }
+      });
+    });
+    
+    document.querySelectorAll('.card, .stat-card').forEach(el => {
+      observer.observe(el);
+    });
+  }
+  
+  // ===========================================
+  // INICIALIZAÇÃO
+  // ===========================================
+  
+  // Modificar função iniciarSistema para incluir novas funcionalidades
+  const iniciarSistemaOriginal = iniciarSistema;
+  
+  function iniciarSistema() {
+    iniciarSistemaOriginal();
+    
+    // Inicializar novas funcionalidades
+    initDarkMode();
+    initBuscaGlobal();
+    initAtalhospTeclado();
+    addFadeInAnimation();
+    
+    // Carregar dashboard
+    setTimeout(() => {
+      carregarDashboard();
+    }, 500);
+  }
+  
+  // Modificar trocarAba para recarregar dashboard
+  const trocarAbaOriginal = trocarAba;
+  
+  function trocarAba(aba) {
+    trocarAbaOriginal(aba);
+    
+    if (aba === 'dashboard') {
+      setTimeout(() => {
+        carregarDashboard();
+      }, 100);
+    }
+  }
 </script>
--e 
+</body>
+</html>
