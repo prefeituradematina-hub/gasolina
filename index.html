@@ -2542,7 +2542,7 @@
           <input type="date" id="f-data">
         </div>
         <div>
-          <label>KM ATUAL *</label>
+          <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
           <input type="number" id="f-km" placeholder="0" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
@@ -4051,16 +4051,23 @@
       erros.push("❌ LITROS DEVE SER MAIOR QUE ZERO");
     }
     
-    if (dados.km <= 0) {
+    // KM é opcional apenas para abastecimentos AVULSOS / GERAL
+    const isAvulso = dados.secretaria === 'AVULSOS / GERAL';
+    
+    if (!isAvulso && dados.km <= 0) {
       erros.push("❌ KM DEVE SER MAIOR QUE ZERO");
     }
     
-    const ultimoAbast = cache
-      .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
-      .sort((a, b) => b.timestamp - a.timestamp)[0];
-    if (ultimoAbast && dados.km < ultimoAbast.km) {
-      erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
+    // Validar KM apenas se foi informado (para avulsos) ou sempre (para não avulsos)
+    if (!isAvulso || (isAvulso && dados.km > 0)) {
+      const ultimoAbast = cache
+        .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
+        .sort((a, b) => b.timestamp - a.timestamp)[0];
+      if (ultimoAbast && dados.km < ultimoAbast.km) {
+        erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
+      }
     }
+    
     return erros;
   }
   
