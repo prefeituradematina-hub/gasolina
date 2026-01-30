@@ -2381,6 +2381,23 @@
   </div>
 </div>
 
+<!-- Modal de Histórico do Veículo (VIP/AVULSO) -->
+<div id="modal-historico-veiculo" class="modal">
+  <div class="modal-content" style="max-width: 900px;">
+    <span class="modal-close" onclick="fecharModalHistoricoVeiculo(false)">&times;</span>
+    <h3>📋 HISTÓRICO DO VEÍCULO</h3>
+    <div id="historico-veiculo-content"></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="fecharModalHistoricoVeiculo(false)">
+        ❌ CANCELAR
+      </button>
+      <button class="btn-save" onclick="fecharModalHistoricoVeiculo(true)">
+        ✅ CONFIRMAR ABASTECIMENTO
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Tela de Login -->
 <div id="login-screen">
   <div class="login-container">
@@ -2720,7 +2737,7 @@
         </div>
         
         <div>
-          <label>ODÔMETRO (KM) *</label>
+          <label>ODÔMETRO (KM) <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
           <input type="number" id="vip-km" placeholder="0" min="0">
         </div>
         
@@ -3397,6 +3414,7 @@
     'usar_filtros_relatorio': { nome: 'Usar Filtros de Relatório', descricao: 'Aplicar filtros nos relatórios', categoria: 'visualizacao' },
     'registrar_abastecimento': { nome: 'Registrar Abastecimento', descricao: 'Criar novos registros', categoria: 'operacoes' },
     'registrar_abastecimento_vip': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
+    'abastecer_vips': { nome: 'Abastecer VIPs', descricao: 'Registrar abastecimentos de VIPs', categoria: 'operacoes' },
     'autorizar_abastecimento': { nome: 'Autorizar Abastecimento', descricao: 'Aprovar/rejeitar solicitações', categoria: 'operacoes' },
     'deletar_abastecimento': { nome: 'Deletar Abastecimento', descricao: 'Excluir registros', categoria: 'operacoes' },
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
@@ -3410,7 +3428,7 @@
     admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio'],
-  autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_vip']
+  autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_vip', 'abastecer_vips']
 };
   
   // Função para verificar permissões
@@ -3749,7 +3767,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "1234") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -3815,7 +3833,7 @@
       (temPermissao('autorizar_abastecimento')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-vip').style.display = 
-      (temPermissao('registrar_abastecimento_vip')) ? 'block' : 'none';
+      (temPermissao('registrar_abastecimento_vip') || temPermissao('abastecer_vips')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-executivo').style.display = 
       (temPermissao('ver_dashboard')) ? 'block' : 'none';
@@ -4193,18 +4211,11 @@
   
       // 🧾 AVULSOS / GERAL — histórico
       if (dados.secretaria === 'AVULSOS / GERAL') {
-        const ultimosAbastecimentos = cache
-          .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
-          .sort((a, b) => b.timestamp - a.timestamp)
-          .slice(0, 5);
-  
-        if (ultimosAbastecimentos.length > 0) {
-          const confirmar = await mostrarModalHistorico(dados.placa, ultimosAbastecimentos);
-          if (!confirmar) {
-            btnRegistrar.disabled = false;
-            btnRegistrar.innerHTML = textoOriginal;
-            return;
-          }
+        const confirmar = await mostrarHistoricoVeiculo(dados.placa, 'AVULSO / GERAL');
+        if (!confirmar) {
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
         }
       }
   
@@ -7973,6 +7984,7 @@
     const modalTanqueCheio = document.getElementById('modal-tanque-cheio');
     const modalEditPosto = document.getElementById('modal-edit-posto');
     const modalEditVIP = document.getElementById('modal-edit-vip');
+    const modalHistoricoVeiculo = document.getElementById('modal-historico-veiculo');
     
     if (event.target === modalEdit) {
       fecharModal();
@@ -7997,6 +8009,9 @@
     }
     if (event.target === modalEditVIP) {
       fecharModalEditVIP();
+    }
+    if (event.target === modalHistoricoVeiculo) {
+      fecharModalHistoricoVeiculo(false);
     }
   };
   
@@ -8274,7 +8289,7 @@
   
   // Lançar abastecimento VIP
   async function lancarAbastecimentoVIP() {
-    if (!temPermissao('registrar_abastecimento_vip')) {
+    if (!temPermissao('registrar_abastecimento_vip') && !temPermissao('abastecer_vips')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA LANÇAR ABASTECIMENTOS VIP!", "error");
       return;
     }
@@ -8286,7 +8301,7 @@
     const combustivel = document.getElementById('vip-combustivel').value;
     const litros = parseFloat(document.getElementById('vip-litros').value);
     const preco = parseFloat(document.getElementById('vip-preco').value);
-    const km = parseInt(document.getElementById('vip-km').value);
+    const km = parseInt(document.getElementById('vip-km').value) || 0; // Opcional para VIP
     const obs = document.getElementById('vip-obs').value.trim();
     
     // Validações
@@ -8314,12 +8329,15 @@
       mostrarNotificacao("❌ INFORME OS LITROS!", "error");
       return;
     }
-    if (!km || km <= 0) {
-      mostrarNotificacao("❌ INFORME O ODÔMETRO!", "error");
-      return;
-    }
+    // KM é opcional para abastecimentos VIP
     
     const valor = litros * preco;
+    
+    // NOVO: Mostrar histórico do veículo antes de confirmar
+    const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
+    if (!confirmarHistorico) {
+      return;
+    }
     
     // Buscar dados da pessoa VIP
     const vipSnapshot = await db.ref('pessoas_vip/' + pessoaId).once('value');
@@ -9182,6 +9200,132 @@
     }
   }
   
+  // ============================================
+  // MODAL DE HISTÓRICO DO VEÍCULO (VIP/AVULSO)
+  // ============================================
+  
+  let callbackConfirmarHistorico = null;
+  
+  async function mostrarHistoricoVeiculo(placa, tipoAbastecimento) {
+    return new Promise(async (resolve) => {
+      const modal = document.getElementById('modal-historico-veiculo');
+      const content = document.getElementById('historico-veiculo-content');
+      
+      // Buscar últimos 5 abastecimentos autorizados do veículo
+      const ultimos = cache
+        .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 5);
+      
+      let html = `
+        <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <div style="font-size:32px;">🚗</div>
+            <div>
+              <div style="font-size:16px; font-weight:bold; color:var(--primary);">VEÍCULO: ${placa}</div>
+              <div style="font-size:12px; color:#64748b;">Tipo de abastecimento: ${tipoAbastecimento}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      if (ultimos.length === 0) {
+        html += `
+          <div style="text-align:center; padding:40px 20px; background:white; border-radius:8px;">
+            <div style="font-size:48px; margin-bottom:10px;">📭</div>
+            <div style="font-size:14px; color:#64748b;">NENHUM ABASTECIMENTO ANTERIOR ENCONTRADO</div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:5px;">Este é o primeiro abastecimento deste veículo</div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div style="margin-bottom:10px;">
+            <strong style="color:var(--primary);">📋 ÚLTIMOS ${ultimos.length} ABASTECIMENTOS:</strong>
+          </div>
+          <div class="table-wrapper">
+            <table style="font-size:11px;">
+              <thead>
+                <tr>
+                  <th>DATA</th>
+                  <th>SECRETARIA</th>
+                  <th>POSTO</th>
+                  <th>COMBUSTÍVEL</th>
+                  <th>LITROS</th>
+                  <th>KM</th>
+                  <th>MÉDIA</th>
+                  <th>VALOR</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        ultimos.forEach(abast => {
+          const media = calcularMedia(abast);
+          const limiteAlerta = LIMITES_ALERTA[abast.tipo];
+          const classeAlerta = (media > 0 && media < limiteAlerta) ? 'style="background:#fef2f2;"' : '';
+          
+          html += `
+            <tr ${classeAlerta}>
+              <td>${new Date(abast.data).toLocaleDateString('pt-BR')}</td>
+              <td style="font-size:10px;">${abast.secretaria}</td>
+              <td>${abast.posto || '---'}</td>
+              <td><span class="badge">${abast.tipo}</span></td>
+              <td><strong>${abast.litro.toFixed(2)} L</strong></td>
+              <td>${abast.km > 0 ? abast.km.toLocaleString('pt-BR') : '---'}</td>
+              <td>${media > 0 ? media.toFixed(2) + ' km/l' : '---'}</td>
+              <td><strong>R$ ${abast.valor.toFixed(2)}</strong></td>
+            </tr>
+          `;
+        });
+        
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+        // Calcular totais
+        const totalLitros = ultimos.reduce((sum, a) => sum + a.litro, 0);
+        const totalValor = ultimos.reduce((sum, a) => sum + a.valor, 0);
+        const mediasValidas = ultimos.map(a => calcularMedia(a)).filter(m => m > 0);
+        const mediaGeral = mediasValidas.length > 0 
+          ? mediasValidas.reduce((sum, m) => sum + m, 0) / mediasValidas.length 
+          : 0;
+        
+        html += `
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px; padding:15px; background:#f8fafc; border-radius:8px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">TOTAL LITROS</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--accent);">${totalLitros.toFixed(2)} L</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">MÉDIA GERAL</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--success);">${mediaGeral > 0 ? mediaGeral.toFixed(2) + ' km/l' : '---'}</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:10px; color:#64748b;">TOTAL GASTO</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--primary);">R$ ${totalValor.toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      content.innerHTML = html;
+      modal.style.display = 'flex';
+      
+      callbackConfirmarHistorico = resolve;
+    });
+  }
+  
+  function fecharModalHistoricoVeiculo(confirmar) {
+    const modal = document.getElementById('modal-historico-veiculo');
+    modal.style.display = 'none';
+    
+    if (callbackConfirmarHistorico) {
+      callbackConfirmarHistorico(confirmar);
+      callbackConfirmarHistorico = null;
+    }
+  }
 
   // ADAPTAÇÃO DAS FUNÇÕES PARA OS IDS CORRETOS DO SISTEMA
   
