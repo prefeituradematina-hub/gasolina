@@ -2297,10 +2297,13 @@
         </select>
       </div>
       <div id="edit-field-posto-autorizador" style="display:none;">
-        <label>POSTO AUTORIZADO</label>
-        <select id="edit-posto-vinc" onchange="carregarCombustiveisPostoAutorizadorEdit()">
+        <label>POSTOS AUTORIZADOS (Ctrl+Click para múltiplos)</label>
+        <select id="edit-posto-vinc" multiple size="5" style="height:auto; min-height:120px;" onchange="carregarCombustiveisPostoAutorizadorEdit()">
           <option value="">SELECIONE...</option>
         </select>
+        <small style="color:#64748b; font-size:10px; display:block; margin-top:5px;">
+          💡 Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplos postos
+        </small>
       </div>
       <div id="edit-field-combustiveis-autorizador" style="display:none;">
         <label>COMBUSTÍVEIS QUE PODE LIBERAR</label>
@@ -3449,10 +3452,13 @@
           </select>
         </div>
         <div id="field-posto-autorizador" style="display:none;">
-          <label>POSTO AUTORIZADO</label>
-          <select id="new-posto-vinc" onchange="carregarCombustiveisPostoAutorizador()">
+          <label>POSTOS AUTORIZADOS (Ctrl+Click para múltiplos)</label>
+          <select id="new-posto-vinc" multiple size="5" style="height:auto; min-height:120px;" onchange="carregarCombustiveisPostoAutorizador()">
             <option value="">CARREGANDO...</option>
           </select>
+          <small style="color:#64748b; font-size:10px; display:block; margin-top:5px;">
+            💡 Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplos postos
+          </small>
         </div>
         <div id="field-combustiveis-autorizador" style="display:none;">
           <label>COMBUSTÍVEIS QUE PODE LIBERAR</label>
@@ -3773,7 +3779,8 @@
   let userRole = "";
   let loginUser = "";
   let userSecretaria = "";
-  let userPostoVinculado = ""; // Posto vinculado para frentistas e autorizadores
+  let userPostoVinculado = ""; // Posto vinculado para frentistas
+  let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
   let usuarioData = {};
   let precos = { GASOLINA: 6, ALCOOL: 4, DIESEL: 6 };
   let chartSec = null;
@@ -4144,7 +4151,13 @@
     userSecretaria = sec;
     usuarioData = dadosExtras || {};
     userPermissions = dadosExtras.permissoes || PERMISSOES_PADRAO[role] || [];
-    userPostoVinculado = dadosExtras.postoVinculado || ""; // Capturar posto vinculado
+    
+    // CORREÇÃO: Suporte a múltiplos postos para autorizadores
+    if (role === 'autorizador') {
+      userPostosVinculados = dadosExtras.postosVinculados || dadosExtras.postoVinculado ? [dadosExtras.postoVinculado] : [];
+    } else {
+      userPostoVinculado = dadosExtras.postoVinculado || ""; // Para frentistas
+    }
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.remove('blurred');
@@ -4970,7 +4983,16 @@
     // Alertas de média baixa por veículo
     const veiculosComMedia = {};
     
-    cache.filter(x => x.status === STATUS.AUTORIZADO).forEach(abast => {
+    // NOVO: Filtrar por posto para frentistas e autorizadores
+    let cacheFiltrado = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheFiltrado = cacheFiltrado.filter(item => item.posto === postoVinculado.nome);
+      }
+    }
+    
+    cacheFiltrado.forEach(abast => {
       if (!veiculosComMedia[abast.placa]) {
         veiculosComMedia[abast.placa] = {
           placa: abast.placa,
@@ -5246,7 +5268,25 @@
   
   function atualizarEstatisticas() {
     const container = document.getElementById('stats-container');
-    const dadosAutorizados = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    
+    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
+    let dadosFiltrados = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        dadosFiltrados = dadosFiltrados.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        dadosFiltrados = dadosFiltrados.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
+    
+    const dadosAutorizados = dadosFiltrados;
     
     const totalGasto = dadosAutorizados.reduce((acc, item) => acc + item.valor, 0);
     const totalLitros = dadosAutorizados.reduce((acc, item) => acc + item.litro, 0);
@@ -5320,11 +5360,27 @@
       anoAnterior = anoAtual - 1;
     }
     
-    const dadosMesPassado = cache.filter(x => {
+    let dadosMesPassado = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
       const dataAbast = new Date(x.data);
       return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
     });
+    
+    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        dadosMesPassado = dadosMesPassado.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        dadosMesPassado = dadosMesPassado.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
     
     dadosMesAnterior = {
       totalGasto: dadosMesPassado.reduce((acc, item) => acc + item.valor, 0),
@@ -5336,18 +5392,57 @@
   function atualizarStatusFinanceiro() {
     const statusDiv = document.getElementById('status-financeiro');
     
+    // CORREÇÃO: Aplicar filtro por MÚLTIPLOS postos para autorizadores
+    let cacheFiltrado = cache;
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheFiltrado = cache.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        cacheFiltrado = cache.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
+    
     // Frentista: mostrar apenas status de visualização SEM VALORES
     if (userRole === 'frentista') {
-      const totalPendente = cache.filter(x => x.status === STATUS.AGUARDANDO).length;
-      const totalAutorizado = cache.filter(x => x.status === STATUS.AUTORIZADO).length;
-      const totalRejeitado = cache.filter(x => x.status === STATUS.REJEITADO).length;
+      const totalPendente = cacheFiltrado.filter(x => x.status === STATUS.AGUARDANDO).length;
+      const totalAutorizado = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO).length;
+      const totalRejeitado = cacheFiltrado.filter(x => x.status === STATUS.REJEITADO).length;
+      
+      // Buscar nome do posto vinculado
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      const nomePosto = postoVinculado ? postoVinculado.nome : 'NÃO DEFINIDO';
       
       statusDiv.innerHTML = `
         👤 OPERADOR: ${loginUser.toUpperCase()} 
-        <span class="badge badge-danger">FRENTISTA</span><br>
+        <span class="badge badge-danger">FRENTISTA</span> | 
+        ⛽ POSTO: ${nomePosto}<br>
         📊 VISUALIZAÇÃO: ${totalAutorizado} APROVADOS | ⏳ ${totalPendente} PENDENTES | ❌ ${totalRejeitado} REJEITADOS
       `;
       statusDiv.style.background = 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
+      return;
+    }
+    
+    // Autorizador: mostrar informações do posto vinculado
+    if (userRole === 'autorizador') {
+      const totalPendente = cacheFiltrado.filter(x => x.status === STATUS.AGUARDANDO).length;
+      const totalAutorizado = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO).length;
+      
+      // Buscar nome do posto vinculado
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      const nomePosto = postoVinculado ? postoVinculado.nome : 'NÃO DEFINIDO';
+      
+      statusDiv.innerHTML = `
+        👤 AUTORIZADOR: ${loginUser.toUpperCase()} | ⛽ POSTO: ${nomePosto}<br>
+        📊 ${totalAutorizado} APROVADOS | ⏳ ${totalPendente} AGUARDANDO APROVAÇÃO
+      `;
+      statusDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
       return;
     }
     
@@ -5391,7 +5486,16 @@
   }
   
   function atualizarRelatorio() {
-    let listaSecs = [...new Set(cache.map(x => x.secretaria))].sort();
+    // NOVO: Filtrar cache por posto para frentistas e autorizadores
+    let cacheAtual = cache;
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheAtual = cache.filter(item => item.posto === postoVinculado.nome);
+      }
+    }
+    
+    let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
     
     // Filtrar secretarias baseado nas permissões
     if (temPermissao('ver_relatorio_secretaria') && !temPermissao('ver_relatorio_geral')) {
@@ -5406,7 +5510,7 @@
     listaSecs.forEach(sec => {
       if (!podeVerRelatorio(sec)) return;
       
-      const itens = cache.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO)
+      const itens = cacheAtual.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO)
         .sort((a, b) => b.timestamp - a.timestamp);
       if (itens.length === 0) return;
       let linhas = "";
@@ -5787,11 +5891,14 @@
   function atualizarPendentes() {
     let pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
     
-    // NOVO: Filtro automático por posto para autorizadores
-    if (userRole === 'autorizador' && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        pendentes = pendentes.filter(p => p.posto === postoVinculado.nome);
+    // CORREÇÃO: Filtro automático por MÚLTIPLOS postos para autorizadores
+    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        pendentes = pendentes.filter(p => nomesPostosAutorizados.includes(p.posto));
       }
     }
     
@@ -5847,12 +5954,29 @@
   }
   
   function atualizarGraficos() {
-    const dadosGrafico = cache.filter(x => {
+    let dadosGrafico = cache.filter(x => {
       if (userRole === 'secretarios') {
         return x.status === STATUS.AUTORIZADO && x.secretaria === userSecretaria;
       }
       return x.status === STATUS.AUTORIZADO;
     });
+    
+    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        dadosGrafico = dadosGrafico.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        dadosGrafico = dadosGrafico.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
+    
     if (dadosGrafico.length === 0) return;
     
     // Gráfico de Secretarias
@@ -6218,6 +6342,14 @@
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
     let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    
+    // NOVO: Filtro automático por posto para frentistas e autorizadores
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        registros = registros.filter(r => r.posto === postoVinculado.nome);
+      }
+    }
     
     if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
     if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
@@ -6834,11 +6966,13 @@
       dadosUsuario.postoVinculado = postoVinculado;
     }
     
-    // Se for autorizador, incluir posto e combustíveis autorizados
+    // Se for autorizador, incluir postos e combustíveis autorizados
     if (role === 'autorizador') {
-      const postoVinculado = document.getElementById('new-posto-vinc').value;
-      if (!postoVinculado) {
-        mostrarNotificacao("❌ SELECIONE UM POSTO PARA O AUTORIZADOR!", "error");
+      const postosSelect = document.getElementById('new-posto-vinc');
+      const postosSelecionados = Array.from(postosSelect.selectedOptions).map(opt => opt.value);
+      
+      if (postosSelecionados.length === 0) {
+        mostrarNotificacao("❌ SELECIONE PELO MENOS UM POSTO PARA O AUTORIZADOR!", "error");
         return;
       }
       
@@ -6853,7 +6987,7 @@
         return;
       }
       
-      dadosUsuario.postoVinculado = postoVinculado;
+      dadosUsuario.postosVinculados = postosSelecionados; // Array de IDs
       dadosUsuario.combustiveisAutorizados = combustiveisAutorizados;
     }
     
@@ -6908,8 +7042,19 @@
           
           // Preparar info de posto
           let postoInfo = '---';
-          if (u.role === 'autorizador' && u.postoVinculado) {
+          if (u.role === 'frentista' && u.postoVinculado) {
             postoInfo = postosMap[u.postoVinculado] || 'Posto não encontrado';
+          } else if (u.role === 'autorizador') {
+            if (u.postosVinculados && u.postosVinculados.length > 0) {
+              // Novo formato: array de postos
+              const nomesPostos = u.postosVinculados
+                .map(id => postosMap[id] || '?')
+                .join(', ');
+              postoInfo = nomesPostos || 'Postos não encontrados';
+            } else if (u.postoVinculado) {
+              // Formato antigo: compatibilidade
+              postoInfo = postosMap[u.postoVinculado] || 'Posto não encontrado';
+            }
           }
           
           tbody.innerHTML += `
@@ -6962,28 +7107,42 @@
       
       // Carregar dados de autorizador se aplicável
       if (u.role === 'autorizador') {
-        document.getElementById('edit-posto-vinc').value = u.postoVinculado || "";
+        // CORREÇÃO: Suporte a múltiplos postos
+        const postosVinculados = u.postosVinculados || (u.postoVinculado ? [u.postoVinculado] : []);
         
-        // Carregar combustíveis do posto e marcar os selecionados
-        if (u.postoVinculado) {
-          db.ref('postos/' + u.postoVinculado).once('value', postoSnap => {
-            if (postoSnap.exists()) {
-              const posto = postoSnap.val();
-              const combustiveis = Object.keys(posto.precos);
-              const container = document.getElementById('lista-combustiveis-autorizador-edit');
-              
-              let html = '';
-              combustiveis.forEach(comb => {
-                const checked = u.combustiveisAutorizados && u.combustiveisAutorizados.includes(comb) ? 'checked' : '';
-                html += `
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
-                    <input type="checkbox" class="comb-autorizador-edit" value="${comb}" ${checked}> ${comb}
-                  </label>
-                `;
-              });
-              
-              container.innerHTML = html;
-            }
+        // Selecionar múltiplos postos no select
+        const selectPostos = document.getElementById('edit-posto-vinc');
+        Array.from(selectPostos.options).forEach(option => {
+          option.selected = postosVinculados.includes(option.value);
+        });
+        
+        // Carregar combustíveis de todos os postos selecionados
+        if (postosVinculados.length > 0) {
+          const combustiveisUnicos = new Set();
+          
+          // Buscar combustíveis de todos os postos
+          Promise.all(
+            postosVinculados.map(postoId => db.ref('postos/' + postoId).once('value'))
+          ).then(snapshots => {
+            snapshots.forEach(postoSnap => {
+              if (postoSnap.exists()) {
+                const posto = postoSnap.val();
+                Object.keys(posto.precos).forEach(comb => combustiveisUnicos.add(comb));
+              }
+            });
+            
+            const container = document.getElementById('lista-combustiveis-autorizador-edit');
+            let html = '';
+            Array.from(combustiveisUnicos).sort().forEach(comb => {
+              const checked = u.combustiveisAutorizados && u.combustiveisAutorizados.includes(comb) ? 'checked' : '';
+              html += `
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+                  <input type="checkbox" class="comb-autorizador-edit" value="${comb}" ${checked}> ${comb}
+                </label>
+              `;
+            });
+            
+            container.innerHTML = html || '<p style="color: #64748b; font-size: 11px; margin: 0;">Nenhum combustível disponível</p>';
           });
         }
       }
@@ -7038,9 +7197,11 @@
       dadosAtualizados.postoVinculado = "";
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'autorizador') {
-      const postoVinculado = document.getElementById('edit-posto-vinc').value;
-      if (!postoVinculado) {
-        mostrarNotificacao("❌ SELECIONE UM POSTO PARA O AUTORIZADOR!", "error");
+      const postosSelect = document.getElementById('edit-posto-vinc');
+      const postosSelecionados = Array.from(postosSelect.selectedOptions).map(opt => opt.value);
+      
+      if (postosSelecionados.length === 0) {
+        mostrarNotificacao("❌ SELECIONE PELO MENOS UM POSTO PARA O AUTORIZADOR!", "error");
         return;
       }
       
@@ -7055,7 +7216,9 @@
         return;
       }
       
-      dadosAtualizados.postoVinculado = postoVinculado;
+      // CORREÇÃO: Salvar array de postos
+      dadosAtualizados.postosVinculados = postosSelecionados;
+      dadosAtualizados.postoVinculado = ""; // Limpar campo antigo
       dadosAtualizados.combustiveisAutorizados = combustiveisAutorizados;
       dadosAtualizados.limite = 0;
       dadosAtualizados.secretariaVinculada = "";
