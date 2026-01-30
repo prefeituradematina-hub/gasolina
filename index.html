@@ -2290,6 +2290,12 @@
           <option>AVULSOS / GERAL</option>
         </select>
       </div>
+      <div id="edit-field-posto-frentista" style="display:none;">
+        <label>POSTO VINCULADO (FRENTISTA)</label>
+        <select id="edit-posto-vinc-frentista">
+          <option value="">SELECIONE...</option>
+        </select>
+      </div>
       <div id="edit-field-posto-autorizador" style="display:none;">
         <label>POSTO AUTORIZADO</label>
         <select id="edit-posto-vinc" onchange="carregarCombustiveisPostoAutorizadorEdit()">
@@ -2894,6 +2900,11 @@
         </div>
         
         <div>
+          <label>MOTORISTA *</label>
+          <input type="text" id="vip-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+        </div>
+        
+        <div>
           <label>POSTO *</label>
           <select id="vip-posto" onchange="carregarCombustiveisVIP()">
             <option value="">SELECIONE...</option>
@@ -3431,6 +3442,12 @@
             <option>AVULSOS / GERAL</option>
           </select>
         </div>
+        <div id="field-posto-frentista" style="display:none;">
+          <label>POSTO VINCULADO (FRENTISTA)</label>
+          <select id="new-posto-vinc-frentista">
+            <option value="">SELECIONE...</option>
+          </select>
+        </div>
         <div id="field-posto-autorizador" style="display:none;">
           <label>POSTO AUTORIZADO</label>
           <select id="new-posto-vinc" onchange="carregarCombustiveisPostoAutorizador()">
@@ -3756,6 +3773,7 @@
   let userRole = "";
   let loginUser = "";
   let userSecretaria = "";
+  let userPostoVinculado = ""; // Posto vinculado para frentistas e autorizadores
   let usuarioData = {};
   let precos = { GASOLINA: 6, ALCOOL: 4, DIESEL: 6 };
   let chartSec = null;
@@ -4126,6 +4144,7 @@
     userSecretaria = sec;
     usuarioData = dadosExtras || {};
     userPermissions = dadosExtras.permissoes || PERMISSOES_PADRAO[role] || [];
+    userPostoVinculado = dadosExtras.postoVinculado || ""; // Capturar posto vinculado
     
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.remove('blurred');
@@ -5766,7 +5785,16 @@
   }
   
   function atualizarPendentes() {
-    const pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
+    let pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
+    
+    // NOVO: Filtro automático por posto para autorizadores
+    if (userRole === 'autorizador' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        pendentes = pendentes.filter(p => p.posto === postoVinculado.nome);
+      }
+    }
+    
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
     
@@ -6486,6 +6514,23 @@
     }
   }
   
+  function carregarPostosParaFrentista() {
+    const select = document.getElementById('new-posto-vinc-frentista');
+    select.innerHTML = '<option value="">CARREGANDO...</option>';
+    
+    db.ref('postos').once('value', snap => {
+      select.innerHTML = '<option value="">SELECIONE...</option>';
+      if (snap.exists()) {
+        snap.forEach(c => {
+          const p = c.val();
+          select.innerHTML += `<option value="${c.key}">${p.nome}</option>`;
+        });
+      } else {
+        select.innerHTML = '<option value="">NENHUM POSTO CADASTRADO</option>';
+      }
+    });
+  }
+  
   function toggleUserFields() {
     const role = document.getElementById('new-role').value;
     const isFrentista = (role === 'frentista');
@@ -6494,6 +6539,7 @@
     
     document.getElementById('field-limit').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('field-sec').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('field-posto-frentista').style.display = isFrentista ? 'block' : 'none';
     document.getElementById('field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
@@ -6503,13 +6549,17 @@
       combField.style.display = (isFrentista || isAutorizador) ? 'none' : 'block';
     }
     
-    // Carregar postos quando selecionar autorizador
-    if (isAutorizador) {
+    // Carregar postos quando selecionar frentista ou autorizador
+    if (isFrentista) {
+      carregarPostosParaFrentista();
+    } else if (isAutorizador) {
       carregarPostosParaAutorizador();
     } else {
-      // Limpar campos de autorizador quando mudar para outro perfil
+      // Limpar campos quando mudar para outro perfil
       const postoSelect = document.getElementById('new-posto-vinc');
       if (postoSelect) postoSelect.value = '';
+      const postoSelectFrentista = document.getElementById('new-posto-vinc-frentista');
+      if (postoSelectFrentista) postoSelectFrentista.value = '';
       const containerComb = document.getElementById('lista-combustiveis-autorizador');
       if (containerComb) containerComb.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>';
     }
@@ -6677,6 +6727,7 @@
     
     document.getElementById('edit-field-limit').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('edit-field-sec').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('edit-field-posto-frentista').style.display = isFrentista ? 'block' : 'none';
     document.getElementById('edit-field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('edit-field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
@@ -6684,6 +6735,24 @@
     const combField = document.getElementById('edit-combustivel').closest('div');
     if (combField) {
       combField.style.display = (isFrentista || isAutorizador) ? 'none' : 'block';
+    }
+    
+    // Carregar postos quando selecionar frentista
+    if (isFrentista) {
+      const select = document.getElementById('edit-posto-vinc-frentista');
+      select.innerHTML = '<option value="">CARREGANDO...</option>';
+      
+      db.ref('postos').once('value', snap => {
+        select.innerHTML = '<option value="">SELECIONE...</option>';
+        if (snap.exists()) {
+          snap.forEach(c => {
+            const p = c.val();
+            select.innerHTML += `<option value="${c.key}">${p.nome}</option>`;
+          });
+        } else {
+          select.innerHTML = '<option value="">NENHUM POSTO CADASTRADO</option>';
+        }
+      });
     }
     
     // Carregar postos quando selecionar autorizador
@@ -6703,9 +6772,11 @@
         }
       });
     } else {
-      // Limpar campos de autorizador quando mudar para outro perfil
+      // Limpar campos quando mudar para outro perfil
       const postoSelect = document.getElementById('edit-posto-vinc');
       if (postoSelect) postoSelect.value = '';
+      const postoSelectFrentista = document.getElementById('edit-posto-vinc-frentista');
+      if (postoSelectFrentista) postoSelectFrentista.value = '';
       const containerComb = document.getElementById('lista-combustiveis-autorizador-edit');
       if (containerComb) containerComb.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>';
     }
@@ -6753,6 +6824,16 @@
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
+    // Se for frentista, incluir posto vinculado
+    if (role === 'frentista') {
+      const postoVinculado = document.getElementById('new-posto-vinc-frentista').value;
+      if (!postoVinculado) {
+        mostrarNotificacao("❌ SELECIONE UM POSTO PARA O FRENTISTA!", "error");
+        return;
+      }
+      dadosUsuario.postoVinculado = postoVinculado;
+    }
+    
     // Se for autorizador, incluir posto e combustíveis autorizados
     if (role === 'autorizador') {
       const postoVinculado = document.getElementById('new-posto-vinc').value;
@@ -6784,6 +6865,7 @@
       document.getElementById('new-limit').value = '';
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
+      document.getElementById('new-posto-vinc-frentista').value = '';
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -6873,6 +6955,11 @@
       document.getElementById('edit-limit').value = u.limite || "";
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
       
+      // Carregar dados de frentista se aplicável
+      if (u.role === 'frentista') {
+        document.getElementById('edit-posto-vinc-frentista').value = u.postoVinculado || "";
+      }
+      
       // Carregar dados de autorizador se aplicável
       if (u.role === 'autorizador') {
         document.getElementById('edit-posto-vinc').value = u.postoVinculado || "";
@@ -6930,14 +7017,24 @@
     
     const dadosAtualizados = { senha: novaPass, combustivelLiberado: combus, role: role };
     
-    if (role === 'secretarios') {
+    if (role === 'frentista') {
+      const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;
+      if (!postoVinculado) {
+        mostrarNotificacao("❌ SELECIONE UM POSTO PARA O FRENTISTA!", "error");
+        return;
+      }
+      dadosAtualizados.postoVinculado = postoVinculado;
+      dadosAtualizados.limite = 0;
+      dadosAtualizados.secretariaVinculada = "";
+      dadosAtualizados.combustiveisAutorizados = [];
+    } else if (role === 'secretarios') {
       if (!limite || !secretaria) {
         mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
         return;
       }
       dadosAtualizados.limite = limite;
       dadosAtualizados.secretariaVinculada = secretaria;
-      // Limpar dados de autorizador se houver
+      // Limpar dados de autorizador/frentista se houver
       dadosAtualizados.postoVinculado = "";
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'autorizador') {
@@ -7252,6 +7349,15 @@
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
     let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    
+    // NOVO: Filtro automático por posto para frentistas e autorizadores
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      // Buscar nome do posto vinculado
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        registros = registros.filter(r => r.posto === postoVinculado.nome);
+      }
+    }
     
     if (dataInicial) {
       registros = registros.filter(r => r.data >= dataInicial);
@@ -8625,6 +8731,7 @@
     const pessoaId = document.getElementById('vip-pessoa').value;
     const data = document.getElementById('vip-data').value;
     const placa = document.getElementById('vip-placa').value.toUpperCase().trim();
+    const motorista = document.getElementById('vip-motorista').value.toUpperCase().trim();
     const postoId = document.getElementById('vip-posto').value;
     const combustivel = document.getElementById('vip-combustivel').value;
     const litros = parseFloat(document.getElementById('vip-litros').value);
@@ -8643,6 +8750,10 @@
     }
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
+      return;
+    }
+    if (!motorista) {
+      mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
     }
     if (!postoId) {
@@ -8680,7 +8791,7 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
+    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
       return;
     }
     
@@ -8696,7 +8807,7 @@
       precoPorLitro: preco,
       valor: valor,
       km: km,
-      motorista: pessoa.nome,
+      motorista: motorista,
       secretaria: 'VIP - ' + pessoa.cargo,
       observacoes: obs,
       status: STATUS.AUTORIZADO,  // Aprovação automática
@@ -8711,6 +8822,7 @@
       .then(() => {
         registrarAuditoria('ABASTECIMENTO_VIP_LANCADO', {
           pessoaVIP: pessoa.nome,
+          motorista: motorista,
           placa: placa,
           valor: valor
         });
@@ -8721,6 +8833,7 @@
         document.getElementById('vip-pessoa').value = '';
         document.getElementById('vip-data').value = new Date().toISOString().split('T')[0];
         document.getElementById('vip-placa').value = '';
+        document.getElementById('vip-motorista').value = '';
         document.getElementById('vip-posto').value = '';
         document.getElementById('vip-combustivel').innerHTML = '<option value="">SELECIONE O POSTO PRIMEIRO</option>';
         document.getElementById('vip-litros').value = '';
