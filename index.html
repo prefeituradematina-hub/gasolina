@@ -4506,16 +4506,6 @@
       renderizar();
       calcularDadosMesAnterior();
     }, 100);
-    
-    // MOBILE: Ativar navegação mobile para frentistas (após renderizar)
-    setTimeout(() => {
-      if (typeof ativarNavegacaoMobile === 'function') {
-        ativarNavegacaoMobile();
-      }
-      if (userRole === 'frentista' && typeof atualizarBadgeMobile === 'function') {
-        atualizarBadgeMobile();
-      }
-    }, 500);
   }
   
   function calc() {
@@ -11900,12 +11890,10 @@
   // ==========================================
   
   function ativarNavegacaoMobile() {
-    // TESTE: Ativar para TODOS os usuários em dispositivos móveis
-    if (window.innerWidth <= 768) {
+    // Ativar apenas para frentistas em dispositivos móveis
+    if (userRole === 'frentista' && window.innerWidth <= 768) {
       document.body.classList.add('mobile-nav-active');
-      if (userRole === 'frentista') {
-        document.body.classList.add('frentista-mode');
-      }
+      document.body.classList.add('frentista-mode');
       
       // Adicionar navegação mobile
       const mobileNav = document.createElement('div');
@@ -12023,6 +12011,18 @@
     } else if (badge) {
       badge.style.display = 'none';
     }
+  }
+  
+  // Ativar navegação mobile no login
+  const entrarOriginalMobile = entrar;
+  function entrar(u, role, limit, sec, dadosExtras) {
+    entrarOriginalMobile(u, role, limit, sec, dadosExtras);
+    setTimeout(() => {
+      ativarNavegacaoMobile();
+      if (userRole === 'frentista') {
+        atualizarBadgeMobile();
+      }
+    }, 500);
   }
   
   // Atualizar badge quando pendentes mudarem
