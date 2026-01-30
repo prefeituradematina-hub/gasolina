@@ -4546,7 +4546,6 @@
         "success"
       );
       
-      // Registrar auditoria
       registrarAuditoria('ABASTECIMENTO_REGISTRADO', {
         placa: dados.placa,
         valor: dados.valor,
@@ -4557,7 +4556,7 @@
       limparFormulario();
       
     } catch (erro) {
-      console.error('Erro ao processar abastecimento:', erro);
+      console.error(erro);
       mostrarNotificacao("❌ Erro ao registrar abastecimento!", "error");
     } finally {
       btnRegistrar.disabled = false;
@@ -4908,6 +4907,15 @@
     db.ref('abastecimentos/' + id).remove().then(() => {
       registrarAuditoria('ABASTECIMENTO_DELETADO', { id: id });
       mostrarNotificacao("🗑️ REGISTRO EXCLUÍDO COM SUCESSO!", "success");
+    });
+  }
+  
+  function registrarAuditoria(acao, dados) {
+    db.ref('auditoria').push({
+      acao: acao,
+      usuario: loginUser.toUpperCase(),
+      timestamp: Date.now(),
+      dados: dados
     });
   }
   
@@ -7368,20 +7376,8 @@
   
   function confirmarSair() {
     if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
-      // Parar listeners em tempo real
-      try {
-        pararNotificacoesTempoReal();
-      } catch (e) {
-        console.log('Erro ao parar notificações:', e);
-      }
-      
-      // Registrar logout (não aguardar)
-      registrarAuditoria('LOGOUT', { usuario: loginUser });
-      
-      // Recarregar após pequeno delay
-      setTimeout(() => {
-        location.reload();
-      }, 300);
+      registrarAuditoria('LOGOUT', {});
+      location.reload();
     }
   }
   
@@ -10861,31 +10857,29 @@
   // SISTEMA DE LOG DE AUDITORIA COMPLETO
   // ===========================================
   
+  // Registrar auditoria já existe, vamos melhorá-la
+  const registrarAuditoriaOriginal = registrarAuditoria;
+  
   function registrarAuditoria(acao, dados = {}) {
-    try {
-      const agora = new Date();
-      const registro = {
-        acao: acao,
-        usuario: loginUser || 'SISTEMA',
-        userRole: userRole || 'SISTEMA',
-        timestamp: Date.now(),
-        data: agora.toISOString(),
-        dataFormatada: agora.toLocaleString('pt-BR'),
-        ip: 'N/A', // Seria necessário API externa para pegar IP real
-        dispositivo: navigator.userAgent,
-        dados: dados
-      };
-      
-      // Salvar no Firebase (não bloquear com await)
-      db.ref('auditoria').push(registro).catch(err => {
-        console.error('Erro ao registrar auditoria:', err);
-      });
-      
-      // Retornar Promise para casos específicos que precisem aguardar
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Erro ao criar registro de auditoria:', error);
-      return Promise.reject(error);
+    const agora = new Date();
+    const registro = {
+      acao: acao,
+      usuario: loginUser || 'SISTEMA',
+      userRole: userRole || 'SISTEMA',
+      timestamp: Date.now(),
+      data: agora.toISOString(),
+      dataFormatada: agora.toLocaleString('pt-BR'),
+      ip: 'N/A', // Seria necessário API externa para pegar IP real
+      dispositivo: navigator.userAgent,
+      dados: dados
+    };
+    
+    // Salvar no Firebase
+    db.ref('auditoria').push(registro);
+    
+    // Chamar função original se existir
+    if (typeof registrarAuditoriaOriginal === 'function') {
+      registrarAuditoriaOriginal(acao, dados);
     }
   }
   
