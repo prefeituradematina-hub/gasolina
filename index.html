@@ -1682,6 +1682,191 @@
      MODO ESCURO (DARK MODE)
      =========================================== */
   
+  /* Estilos para Validação de Senha Forte */
+  .password-strength-container {
+    margin-top: 10px;
+  }
+  
+  .password-strength-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  
+  .password-strength-fill {
+    height: 100%;
+    transition: all 0.3s;
+    border-radius: 3px;
+  }
+  
+  .password-strength-fill.weak {
+    width: 33%;
+    background: var(--danger);
+  }
+  
+  .password-strength-fill.medium {
+    width: 66%;
+    background: var(--warning);
+  }
+  
+  .password-strength-fill.strong {
+    width: 100%;
+    background: var(--success);
+  }
+  
+  .password-requirements {
+    font-size: 11px;
+    color: #64748b;
+  }
+  
+  .password-requirements div {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .password-requirements .valid {
+    color: var(--success);
+  }
+  
+  .password-requirements .invalid {
+    color: var(--danger);
+  }
+  
+  /* Estilos para Indicador de Backup */
+  .backup-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    animation: slideInUp 0.3s;
+  }
+  
+  .backup-indicator.show {
+    display: flex;
+  }
+  
+  .backup-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #e2e8f0;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes slideInUp {
+    from {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Estilos para Log de Auditoria */
+  .audit-log-item {
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--accent);
+  }
+  
+  .audit-log-item.action-delete {
+    border-left-color: var(--danger);
+  }
+  
+  .audit-log-item.action-create {
+    border-left-color: var(--success);
+  }
+  
+  .audit-log-item.action-update {
+    border-left-color: var(--warning);
+  }
+  
+  .audit-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  
+  .audit-log-action {
+    font-weight: bold;
+    font-size: 13px;
+  }
+  
+  .audit-log-time {
+    font-size: 11px;
+    color: #64748b;
+  }
+  
+  .audit-log-details {
+    font-size: 12px;
+    color: #475569;
+  }
+  
+  .audit-log-user {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 5px;
+  }
+  
+  /* Notificação em tempo real */
+  .realtime-notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    max-width: 350px;
+    z-index: 10000;
+    animation: slideInRight 0.3s;
+    border-left: 4px solid var(--accent);
+  }
+  
+  .realtime-notification.success {
+    border-left-color: var(--success);
+  }
+  
+  .realtime-notification.warning {
+    border-left-color: var(--warning);
+  }
+  
+  .realtime-notification.error {
+    border-left-color: var(--danger);
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  /* ===========================================
+     MODO ESCURO (DARK MODE)
+     =========================================== */
+  
   /* Variáveis para Dark Mode */
   :root[data-theme="dark"] {
       --primary: #f8fafc;
@@ -2428,6 +2613,7 @@
         <span id="pendentes-badge" class="notification-badge" style="display:none;">0</span>
       </button>
       <button id="btn-tab-analytics" class="tab-btn" onclick="switchTab('analytics')">📈 ANÁLISES</button>
+      <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
       <button id="btn-tab-users" class="tab-btn" style="display:none;" onclick="switchTab('usuarios')">⚙️ CONFIGURAÇÕES</button>
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
@@ -3317,6 +3503,125 @@
   </div>
 </div>
 
+<!-- ============================================ -->
+<!-- ABA DE AUDITORIA E BACKUP -->
+<!-- ============================================ -->
+<div id="tab-auditoria" style="display:none;">
+  
+  <!-- Card de Backup Automático -->
+  <div class="card">
+    <h3>💾 BACKUP AUTOMÁTICO</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+      Configure e gerencie backups automáticos do sistema
+    </p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+      <div style="padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; text-align: center;">
+        <div style="font-size: 12px; color: #64748b; margin-bottom: 5px;">ÚLTIMO BACKUP</div>
+        <div style="font-size: 18px; font-weight: bold; color: var(--primary);" id="ultimo-backup">---</div>
+      </div>
+      <div style="padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; text-align: center;">
+        <div style="font-size: 12px; color: #64748b; margin-bottom: 5px;">PRÓXIMO BACKUP</div>
+        <div style="font-size: 18px; font-weight: bold; color: var(--accent);" id="proximo-backup">---</div>
+      </div>
+      <div style="padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; text-align: center;">
+        <div style="font-size: 12px; color: #64748b; margin-bottom: 5px;">STATUS</div>
+        <div style="font-size: 18px; font-weight: bold; color: var(--success);" id="status-backup">ATIVO ✓</div>
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <button class="btn-save" onclick="fazerBackupManual()">
+        💾 BACKUP MANUAL AGORA
+      </button>
+      <button class="btn-save" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);" onclick="baixarBackup()">
+        📥 BAIXAR ÚLTIMO BACKUP
+      </button>
+    </div>
+    
+    <div style="margin-top: 20px; padding: 15px; background: #eff6ff; border-left: 4px solid var(--accent); border-radius: 8px;">
+      <strong>ℹ️ INFORMAÇÕES:</strong>
+      <ul style="margin: 10px 0 0 20px; font-size: 12px; color: #475569;">
+        <li>Backups automáticos a cada 24 horas</li>
+        <li>Últimos 7 backups são mantidos</li>
+        <li>Dados exportados em formato JSON</li>
+        <li>Inclui: abastecimentos, veículos, usuários, VIPs</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Card de Log de Auditoria -->
+  <div class="card">
+    <h3>🔍 LOG DE AUDITORIA</h3>
+    <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+      Registro detalhado de todas as ações realizadas no sistema
+    </p>
+    
+    <!-- Filtros de Auditoria -->
+    <div class="grid-form" style="margin-bottom: 20px;">
+      <div>
+        <label>USUÁRIO</label>
+        <select id="filtro-audit-usuario">
+          <option value="">TODOS</option>
+        </select>
+      </div>
+      <div>
+        <label>TIPO DE AÇÃO</label>
+        <select id="filtro-audit-acao">
+          <option value="">TODAS</option>
+          <option value="LOGIN">Login</option>
+          <option value="LOGOUT">Logout</option>
+          <option value="ABASTECIMENTO_REGISTRADO">Abastecimento Registrado</option>
+          <option value="ABASTECIMENTO_AUTORIZADO">Abastecimento Autorizado</option>
+          <option value="ABASTECIMENTO_REJEITADO">Abastecimento Rejeitado</option>
+          <option value="ABASTECIMENTO_DELETADO">Abastecimento Deletado</option>
+          <option value="VEICULO_ADICIONADO">Veículo Adicionado</option>
+          <option value="USUARIO_CRIADO">Usuário Criado</option>
+          <option value="VIP_ADICIONADO">VIP Adicionado</option>
+          <option value="EXPORTACAO_EXCEL">Exportação Excel</option>
+        </select>
+      </div>
+      <div>
+        <label>DATA INICIAL</label>
+        <input type="date" id="filtro-audit-data-inicio">
+      </div>
+      <div>
+        <label>DATA FINAL</label>
+        <input type="date" id="filtro-audit-data-fim">
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button class="btn-save" onclick="filtrarAuditoria()">
+        🔍 FILTRAR
+      </button>
+      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="limparFiltrosAuditoria()">
+        🔄 LIMPAR FILTROS
+      </button>
+      <button class="btn-save" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);" onclick="exportarAuditoria()">
+        📥 EXPORTAR LOG
+      </button>
+    </div>
+    
+    <!-- Lista de Logs -->
+    <div id="logs-auditoria" style="max-height: 600px; overflow-y: auto;">
+      <div style="text-align: center; padding: 40px; color: #64748b;">
+        ⏳ CARREGANDO LOGS DE AUDITORIA...
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<!-- Indicador de Backup -->
+<div class="backup-indicator" id="backup-indicator">
+  <div class="backup-spinner"></div>
+  <div>
+    <div style="font-weight: bold; font-size: 13px;">REALIZANDO BACKUP...</div>
+    <div style="font-size: 11px; color: #64748b;">Por favor, aguarde</div>
+  </div>
+</div>
+
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
@@ -3840,6 +4145,9 @@
     
     document.getElementById('btn-tab-analytics').style.display = 
       (temPermissao('ver_dashboard')) ? 'block' : 'none';
+    
+    document.getElementById('btn-tab-auditoria').style.display = 
+      (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
     
     // Esconder seção de novo abastecimento se não tiver permissão
     if (!temPermissao('registrar_abastecimento')) {
@@ -6809,20 +7117,30 @@
   }
   
   function abrirAlterarSenha() {
-    const nova = prompt("🔐 Digite sua nova senha:");
+    const nova = prompt("🔐 Digite sua nova senha:\n\nRequisitos:\n• Mínimo 8 caracteres\n• Letra maiúscula\n• Letra minúscula\n• Número\n• Caractere especial (!@#$%...)");
     if (!nova) return;
-    if (nova.length < 4) {
-      mostrarNotificacao("❌ SENHA DEVE TER NO MÍNIMO 4 CARACTERES!", "error");
+    
+    // Validar senha forte
+    const validacao = validarSenhaForte(nova);
+    if (!validacao.valida) {
+      let msg = "❌ SENHA FRACA! Requisitos não atendidos:\n\n";
+      if (!validacao.requisitos.tamanho) msg += "✗ Mínimo 8 caracteres\n";
+      if (!validacao.requisitos.maiuscula) msg += "✗ Letra maiúscula\n";
+      if (!validacao.requisitos.minuscula) msg += "✗ Letra minúscula\n";
+      if (!validacao.requisitos.numero) msg += "✗ Número\n";
+      if (!validacao.requisitos.especial) msg += "✗ Caractere especial\n";
+      mostrarNotificacao(msg, "error");
       return;
     }
     
     if (loginUser === 'master') {
       db.ref('config/masterPassword').set(nova).then(() => {
         mostrarNotificacao("✅ SENHA DO MASTER ALTERADA COM SUCESSO!", "success");
+        registrarAuditoria('SENHA_ALTERADA', { usuario: 'master' });
       });
     } else {
       db.ref('usuarios/' + loginUser).update({ senha: nova }).then(() => {
-        registrarAuditoria('SENHA_ALTERADA', {});
+        registrarAuditoria('SENHA_ALTERADA', { usuario: loginUser });
         mostrarNotificacao("✅ SENHA ALTERADA COM SUCESSO!", "success");
       }).catch(err => {
         mostrarNotificacao("❌ ERRO: " + err.message, "error");
@@ -6896,6 +7214,7 @@
     document.getElementById('tab-vip').style.display = 'none';
     document.getElementById('tab-executivo').style.display = 'none';
     document.getElementById('tab-analytics').style.display = 'none';
+    document.getElementById('tab-auditoria').style.display = 'none';
     document.getElementById('tab-users').style.display = 'none';
     
     if (tab === 'geral') {
@@ -6917,6 +7236,11 @@
       document.getElementById('tab-analytics').style.display = 'block';
       document.getElementById('btn-tab-analytics').classList.add('active');
       atualizarAnalytics();
+    } else if (tab === 'auditoria') {
+      document.getElementById('tab-auditoria').style.display = 'block';
+      document.getElementById('btn-tab-auditoria').classList.add('active');
+      carregarAuditoria();
+      atualizarInfoBackup();
     } else if (tab === 'usuarios') {
       document.getElementById('tab-users').style.display = 'block';
       document.getElementById('btn-tab-users').classList.add('active');
@@ -10318,6 +10642,639 @@
   }
   
   // ===========================================
+  // SISTEMA DE BACKUP AUTOMÁTICO
+  // ===========================================
+  
+  let backupInterval = null;
+  let ultimoBackup = null;
+  
+  function iniciarBackupAutomatico() {
+    // Fazer backup a cada 24 horas (86400000 ms)
+    backupInterval = setInterval(fazerBackupAutomatico, 86400000);
+    
+    // Carregar informações do último backup
+    const ultimoBackupSalvo = localStorage.getItem('ultimoBackup');
+    if (ultimoBackupSalvo) {
+      ultimoBackup = JSON.parse(ultimoBackupSalvo);
+      atualizarInfoBackup();
+    }
+    
+    // Verificar se precisa fazer backup agora
+    if (!ultimoBackup || (Date.now() - ultimoBackup.timestamp) > 86400000) {
+      setTimeout(fazerBackupAutomatico, 5000); // Fazer backup 5s após iniciar
+    }
+  }
+  
+  async function fazerBackupAutomatico() {
+    console.log('🔄 Iniciando backup automático...');
+    mostrarIndicadorBackup(true);
+    
+    try {
+      const dadosBackup = await coletarDadosBackup();
+      salvarBackupLocal(dadosBackup);
+      
+      ultimoBackup = {
+        timestamp: Date.now(),
+        registros: dadosBackup.totalRegistros
+      };
+      
+      localStorage.setItem('ultimoBackup', JSON.stringify(ultimoBackup));
+      atualizarInfoBackup();
+      
+      mostrarNotificacao('✅ BACKUP AUTOMÁTICO REALIZADO COM SUCESSO!', 'success');
+      registrarAuditoria('BACKUP_AUTOMATICO', { registros: dadosBackup.totalRegistros });
+      
+    } catch (error) {
+      console.error('Erro no backup automático:', error);
+      mostrarNotificacao('❌ ERRO NO BACKUP AUTOMÁTICO!', 'error');
+    } finally {
+      mostrarIndicadorBackup(false);
+    }
+  }
+  
+  async function fazerBackupManual() {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA FAZER BACKUP!', 'error');
+      return;
+    }
+    
+    mostrarIndicadorBackup(true);
+    
+    try {
+      const dadosBackup = await coletarDadosBackup();
+      baixarArquivo(
+        JSON.stringify(dadosBackup, null, 2),
+        `backup_combustivel_${new Date().toISOString().split('T')[0]}.json`,
+        'application/json'
+      );
+      
+      ultimoBackup = {
+        timestamp: Date.now(),
+        registros: dadosBackup.totalRegistros
+      };
+      
+      localStorage.setItem('ultimoBackup', JSON.stringify(ultimoBackup));
+      atualizarInfoBackup();
+      
+      mostrarNotificacao('✅ BACKUP MANUAL REALIZADO COM SUCESSO!', 'success');
+      registrarAuditoria('BACKUP_MANUAL', { registros: dadosBackup.totalRegistros });
+      
+    } catch (error) {
+      console.error('Erro no backup manual:', error);
+      mostrarNotificacao('❌ ERRO AO FAZER BACKUP!', 'error');
+    } finally {
+      mostrarIndicadorBackup(false);
+    }
+  }
+  
+  async function coletarDadosBackup() {
+    const dados = {
+      versao: '2.0',
+      dataBackup: new Date().toISOString(),
+      usuario: loginUser,
+      dados: {}
+    };
+    
+    // Coletar abastecimentos
+    const abastSnap = await db.ref('abastecimentos').once('value');
+    dados.dados.abastecimentos = abastSnap.val() || {};
+    
+    // Coletar veículos
+    const veiculosSnap = await db.ref('veiculos').once('value');
+    dados.dados.veiculos = veiculosSnap.val() || {};
+    
+    // Coletar postos
+    const postosSnap = await db.ref('postos').once('value');
+    dados.dados.postos = postosSnap.val() || {};
+    
+    // Coletar usuários (sem senhas por segurança)
+    const usuariosSnap = await db.ref('usuarios').once('value');
+    const usuarios = usuariosSnap.val() || {};
+    const usuariosSemSenha = {};
+    Object.keys(usuarios).forEach(key => {
+      usuariosSemSenha[key] = { ...usuarios[key] };
+      delete usuariosSemSenha[key].senha;
+    });
+    dados.dados.usuarios = usuariosSemSenha;
+    
+    // Coletar VIPs
+    const vipsSnap = await db.ref('pessoas_vip').once('value');
+    dados.dados.pessoas_vip = vipsSnap.val() || {};
+    
+    // Coletar auditoria
+    const auditoriaSnap = await db.ref('auditoria').limitToLast(1000).once('value');
+    dados.dados.auditoria = auditoriaSnap.val() || {};
+    
+    dados.totalRegistros = 
+      Object.keys(dados.dados.abastecimentos).length +
+      Object.keys(dados.dados.veiculos).length +
+      Object.keys(dados.dados.postos).length +
+      Object.keys(dados.dados.usuarios).length +
+      Object.keys(dados.dados.pessoas_vip).length;
+    
+    return dados;
+  }
+  
+  function salvarBackupLocal(dados) {
+    try {
+      const backups = JSON.parse(localStorage.getItem('backups') || '[]');
+      backups.unshift({
+        timestamp: Date.now(),
+        registros: dados.totalRegistros,
+        dados: dados
+      });
+      
+      // Manter apenas últimos 7 backups
+      if (backups.length > 7) {
+        backups.splice(7);
+      }
+      
+      localStorage.setItem('backups', JSON.stringify(backups));
+    } catch (error) {
+      console.error('Erro ao salvar backup local:', error);
+    }
+  }
+  
+  function baixarBackup() {
+    const backups = JSON.parse(localStorage.getItem('backups') || '[]');
+    
+    if (backups.length === 0) {
+      mostrarNotificacao('❌ NENHUM BACKUP DISPONÍVEL!', 'error');
+      return;
+    }
+    
+    const ultimoBackup = backups[0];
+    baixarArquivo(
+      JSON.stringify(ultimoBackup.dados, null, 2),
+      `backup_combustivel_${new Date(ultimoBackup.timestamp).toISOString().split('T')[0]}.json`,
+      'application/json'
+    );
+    
+    mostrarNotificacao('✅ BACKUP BAIXADO COM SUCESSO!', 'success');
+  }
+  
+  function baixarArquivo(conteudo, nomeArquivo, tipo) {
+    const blob = new Blob([conteudo], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  
+  function atualizarInfoBackup() {
+    const ultimoEl = document.getElementById('ultimo-backup');
+    const proximoEl = document.getElementById('proximo-backup');
+    
+    if (!ultimoEl) return;
+    
+    if (ultimoBackup) {
+      const data = new Date(ultimoBackup.timestamp);
+      ultimoEl.textContent = data.toLocaleString('pt-BR');
+      
+      const proximo = new Date(ultimoBackup.timestamp + 86400000);
+      proximoEl.textContent = proximo.toLocaleString('pt-BR');
+    }
+  }
+  
+  function mostrarIndicadorBackup(mostrar) {
+    const indicator = document.getElementById('backup-indicator');
+    if (indicator) {
+      if (mostrar) {
+        indicator.classList.add('show');
+      } else {
+        setTimeout(() => {
+          indicator.classList.remove('show');
+        }, 2000);
+      }
+    }
+  }
+  
+  // ===========================================
+  // SISTEMA DE LOG DE AUDITORIA COMPLETO
+  // ===========================================
+  
+  // Registrar auditoria já existe, vamos melhorá-la
+  const registrarAuditoriaOriginal = registrarAuditoria;
+  
+  function registrarAuditoria(acao, dados = {}) {
+    const agora = new Date();
+    const registro = {
+      acao: acao,
+      usuario: loginUser || 'SISTEMA',
+      userRole: userRole || 'SISTEMA',
+      timestamp: Date.now(),
+      data: agora.toISOString(),
+      dataFormatada: agora.toLocaleString('pt-BR'),
+      ip: 'N/A', // Seria necessário API externa para pegar IP real
+      dispositivo: navigator.userAgent,
+      dados: dados
+    };
+    
+    // Salvar no Firebase
+    db.ref('auditoria').push(registro);
+    
+    // Chamar função original se existir
+    if (typeof registrarAuditoriaOriginal === 'function') {
+      registrarAuditoriaOriginal(acao, dados);
+    }
+  }
+  
+  async function carregarAuditoria() {
+    const container = document.getElementById('logs-auditoria');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="text-align:center; padding:40px;">⏳ CARREGANDO...</div>';
+    
+    try {
+      const snapshot = await db.ref('auditoria').limitToLast(100).once('value');
+      
+      if (!snapshot.exists()) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:60px; color:#64748b;">
+            <div style="font-size:64px; margin-bottom:15px;">📋</div>
+            <div style="font-size:16px; font-weight:bold;">NENHUM LOG DE AUDITORIA</div>
+            <div style="font-size:13px; margin-top:5px;">Os logs aparecerão aqui conforme ações forem realizadas</div>
+          </div>
+        `;
+        return;
+      }
+      
+      const logs = [];
+      snapshot.forEach(snap => {
+        const log = snap.val();
+        log.id = snap.key;
+        logs.push(log);
+      });
+      
+      // Ordenar por mais recente
+      logs.sort((a, b) => b.timestamp - a.timestamp);
+      
+      exibirLogs(logs);
+      
+      // Carregar usuários para filtro
+      carregarUsuariosFiltro();
+      
+    } catch (error) {
+      console.error('Erro ao carregar auditoria:', error);
+      container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--danger);">❌ ERRO AO CARREGAR LOGS</div>';
+    }
+  }
+  
+  function exibirLogs(logs) {
+    const container = document.getElementById('logs-auditoria');
+    
+    if (logs.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:40px; color:#64748b;">
+          <div style="font-size:48px; margin-bottom:10px;">🔍</div>
+          <div>NENHUM LOG ENCONTRADO COM OS FILTROS APLICADOS</div>
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    
+    logs.forEach(log => {
+      const iconeAcao = getIconeAcao(log.acao);
+      const classeAcao = getClasseAcao(log.acao);
+      const descricao = getDescricaoAcao(log.acao, log.dados);
+      
+      html += `
+        <div class="audit-log-item ${classeAcao}">
+          <div class="audit-log-header">
+            <div class="audit-log-action">${iconeAcao} ${log.acao.replace(/_/g, ' ')}</div>
+            <div class="audit-log-time">${log.dataFormatada}</div>
+          </div>
+          <div class="audit-log-details">${descricao}</div>
+          <div class="audit-log-user">👤 ${log.usuario} (${log.userRole || 'N/A'})</div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html;
+  }
+  
+  function getIconeAcao(acao) {
+    const icones = {
+      'LOGIN': '🔐',
+      'LOGOUT': '🚪',
+      'ABASTECIMENTO_REGISTRADO': '⛽',
+      'ABASTECIMENTO_AUTORIZADO': '✅',
+      'ABASTECIMENTO_REJEITADO': '❌',
+      'ABASTECIMENTO_DELETADO': '🗑️',
+      'VEICULO_ADICIONADO': '🚗',
+      'USUARIO_CRIADO': '👤',
+      'VIP_ADICIONADO': '⭐',
+      'EXPORTACAO_EXCEL': '📥',
+      'BACKUP_MANUAL': '💾',
+      'BACKUP_AUTOMATICO': '🔄'
+    };
+    return icones[acao] || '📌';
+  }
+  
+  function getClasseAcao(acao) {
+    if (acao.includes('DELETADO') || acao.includes('REJEITADO')) return 'action-delete';
+    if (acao.includes('ADICIONADO') || acao.includes('CRIADO') || acao.includes('REGISTRADO')) return 'action-create';
+    if (acao.includes('AUTORIZADO')) return 'action-update';
+    return '';
+  }
+  
+  function getDescricaoAcao(acao, dados) {
+    switch (acao) {
+      case 'ABASTECIMENTO_REGISTRADO':
+        return `Placa: ${dados.placa || 'N/A'} | Valor: R$ ${(dados.valor || 0).toFixed(2)}`;
+      case 'ABASTECIMENTO_VIP_LANCADO':
+        return `VIP: ${dados.pessoaVIP || 'N/A'} | Placa: ${dados.placa || 'N/A'} | Valor: R$ ${(dados.valor || 0).toFixed(2)}`;
+      case 'VEICULO_ADICIONADO':
+        return `Placa: ${dados.placa || 'N/A'} | Modelo: ${dados.modelo || 'N/A'}`;
+      case 'USUARIO_CRIADO':
+        return `Usuário: ${dados.usuario || 'N/A'} | Perfil: ${dados.role || 'N/A'}`;
+      case 'VIP_ADICIONADO':
+        return `Nome: ${dados.nome || 'N/A'} | Limite: ${dados.limite === 'ILIMITADO' ? 'ILIMITADO' : 'R$ ' + (dados.limite || 0)}`;
+      case 'EXPORTACAO_EXCEL':
+        return `Registros exportados: ${dados.registros || 0}`;
+      case 'BACKUP_MANUAL':
+      case 'BACKUP_AUTOMATICO':
+        return `Registros salvos: ${dados.registros || 0}`;
+      default:
+        return JSON.stringify(dados);
+    }
+  }
+  
+  async function carregarUsuariosFiltro() {
+    const select = document.getElementById('filtro-audit-usuario');
+    if (!select) return;
+    
+    try {
+      const snapshot = await db.ref('usuarios').once('value');
+      select.innerHTML = '<option value="">TODOS</option>';
+      
+      if (snapshot.exists()) {
+        snapshot.forEach(snap => {
+          select.innerHTML += `<option value="${snap.key}">${snap.key.toUpperCase()}</option>`;
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+    }
+  }
+  
+  async function filtrarAuditoria() {
+    const usuario = document.getElementById('filtro-audit-usuario').value;
+    const acao = document.getElementById('filtro-audit-acao').value;
+    const dataInicio = document.getElementById('filtro-audit-data-inicio').value;
+    const dataFim = document.getElementById('filtro-audit-data-fim').value;
+    
+    const container = document.getElementById('logs-auditoria');
+    container.innerHTML = '<div style="text-align:center; padding:40px;">⏳ FILTRANDO...</div>';
+    
+    try {
+      const snapshot = await db.ref('auditoria').limitToLast(500).once('value');
+      
+      let logs = [];
+      if (snapshot.exists()) {
+        snapshot.forEach(snap => {
+          const log = snap.val();
+          log.id = snap.key;
+          logs.push(log);
+        });
+      }
+      
+      // Aplicar filtros
+      if (usuario) {
+        logs = logs.filter(log => log.usuario === usuario);
+      }
+      
+      if (acao) {
+        logs = logs.filter(log => log.acao === acao);
+      }
+      
+      if (dataInicio) {
+        const timestampInicio = new Date(dataInicio).setHours(0, 0, 0, 0);
+        logs = logs.filter(log => log.timestamp >= timestampInicio);
+      }
+      
+      if (dataFim) {
+        const timestampFim = new Date(dataFim).setHours(23, 59, 59, 999);
+        logs = logs.filter(log => log.timestamp <= timestampFim);
+      }
+      
+      // Ordenar por mais recente
+      logs.sort((a, b) => b.timestamp - a.timestamp);
+      
+      exibirLogs(logs);
+      
+    } catch (error) {
+      console.error('Erro ao filtrar:', error);
+      mostrarNotificacao('❌ ERRO AO FILTRAR LOGS!', 'error');
+    }
+  }
+  
+  function limparFiltrosAuditoria() {
+    document.getElementById('filtro-audit-usuario').value = '';
+    document.getElementById('filtro-audit-acao').value = '';
+    document.getElementById('filtro-audit-data-inicio').value = '';
+    document.getElementById('filtro-audit-data-fim').value = '';
+    carregarAuditoria();
+  }
+  
+  function exportarAuditoria() {
+    filtrarAuditoria().then(() => {
+      // Pegar logs visíveis
+      const logsVisiveis = document.querySelectorAll('.audit-log-item');
+      
+      if (logsVisiveis.length === 0) {
+        mostrarNotificacao('❌ NENHUM LOG PARA EXPORTAR!', 'error');
+        return;
+      }
+      
+      // Criar dados para Excel
+      const dadosExcel = [];
+      logsVisiveis.forEach(logEl => {
+        // Extrair dados do elemento
+        const acao = logEl.querySelector('.audit-log-action').textContent.trim();
+        const tempo = logEl.querySelector('.audit-log-time').textContent.trim();
+        const detalhes = logEl.querySelector('.audit-log-details').textContent.trim();
+        const usuario = logEl.querySelector('.audit-log-user').textContent.trim();
+        
+        dadosExcel.push({
+          'DATA/HORA': tempo,
+          'AÇÃO': acao,
+          'DETALHES': detalhes,
+          'USUÁRIO': usuario
+        });
+      });
+      
+      // Criar planilha
+      const ws = XLSX.utils.json_to_sheet(dadosExcel);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+      
+      // Gerar arquivo
+      const nomeArquivo = `Auditoria_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, nomeArquivo);
+      
+      mostrarNotificacao('✅ LOG DE AUDITORIA EXPORTADO!', 'success');
+      registrarAuditoria('EXPORTACAO_AUDITORIA', { registros: dadosExcel.length });
+    });
+  }
+  
+  // ===========================================
+  // SISTEMA DE SENHAS FORTES
+  // ===========================================
+  
+  function validarSenhaForte(senha) {
+    const requisitos = {
+      tamanho: senha.length >= 8,
+      maiuscula: /[A-Z]/.test(senha),
+      minuscula: /[a-z]/.test(senha),
+      numero: /[0-9]/.test(senha),
+      especial: /[!@#$%^&*(),.?":{}|<>]/.test(senha)
+    };
+    
+    const qtdRequisitos = Object.values(requisitos).filter(v => v).length;
+    
+    let forca = 'fraca';
+    if (qtdRequisitos >= 5) forca = 'forte';
+    else if (qtdRequisitos >= 3) forca = 'media';
+    
+    return {
+      valida: qtdRequisitos >= 4, // Pelo menos 4 dos 5 requisitos
+      forca: forca,
+      requisitos: requisitos
+    };
+  }
+  
+  function mostrarValidacaoSenha(inputId, containerId) {
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(containerId);
+    
+    if (!input || !container) return;
+    
+    input.addEventListener('input', function() {
+      const senha = this.value;
+      const validacao = validarSenhaForte(senha);
+      
+      let html = `
+        <div class="password-strength-bar">
+          <div class="password-strength-fill ${validacao.forca}"></div>
+        </div>
+        <div class="password-requirements">
+          <div class="${validacao.requisitos.tamanho ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.tamanho ? '✓' : '✗'} Mínimo 8 caracteres
+          </div>
+          <div class="${validacao.requisitos.maiuscula ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.maiuscula ? '✓' : '✗'} Letra maiúscula
+          </div>
+          <div class="${validacao.requisitos.minuscula ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.minuscula ? '✓' : '✗'} Letra minúscula
+          </div>
+          <div class="${validacao.requisitos.numero ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.numero ? '✓' : '✗'} Número
+          </div>
+          <div class="${validacao.requisitos.especial ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.especial ? '✓' : '✗'} Caractere especial (!@#$%...)
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      container.style.display = senha ? 'block' : 'none';
+    });
+  }
+  
+  // ===========================================
+  // NOTIFICAÇÕES EM TEMPO REAL
+  // ===========================================
+  
+  let listenerAbastecimentos = null;
+  let listenerPendentes = null;
+  
+  function iniciarNotificacoesTempoReal() {
+    // Listener para novos abastecimentos
+    listenerAbastecimentos = db.ref('abastecimentos').limitToLast(1).on('child_added', (snapshot) => {
+      const abast = snapshot.val();
+      
+      // Não notificar se for o próprio usuário ou se for inicial
+      if (abast.solicitadoPor === loginUser.toUpperCase()) return;
+      
+      // Verificar se não é carregamento inicial
+      const agora = Date.now();
+      if (agora - abast.timestamp < 10000) { // Menos de 10 segundos
+        mostrarNotificacaoTempoReal(
+          '⛽ NOVO ABASTECIMENTO',
+          `${abast.placa} - ${abast.solicitadoPor}`,
+          'info'
+        );
+        
+        // Atualizar badge se for pendente
+        if (abast.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento')) {
+          atualizarBadgePendentes();
+        }
+      }
+    });
+    
+    // Listener para mudanças em abastecimentos (autorizações/rejeições)
+    db.ref('abastecimentos').on('child_changed', (snapshot) => {
+      const abast = snapshot.val();
+      
+      if (abast.solicitadoPor === loginUser.toUpperCase() && abast.status !== STATUS.AGUARDANDO) {
+        const tipo = abast.status === STATUS.AUTORIZADO ? 'success' : 'error';
+        const icone = abast.status === STATUS.AUTORIZADO ? '✅' : '❌';
+        const texto = abast.status === STATUS.AUTORIZADO ? 'AUTORIZADO' : 'REJEITADO';
+        
+        mostrarNotificacaoTempoReal(
+          `${icone} ABASTECIMENTO ${texto}`,
+          `${abast.placa} - R$ ${abast.valor.toFixed(2)}`,
+          tipo
+        );
+      }
+      
+      // Atualizar badge
+      if (temPermissao('autorizar_abastecimento')) {
+        atualizarBadgePendentes();
+      }
+    });
+  }
+  
+  function mostrarNotificacaoTempoReal(titulo, mensagem, tipo = 'info') {
+    // Criar elemento de notificação
+    const notif = document.createElement('div');
+    notif.className = `realtime-notification ${tipo}`;
+    notif.innerHTML = `
+      <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">${titulo}</div>
+      <div style="font-size: 12px; color: #64748b;">${mensagem}</div>
+    `;
+    
+    document.body.appendChild(notif);
+    
+    // Tocar som se ativado
+    if (localStorage.getItem('somNotificacao') !== 'false') {
+      tocarSomNotificacao();
+    }
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+      notif.style.animation = 'slideOutRight 0.3s forwards';
+      setTimeout(() => notif.remove(), 300);
+    }, 5000);
+  }
+  
+  function pararNotificacoesTempoReal() {
+    if (listenerAbastecimentos) {
+      db.ref('abastecimentos').off('child_added', listenerAbastecimentos);
+    }
+    if (listenerPendentes) {
+      db.ref('abastecimentos').off('child_changed', listenerPendentes);
+    }
+  }
+  
+  // ===========================================
   // INICIALIZAÇÃO
   // ===========================================
   
@@ -10332,6 +11289,10 @@
     initBuscaGlobal();
     initAtalhospTeclado();
     addFadeInAnimation();
+    
+    // Inicializar melhorias críticas
+    iniciarBackupAutomatico();
+    iniciarNotificacoesTempoReal();
     
     // Carregar dashboard
     setTimeout(() => {
