@@ -3466,12 +3466,26 @@
             <p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>
           </div>
         </div>
+        <div id="field-postos-permitidos" style="display:none;">
+          <label>POSTOS PERMITIDOS PARA VISUALIZAÇÃO (Ctrl+Click para múltiplos)</label>
+          <select id="new-postos-permitidos" multiple size="5" style="height:auto; min-height:120px;">
+            <option value="">CARREGANDO...</option>
+          </select>
+          <small style="color:#64748b; font-size:10px; display:block; margin-top:5px;">
+            💡 Se vazio, o usuário verá todos os postos. Use para restringir visualização.
+          </small>
+        </div>
       </div>
       <button class="btn-save" onclick="addUsuario()" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">➕ SALVAR USUÁRIO</button>
     </div>
     
     <div class="card">
-      <h3>📋 USUÁRIOS CADASTRADOS</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0;">📋 USUÁRIOS CADASTRADOS</h3>
+        <button class="btn-save" onclick="resetarLimitesMensais()" style="background: linear-gradient(135deg, var(--warning) 0%, #f97316 100%); padding: 10px 20px; font-size: 12px;">
+          🔄 RESETAR LIMITES MENSAIS
+        </button>
+      </div>
       <div class="table-wrapper">
         <table>
           <thead>
@@ -3748,12 +3762,13 @@
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
     'gerenciar_postos': { nome: 'Gerenciar Postos', descricao: 'Cadastrar postos', categoria: 'gestao' },
     'gerenciar_usuarios': { nome: 'Gerenciar Usuários', descricao: 'CRUD de usuários', categoria: 'gestao' },
+    'resetar_limites': { nome: 'Resetar Limites Mensais', descricao: 'Resetar limites de secretários', categoria: 'gestao' },
     'exportar_excel': { nome: 'Exportar Excel', descricao: 'Baixar relatórios', categoria: 'exportacao' }
   };
   
   const PERMISSOES_PADRAO = {
     master: Object.keys(PERMISSOES_DISPONIVEIS),
-    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
+    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'gerenciar_usuarios', 'resetar_limites', 'exportar_excel'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio'],
   autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_vip', 'abastecer_vips']
@@ -3772,6 +3787,37 @@
     return false;
   }
   
+  // NOVO: Função para verificar se pode ver abastecimento de um posto
+  function podeVerAbastecimentoPosto(postoNome) {
+    // Master e Admin veem tudo
+    if (loginUser === 'master' || userRole === 'admin') return true;
+    
+    // Se não tem restrição de postos, pode ver tudo
+    if (!userPostosPermitidos || userPostosPermitidos.length === 0) return true;
+    
+    // Encontrar o ID do posto pelo nome
+    const posto = postos.find(p => p.nome === postoNome);
+    if (!posto) return false;
+    
+    // Verificar se o posto está na lista de permitidos
+    return userPostosPermitidos.includes(posto.id);
+  }
+  
+  // NOVO: Função para filtrar abastecimentos por posto permitido
+  function filtrarAbastecimentosPorPosto(abastecimentos) {
+    // Master e Admin veem tudo
+    if (loginUser === 'master' || userRole === 'admin') return abastecimentos;
+    
+    // Se não tem restrição de postos, retorna tudo
+    if (!userPostosPermitidos || userPostosPermitidos.length === 0) return abastecimentos;
+    
+    // Filtrar apenas abastecimentos dos postos permitidos
+    return abastecimentos.filter(abast => {
+      const posto = postos.find(p => p.nome === abast.posto);
+      return posto && userPostosPermitidos.includes(posto.id);
+    });
+  }
+  
   let cache = [];
   let veiculos = [];
   let postos = [];
@@ -3781,6 +3827,7 @@
   let userSecretaria = "";
   let userPostoVinculado = ""; // Posto vinculado para frentistas
   let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
+  let userPostosPermitidos = []; // Array de postos que o usuário pode visualizar
   let usuarioData = {};
   let precos = { GASOLINA: 6, ALCOOL: 4, DIESEL: 6 };
   let chartSec = null;
@@ -4157,6 +4204,20 @@
       userPostosVinculados = dadosExtras.postosVinculados || dadosExtras.postoVinculado ? [dadosExtras.postoVinculado] : [];
     } else {
       userPostoVinculado = dadosExtras.postoVinculado || ""; // Para frentistas
+    }
+    
+    // NOVO: Carregar postos permitidos
+    if (dadosExtras.postosPermitidos && Array.isArray(dadosExtras.postosPermitidos)) {
+      userPostosPermitidos = dadosExtras.postosPermitidos;
+    } else if (role === 'frentista' && userPostoVinculado) {
+      // Frentista só vê seu posto
+      userPostosPermitidos = [userPostoVinculado];
+    } else if (role === 'autorizador' && userPostosVinculados.length > 0) {
+      // Autorizador só vê seus postos vinculados
+      userPostosPermitidos = userPostosVinculados;
+    } else {
+      // Admin/Master/Outros veem todos
+      userPostosPermitidos = [];
     }
     
     document.getElementById('login-screen').style.display = 'none';
@@ -4983,14 +5044,8 @@
     // Alertas de média baixa por veículo
     const veiculosComMedia = {};
     
-    // NOVO: Filtrar por posto para frentistas e autorizadores
-    let cacheFiltrado = cache.filter(x => x.status === STATUS.AUTORIZADO);
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        cacheFiltrado = cacheFiltrado.filter(item => item.posto === postoVinculado.nome);
-      }
-    }
+    // NOVO: Filtrar por posto usando função centralizada
+    let cacheFiltrado = filtrarAbastecimentosPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     cacheFiltrado.forEach(abast => {
       if (!veiculosComMedia[abast.placa]) {
@@ -5486,14 +5541,8 @@
   }
   
   function atualizarRelatorio() {
-    // NOVO: Filtrar cache por posto para frentistas e autorizadores
-    let cacheAtual = cache;
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        cacheAtual = cache.filter(item => item.posto === postoVinculado.nome);
-      }
-    }
+    // NOVO: Filtrar cache por posto usando função centralizada
+    let cacheAtual = filtrarAbastecimentosPorPosto(cache);
     
     let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
     
@@ -5889,18 +5938,8 @@
   }
   
   function atualizarPendentes() {
-    let pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
-    
-    // CORREÇÃO: Filtro automático por MÚLTIPLOS postos para autorizadores
-    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        pendentes = pendentes.filter(p => nomesPostosAutorizados.includes(p.posto));
-      }
-    }
+    // NOVO: Filtrar pendentes por posto usando função centralizada
+    let pendentes = filtrarAbastecimentosPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
     
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
@@ -5961,21 +6000,8 @@
       return x.status === STATUS.AUTORIZADO;
     });
     
-    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
-    if (userRole === 'frentista' && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        dadosGrafico = dadosGrafico.filter(item => item.posto === postoVinculado.nome);
-      }
-    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        dadosGrafico = dadosGrafico.filter(item => nomesPostosAutorizados.includes(item.posto));
-      }
-    }
+    // NOVO: Filtrar por posto usando função centralizada
+    dadosGrafico = filtrarAbastecimentosPorPosto(dadosGrafico);
     
     if (dadosGrafico.length === 0) return;
     
@@ -6675,6 +6701,15 @@
     document.getElementById('field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
+    // NOVO: Mostrar campo de postos permitidos para frentista e autorizador
+    const fieldPostosPermitidos = document.getElementById('field-postos-permitidos');
+    if (fieldPostosPermitidos) {
+      fieldPostosPermitidos.style.display = (isFrentista || isAutorizador) ? 'block' : 'none';
+      if (isFrentista || isAutorizador) {
+        carregarPostosPermitidosParaSelecao();
+      }
+    }
+    
     // Frentista não precisa de combustível permitido
     const combField = document.getElementById('new-combustivel').closest('div');
     if (combField) {
@@ -6773,6 +6808,25 @@
   function carregarPostosParaAutorizador() {
     const select = document.getElementById('new-posto-vinc');
     select.innerHTML = '<option value="">SELECIONE...</option>';
+    
+    db.ref('postos').once('value', snap => {
+      if (snap.exists()) {
+        snap.forEach(c => {
+          const p = c.val();
+          select.innerHTML += `<option value="${c.key}">${p.nome}</option>`;
+        });
+      } else {
+        select.innerHTML = '<option value="">NENHUM POSTO CADASTRADO</option>';
+      }
+    });
+  }
+  
+  // NOVO: Função para carregar postos no select de postos permitidos
+  function carregarPostosPermitidosParaSelecao() {
+    const select = document.getElementById('new-postos-permitidos');
+    if (!select) return;
+    
+    select.innerHTML = '';
     
     db.ref('postos').once('value', snap => {
       if (snap.exists()) {
@@ -6989,6 +7043,16 @@
       
       dadosUsuario.postosVinculados = postosSelecionados; // Array de IDs
       dadosUsuario.combustiveisAutorizados = combustiveisAutorizados;
+    }
+    
+    // NOVO: Adicionar postos permitidos para visualização (frentista e autorizador)
+    if (role === 'frentista' || role === 'autorizador') {
+      const postosPermitidosSelect = document.getElementById('new-postos-permitidos');
+      if (postosPermitidosSelect) {
+        const postosPermitidos = Array.from(postosPermitidosSelect.selectedOptions).map(opt => opt.value);
+        // Se não selecionar nada, fica vazio (vai ver todos os postos)
+        dadosUsuario.postosPermitidos = postosPermitidos.length > 0 ? postosPermitidos : [];
+      }
     }
     
     db.ref('usuarios/' + usuario).set(dadosUsuario).then(() => {
@@ -7398,6 +7462,68 @@
         mostrarNotificacao("❌ ERRO: " + err.message, "error");
       });
     }
+  }
+  
+  // NOVO: Função para resetar limites mensais de secretários
+  function resetarLimitesMensais() {
+    if (!temPermissao('resetar_limites')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
+      return;
+    }
+    
+    const confirmacao = confirm(
+      "🔄 RESETAR LIMITES MENSAIS\n\n" +
+      "Esta ação irá:\n" +
+      "• Resetar o campo 'limiteUsado' para 0 em todos os usuários secretários\n" +
+      "• Permitir que eles voltem a usar seus limites mensais\n\n" +
+      "Esta operação deve ser feita no início de cada mês.\n\n" +
+      "Deseja continuar?"
+    );
+    
+    if (!confirmacao) return;
+    
+    // Buscar todos os usuários secretários
+    db.ref('usuarios').once('value', snapshot => {
+      let contador = 0;
+      const promises = [];
+      
+      snapshot.forEach(userSnap => {
+        const usuario = userSnap.val();
+        const username = userSnap.key;
+        
+        // Só resetar secretários que têm limite definido
+        if (usuario.role === 'secretarios' && usuario.limite > 0) {
+          promises.push(
+            db.ref('usuarios/' + username).update({
+              limiteUsado: 0,
+              dataResetLimite: new Date().toISOString()
+            })
+          );
+          contador++;
+        }
+      });
+      
+      if (contador === 0) {
+        mostrarNotificacao("ℹ️ NENHUM SECRETÁRIO COM LIMITE PARA RESETAR!", "info");
+        return;
+      }
+      
+      // Executar todos os resets
+      Promise.all(promises).then(() => {
+        registrarAuditoria('RESET_LIMITES_MENSAIS', { 
+          usuariosAfetados: contador,
+          data: new Date().toISOString()
+        });
+        mostrarNotificacao(
+          `✅ LIMITES RESETADOS COM SUCESSO!\n\n${contador} secretário(s) tiveram seus limites zerados.`,
+          "success"
+        );
+        listUsuarios();
+      }).catch(error => {
+        console.error("Erro ao resetar limites:", error);
+        mostrarNotificacao("❌ ERRO AO RESETAR LIMITES: " + error.message, "error");
+      });
+    });
   }
   
   function limparFormulario() {
