@@ -506,6 +506,7 @@
   }
   .btn-aprovar { background: var(--success); color: white; }
   .btn-rejeitar { background: var(--danger); color: white; }
+  .btn-editar { background: #f59e0b; color: white; }
   .btn-deletar { background: #64748b; color: white; }
   
   .grid-form { 
@@ -606,7 +607,7 @@
       to { opacity: 1; }
   }
   .modal-content {
-      background: #fff;
+      background: var(--card-bg);
       padding: 30px;
       border-radius: 16px;
       max-width: 500px;
@@ -615,6 +616,7 @@
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       animation: slideUp 0.3s;
+      border: 1px solid var(--border-color);
   }
   @keyframes slideUp {
       from { transform: translateY(50px); opacity: 0; }
@@ -2720,6 +2722,91 @@
     </div>
   </div>
   
+  <!-- Modal de Edição de Abastecimento -->
+  <div class="modal" id="modal-editar-abastecimento" style="display:none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0; color:var(--text-primary);">✏️ EDITAR ABASTECIMENTO</h3>
+        <button onclick="fecharModalEditar()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--text-primary);">×</button>
+      </div>
+      
+      <div id="form-editar-abastecimento">
+        <div class="grid-form" style="grid-template-columns: repeat(2, 1fr);">
+          <div>
+            <label>PLACA *</label>
+            <input type="text" id="edit-placa" placeholder="ABC1234" maxlength="8">
+          </div>
+          <div>
+            <label>DATA *</label>
+            <input type="date" id="edit-data">
+          </div>
+          <div>
+            <label>POSTO *</label>
+            <select id="edit-posto">
+              <option value="">SELECIONE</option>
+            </select>
+          </div>
+          <div>
+            <label>SECRETARIA *</label>
+            <input type="text" id="edit-secretaria">
+          </div>
+          <div>
+            <label>MOTORISTA *</label>
+            <input type="text" id="edit-motorista">
+          </div>
+          <div>
+            <label>COMBUSTÍVEL *</label>
+            <select id="edit-tipo">
+              <option value="GASOLINA">GASOLINA</option>
+              <option value="ETANOL">ETANOL</option>
+              <option value="DIESEL">DIESEL</option>
+              <option value="DIESEL S10">DIESEL S10</option>
+              <option value="GNV">GNV</option>
+            </select>
+          </div>
+          <div>
+            <label>KM ATUAL *</label>
+            <input type="number" id="edit-km" placeholder="0">
+          </div>
+          <div>
+            <label>LITROS *</label>
+            <input type="number" id="edit-litros" step="0.01" placeholder="0.00">
+          </div>
+          <div>
+            <label>VALOR (R$) *</label>
+            <input type="number" id="edit-valor" step="0.01" placeholder="0.00">
+          </div>
+          <div>
+            <label>STATUS</label>
+            <select id="edit-status">
+              <option value="AGUARDANDO">AGUARDANDO</option>
+              <option value="AUTORIZADO">AUTORIZADO</option>
+              <option value="REJEITADO">REJEITADO</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="edit-tanque-cheio" style="width:auto; margin:0;">
+              TANQUE CHEIO
+            </label>
+          </div>
+        </div>
+        
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button class="btn-save" onclick="salvarEdicaoAbastecimento()" style="flex:1;">
+            💾 SALVAR ALTERAÇÕES
+          </button>
+          <button class="btn-save" onclick="fecharModalEditar()" 
+                  style="flex:1; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
+            ❌ CANCELAR
+          </button>
+        </div>
+      </div>
+      
+      <input type="hidden" id="edit-abastecimento-id">
+    </div>
+  </div>
+  
   <!-- Banner PWA -->
   <div class="install-pwa-banner" id="pwa-banner">
     <div>
@@ -4281,7 +4368,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "1234") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -5190,6 +5277,149 @@
     });
   }
   
+  // Funções de Edição de Abastecimento
+  function abrirModalEditar(id) {
+    if (loginUser !== 'master') {
+      mostrarNotificacao("❌ APENAS O MASTER PODE EDITAR ABASTECIMENTOS!", "error");
+      return;
+    }
+    
+    // Buscar dados do abastecimento
+    const abastecimento = cache.find(a => a.id === id);
+    if (!abastecimento) {
+      mostrarNotificacao("❌ ABASTECIMENTO NÃO ENCONTRADO!", "error");
+      return;
+    }
+    
+    // Preencher formulário
+    document.getElementById('edit-abastecimento-id').value = id;
+    document.getElementById('edit-placa').value = abastecimento.placa || '';
+    document.getElementById('edit-data').value = abastecimento.data || '';
+    document.getElementById('edit-secretaria').value = abastecimento.secretaria || '';
+    document.getElementById('edit-motorista').value = abastecimento.motorista || '';
+    document.getElementById('edit-tipo').value = abastecimento.tipo || 'GASOLINA';
+    document.getElementById('edit-km').value = abastecimento.km || 0;
+    document.getElementById('edit-litros').value = abastecimento.litro || 0;
+    document.getElementById('edit-valor').value = abastecimento.valor || 0;
+    document.getElementById('edit-status').value = abastecimento.status || 'AGUARDANDO';
+    document.getElementById('edit-tanque-cheio').checked = abastecimento.tanqueCheio || false;
+    
+    // Carregar postos no select
+    const selectPosto = document.getElementById('edit-posto');
+    selectPosto.innerHTML = '<option value="">SELECIONE</option>';
+    postos.forEach(p => {
+      const option = document.createElement('option');
+      option.value = p.nome;
+      option.textContent = p.nome;
+      if (p.nome === abastecimento.posto) {
+        option.selected = true;
+      }
+      selectPosto.appendChild(option);
+    });
+    
+    // Mostrar modal
+    document.getElementById('modal-editar-abastecimento').style.display = 'flex';
+  }
+  
+  function fecharModalEditar() {
+    document.getElementById('modal-editar-abastecimento').style.display = 'none';
+  }
+  
+  function salvarEdicaoAbastecimento() {
+    const id = document.getElementById('edit-abastecimento-id').value;
+    const placa = document.getElementById('edit-placa').value.toUpperCase().trim();
+    const data = document.getElementById('edit-data').value;
+    const posto = document.getElementById('edit-posto').value;
+    const secretaria = document.getElementById('edit-secretaria').value.trim();
+    const motorista = document.getElementById('edit-motorista').value.trim();
+    const tipo = document.getElementById('edit-tipo').value;
+    const km = parseFloat(document.getElementById('edit-km').value) || 0;
+    const litros = parseFloat(document.getElementById('edit-litros').value) || 0;
+    const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
+    const status = document.getElementById('edit-status').value;
+    const tanqueCheio = document.getElementById('edit-tanque-cheio').checked;
+    
+    // Validações
+    if (!placa || !data || !posto || !secretaria || !motorista) {
+      mostrarNotificacao("❌ PREENCHA TODOS OS CAMPOS OBRIGATÓRIOS!", "error");
+      return;
+    }
+    
+    if (km <= 0) {
+      mostrarNotificacao("❌ KM DEVE SER MAIOR QUE ZERO!", "error");
+      return;
+    }
+    
+    if (litros <= 0) {
+      mostrarNotificacao("❌ LITROS DEVE SER MAIOR QUE ZERO!", "error");
+      return;
+    }
+    
+    if (valor <= 0) {
+      mostrarNotificacao("❌ VALOR DEVE SER MAIOR QUE ZERO!", "error");
+      return;
+    }
+    
+    // Buscar dados antigos para auditoria
+    const abastecimentoAntigo = cache.find(a => a.id === id);
+    
+    // Calcular KM/L se tanque cheio
+    let kml = 0;
+    if (tanqueCheio) {
+      const abastecimentosVeiculo = cache
+        .filter(a => a.placa === placa && a.tanqueCheio && a.id !== id)
+        .sort((a, b) => new Date(b.data) - new Date(a.data));
+      
+      if (abastecimentosVeiculo.length > 0) {
+        const ultimoTanqueCheio = abastecimentosVeiculo[0];
+        const kmPercorrido = km - ultimoTanqueCheio.km;
+        if (kmPercorrido > 0 && litros > 0) {
+          kml = kmPercorrido / litros;
+        }
+      }
+    }
+    
+    // Atualizar no Firebase
+    const dadosAtualizados = {
+      placa: placa,
+      data: data,
+      posto: posto,
+      secretaria: secretaria,
+      motorista: motorista,
+      tipo: tipo,
+      km: km,
+      litro: litros,
+      valor: valor,
+      status: status,
+      tanqueCheio: tanqueCheio,
+      kml: kml,
+      editadoPor: loginUser,
+      dataEdicao: new Date().toISOString()
+    };
+    
+    db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
+      // Registrar auditoria com detalhes da alteração
+      const alteracoes = {};
+      if (abastecimentoAntigo.placa !== placa) alteracoes.placa = {de: abastecimentoAntigo.placa, para: placa};
+      if (abastecimentoAntigo.km !== km) alteracoes.km = {de: abastecimentoAntigo.km, para: km};
+      if (abastecimentoAntigo.litro !== litros) alteracoes.litros = {de: abastecimentoAntigo.litro, para: litros};
+      if (abastecimentoAntigo.valor !== valor) alteracoes.valor = {de: abastecimentoAntigo.valor, para: valor};
+      if (abastecimentoAntigo.status !== status) alteracoes.status = {de: abastecimentoAntigo.status, para: status};
+      
+      registrarAuditoria('ABASTECIMENTO_EDITADO', {
+        id: id,
+        placa: placa,
+        alteracoes: alteracoes
+      });
+      
+      mostrarNotificacao("✅ ABASTECIMENTO ATUALIZADO COM SUCESSO!", "success");
+      fecharModalEditar();
+    }).catch(error => {
+      console.error("Erro ao editar:", error);
+      mostrarNotificacao("❌ ERRO AO SALVAR: " + error.message, "error");
+    });
+  }
+  
   function renderizar() {
     if (!loginUser) return;
     
@@ -5754,6 +5984,9 @@
             ${(d.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento'))
               ? `<button class="btn-action btn-aprovar" onclick="aprovar('${d.id}')">✅</button>
                  <button class="btn-action btn-rejeitar" onclick="rejeitar('${d.id}')">❌</button>` 
+              : ''}
+            ${(loginUser === 'master')
+              ? `<button class="btn-action btn-editar" onclick="abrirModalEditar('${d.id}')">✏️</button>` 
               : ''}
             ${(temPermissao('deletar_abastecimento'))
               ? `<button class="btn-action btn-deletar" onclick="deletar('${d.id}')">🗑️</button>` 
