@@ -4408,7 +4408,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "1234") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -4589,6 +4589,11 @@
     
     // Verificar PWA
     verificarPWA();
+    
+    // Verificar reset automático (dia 1º do mês)
+    setTimeout(() => {
+      verificarResetAutomatico();
+    }, 2000);
     
     setTimeout(() => {
       renderizar();
@@ -4874,23 +4879,57 @@
         dados.valor = dados.litro * dados.precoPorLitro;
       }
 
-      // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário
+      // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário POR POSTO
       if (userRole === 'secretarios' && !dados.tanqueCheio) {
-        const gastoAtual = cache
-          .filter(x => 
-            (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-            x.secretaria === userSecretaria
-          )
-          .reduce((acc, item) => acc + (item.valor || 0), 0);
+        // Determinar qual limite usar baseado no posto
+        const postoNome = (dados.posto || '').toUpperCase().trim();
+        let limitePostoAtual = 0;
+        let gastoPostoAtual = 0;
+        let nomePosto = '';
         
-        const gastoProjetado = gastoAtual + dados.valor;
+        if (postoNome.includes('VICTOR')) {
+          limitePostoAtual = usuarioData.limiteVictor || 0;
+          gastoPostoAtual = cache
+            .filter(x => 
+              (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+              x.secretaria === userSecretaria &&
+              (x.posto || '').toUpperCase().includes('VICTOR')
+            )
+            .reduce((acc, item) => acc + (item.valor || 0), 0);
+          nomePosto = 'VICTOR';
+        } else if (postoNome.includes('MATINA')) {
+          limitePostoAtual = usuarioData.limiteMatina || 0;
+          gastoPostoAtual = cache
+            .filter(x => 
+              (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+              x.secretaria === userSecretaria &&
+              (x.posto || '').toUpperCase().includes('MATINA')
+            )
+            .reduce((acc, item) => acc + (item.valor || 0), 0);
+          nomePosto = 'MATINA';
+        }
         
-        if (gastoProjetado > userLimit) {
-          const saldoRestante = Math.max(0, userLimit - gastoAtual);
+        // Validar se tem limite configurado
+        if (limitePostoAtual === 0) {
           mostrarNotificacao(
-            `❌ LIMITE ORÇAMENTÁRIO EXCEDIDO!\n\n` +
-            `Limite mensal: R$ ${userLimit.toFixed(2)}\n` +
-            `Gasto atual: R$ ${gastoAtual.toFixed(2)}\n` +
+            `⚠️ LIMITE NÃO CONFIGURADO!\n\n` +
+            `O limite mensal para o posto ${nomePosto} não foi definido.\n` +
+            `Entre em contato com o administrador.`,
+            "error"
+          );
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
+        }
+        
+        const gastoProjetado = gastoPostoAtual + dados.valor;
+        const saldoRestante = Math.max(0, limitePostoAtual - gastoPostoAtual);
+        
+        if (gastoProjetado > limitePostoAtual) {
+          mostrarNotificacao(
+            `❌ LIMITE ORÇAMENTÁRIO DO POSTO ${nomePosto} EXCEDIDO!\n\n` +
+            `Limite mensal (${nomePosto}): R$ ${limitePostoAtual.toFixed(2)}\n` +
+            `Gasto atual (${nomePosto}): R$ ${gastoPostoAtual.toFixed(2)}\n` +
             `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}\n` +
             `Gasto projetado: R$ ${gastoProjetado.toFixed(2)}\n` +
             `Saldo restante: R$ ${saldoRestante.toFixed(2)}\n\n` +
@@ -4900,6 +4939,15 @@
           btnRegistrar.disabled = false;
           btnRegistrar.innerHTML = textoOriginal;
           return;
+        }
+        
+        // Alerta quando estiver próximo do limite (80%)
+        if (gastoProjetado > limitePostoAtual * 0.8 && gastoPostoAtual <= limitePostoAtual * 0.8) {
+          mostrarNotificacao(
+            `⚠️ ATENÇÃO: Você atingiu 80% do limite do posto ${nomePosto}!\n` +
+            `Saldo restante: R$ ${(limitePostoAtual - gastoProjetado).toFixed(2)}`,
+            "warning"
+          );
         }
       }
   
@@ -5234,6 +5282,13 @@
     
     db.ref('abastecimentos/' + abastecimentoTanqueCheioAtual.id).update(dadosAtualizados)
       .then(() => {
+        // NOVO: Atualizar gasto do posto
+        const abastecimentoAtualizado = {
+          ...abastecimentoTanqueCheioAtual,
+          ...dadosAtualizados
+        };
+        atualizarGastoPostoSecretario(abastecimentoAtualizado);
+        
         registrarAuditoria('ABASTECIMENTO_TANQUE_CHEIO_APROVADO', { 
           id: abastecimentoTanqueCheioAtual.id, 
           litros: litros, 
@@ -5284,8 +5339,46 @@
       aprovadoPor: loginUser.toUpperCase(),
       aprovadoEm: Date.now()
     }).then(() => {
+      // NOVO: Atualizar gasto do posto no usuário secretário
+      atualizarGastoPostoSecretario(abastecimento);
+      
       registrarAuditoria('ABASTECIMENTO_APROVADO', { id: id });
       mostrarNotificacao("✅ ABASTECIMENTO APROVADO!", "success");
+    });
+  }
+  
+  // NOVA FUNÇÃO: Atualizar gasto do posto específico do secretário
+  function atualizarGastoPostoSecretario(abastecimento) {
+    if (!abastecimento || !abastecimento.usuario) return;
+    
+    const usuario = abastecimento.usuario.toLowerCase();
+    const posto = (abastecimento.posto || '').toUpperCase().trim();
+    const valor = abastecimento.valor || 0;
+    
+    // Buscar dados atuais do usuário
+    db.ref('usuarios/' + usuario).once('value', snap => {
+      if (!snap.exists()) return;
+      
+      const userData = snap.val();
+      if (userData.role !== 'secretarios') return;
+      
+      // Determinar qual limite atualizar baseado no posto
+      let updates = {};
+      
+      if (posto.includes('VICTOR')) {
+        const gastoAtual = userData.limiteUsadoVictor || 0;
+        updates.limiteUsadoVictor = gastoAtual + valor;
+        console.log(`📊 Atualizando gasto Victor de ${usuario}: ${gastoAtual} + ${valor} = ${gastoAtual + valor}`);
+      } else if (posto.includes('MATINA')) {
+        const gastoAtual = userData.limiteUsadoMatina || 0;
+        updates.limiteUsadoMatina = gastoAtual + valor;
+        console.log(`📊 Atualizando gasto Matina de ${usuario}: ${gastoAtual} + ${valor} = ${gastoAtual + valor}`);
+      }
+      
+      // Atualizar no Firebase
+      if (Object.keys(updates).length > 0) {
+        db.ref('usuarios/' + usuario).update(updates);
+      }
     });
   }
   
@@ -8086,8 +8179,8 @@
     const confirmacao = confirm(
       "🔄 RESETAR LIMITES MENSAIS\n\n" +
       "Esta ação irá:\n" +
-      "• Resetar o campo 'limiteUsado' para 0 em todos os usuários secretários\n" +
-      "• Permitir que eles voltem a usar seus limites mensais\n\n" +
+      "• Resetar 'limiteUsadoVictor' e 'limiteUsadoMatina' para 0\n" +
+      "• Permitir que secretários voltem a usar seus limites mensais\n\n" +
       "Esta operação deve ser feita no início de cada mês.\n\n" +
       "Deseja continuar?"
     );
@@ -8102,9 +8195,11 @@
         const usuario = userSnap.val();
         const username = userSnap.key;
         
-        if (usuario.role === 'secretarios' && usuario.limite > 0) {
+        if (usuario.role === 'secretarios') {
           promises.push(
             db.ref('usuarios/' + username).update({
+              limiteUsadoVictor: 0,
+              limiteUsadoMatina: 0,
               limiteUsado: 0,
               dataResetLimite: new Date().toISOString()
             })
@@ -8114,7 +8209,7 @@
       });
       
       if (contador === 0) {
-        mostrarNotificacao("ℹ️ NENHUM SECRETÁRIO COM LIMITE PARA RESETAR!", "info");
+        mostrarNotificacao("ℹ️ NENHUM SECRETÁRIO PARA RESETAR!", "info");
         return;
       }
       
@@ -8131,6 +8226,55 @@
       }).catch(function(error) {
         console.error("Erro ao resetar limites:", error);
         mostrarNotificacao("❌ ERRO AO RESETAR LIMITES: " + error.message, "error");
+      });
+    });
+  }
+  
+  // NOVA FUNÇÃO: Reset Automático no início do mês
+  function verificarResetAutomatico() {
+    const hoje = new Date();
+    const dia = hoje.getDate();
+    
+    // Verifica se é dia 1º do mês
+    if (dia !== 1) return;
+    
+    // Verifica se já resetou hoje
+    const ultimoReset = localStorage.getItem('ultimoResetAutomatico');
+    const dataAtual = hoje.toISOString().split('T')[0];
+    
+    if (ultimoReset === dataAtual) {
+      console.log('✅ Reset automático já executado hoje');
+      return;
+    }
+    
+    // Só master pode fazer reset automático
+    if (loginUser !== 'master') return;
+    
+    console.log('🔄 Executando reset automático...');
+    
+    db.ref('usuarios').once('value', function(snapshot) {
+      const promises = [];
+      
+      snapshot.forEach(function(userSnap) {
+        const usuario = userSnap.val();
+        const username = userSnap.key;
+        
+        if (usuario.role === 'secretarios') {
+          promises.push(
+            db.ref('usuarios/' + username).update({
+              limiteUsadoVictor: 0,
+              limiteUsadoMatina: 0,
+              limiteUsado: 0,
+              dataResetLimite: new Date().toISOString()
+            })
+          );
+        }
+      });
+      
+      Promise.all(promises).then(function() {
+        localStorage.setItem('ultimoResetAutomatico', dataAtual);
+        registrarAuditoria('RESET_AUTOMATICO_LIMITES', { data: new Date().toISOString() });
+        console.log('✅ Reset automático concluído!');
       });
     });
   }
