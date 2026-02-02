@@ -2334,9 +2334,29 @@
           <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
         </select>
       </div>
-      <div id="edit-field-limit">
-        <label>LIMITE MENSAL (R$)</label>
-        <input type="number" id="edit-limit" placeholder="0.00" step="0.01">
+      <div id="edit-field-limit" style="display:none;">
+        <label style="font-size: 12px; font-weight: bold; color: var(--accent); margin-bottom: 10px; display: block;">
+          💰 LIMITES MENSAIS POR POSTO
+        </label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px; border: 2px solid var(--border-color);">
+          <div>
+            <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO VICTOR (R$)</label>
+            <input type="number" id="edit-limit-victor" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
+            <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
+              Gasolina, Diesel, Diesel S10, Gás
+            </div>
+          </div>
+          <div>
+            <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO MATINA (R$)</label>
+            <input type="number" id="edit-limit-matina" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
+            <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
+              Apenas Gasolina
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 8px; padding: 8px; background: #dbeafe; border-radius: 6px; font-size: 10px; color: #1e40af;">
+          💡 <strong>TOTAL:</strong> <span id="edit-total-limite-preview" style="color: #1e40af;">R$ 0,00</span>
+        </div>
       </div>
       <div id="edit-field-sec">
         <label>SECRETARIA VINCULADA</label>
@@ -3577,9 +3597,29 @@
             <option value="todos">TODOS</option>
           </select>
         </div>
-        <div id="field-limit">
-          <label>LIMITE MENSAL (R$)</label>
-          <input type="number" id="new-limit" placeholder="0.00" step="0.01">
+        <div id="field-limit" style="display:none;">
+          <label style="font-size: 12px; font-weight: bold; color: var(--accent); margin-bottom: 10px; display: block;">
+            💰 LIMITES MENSAIS POR POSTO
+          </label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px; border: 2px solid var(--border-color);">
+            <div>
+              <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO VICTOR (R$)</label>
+              <input type="number" id="new-limit-victor" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
+              <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
+                Gasolina, Diesel, Diesel S10, Gás
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO MATINA (R$)</label>
+              <input type="number" id="new-limit-matina" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
+              <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
+                Apenas Gasolina
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 8px; padding: 8px; background: #dbeafe; border-radius: 6px; font-size: 10px; color: #1e40af;">
+            💡 <strong>TOTAL:</strong> <span id="total-limite-preview" style="color: #1e40af;">R$ 0,00</span>
+          </div>
         </div>
         <div id="field-sec">
           <label>SECRETARIA VINCULADA</label>
@@ -4396,6 +4436,10 @@
           senha: user.senha,
           role: user.role,
           limite: user.limite || 0,
+          limiteVictor: user.limiteVictor || 0,
+          limiteMatina: user.limiteMatina || 0,
+          limiteUsadoVictor: user.limiteUsadoVictor || 0,
+          limiteUsadoMatina: user.limiteUsadoMatina || 0,
           secretariaVinculada: user.secretariaVinculada || "",
           permissoes: permissoes,
           postoVinculado: user.postoVinculado || "",
@@ -5898,25 +5942,149 @@
     }
     
     if (userRole === 'secretarios') {
-      const gasto = cache.filter(x => 
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🔍 INÍCIO DEBUG SECRETÁRIO");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📋 Secretaria:", userSecretaria);
+      console.log("👤 Usuário:", loginUser);
+      console.log("");
+      console.log("📊 DADOS DO USUÁRIO (usuarioData):");
+      console.log(JSON.stringify(usuarioData, null, 2));
+      console.log("");
+      console.log("💰 LIMITES DISPONÍVEIS:");
+      console.log("  userLimit (variável global):", userLimit);
+      console.log("  usuarioData.limite:", usuarioData.limite);
+      console.log("  usuarioData.limiteVictor:", usuarioData.limiteVictor);
+      console.log("  usuarioData.limiteMatina:", usuarioData.limiteMatina);
+      console.log("");
+      
+      // NOVO: Calcular gastos separados por posto
+      const todosGastos = cache.filter(x => 
         (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
         x.secretaria === userSecretaria
-      ).reduce((acc, item) => acc + item.valor, 0);
+      );
       
-      const saldo = userLimit - gasto;
-      const percentual = (gasto / userLimit * 100).toFixed(1);
+      console.log("=== DEBUG TODOS OS GASTOS ===");
+      console.log("Total de abastecimentos da secretaria:", todosGastos.length);
+      todosGastos.forEach(g => {
+        console.log("  Posto:", g.posto, "| Valor:", g.valor, "| Status:", g.status);
+      });
+      console.log("");
+      
+      // Separar por posto (busca flexível - ignora maiúsculas/minúsculas e espaços)
+      const gastosVictor = todosGastos.filter(x => {
+        const postoNome = (x.posto || '').toUpperCase().trim();
+        return postoNome.includes('VICTOR');
+      }).reduce((acc, item) => acc + item.valor, 0);
+      
+      const gastosMatina = todosGastos.filter(x => {
+        const postoNome = (x.posto || '').toUpperCase().trim();
+        return postoNome.includes('MATINA');
+      }).reduce((acc, item) => acc + item.valor, 0);
+      
+      const gastoTotal = gastosVictor + gastosMatina;
+      
+      console.log("💸 GASTOS CALCULADOS:");
+      console.log("  Gastos Victor:", gastosVictor.toFixed(2));
+      console.log("  Gastos Matina:", gastosMatina.toFixed(2));
+      console.log("  Gasto Total:", gastoTotal.toFixed(2));
+      console.log("");
+      
+      // USAR APENAS OS VALORES DEFINIDOS PELO MASTER - SEM FALLBACK AUTOMÁTICO
+      const limiteVictor = usuarioData.limiteVictor || 0;
+      const limiteMatina = usuarioData.limiteMatina || 0;
+      const limiteTotal = limiteVictor + limiteMatina;
+      
+      console.log("🎯 LIMITES FINAIS (USADOS NO DASHBOARD):");
+      console.log("  limiteVictor:", limiteVictor);
+      console.log("  limiteMatina:", limiteMatina);
+      console.log("  limiteTotal:", limiteTotal);
+      console.log("");
+      console.log("💳 SALDOS CALCULADOS:");
+      console.log("  Saldo Victor:", (limiteVictor - gastosVictor).toFixed(2));
+      console.log("  Saldo Matina:", (limiteMatina - gastosMatina).toFixed(2));
+      console.log("  Saldo Total:", (limiteTotal - gastoTotal).toFixed(2));
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("");
+      
+      // Calcular saldos
+      const saldoVictor = limiteVictor - gastosVictor;
+      const saldoMatina = limiteMatina - gastosMatina;
+      const saldoTotal = limiteTotal - gastoTotal;
+      
+      // Calcular percentuais
+      const percentualVictor = limiteVictor > 0 ? (gastosVictor / limiteVictor * 100).toFixed(1) : 0;
+      const percentualMatina = limiteMatina > 0 ? (gastosMatina / limiteMatina * 100).toFixed(1) : 0;
+      const percentualTotal = limiteTotal > 0 ? (gastoTotal / limiteTotal * 100).toFixed(1) : 0;
+      
       statusDiv.innerHTML = `
-        📊 ${userSecretaria}<br>
-        💰 LIMITE: R$ ${userLimit.toFixed(2)} | 
-        📉 GASTO: R$ ${gasto.toFixed(2)} (${percentual}%) | 
-        ✅ SALDO: R$ ${saldo.toFixed(2)}
-        <div class="progress-bar">
-          <div class="progress-fill ${saldo < userLimit * 0.2 ? 'danger' : (saldo < userLimit * 0.5 ? 'warning' : '')}" style="width:${percentual}%"></div>
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid rgba(255,255,255,0.3);">
+          📊 ${userSecretaria}
+        </div>
+        
+        ${(limiteVictor === 0 && limiteMatina === 0) ? `
+        <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ef4444; font-size: 11px;">
+          ⚠️ <strong>LIMITES NÃO CONFIGURADOS</strong><br>
+          <span style="opacity: 0.9; font-size: 10px;">Entre em contato com o administrador para definir os limites mensais por posto.<br>
+          Sem limites configurados, não será possível registrar novos abastecimentos.</span>
+        </div>
+        ` : ''}
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+          <!-- POSTO VICTOR -->
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
+              ⛽ POSTO VICTOR
+            </div>
+            <div style="font-size: 10px; line-height: 1.8;">
+              <div>💰 Limite: <strong>R$ ${limiteVictor.toFixed(2)}</strong></div>
+              <div>📉 Gasto: <strong>R$ ${gastosVictor.toFixed(2)}</strong> (${percentualVictor}%)</div>
+              <div>✅ Disponível: <strong style="color: ${saldoVictor < limiteVictor * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoVictor.toFixed(2)}</strong></div>
+            </div>
+            <div class="progress-bar" style="margin-top: 8px;">
+              <div class="progress-fill ${saldoVictor < limiteVictor * 0.2 ? 'danger' : (saldoVictor < limiteVictor * 0.5 ? 'warning' : '')}" 
+                   style="width:${Math.min(percentualVictor, 100)}%"></div>
+            </div>
+          </div>
+          
+          <!-- POSTO MATINA -->
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
+              ⛽ POSTO MATINA
+            </div>
+            <div style="font-size: 10px; line-height: 1.8;">
+              <div>💰 Limite: <strong>R$ ${limiteMatina.toFixed(2)}</strong></div>
+              <div>📉 Gasto: <strong>R$ ${gastosMatina.toFixed(2)}</strong> (${percentualMatina}%)</div>
+              <div>✅ Disponível: <strong style="color: ${saldoMatina < limiteMatina * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoMatina.toFixed(2)}</strong></div>
+            </div>
+            <div class="progress-bar" style="margin-top: 8px;">
+              <div class="progress-fill ${saldoMatina < limiteMatina * 0.2 ? 'danger' : (saldoMatina < limiteMatina * 0.5 ? 'warning' : '')}" 
+                   style="width:${Math.min(percentualMatina, 100)}%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- TOTAL GERAL -->
+        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
+          <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px;">
+            📊 TOTAL GERAL
+          </div>
+          <div style="font-size: 10px; display: flex; justify-content: space-between;">
+            <span>💰 Limite Total: <strong>R$ ${limiteTotal.toFixed(2)}</strong></span>
+            <span>📉 Gasto Total: <strong>R$ ${gastoTotal.toFixed(2)}</strong> (${percentualTotal}%)</span>
+            <span>✅ Disponível: <strong style="color: ${saldoTotal < limiteTotal * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoTotal.toFixed(2)}</strong></span>
+          </div>
+          <div class="progress-bar" style="margin-top: 8px;">
+            <div class="progress-fill ${saldoTotal < limiteTotal * 0.2 ? 'danger' : (saldoTotal < limiteTotal * 0.5 ? 'warning' : '')}" 
+                 style="width:${Math.min(percentualTotal, 100)}%"></div>
+          </div>
         </div>
       `;
-      if (saldo < userLimit * 0.2) {
+      
+      // Definir cor de fundo baseado no saldo total
+      if (saldoTotal < limiteTotal * 0.2) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
-      } else if (saldo < userLimit * 0.5) {
+      } else if (saldoTotal < limiteTotal * 0.5) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--warning) 0%, #f97316 100%)';
       } else {
         statusDiv.style.background = 'linear-gradient(135deg, var(--primary) 0%, #1e293b 100%)';
@@ -7093,6 +7261,19 @@
     document.getElementById('field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
+    // Adicionar eventos para calcular total
+    if (isSecretario) {
+      setTimeout(() => {
+        const victorInput = document.getElementById('new-limit-victor');
+        const matinaInput = document.getElementById('new-limit-matina');
+        
+        if (victorInput && matinaInput) {
+          victorInput.addEventListener('input', atualizarTotalLimite);
+          matinaInput.addEventListener('input', atualizarTotalLimite);
+        }
+      }, 100);
+    }
+    
     // Frentista não precisa de combustível permitido
     const combField = document.getElementById('new-combustivel').closest('div');
     if (combField) {
@@ -7112,6 +7293,32 @@
       if (postoSelectFrentista) postoSelectFrentista.value = '';
       const containerComb = document.getElementById('lista-combustiveis-autorizador');
       if (containerComb) containerComb.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>';
+    }
+  }
+  
+  function atualizarTotalLimite() {
+    const victor = parseFloat(document.getElementById('new-limit-victor').value) || 0;
+    const matina = parseFloat(document.getElementById('new-limit-matina').value) || 0;
+    const total = victor + matina;
+    
+    const preview = document.getElementById('total-limite-preview');
+    if (preview) {
+      preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      preview.style.fontWeight = 'bold';
+      preview.style.color = total > 0 ? '#16a34a' : '#64748b';
+    }
+  }
+  
+  function atualizarTotalLimiteEdit() {
+    const victor = parseFloat(document.getElementById('edit-limit-victor').value) || 0;
+    const matina = parseFloat(document.getElementById('edit-limit-matina').value) || 0;
+    const total = victor + matina;
+    
+    const preview = document.getElementById('edit-total-limite-preview');
+    if (preview) {
+      preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      preview.style.fontWeight = 'bold';
+      preview.style.color = total > 0 ? '#16a34a' : '#64748b';
     }
   }
   
@@ -7281,6 +7488,19 @@
     document.getElementById('edit-field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('edit-field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
+    // Adicionar eventos para calcular total na edição
+    if (isSecretario) {
+      setTimeout(() => {
+        const victorInput = document.getElementById('edit-limit-victor');
+        const matinaInput = document.getElementById('edit-limit-matina');
+        
+        if (victorInput && matinaInput) {
+          victorInput.addEventListener('input', atualizarTotalLimiteEdit);
+          matinaInput.addEventListener('input', atualizarTotalLimiteEdit);
+        }
+      }, 100);
+    }
+    
     // Frentista e autorizador não precisam de combustível permitido
     const combField = document.getElementById('edit-combustivel').closest('div');
     if (combField) {
@@ -7342,8 +7562,18 @@
     const senha = document.getElementById('new-pass').value.trim();
     const role = document.getElementById('new-role').value;
     const combustivel = document.getElementById('new-combustivel').value;
-    const limite = parseFloat(document.getElementById('new-limit').value) || 0;
     const secretaria = document.getElementById('new-sec-vinc').value;
+    
+    // NOVO: Pegar limites separados para secretários
+    let limite = 0;
+    let limiteVictor = 0;
+    let limiteMatina = 0;
+    
+    if (role === 'secretarios') {
+      limiteVictor = parseFloat(document.getElementById('new-limit-victor').value) || 0;
+      limiteMatina = parseFloat(document.getElementById('new-limit-matina').value) || 0;
+      limite = limiteVictor + limiteMatina; // Total para compatibilidade
+    }
     
     if (!usuario || !senha) {
       mostrarNotificacao("❌ PREENCHA USUÁRIO E SENHA!", "error");
@@ -7361,7 +7591,7 @@
     }
     
     if (role === 'secretarios' && (!limite || !secretaria)) {
-      mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
+      mostrarNotificacao("❌ PREENCHA OS LIMITES E SECRETARIA PARA SECRETÁRIOS!", "error");
       return;
     }
     
@@ -7373,6 +7603,14 @@
       secretariaVinculada: secretaria,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
+    
+    // NOVO: Adicionar limites separados para secretários
+    if (role === 'secretarios') {
+      dadosUsuario.limiteVictor = limiteVictor;
+      dadosUsuario.limiteMatina = limiteMatina;
+      dadosUsuario.limiteUsadoVictor = 0;
+      dadosUsuario.limiteUsadoMatina = 0;
+    }
     
     // Se for frentista, incluir posto vinculado
     if (role === 'frentista') {
@@ -7414,7 +7652,8 @@
       mostrarNotificacao("✅ USUÁRIO SALVO COM SUCESSO!", "success");
       document.getElementById('new-user').value = '';
       document.getElementById('new-pass').value = '';
-      document.getElementById('new-limit').value = '';
+      if (document.getElementById('new-limit-victor')) document.getElementById('new-limit-victor').value = '';
+      if (document.getElementById('new-limit-matina')) document.getElementById('new-limit-matina').value = '';
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
       document.getElementById('new-posto-vinc-frentista').value = '';
@@ -7515,7 +7754,15 @@
       document.getElementById('edit-pass').value = u.senha;
       document.getElementById('edit-combustivel').value = u.combustivelLiberado || 'todos';
       document.getElementById('edit-role').value = u.role;
-      document.getElementById('edit-limit').value = u.limite || "";
+      
+      // NOVO: Carregar limites separados se for secretário
+      if (u.role === 'secretarios') {
+        document.getElementById('edit-limit-victor').value = u.limiteVictor || 0;
+        document.getElementById('edit-limit-matina').value = u.limiteMatina || 0;
+        // Atualizar preview do total
+        setTimeout(atualizarTotalLimiteEdit, 100);
+      }
+      
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
       
       // Carregar dados de frentista se aplicável
@@ -7584,8 +7831,18 @@
     const novaPass = document.getElementById('edit-pass').value;
     const combus = document.getElementById('edit-combustivel').value;
     const role = document.getElementById('edit-role').value;
-    const limite = parseFloat(document.getElementById('edit-limit').value) || 0;
     const secretaria = document.getElementById('edit-sec-vinc').value;
+    
+    // NOVO: Pegar limites separados para secretários
+    let limite = 0;
+    let limiteVictor = 0;
+    let limiteMatina = 0;
+    
+    if (role === 'secretarios') {
+      limiteVictor = parseFloat(document.getElementById('edit-limit-victor').value) || 0;
+      limiteMatina = parseFloat(document.getElementById('edit-limit-matina').value) || 0;
+      limite = limiteVictor + limiteMatina; // Total para compatibilidade
+    }
     
     if (novaPass.length < 4) {
       mostrarNotificacao("❌ SENHA DEVE TER NO MÍNIMO 4 CARACTERES!", "error");
@@ -7606,10 +7863,12 @@
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'secretarios') {
       if (!limite || !secretaria) {
-        mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
+        mostrarNotificacao("❌ PREENCHA OS LIMITES E SECRETARIA PARA SECRETÁRIOS!", "error");
         return;
       }
       dadosAtualizados.limite = limite;
+      dadosAtualizados.limiteVictor = limiteVictor;
+      dadosAtualizados.limiteMatina = limiteMatina;
       dadosAtualizados.secretariaVinculada = secretaria;
       // Limpar dados de autorizador/frentista se houver
       dadosAtualizados.postoVinculado = "";
