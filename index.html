@@ -2594,7 +2594,7 @@
       </div>
       <div>
         <label>ODÔMETRO FINAL (KM)</label>
-        <input type="number" id="tanque-km" placeholder="0" min="0">
+        <input type="text" id="tanque-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
       </div>
       <div>
         <label>OBSERVAÇÕES</label>
@@ -2786,7 +2786,7 @@
           </div>
           <div>
             <label>KM ATUAL *</label>
-            <input type="number" id="edit-km" placeholder="0">
+            <input type="text" id="edit-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
           </div>
           <div>
             <label>LITROS *</label>
@@ -2929,7 +2929,7 @@
         </div>
         <div>
           <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
-          <input type="number" id="f-km" placeholder="0" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
+          <input type="text" id="f-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this); validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>LITROS *</label>
@@ -2970,56 +2970,81 @@
     <!-- Filtro de Relatório -->
     <div class="card no-print" id="card-filtros-relatorio">
       <h3>🔍 FILTROS DE RELATÓRIO</h3>
-      <div class="grid-form">
-        <div>
-          <label>DATA INICIAL</label>
-          <input type="date" id="rel-data-inicial">
+      
+      <!-- BUSCA RÁPIDA -->
+      <div style="margin-bottom: 15px;">
+        <label style="font-weight: bold; color: var(--primary); font-size: 13px;">🔎 BUSCA RÁPIDA</label>
+        <input 
+          type="text" 
+          id="busca-global" 
+          placeholder="🔍 Digite: placa, motorista, posto, secretaria, tipo..." 
+          style="width: 100%; padding: 12px; font-size: 14px; border: 2px solid var(--primary); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);"
+          oninput="aplicarBuscaGlobal()"
+        >
+        <div style="font-size: 10px; color: var(--text-secondary); margin-top: 5px;">
+          💡 A busca funciona em tempo real em: placa, motorista, posto, secretaria e combustível
         </div>
-        <div>
-          <label>DATA FINAL</label>
-          <input type="date" id="rel-data-final">
-        </div>
-        <div>
-          <label>SECRETARIA</label>
-          <select id="rel-secretaria">
-            <option value="">TODAS</option>
-            <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
-            <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
-            <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
-            <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
-            <option value="COMUNICAÇÃO">COMUNICAÇÃO</option>
-            <option value="CULTURA">CULTURA</option>
-            <option value="EDUCAÇÃO">EDUCAÇÃO</option>
-            <option value="ESPORTES">ESPORTES</option>
-            <option value="GOVERNO">GOVERNO</option>
-            <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
-            <option value="PLANEJAMENTO">PLANEJAMENTO</option>
-            <option value="SAÚDE">SAÚDE</option>
-          </select>
-        </div>
-        <div>
-          <label>POSTO</label>
-          <select id="rel-posto">
-            <option value="">TODOS</option>
-          </select>
-        </div>
-        <div>
-          <label>COMBUSTÍVEL</label>
-          <select id="rel-combustivel">
-            <option value="">TODOS</option>
-            <option value="GASOLINA">GASOLINA</option>
-            <option value="ALCOOL">ÁLCOOL</option>
-            <option value="DIESEL">DIESEL</option>
+      </div>
+      
+      <!-- FILTROS AVANÇADOS -->
+      <details style="margin-bottom: 15px;">
+        <summary style="cursor: pointer; font-weight: bold; padding: 10px; background: var(--hover-bg); border-radius: 6px; user-select: none;">
+          ⚙️ FILTROS AVANÇADOS
+        </summary>
+        <div style="padding-top: 15px;">
+          <div class="grid-form">
+            <div>
+              <label>DATA INICIAL</label>
+              <input type="date" id="rel-data-inicial">
+            </div>
+            <div>
+              <label>DATA FINAL</label>
+              <input type="date" id="rel-data-final">
+            </div>
+            <div>
+              <label>SECRETARIA</label>
+              <select id="rel-secretaria">
+                <option value="">TODAS</option>
+                <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
+                <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
+                <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
+                <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
+                <option value="COMUNICAÇÃO">COMUNICAÇÃO</option>
+                <option value="CULTURA">CULTURA</option>
+                <option value="EDUCAÇÃO">EDUCAÇÃO</option>
+                <option value="ESPORTES">ESPORTES</option>
+                <option value="GOVERNO">GOVERNO</option>
+                <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
+                <option value="PLANEJAMENTO">PLANEJAMENTO</option>
+                <option value="SAÚDE">SAÚDE</option>
+              </select>
+            </div>
+            <div>
+              <label>POSTO</label>
+              <select id="rel-posto">
+                <option value="">TODOS</option>
+              </select>
+            </div>
+            <div>
+              <label>COMBUSTÍVEL</label>
+              <select id="rel-combustivel">
+                <option value="">TODOS</option>
+                <option value="GASOLINA">GASOLINA</option>
+                <option value="ALCOOL">ÁLCOOL</option>
+                <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
 <option value='GAS'>Gás</option>
-          </select>
+              </select>
+            </div>
+            <div>
+              <label>PLACA</label>
+              <input type="text" id="rel-placa" placeholder="ABC-1234">
+            </div>
+          </div>
         </div>
-        <div>
-          <label>PLACA</label>
-          <input type="text" id="rel-placa" placeholder="ABC-1234">
-        </div>
-      </div>
+      </details>
+      
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
         <button class="btn-save" onclick="gerarRelatorio()">📊 GERAR</button>
         <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="limparFiltros()">🔄 LIMPAR</button>
@@ -4219,7 +4244,7 @@
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
-    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
+    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
     
     if (!placa || litros <= 0 || kmAtual <= 0) {
       // Se não tiver dados suficientes, não mostra o alerta
@@ -4637,7 +4662,7 @@
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
-    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
+    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
     
     if (!placa || litros === 0 || kmAtual === 0) {
       document.getElementById('previsao-consumo').style.display = 'none';
@@ -4709,7 +4734,7 @@
   
   function validarKmAtual() {
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
-    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
+    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
     
     if (!placa || kmAtual === 0) return;
     
@@ -4833,7 +4858,7 @@
         tipo: document.getElementById('f-tipo').value,
         secretaria: document.getElementById('f-sec').value,
         litro: parseFloat(document.getElementById('f-lit').value) || 0,
-        km: parseFloat(document.getElementById('f-km').value) || 0,
+        km: converterKMParaNumero(document.getElementById('f-km').value) || 0,
         tanqueCheio: document.getElementById('f-tanque-cheio').checked
       };
   
@@ -5232,7 +5257,7 @@
     const litros = parseFloat(document.getElementById('tanque-litros').value) || 0;
     const preco = parseFloat(document.getElementById('tanque-preco').value) || 0;
     const valor = litros * preco;
-    const kmFinal = document.getElementById('tanque-km').value;
+    const kmFinal = converterKMParaNumero(document.getElementById('tanque-km').value);
     const obs = document.getElementById('tanque-obs').value;
     
     if (!litros || litros <= 0) {
@@ -5435,7 +5460,7 @@
     document.getElementById('edit-secretaria').value = abastecimento.secretaria || '';
     document.getElementById('edit-motorista').value = abastecimento.motorista || '';
     document.getElementById('edit-tipo').value = abastecimento.tipo || 'GASOLINA';
-    document.getElementById('edit-km').value = abastecimento.km || 0;
+    document.getElementById('edit-km').value = formatarKMParaExibir(abastecimento.km) || '';
     document.getElementById('edit-litros').value = abastecimento.litro || 0;
     document.getElementById('edit-valor').value = abastecimento.valor || 0;
     document.getElementById('edit-status').value = abastecimento.status || 'AGUARDANDO';
@@ -5470,7 +5495,7 @@
     const secretaria = document.getElementById('edit-secretaria').value.trim();
     const motorista = document.getElementById('edit-motorista').value.trim();
     const tipo = document.getElementById('edit-tipo').value;
-    const km = parseFloat(document.getElementById('edit-km').value) || 0;
+    const km = converterKMParaNumero(document.getElementById('edit-km').value) || 0;
     const litros = parseFloat(document.getElementById('edit-litros').value) || 0;
     const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
     const status = document.getElementById('edit-status').value;
@@ -8310,8 +8335,90 @@
     document.getElementById('rel-posto').value = '';
     document.getElementById('rel-combustivel').value = '';
     document.getElementById('rel-placa').value = '';
+    document.getElementById('busca-global').value = '';
     atualizarRelatorio();
     mostrarNotificacao("🔄 FILTROS LIMPOS!", "info");
+  }
+  
+  // NOVA FUNÇÃO: Busca Global em Tempo Real
+  function aplicarBuscaGlobal() {
+    const termoBusca = document.getElementById('busca-global').value.toUpperCase().trim();
+    
+    // Se busca vazia, mostrar todos
+    if (!termoBusca) {
+      document.querySelectorAll('#relatorio-container tbody tr').forEach(tr => {
+        tr.style.display = '';
+      });
+      return;
+    }
+    
+    // Filtrar linhas da tabela
+    document.querySelectorAll('#relatorio-container tbody tr').forEach(tr => {
+      const textoLinha = tr.textContent.toUpperCase();
+      
+      if (textoLinha.includes(termoBusca)) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+  
+  // NOVA FUNÇÃO: Máscara de KM com vírgula decimal (ex: 12.345,6)
+  function aplicarMascaraKM(input) {
+    let valor = input.value;
+    
+    // Remove tudo exceto números
+    valor = valor.replace(/\D/g, '');
+    
+    // Se vazio, retorna
+    if (!valor) {
+      input.value = '';
+      return;
+    }
+    
+    // Converte para número
+    let numero = parseInt(valor);
+    
+    // Formata com ponto de milhar e vírgula decimal
+    // Ex: 123456 -> 12.345,6
+    let inteiro = Math.floor(numero / 10);
+    let decimal = numero % 10;
+    
+    // Formata parte inteira com pontos
+    let inteiroFormatado = inteiro.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    // Resultado final
+    input.value = inteiroFormatado + ',' + decimal;
+  }
+  
+  // NOVA FUNÇÃO: Converter KM formatado para número
+  function converterKMParaNumero(kmFormatado) {
+    if (!kmFormatado) return 0;
+    
+    // Remove pontos e substitui vírgula por ponto
+    // Ex: "12.345,6" -> "123456"
+    const semPontos = kmFormatado.replace(/\./g, '');
+    const semVirgula = semPontos.replace(',', '');
+    
+    return parseFloat(semVirgula) / 10;
+  }
+  
+  // NOVA FUNÇÃO: Formatar número para KM com vírgula
+  function formatarKMParaExibir(km) {
+    if (!km || km === 0) return '';
+    
+    // Converte para string com 1 decimal
+    const kmString = (km * 10).toFixed(0);
+    
+    // Separa inteiro e decimal
+    const inteiro = kmString.slice(0, -1) || '0';
+    const decimal = kmString.slice(-1);
+    
+    // Formata inteiro com pontos de milhar
+    const inteiroFormatado = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    return inteiroFormatado + ',' + decimal;
   }
   
   function sugerir(valor) {
@@ -10855,7 +10962,7 @@
   
   // Wrapper para pegar KM atual
   function obterKmAtual() {
-    return parseFloat(document.getElementById('f-km').value) || 0;
+    return converterKMParaNumero(document.getElementById('f-km').value) || 0;
   }
   
   // Wrapper para pegar litros
