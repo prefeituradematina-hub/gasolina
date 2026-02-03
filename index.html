@@ -3097,7 +3097,7 @@
         </div>
         
         <div>
-          <label>PLACA DO VEÍCULO *</label>
+          <label>PLACA DO VEÍCULO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
           <input type="text" id="vip-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
         </div>
         
@@ -3137,7 +3137,7 @@
         
         <div>
           <label>ODÔMETRO (KM) <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
-          <input type="number" id="vip-km" placeholder="0" min="0">
+          <input type="text" id="vip-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
         </div>
         
         <div style="grid-column: 1/-1;">
@@ -9921,7 +9921,7 @@
     const combustivel = document.getElementById('vip-combustivel').value;
     const litros = parseFloat(document.getElementById('vip-litros').value);
     const preco = parseFloat(document.getElementById('vip-preco').value);
-    const km = parseInt(document.getElementById('vip-km').value) || 0; // Opcional para VIP
+    const km = converterKMParaNumero(document.getElementById('vip-km').value) || 0; // Opcional para VIP
     const obs = document.getElementById('vip-obs').value.trim();
     
     // Validações
@@ -9933,10 +9933,7 @@
       mostrarNotificacao("❌ INFORME A DATA!", "error");
       return;
     }
-    if (!placa || placa.length < 7) {
-      mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
-      return;
-    }
+    // PLACA AGORA É OPCIONAL
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
@@ -9957,10 +9954,12 @@
     
     const valor = litros * preco;
     
-    // NOVO: Mostrar histórico do veículo antes de confirmar
-    const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
-    if (!confirmarHistorico) {
-      return;
+    // NOVO: Mostrar histórico do veículo apenas SE tiver placa
+    if (placa && placa.length >= 7) {
+      const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
+      if (!confirmarHistorico) {
+        return;
+      }
     }
     
     // Buscar dados da pessoa VIP
@@ -9976,7 +9975,8 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
+    const mensagemPlaca = placa ? `\nPlaca: ${placa}` : '';
+    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}${mensagemPlaca}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
       return;
     }
     
@@ -9985,7 +9985,7 @@
       nomePessoaVIP: pessoa.nome,
       cargoPessoaVIP: pessoa.cargo,
       data: data,
-      placa: placa,
+      placa: placa || 'NÃO INFORMADO',
       posto: nomePosto,
       tipo: combustivel,
       litro: litros,
