@@ -2514,6 +2514,39 @@
   </div>
 </div>
 
+<!-- Modal de Trocar Senha -->
+<div id="modal-trocar-senha" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <span class="modal-close" onclick="fecharModalTrocarSenha()">&times;</span>
+    <h3>🔑 TROCAR SENHA DO USUÁRIO</h3>
+    <p style="font-size:12px; color:#64748b; margin-bottom:20px;">
+      Defina uma nova senha para o usuário selecionado
+    </p>
+    
+    <div style="margin-bottom:20px;">
+      <label style="font-weight:bold; color:var(--text-primary);">USUÁRIO</label>
+      <input type="text" id="trocar-senha-usuario" readonly style="background:#f1f5f9; font-weight:bold; font-size:16px; text-transform:uppercase; cursor:not-allowed;">
+    </div>
+    
+    <div style="margin-bottom:20px;">
+      <label style="font-weight:bold; color:var(--text-primary);">NOVA SENHA *</label>
+      <input type="text" id="trocar-senha-nova" placeholder="Digite a nova senha" style="font-size:16px;">
+      <div style="font-size:10px; color:#64748b; margin-top:5px;">
+        💡 A senha deve ter pelo menos 4 caracteres
+      </div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <button class="btn-save" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="confirmarTrocarSenha()">
+        ✅ CONFIRMAR
+      </button>
+      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="fecharModalTrocarSenha()">
+        ❌ CANCELAR
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de Permissões de Perfil -->
 <div id="modal-permissoes" class="modal">
   <div class="modal-content" style="max-width: 700px;">
@@ -4437,7 +4470,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "1234") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -7964,6 +7997,9 @@
               <td style="font-size:11px;">${postoInfo}</td>
               <td class="no-print">
                 ${temPermissao('gerenciar_usuarios') || loginUser === 'master' ? `
+                  <button class="btn-action" style="background:#10b981;color:white;" onclick="abrirTrocarSenha('${c.key}')">
+                    🔑 SENHA
+                  </button>
                   <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="abrirPermissoes('${c.key}')">
                     🔐 PERMISSÕES
                   </button>
@@ -8232,6 +8268,61 @@
   function fecharModalPermissoes() {
     document.getElementById('modal-permissoes').style.display = 'none';
     usuarioEditandoPermissoes = null;
+  }
+  
+  // NOVAS FUNÇÕES: Trocar Senha de Usuário
+  let usuarioTrocandoSenha = null;
+  
+  function abrirTrocarSenha(username) {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA TROCAR SENHA!", "error");
+      return;
+    }
+    
+    usuarioTrocandoSenha = username;
+    document.getElementById('trocar-senha-usuario').value = username.toUpperCase();
+    document.getElementById('trocar-senha-nova').value = '';
+    document.getElementById('modal-trocar-senha').style.display = 'flex';
+  }
+  
+  function fecharModalTrocarSenha() {
+    document.getElementById('modal-trocar-senha').style.display = 'none';
+    usuarioTrocandoSenha = null;
+    document.getElementById('trocar-senha-nova').value = '';
+  }
+  
+  function confirmarTrocarSenha() {
+    const novaSenha = document.getElementById('trocar-senha-nova').value.trim();
+    
+    if (!novaSenha) {
+      mostrarNotificacao("❌ DIGITE A NOVA SENHA!", "error");
+      return;
+    }
+    
+    if (novaSenha.length < 4) {
+      mostrarNotificacao("❌ A SENHA DEVE TER PELO MENOS 4 CARACTERES!", "error");
+      return;
+    }
+    
+    if (!confirm(`🔑 CONFIRMA A TROCA DE SENHA?\n\nUsuário: ${usuarioTrocandoSenha.toUpperCase()}\nNova senha: ${novaSenha}\n\n⚠️ Esta ação não pode ser desfeita!`)) {
+      return;
+    }
+    
+    db.ref('usuarios/' + usuarioTrocandoSenha).update({
+      senha: novaSenha
+    }).then(() => {
+      registrarAuditoria('SENHA_ALTERADA_MASTER', {
+        usuario: usuarioTrocandoSenha,
+        alteradoPor: loginUser,
+        data: new Date().toISOString()
+      });
+      
+      mostrarNotificacao(`✅ SENHA DO USUÁRIO ${usuarioTrocandoSenha.toUpperCase()} ALTERADA COM SUCESSO!`, "success");
+      fecharModalTrocarSenha();
+      listUsuarios();
+    }).catch(error => {
+      mostrarNotificacao("❌ ERRO AO TROCAR SENHA: " + error.message, "error");
+    });
   }
   
   function carregarPermissoesPerfil() {
