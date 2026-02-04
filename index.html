@@ -4437,7 +4437,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === 05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -5019,11 +5019,16 @@
         ? STATUS.AUTORIZADO 
         : STATUS.AGUARDANDO;
       
+      // Capturar data e hora atuais
+      const agora = new Date();
+      const horario = agora.toTimeString().slice(0, 5); // HH:MM
+      
       await db.ref('abastecimentos').push({
         ...dados,
         status: status,
         solicitadoPor: loginUser.toUpperCase(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        horario: horario
       });
   
       mostrarNotificacao(
@@ -6265,6 +6270,7 @@
         
         linhas += `<tr class="${classeAlerta}">
           <td>${d.data.split('-').reverse().join('/')}</td>
+          <td><span style="color: var(--text-secondary); font-size: 11px;">🕐 ${d.horario || '--:--'}</span></td>
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
@@ -6342,6 +6348,7 @@
               <thead>
                 <tr>
                   <th>DATA</th>
+                  <th>HORÁRIO</th>
                   <th>PLACA</th>
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
@@ -10174,6 +10181,7 @@
       aprovadoEm: Date.now(),
       solicitadoPor: loginUser.toUpperCase(),
       timestamp: Date.now(),
+      horario: new Date().toTimeString().slice(0, 5),
       tipoAbastecimento: 'VIP'
     };
     
