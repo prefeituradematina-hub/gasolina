@@ -4123,6 +4123,10 @@
   let chartVec = null;
   let chartCombustivel = null;
   let chartTendencia = null;
+  
+  // PAGINAÇÃO
+  let paginaAtual = {};  // Objeto para armazenar página atual de cada secretaria
+  const itensPorPagina = 10;
   let chartExecutivo1 = null;
   let chartExecutivo2 = null;
   let chartAnual = null;
@@ -4433,7 +4437,7 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "1234") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -6244,8 +6248,16 @@
       const itens = cacheAtual.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO)
         .sort((a, b) => b.timestamp - a.timestamp);
       if (itens.length === 0) return;
+      
+      // PAGINAÇÃO
+      if (!paginaAtual[sec]) paginaAtual[sec] = 1;
+      const totalPaginas = Math.ceil(itens.length / itensPorPagina);
+      const inicio = (paginaAtual[sec] - 1) * itensPorPagina;
+      const fim = inicio + itensPorPagina;
+      const itensPaginados = itens.slice(inicio, fim);
+      
       let linhas = "";
-      itens.forEach(d => {
+      itensPaginados.forEach(d => {
         const media = calcularMedia(d);
         // NOVO: Usar os limites de alerta específicos
         const limiteAlerta = LIMITES_ALERTA[d.tipo];
@@ -6289,6 +6301,37 @@
         ? `${sec} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`
         : `${sec} | 💰 R$ ${totalSec.toFixed(2)} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`;
       
+      // CONTROLES DE PAGINAÇÃO
+      let paginacaoHTML = '';
+      if (totalPaginas > 1) {
+        paginacaoHTML = `
+          <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px;">
+            <button 
+              class="btn-save" 
+              style="padding: 8px 15px; min-width: auto; ${paginaAtual[sec] === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
+              onclick="mudarPagina('${sec}', ${paginaAtual[sec] - 1})"
+              ${paginaAtual[sec] === 1 ? 'disabled' : ''}>
+              ◀ ANTERIOR
+            </button>
+            
+            <div style="display: flex; gap: 5px; align-items: center;">
+              ${gerarBotoesPaginas(sec, paginaAtual[sec], totalPaginas)}
+            </div>
+            
+            <button 
+              class="btn-save" 
+              style="padding: 8px 15px; min-width: auto; ${paginaAtual[sec] === totalPaginas ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
+              onclick="mudarPagina('${sec}', ${paginaAtual[sec] + 1})"
+              ${paginaAtual[sec] === totalPaginas ? 'disabled' : ''}>
+              PRÓXIMA ▶
+            </button>
+          </div>
+          <div style="text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-secondary);">
+            Mostrando ${inicio + 1} a ${Math.min(fim, itens.length)} de ${itens.length} registros
+          </div>
+        `;
+      }
+      
       container.innerHTML += `
         <div class="section-header">
           ${headerInfo}
@@ -6313,9 +6356,81 @@
               <tbody>${linhas}</tbody>
             </table>
           </div>
+          ${paginacaoHTML}
         </div>
       `;
     });
+  }
+  
+  // NOVA FUNÇÃO: Gerar botões de páginas
+  function gerarBotoesPaginas(sec, paginaAtual, totalPaginas) {
+    let html = '';
+    
+    // Mostrar no máximo 5 botões de página
+    let inicio = Math.max(1, paginaAtual - 2);
+    let fim = Math.min(totalPaginas, inicio + 4);
+    
+    // Ajustar início se estiver no final
+    if (fim - inicio < 4) {
+      inicio = Math.max(1, fim - 4);
+    }
+    
+    // Botão primeira página
+    if (inicio > 1) {
+      html += `
+        <button 
+          class="btn-save" 
+          style="padding: 8px 12px; min-width: auto; font-size: 12px;"
+          onclick="mudarPagina('${sec}', 1)">
+          1
+        </button>
+      `;
+      if (inicio > 2) {
+        html += '<span style="padding: 0 5px;">...</span>';
+      }
+    }
+    
+    // Botões das páginas
+    for (let i = inicio; i <= fim; i++) {
+      const ativo = i === paginaAtual;
+      html += `
+        <button 
+          class="btn-save" 
+          style="padding: 8px 12px; min-width: auto; font-size: 12px; ${ativo ? 'background: var(--primary); font-weight: bold;' : ''}"
+          onclick="mudarPagina('${sec}', ${i})">
+          ${i}
+        </button>
+      `;
+    }
+    
+    // Botão última página
+    if (fim < totalPaginas) {
+      if (fim < totalPaginas - 1) {
+        html += '<span style="padding: 0 5px;">...</span>';
+      }
+      html += `
+        <button 
+          class="btn-save" 
+          style="padding: 8px 12px; min-width: auto; font-size: 12px;"
+          onclick="mudarPagina('${sec}', ${totalPaginas})">
+          ${totalPaginas}
+        </button>
+      `;
+    }
+    
+    return html;
+  }
+  
+  // NOVA FUNÇÃO: Mudar página
+  function mudarPagina(secretaria, novaPagina) {
+    paginaAtual[secretaria] = novaPagina;
+    atualizarRelatorio();
+    
+    // Scroll suave para o topo da tabela
+    const container = document.getElementById('relatorio-container');
+    if (container) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
   
   let chartAutorizadorTempo = null;
@@ -9406,57 +9521,116 @@
   }
   
   function atualizarPerformanceSecretarias() {
-    // Simulação de orçamento (em produção viria do banco)
-    const orcamentos = {
-      'SAÚDE': 15000,
-      'EDUCAÇÃO': 12000,
-      'INFRAESTRUTURA E SERVIÇOS': 10000,
-      'ASSISTÊNCIA SOCIAL': 8000,
-      'ADMINISTRAÇÃO E FINANÇAS': 7000
-    };
-    
-    const tbody = document.getElementById('performance-body');
-    let html = '';
-    
-    Object.keys(orcamentos).forEach(sec => {
-      const realizado = cache
-        .filter(x => x.secretaria === sec && x.status === STATUS.AUTORIZADO)
-        .reduce((acc, item) => acc + item.valor, 0);
+    // Buscar limites reais dos secretários do Firebase
+    db.ref('usuarios').once('value', snapshot => {
+      const tbody = document.getElementById('performance-body');
+      let html = '';
       
-      const orcado = orcamentos[sec];
-      const diferenca = orcado - realizado;
-      const percentual = (realizado / orcado * 100).toFixed(1);
+      // Agrupar secretários por secretaria
+      const secretariasPorNome = {};
       
-      // Projeção
-      const hoje = new Date();
-      const diasDecorridos = hoje.getDate();
-      const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-      const projecao = (realizado / diasDecorridos) * diasNoMes;
+      snapshot.forEach(userSnap => {
+        const usuario = userSnap.val();
+        if (usuario.role === 'secretarios' && usuario.secretariaVinculada) {
+          const sec = usuario.secretariaVinculada;
+          
+          if (!secretariasPorNome[sec]) {
+            secretariasPorNome[sec] = {
+              limiteVictor: 0,
+              limiteMatina: 0,
+              limiteTotal: 0
+            };
+          }
+          
+          // Somar limites de todos os secretários da mesma secretaria
+          secretariasPorNome[sec].limiteVictor += usuario.limiteVictor || 0;
+          secretariasPorNome[sec].limiteMatina += usuario.limiteMatina || 0;
+          secretariasPorNome[sec].limiteTotal += (usuario.limiteVictor || 0) + (usuario.limiteMatina || 0);
+        }
+      });
       
-      const status = projecao <= orcado ? '✅ NO ORÇAMENTO' : '⚠️ ACIMA';
-      const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
+      // Ordenar por secretaria
+      const secretariasOrdenadas = Object.keys(secretariasPorNome).sort();
       
-      html += `
-        <tr>
-          <td><strong>${sec}</strong></td>
-          <td>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td>R$ ${realizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}">
-            R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-          </td>
-          <td>
-            <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
-              <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
-            </div>
-            ${percentual}%
-          </td>
-          <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td style="color:${corStatus}; font-weight:bold;">${status}</td>
-        </tr>
-      `;
+      secretariasOrdenadas.forEach(sec => {
+        const limites = secretariasPorNome[sec];
+        
+        // Calcular gastos separados por posto
+        const gastosVictor = cache
+          .filter(x => 
+            x.secretaria === sec && 
+            x.status === STATUS.AUTORIZADO &&
+            (x.posto || '').toUpperCase().includes('VICTOR')
+          )
+          .reduce((acc, item) => acc + item.valor, 0);
+        
+        const gastosMatina = cache
+          .filter(x => 
+            x.secretaria === sec && 
+            x.status === STATUS.AUTORIZADO &&
+            (x.posto || '').toUpperCase().includes('MATINA')
+          )
+          .reduce((acc, item) => acc + item.valor, 0);
+        
+        const realizadoTotal = gastosVictor + gastosMatina;
+        const orcado = limites.limiteTotal;
+        const diferenca = orcado - realizadoTotal;
+        const percentual = orcado > 0 ? (realizadoTotal / orcado * 100).toFixed(1) : 0;
+        
+        // Projeção
+        const hoje = new Date();
+        const diasDecorridos = hoje.getDate();
+        const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+        const projecao = diasDecorridos > 0 ? (realizadoTotal / diasDecorridos) * diasNoMes : 0;
+        
+        const status = projecao <= orcado ? '✅ NO ORÇAMENTO' : '⚠️ ACIMA';
+        const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
+        
+        // Percentuais por posto
+        const percVictor = limites.limiteVictor > 0 ? (gastosVictor / limites.limiteVictor * 100).toFixed(1) : 0;
+        const percMatina = limites.limiteMatina > 0 ? (gastosMatina / limites.limiteMatina * 100).toFixed(1) : 0;
+        
+        html += `
+          <tr>
+            <td>
+              <strong>${sec}</strong>
+              <div style="font-size:9px; color:var(--text-secondary); margin-top:4px;">
+                Victor: ${percVictor}% | Matina: ${percMatina}%
+              </div>
+            </td>
+            <td>
+              <div><strong>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></div>
+              <div style="font-size:9px; color:var(--text-secondary);">
+                V: R$ ${limites.limiteVictor.toFixed(2)} | M: R$ ${limites.limiteMatina.toFixed(2)}
+              </div>
+            </td>
+            <td>
+              <div><strong>R$ ${realizadoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></div>
+              <div style="font-size:9px; color:var(--text-secondary);">
+                V: R$ ${gastosVictor.toFixed(2)} | M: R$ ${gastosMatina.toFixed(2)}
+              </div>
+            </td>
+            <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}">
+              R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </td>
+            <td>
+              <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
+                <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
+              </div>
+              ${percentual}%
+            </td>
+            <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="color:${corStatus}; font-weight:bold;">${status}</td>
+          </tr>
+        `;
+      });
+      
+      if (html === '') {
+        html = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#64748b;">📊 Nenhum secretário com limite cadastrado</td></tr>';
+      }
+      
+      tbody.innerHTML = html;
     });
-    
-    tbody.innerHTML = html;
   }
   
   function atualizarAlertasExecutivos() {
