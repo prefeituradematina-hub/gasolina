@@ -2520,7 +2520,7 @@
     <span class="modal-close" onclick="fecharModalTrocarSenha()">&times;</span>
     <h3>🔑 TROCAR SENHA DO USUÁRIO</h3>
     <p style="font-size:12px; color:#64748b; margin-bottom:20px;">
-      Defina uma nova senha para o usuário selecionado
+      Visualize a senha atual e defina uma nova senha para o usuário
     </p>
     
     <div style="margin-bottom:20px;">
@@ -2528,8 +2528,18 @@
       <input type="text" id="trocar-senha-usuario" readonly style="background:#f1f5f9; font-weight:bold; font-size:16px; text-transform:uppercase; cursor:not-allowed;">
     </div>
     
+    <div style="margin-bottom:20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 6px;">
+      <label style="font-weight:bold; color:#3b82f6; font-size: 12px;">🔓 SENHA ATUAL</label>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+        <input type="password" id="trocar-senha-atual" readonly style="background:#fff; font-weight:bold; font-size:16px; cursor:text; flex: 1; border: 2px solid #3b82f6;">
+        <button onclick="toggleSenhaAtual()" style="padding: 10px 15px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="Mostrar/Ocultar senha">
+          👁️
+        </button>
+      </div>
+    </div>
+    
     <div style="margin-bottom:20px;">
-      <label style="font-weight:bold; color:var(--text-primary);">NOVA SENHA *</label>
+      <label style="font-weight:bold; color:var(--text-primary);">🔒 NOVA SENHA *</label>
       <input type="text" id="trocar-senha-nova" placeholder="Digite a nova senha" style="font-size:16px;">
       <div style="font-size:10px; color:#64748b; margin-top:5px;">
         💡 A senha deve ter pelo menos 4 caracteres
@@ -4470,7 +4480,7 @@
       return;
     }
     
-    if (u === "master" && s === "1234") {
+    if (u === "master" && s === "05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
@@ -8282,6 +8292,17 @@
     usuarioTrocandoSenha = username;
     document.getElementById('trocar-senha-usuario').value = username.toUpperCase();
     document.getElementById('trocar-senha-nova').value = '';
+    
+    // Buscar senha atual do usuário
+    db.ref('usuarios/' + username).once('value', snap => {
+      const usuario = snap.val();
+      if (usuario && usuario.senha) {
+        document.getElementById('trocar-senha-atual').value = usuario.senha;
+      } else {
+        document.getElementById('trocar-senha-atual').value = 'Senha não encontrada';
+      }
+    });
+    
     document.getElementById('modal-trocar-senha').style.display = 'flex';
   }
   
@@ -8289,10 +8310,23 @@
     document.getElementById('modal-trocar-senha').style.display = 'none';
     usuarioTrocandoSenha = null;
     document.getElementById('trocar-senha-nova').value = '';
+    document.getElementById('trocar-senha-atual').value = '';
+    // Resetar para password
+    document.getElementById('trocar-senha-atual').type = 'password';
+  }
+  
+  function toggleSenhaAtual() {
+    const campo = document.getElementById('trocar-senha-atual');
+    if (campo.type === 'password') {
+      campo.type = 'text';
+    } else {
+      campo.type = 'password';
+    }
   }
   
   function confirmarTrocarSenha() {
     const novaSenha = document.getElementById('trocar-senha-nova').value.trim();
+    const senhaAtual = document.getElementById('trocar-senha-atual').value;
     
     if (!novaSenha) {
       mostrarNotificacao("❌ DIGITE A NOVA SENHA!", "error");
@@ -8304,7 +8338,12 @@
       return;
     }
     
-    if (!confirm(`🔑 CONFIRMA A TROCA DE SENHA?\n\nUsuário: ${usuarioTrocandoSenha.toUpperCase()}\nNova senha: ${novaSenha}\n\n⚠️ Esta ação não pode ser desfeita!`)) {
+    if (novaSenha === senhaAtual) {
+      mostrarNotificacao("⚠️ A NOVA SENHA É IGUAL À ATUAL!", "warning");
+      return;
+    }
+    
+    if (!confirm(`🔑 CONFIRMA A TROCA DE SENHA?\n\nUsuário: ${usuarioTrocandoSenha.toUpperCase()}\nSenha atual: ${senhaAtual}\nNova senha: ${novaSenha}\n\n⚠️ Esta ação não pode ser desfeita!`)) {
       return;
     }
     
@@ -8313,6 +8352,8 @@
     }).then(() => {
       registrarAuditoria('SENHA_ALTERADA_MASTER', {
         usuario: usuarioTrocandoSenha,
+        senhaAnterior: senhaAtual,
+        novaSenha: novaSenha,
         alteradoPor: loginUser,
         data: new Date().toISOString()
       });
