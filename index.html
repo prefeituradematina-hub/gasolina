@@ -5426,9 +5426,9 @@
   
   // NOVA FUNÇÃO: Atualizar gasto do posto específico do secretário
   function atualizarGastoPostoSecretario(abastecimento) {
-    if (!abastecimento || !abastecimento.usuario) return;
+    if (!abastecimento || !abastecimento.solicitadoPor) return;
     
-    const usuario = abastecimento.usuario.toLowerCase();
+    const usuario = abastecimento.solicitadoPor.toLowerCase();
     const posto = (abastecimento.posto || '').toUpperCase().trim();
     const valor = abastecimento.valor || 0;
     
@@ -7240,6 +7240,7 @@
       
       return {
         'DATA': r.data.split('-').reverse().join('/'),
+        'HORÁRIO': r.horario || '--:--',
         'PLACA': r.placa,
         'POSTO': r.posto || '---',
         'SECRETARIA': r.secretaria,
