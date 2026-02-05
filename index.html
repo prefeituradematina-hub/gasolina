@@ -14,6 +14,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF para exportação em PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 
 <!-- PWA Manifest -->
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiU2lzdGVtYSBkZSBDb21idXN0w61lbCIsInNob3J0X25hbWUiOiJDb21idXN0w61lbCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZjFmNWY5IiwidGhlbWVfY29sb3IiOiIjM2I4MmY2IiwiaWNvbnMiOlt7InNyYyI6Imh0dHBzOi8vaS5pbWd1ci5jb20vQUtNMjVXMS5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ==">
@@ -3091,9 +3095,12 @@
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
         <button class="btn-save" onclick="gerarRelatorio()">📊 GERAR</button>
         <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="limparFiltros()">🔄 LIMPAR</button>
-        <button class="btn-save" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);" onclick="exportarExcel()">📥 EXPORTAR EXCEL</button>
+        <button class="btn-save" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);" onclick="exportarExcel()">📥 EXCEL</button>
       </div>
-      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top:5px;" onclick="window.print()">🖨️ IMPRIMIR</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+        <button class="btn-save" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);" onclick="exportarPDF()">📄 EXPORTAR PDF</button>
+        <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="window.print()">🖨️ IMPRIMIR</button>
+      </div>
     </div>
     
     <!-- Relatórios -->
@@ -5690,13 +5697,15 @@
     
     const alertasMediaBaixa = [];
     
+    // Calcular média de cada veículo e adicionar aos alertas
     Object.values(veiculosComMedia).forEach(veiculo => {
       const abasts = veiculo.abastecimentos.sort((a, b) => b.timestamp - a.timestamp);
       
       if (abasts.length >= 2) {
         let totalKm = 0, totalLitros = 0;
         
-        for (let i = 0; i < Math.min(5, abasts.length - 1); i++) {
+        // MUDANÇA: Calcular TODOS os abastecimentos, não apenas os últimos 5
+        for (let i = 0; i < abasts.length - 1; i++) {
           const kmDif = abasts[i].km - abasts[i + 1].km;
           if (kmDif > 0) {
             totalKm += kmDif;
@@ -5714,20 +5723,48 @@
             placa: veiculo.placa,
             media: mediaGeral,
             tipo: veiculo.tipo,
-            limite: limiteAlerta
+            limite: limiteAlerta,
+            totalAbast: abasts.length
           });
         }
       }
+      
+      // NOVO: Também verificar abastecimentos individuais com média baixa
+      abasts.forEach(abast => {
+        if (abast.kml && abast.kml > 0) {
+          const limiteAlerta = LIMITES_ALERTA[abast.tipo] || 9;
+          if (abast.kml < limiteAlerta) {
+            // Verificar se já não está na lista (evitar duplicação)
+            const jaExiste = alertasMediaBaixa.some(a => a.placa === veiculo.placa);
+            if (!jaExiste) {
+              alertasMediaBaixa.push({
+                placa: veiculo.placa,
+                media: abast.kml,
+                tipo: abast.tipo,
+                limite: limiteAlerta,
+                totalAbast: 1,
+                ultimo: true
+              });
+            }
+          }
+        }
+      });
     });
     
     if (alertasMediaBaixa.length > 0) {
+      // Ordenar por média (pior primeiro)
+      alertasMediaBaixa.sort((a, b) => a.media - b.media);
+      
       alertasHtml += '<div class="alert-box danger">';
       alertasHtml += '<h4 style="margin:0 0 10px 0; font-size:14px;">🚨 ALERTAS DE EFICIÊNCIA BAIXA</h4>';
+      alertasHtml += `<p style="font-size:11px; color:#64748b; margin:0 0 10px 0;">${alertasMediaBaixa.length} veículo(s) com eficiência abaixo do limite</p>`;
       alertasMediaBaixa.forEach(alerta => {
+        const iconeStatus = alerta.ultimo ? '⚠️' : '🚨';
+        const infoAbast = alerta.ultimo ? '(Último abastecimento)' : `(Média de ${alerta.totalAbast} abastecimentos)`;
         alertasHtml += `
           <div style="margin-bottom:8px; padding:10px; background:white; border-radius:6px; border-left:4px solid var(--danger);">
-            <strong>${alerta.placa}</strong> - Média: <span style="color:var(--danger); font-weight:bold;">${alerta.media.toFixed(2)} km/l</span>
-            <span style="font-size:11px; color:#64748b;"> (${alerta.tipo} - Limite mínimo: ${alerta.limite} km/l)</span>
+            ${iconeStatus} <strong>${alerta.placa}</strong> - Média: <span style="color:var(--danger); font-weight:bold;">${alerta.media.toFixed(2)} km/l</span>
+            <span style="font-size:11px; color:#64748b;"> (${alerta.tipo} - Limite: ${alerta.limite} km/l) ${infoAbast}</span>
             <button class="btn-action" style="background:var(--accent); color:white; margin-left:10px; font-size:10px;" onclick="analisarVeiculo('${alerta.placa}')">
               📊 VER ANÁLISE
             </button>
@@ -6128,26 +6165,37 @@
       console.log("  usuarioData.limiteMatina:", usuarioData.limiteMatina);
       console.log("");
       
-      // NOVO: Calcular gastos separados por posto
+      // NOVO: Calcular gastos separados por posto APENAS DO MÊS ATUAL
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
+      
       const todosGastos = cache.filter(x => 
         (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
         x.secretaria === userSecretaria
       );
       
+      // Gastos do mês atual
+      const gastosMesAtual = todosGastos.filter(x => {
+        const dataAbast = new Date(x.data);
+        return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+      });
+      
       console.log("=== DEBUG TODOS OS GASTOS ===");
       console.log("Total de abastecimentos da secretaria:", todosGastos.length);
+      console.log("Abastecimentos do mês atual:", gastosMesAtual.length);
       todosGastos.forEach(g => {
-        console.log("  Posto:", g.posto, "| Valor:", g.valor, "| Status:", g.status);
+        console.log("  Posto:", g.posto, "| Valor:", g.valor, "| Status:", g.status, "| Data:", g.data);
       });
       console.log("");
       
-      // Separar por posto (busca flexível - ignora maiúsculas/minúsculas e espaços)
-      const gastosVictor = todosGastos.filter(x => {
+      // Separar por posto (APENAS DO MÊS ATUAL)
+      const gastosVictor = gastosMesAtual.filter(x => {
         const postoNome = (x.posto || '').toUpperCase().trim();
         return postoNome.includes('VICTOR');
       }).reduce((acc, item) => acc + item.valor, 0);
       
-      const gastosMatina = todosGastos.filter(x => {
+      const gastosMatina = gastosMesAtual.filter(x => {
         const postoNome = (x.posto || '').toUpperCase().trim();
         return postoNome.includes('MATINA');
       }).reduce((acc, item) => acc + item.valor, 0);
@@ -6234,10 +6282,10 @@
           </div>
         </div>
         
-        <!-- TOTAL GERAL -->
+        <!-- TOTAL GERAL DO MÊS -->
         <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
           <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-            📊 TOTAL GERAL
+            📊 TOTAL DO MÊS (VICTOR + MATINA)
           </div>
           <div style="font-size: 10px; display: flex; justify-content: space-between;">
             <span>💰 Limite Total: <strong>R$ ${limiteTotal.toFixed(2)}</strong></span>
@@ -6247,6 +6295,36 @@
           <div class="progress-bar" style="margin-top: 8px;">
             <div class="progress-fill ${saldoTotal < limiteTotal * 0.2 ? 'danger' : (saldoTotal < limiteTotal * 0.5 ? 'warning' : '')}" 
                  style="width:${Math.min(percentualTotal, 100)}%"></div>
+          </div>
+        </div>
+        
+        <!-- NOVO: Gastos do Mês e do Ano -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+          <div style="background: rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.5);">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">
+              💰 GASTOS ${new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()}
+            </div>
+            <div style="font-size: 16px; font-weight: bold;">
+              R$ ${todosGastos.filter(x => {
+                const dataAbast = new Date(x.data);
+                return dataAbast.getMonth() === new Date().getMonth() && 
+                       dataAbast.getFullYear() === new Date().getFullYear();
+              }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </div>
+            <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Mês atual (01 a 31)</div>
+          </div>
+          
+          <div style="background: rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; border: 2px solid rgba(59, 130, 246, 0.5);">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">
+              📊 GASTOS ${new Date().getFullYear()}
+            </div>
+            <div style="font-size: 16px; font-weight: bold;">
+              R$ ${todosGastos.filter(x => {
+                const dataAbast = new Date(x.data);
+                return dataAbast.getFullYear() === new Date().getFullYear();
+              }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </div>
+            <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Acumulado do ano</div>
           </div>
         </div>
       `;
@@ -6260,16 +6338,56 @@
         statusDiv.style.background = 'linear-gradient(135deg, var(--primary) 0%, #1e293b 100%)';
       }
     } else {
-      const totalGasto = cache.filter(x => x.status === STATUS.AUTORIZADO)
-        .reduce((acc, item) => acc + item.valor, 0);
+      // Calcular gastos do mês atual (01 a 31)
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
+      
+      const gastosMesAtual = cache.filter(x => {
+        if (x.status !== STATUS.AUTORIZADO) return false;
+        const dataAbast = new Date(x.data);
+        return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+      }).reduce((acc, item) => acc + item.valor, 0);
+      
+      // Calcular gastos totais do ano
+      const gastosTotaisAno = cache.filter(x => {
+        if (x.status !== STATUS.AUTORIZADO) return false;
+        const dataAbast = new Date(x.data);
+        return dataAbast.getFullYear() === anoAtual;
+      }).reduce((acc, item) => acc + item.valor, 0);
+      
+      // Gastos pendentes
       const totalPendente = cache.filter(x => x.status === STATUS.AGUARDANDO)
         .reduce((acc, item) => acc + item.valor, 0);
       const pendentesQtd = cache.filter(x => x.status === STATUS.AGUARDANDO).length;
+      
+      // Nome do mês atual
+      const nomeMes = new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
+      
       statusDiv.innerHTML = `
-        👤 OPERADOR: ${loginUser.toUpperCase()} 
-        <span class="badge badge-success">${userRole.toUpperCase()}</span><br>
-        💰 TOTAL APROVADO: R$ ${totalGasto.toFixed(2)} | 
-        ⏳ PENDENTE: R$ ${totalPendente.toFixed(2)} (${pendentesQtd})
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 10px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 15px; border-radius: 8px; color: white;">
+            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">💰 GASTOS ${nomeMes}</div>
+            <div style="font-size: 20px; font-weight: bold;">R$ ${gastosMesAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">De 01 a 31 do mês</div>
+          </div>
+          
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 15px; border-radius: 8px; color: white;">
+            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">📊 GASTOS TOTAIS ${anoAtual}</div>
+            <div style="font-size: 20px; font-weight: bold;">R$ ${gastosTotaisAno.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">Acumulado do ano</div>
+          </div>
+          
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 15px; border-radius: 8px; color: white;">
+            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">⏳ PENDENTES</div>
+            <div style="font-size: 20px; font-weight: bold;">R$ ${totalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">${pendentesQtd} aguardando</div>
+          </div>
+        </div>
+        
+        <div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 10px; background: var(--hover-bg); border-radius: 6px;">
+          👤 ${loginUser.toUpperCase()} | <span class="badge badge-success">${userRole.toUpperCase()}</span>
+        </div>
       `;
     }
   }
@@ -7270,6 +7388,168 @@
     
     // Log de auditoria
     registrarAuditoria('EXPORTACAO_EXCEL', {
+      registros: registros.length,
+      filtros: { dataInicial, dataFinal, secretaria, posto, combustivel, placa }
+    });
+  }
+  
+  // NOVA FUNÇÃO: Exportar relatório em PDF
+  function exportarPDF() {
+    if (!temPermissao('exportar_excel')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXPORTAR!", "error");
+      return;
+    }
+    
+    const dataInicial = document.getElementById('rel-data-inicial').value;
+    const dataFinal = document.getElementById('rel-data-final').value;
+    const secretaria = document.getElementById('rel-secretaria').value;
+    const posto = document.getElementById('rel-posto').value;
+    const combustivel = document.getElementById('rel-combustivel').value;
+    const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
+    
+    // Aplicar filtro por posto
+    let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    
+    if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
+    if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
+    if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
+    if (posto) registros = registros.filter(r => r.posto === posto);
+    if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
+    if (placa) registros = registros.filter(r => r.placa.includes(placa));
+    
+    if (registros.length === 0) {
+      mostrarNotificacao("❌ NENHUM REGISTRO PARA EXPORTAR!", "error");
+      return;
+    }
+    
+    // Criar PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    
+    // Título
+    doc.setFontSize(18);
+    doc.setTextColor(59, 130, 246);
+    doc.text('RELATÓRIO DE ABASTECIMENTOS', 148, 15, { align: 'center' });
+    
+    // Informações do relatório
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    let yPos = 25;
+    
+    doc.text(`Data de Geração: ${new Date().toLocaleString('pt-BR')}`, 14, yPos);
+    yPos += 5;
+    
+    if (dataInicial || dataFinal) {
+      const periodo = `Período: ${dataInicial ? dataInicial.split('-').reverse().join('/') : 'Início'} a ${dataFinal ? dataFinal.split('-').reverse().join('/') : 'Hoje'}`;
+      doc.text(periodo, 14, yPos);
+      yPos += 5;
+    }
+    
+    if (secretaria) {
+      doc.text(`Secretaria: ${secretaria}`, 14, yPos);
+      yPos += 5;
+    }
+    
+    if (posto) {
+      doc.text(`Posto: ${posto}`, 14, yPos);
+      yPos += 5;
+    }
+    
+    doc.text(`Total de Registros: ${registros.length}`, 14, yPos);
+    yPos += 8;
+    
+    // Preparar dados da tabela
+    const dadosTabela = registros.map(r => {
+      const media = calcularMedia(r);
+      return [
+        r.data.split('-').reverse().join('/'),
+        r.horario || '--:--',
+        r.placa,
+        r.posto || '---',
+        r.motorista.substring(0, 20), // Limitar caracteres
+        r.tipo,
+        r.km.toLocaleString('pt-BR'),
+        r.litro.toFixed(2),
+        media > 0 ? media.toFixed(2) : '---',
+        'R$ ' + r.valor.toFixed(2)
+      ];
+    });
+    
+    // Criar tabela
+    doc.autoTable({
+      startY: yPos,
+      head: [['DATA', 'HORA', 'PLACA', 'POSTO', 'MOTORISTA', 'COMB.', 'KM', 'LITROS', 'MÉDIA', 'VALOR']],
+      body: dadosTabela,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 7,
+        cellPadding: 2
+      },
+      columnStyles: {
+        0: { cellWidth: 20, halign: 'center' },  // DATA
+        1: { cellWidth: 15, halign: 'center' },  // HORA
+        2: { cellWidth: 22, halign: 'center' },  // PLACA
+        3: { cellWidth: 25 },                    // POSTO
+        4: { cellWidth: 35 },                    // MOTORISTA
+        5: { cellWidth: 20, halign: 'center' },  // COMBUSTÍVEL
+        6: { cellWidth: 20, halign: 'right' },   // KM
+        7: { cellWidth: 18, halign: 'right' },   // LITROS
+        8: { cellWidth: 18, halign: 'center' },  // MÉDIA
+        9: { cellWidth: 25, halign: 'right' }    // VALOR
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { top: 10, right: 14, bottom: 10, left: 14 }
+    });
+    
+    // Totais
+    const totalLitros = registros.reduce((acc, r) => acc + r.litro, 0);
+    const totalValor = registros.reduce((acc, r) => acc + r.valor, 0);
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    doc.text(`TOTAL DE LITROS: ${totalLitros.toFixed(2)} L`, 14, finalY);
+    doc.text(`TOTAL GASTO: R$ ${totalValor.toFixed(2)}`, 14, finalY + 6);
+    
+    // Rodapé
+    const pageCount = doc.internal.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont(undefined, 'normal');
+    
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.text(
+        `Página ${i} de ${pageCount}`,
+        148,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' }
+      );
+      doc.text(
+        'Sistema de Gestão de Combustível',
+        14,
+        doc.internal.pageSize.height - 10
+      );
+    }
+    
+    // Salvar PDF
+    const nomeArquivo = `Relatorio_Combustivel_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(nomeArquivo);
+    
+    mostrarNotificacao("✅ PDF EXPORTADO COM SUCESSO!", "success");
+    
+    // Log de auditoria
+    registrarAuditoria('EXPORTACAO_PDF', {
       registros: registros.length,
       filtros: { dataInicial, dataFinal, secretaria, posto, combustivel, placa }
     });
