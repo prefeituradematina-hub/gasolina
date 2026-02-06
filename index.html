@@ -4235,6 +4235,41 @@
   }
   
   // NOVO: Função corrigida para calcular média
+  // FUNÇÃO CENTRALIZADA: Calcular gastos de um mês específico
+  function calcularGastosMes(abastecimentos, ano, mes) {
+    // mes: 1=Janeiro, 2=Fevereiro, etc (formato humano, não 0-based)
+    const anoMesAlvo = `${ano}-${String(mes).padStart(2, '0')}`; // "2026-02"
+    
+    return abastecimentos.filter(x => {
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+      return anoMes === anoMesAlvo;
+    }).reduce((acc, item) => acc + (item.valor || 0), 0);
+  }
+  
+  // FUNÇÃO CENTRALIZADA: Calcular gastos de um ano inteiro
+  function calcularGastosAno(abastecimentos, ano) {
+    const anoAlvo = String(ano); // "2026"
+    
+    return abastecimentos.filter(x => {
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoAbast = dataAbast.substring(0, 4); // "YYYY"
+      return anoAbast === anoAlvo;
+    }).reduce((acc, item) => acc + (item.valor || 0), 0);
+  }
+  
+  // FUNÇÃO CENTRALIZADA: Filtrar abastecimentos por período de datas
+  function filtrarPorPeriodo(abastecimentos, dataInicial, dataFinal) {
+    return abastecimentos.filter(abast => {
+      const dataAbast = abast.data.split('T')[0]; // Remove hora, fica só "YYYY-MM-DD"
+      
+      if (dataInicial && dataAbast < dataInicial) return false;
+      if (dataFinal && dataAbast > dataFinal) return false;
+      
+      return true;
+    });
+  }
+  
   function calcularMedia(abastecimento) {
     // Buscar o último abastecimento APROVADO do mesmo veículo e combustível
     const ultimoAbast = cache
@@ -4381,7 +4416,7 @@
     
     const gastoAtual = cache
       .filter(x => 
-        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+        x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
         x.secretaria === userSecretaria
       )
       .reduce((acc, item) => acc + (item.valor || 0), 0);
@@ -4970,7 +5005,7 @@
           limitePostoAtual = usuarioData.limiteVictor || 0;
           gastoPostoAtual = cache
             .filter(x => 
-              (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+              x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
               x.secretaria === userSecretaria &&
               (x.posto || '').toUpperCase().includes('VICTOR')
             )
@@ -4980,7 +5015,7 @@
           limitePostoAtual = usuarioData.limiteMatina || 0;
           gastoPostoAtual = cache
             .filter(x => 
-              (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+              x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
               x.secretaria === userSecretaria &&
               (x.posto || '').toUpperCase().includes('MATINA')
             )
@@ -6170,15 +6205,19 @@
       const mesAtual = hoje.getMonth();
       const anoAtual = hoje.getFullYear();
       
+      // CORREÇÃO: Contar apenas AUTORIZADOS (igual aos relatórios)
       const todosGastos = cache.filter(x => 
-        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+        x.status === STATUS.AUTORIZADO &&  // Apenas autorizados
         x.secretaria === userSecretaria
       );
       
       // Gastos do mês atual
       const gastosMesAtual = todosGastos.filter(x => {
-        const dataAbast = new Date(x.data);
-        return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+        // CORREÇÃO: Usar comparação de string (igual ao filtro)
+        const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+        const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
+        return anoMes === anoMesAtual;
       });
       
       console.log("=== DEBUG TODOS OS GASTOS ===");
@@ -6306,9 +6345,11 @@
             </div>
             <div style="font-size: 16px; font-weight: bold;">
               R$ ${todosGastos.filter(x => {
-                const dataAbast = new Date(x.data);
-                return dataAbast.getMonth() === new Date().getMonth() && 
-                       dataAbast.getFullYear() === new Date().getFullYear();
+                const dataAbast = x.data.split('T')[0];
+                const anoMes = dataAbast.substring(0, 7);
+                const hoje = new Date();
+                const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+                return anoMes === anoMesAtual;
               }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
             </div>
             <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Mês atual (01 a 31)</div>
@@ -6320,8 +6361,9 @@
             </div>
             <div style="font-size: 16px; font-weight: bold;">
               R$ ${todosGastos.filter(x => {
-                const dataAbast = new Date(x.data);
-                return dataAbast.getFullYear() === new Date().getFullYear();
+                const dataAbast = x.data.split('T')[0];
+                const ano = dataAbast.substring(0, 4);
+                return ano === String(new Date().getFullYear());
               }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
             </div>
             <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Acumulado do ano</div>
@@ -6343,23 +6385,36 @@
       const mesAtual = hoje.getMonth();
       const anoAtual = hoje.getFullYear();
       
-      const gastosMesAtual = cache.filter(x => {
-        if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = new Date(x.data);
-        return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
-      }).reduce((acc, item) => acc + item.valor, 0);
+      // CORREÇÃO: Aplicar filtrarPorPosto ANTES de filtrar por data
+      const cacheFiltrado = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
       
-      // Calcular gastos totais do ano
-      const gastosTotaisAno = cache.filter(x => {
-        if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = new Date(x.data);
-        return dataAbast.getFullYear() === anoAtual;
-      }).reduce((acc, item) => acc + item.valor, 0);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🔍 DEBUG GASTOS DO MÊS");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("Mês Atual:", mesAtual, "(0=Jan, 1=Fev, ...)");
+      console.log("Ano Atual:", anoAtual);
+      console.log("Total após filtrarPorPosto:", cacheFiltrado.length);
+      
+      // USAR FUNÇÃO CENTRALIZADA
+      const gastosMesAtual = calcularGastosMes(cacheFiltrado, anoAtual, mesAtual + 1);
+      
+      console.log("Total de abastecimentos do mês:", cacheFiltrado.filter(x => {
+        const dataAbast = x.data.split('T')[0];
+        const anoMes = dataAbast.substring(0, 7);
+        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+        return anoMes === anoMesAtual;
+      }).length);
+      console.log("TOTAL CALCULADO:", gastosMesAtual.toFixed(2));
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("");
+      
+      // USAR FUNÇÃO CENTRALIZADA
+      const gastosTotaisAno = calcularGastosAno(cacheFiltrado, anoAtual);
       
       // Gastos pendentes
-      const totalPendente = cache.filter(x => x.status === STATUS.AGUARDANDO)
+      const totalPendente = filtrarPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO))
         .reduce((acc, item) => acc + item.valor, 0);
-      const pendentesQtd = cache.filter(x => x.status === STATUS.AGUARDANDO).length;
+      const pendentesQtd = filtrarPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO)).length;
       
       // Nome do mês atual
       const nomeMes = new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
@@ -7338,8 +7393,19 @@
     // CORREÇÃO: Aplicar filtro por posto
     let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
-    if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
-    if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
+    // CORREÇÃO CRÍTICA: Usar split('T')[0] para comparar apenas a data
+    if (dataInicial) {
+      registros = registros.filter(r => {
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast >= dataInicial;
+      });
+    }
+    if (dataFinal) {
+      registros = registros.filter(r => {
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast <= dataFinal;
+      });
+    }
     if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
     if (posto) registros = registros.filter(r => r.posto === posto);
     if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
@@ -7410,8 +7476,19 @@
     // Aplicar filtro por posto
     let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
-    if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
-    if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
+    // CORREÇÃO CRÍTICA: Usar split('T')[0] para comparar apenas a data
+    if (dataInicial) {
+      registros = registros.filter(r => {
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast >= dataInicial;
+      });
+    }
+    if (dataFinal) {
+      registros = registros.filter(r => {
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast <= dataFinal;
+      });
+    }
     if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
     if (posto) registros = registros.filter(r => r.posto === posto);
     if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
@@ -9032,28 +9109,45 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("🔍 DEBUG FILTRO DE RELATÓRIO");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("Data Inicial:", dataInicial || "NÃO INFORMADA");
+    console.log("Data Final:", dataFinal || "NÃO INFORMADA");
+    console.log("Secretaria:", secretaria || "TODAS");
+    console.log("Posto:", posto || "TODOS");
     
-    // NOVO: Filtro automático por posto para frentistas e autorizadores
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      // Buscar nome do posto vinculado
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        registros = registros.filter(r => r.posto === postoVinculado.nome);
-      }
-    }
+    // CORREÇÃO: Aplicar filtro por posto ANTES dos outros filtros
+    let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    console.log("Após filtrarPorPosto:", registros.length);
     
     if (dataInicial) {
-      registros = registros.filter(r => r.data >= dataInicial);
+      const antes = registros.length;
+      registros = registros.filter(r => {
+        // Extrair apenas YYYY-MM-DD (sem hora)
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast >= dataInicial;
+      });
+      console.log(`Filtro dataInicial (>= ${dataInicial}): ${antes} → ${registros.length}`);
     }
     if (dataFinal) {
-      registros = registros.filter(r => r.data <= dataFinal);
+      const antes = registros.length;
+      registros = registros.filter(r => {
+        // Extrair apenas YYYY-MM-DD (sem hora)
+        const dataAbast = r.data.split('T')[0];
+        return dataAbast <= dataFinal;
+      });
+      console.log(`Filtro dataFinal (<= ${dataFinal}): ${antes} → ${registros.length}`);
     }
     if (secretaria) {
+      const antes = registros.length;
       registros = registros.filter(r => r.secretaria === secretaria);
+      console.log(`Filtro secretaria (${secretaria}): ${antes} → ${registros.length}`);
     }
     if (posto) {
+      const antes = registros.length;
       registros = registros.filter(r => r.posto === posto);
+      console.log(`Filtro posto (${posto}): ${antes} → ${registros.length}`);
     }
     if (combustivel) {
       registros = registros.filter(r => r.tipo === combustivel);
@@ -9061,6 +9155,12 @@
     if (placa) {
       registros = registros.filter(r => r.placa.includes(placa));
     }
+    
+    const totalValor = registros.reduce((acc, r) => acc + r.valor, 0);
+    console.log("TOTAL FINAL:", registros.length, "registros");
+    console.log("VALOR TOTAL:", totalValor.toFixed(2));
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("");
     
     exibirRelatorioFiltrado(registros);
   }
@@ -9798,11 +9898,14 @@
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
     
-    // Dados do mês atual
+    // CORREÇÃO: Usar função centralizada para dados do mês atual
     const dadosMes = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+      // Usar substring para comparação consistente
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+      const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
+      return anoMes === anoMesAtual;
     });
     
     // Calcular métricas executivas
@@ -9815,10 +9918,13 @@
     const mesAnterior = mesAtual - 1 < 0 ? 11 : mesAtual - 1;
     const anoAnterior = mesAtual - 1 < 0 ? anoAtual - 1 : anoAtual;
     
+    // CORREÇÃO: Usar substring para mês anterior
     const dadosMesAnterior = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+      const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`; // "2026-01"
+      return anoMes === anoMesAnterior;
     });
     
     const totalMesAnterior = dadosMesAnterior.reduce((acc, item) => acc + item.valor, 0);
@@ -9975,21 +10081,32 @@
       secretariasOrdenadas.forEach(sec => {
         const limites = secretariasPorNome[sec];
         
-        // Calcular gastos separados por posto
+        // CORREÇÃO: Calcular gastos APENAS DO MÊS ATUAL separados por posto
+        const hoje = new Date();
+        const mesAtual = hoje.getMonth();
+        const anoAtual = hoje.getFullYear();
+        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
+        
         const gastosVictor = cache
-          .filter(x => 
-            x.secretaria === sec && 
-            x.status === STATUS.AUTORIZADO &&
-            (x.posto || '').toUpperCase().includes('VICTOR')
-          )
+          .filter(x => {
+            if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
+            if (!(x.posto || '').toUpperCase().includes('VICTOR')) return false;
+            // Filtrar apenas mês atual
+            const dataAbast = x.data.split('T')[0];
+            const anoMes = dataAbast.substring(0, 7);
+            return anoMes === anoMesAtual;
+          })
           .reduce((acc, item) => acc + item.valor, 0);
         
         const gastosMatina = cache
-          .filter(x => 
-            x.secretaria === sec && 
-            x.status === STATUS.AUTORIZADO &&
-            (x.posto || '').toUpperCase().includes('MATINA')
-          )
+          .filter(x => {
+            if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
+            if (!(x.posto || '').toUpperCase().includes('MATINA')) return false;
+            // Filtrar apenas mês atual
+            const dataAbast = x.data.split('T')[0];
+            const anoMes = dataAbast.substring(0, 7);
+            return anoMes === anoMesAtual;
+          })
           .reduce((acc, item) => acc + item.valor, 0);
         
         const realizadoTotal = gastosVictor + gastosMatina;
@@ -9998,7 +10115,6 @@
         const percentual = orcado > 0 ? (realizadoTotal / orcado * 100).toFixed(1) : 0;
         
         // Projeção
-        const hoje = new Date();
         const diasDecorridos = hoje.getDate();
         const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
         const projecao = diasDecorridos > 0 ? (realizadoTotal / diasDecorridos) * diasNoMes : 0;
@@ -13053,164 +13169,4 @@
     const input = document.getElementById(inputId);
     const container = document.getElementById(containerId);
     
-    if (!input || !container) return;
-    
-    input.addEventListener('input', function() {
-      const senha = this.value;
-      const validacao = validarSenhaForte(senha);
-      
-      let html = `
-        <div class="password-strength-bar">
-          <div class="password-strength-fill ${validacao.forca}"></div>
-        </div>
-        <div class="password-requirements">
-          <div class="${validacao.requisitos.tamanho ? 'valid' : 'invalid'}">
-            ${validacao.requisitos.tamanho ? '✓' : '✗'} Mínimo 8 caracteres
-          </div>
-          <div class="${validacao.requisitos.maiuscula ? 'valid' : 'invalid'}">
-            ${validacao.requisitos.maiuscula ? '✓' : '✗'} Letra maiúscula
-          </div>
-          <div class="${validacao.requisitos.minuscula ? 'valid' : 'invalid'}">
-            ${validacao.requisitos.minuscula ? '✓' : '✗'} Letra minúscula
-          </div>
-          <div class="${validacao.requisitos.numero ? 'valid' : 'invalid'}">
-            ${validacao.requisitos.numero ? '✓' : '✗'} Número
-          </div>
-          <div class="${validacao.requisitos.especial ? 'valid' : 'invalid'}">
-            ${validacao.requisitos.especial ? '✓' : '✗'} Caractere especial (!@#$%...)
-          </div>
-        </div>
-      `;
-      
-      container.innerHTML = html;
-      container.style.display = senha ? 'block' : 'none';
-    });
-  }
-  
-  // ===========================================
-  // NOTIFICAÇÕES EM TEMPO REAL
-  // ===========================================
-  
-  let listenerAbastecimentos = null;
-  let listenerPendentes = null;
-  
-  function iniciarNotificacoesTempoReal() {
-    // Listener para novos abastecimentos
-    listenerAbastecimentos = db.ref('abastecimentos').limitToLast(1).on('child_added', (snapshot) => {
-      const abast = snapshot.val();
-      
-      // Não notificar se for o próprio usuário ou se for inicial
-      if (abast.solicitadoPor === loginUser.toUpperCase()) return;
-      
-      // Verificar se não é carregamento inicial
-      const agora = Date.now();
-      if (agora - abast.timestamp < 10000) { // Menos de 10 segundos
-        mostrarNotificacaoTempoReal(
-          '⛽ NOVO ABASTECIMENTO',
-          `${abast.placa} - ${abast.solicitadoPor}`,
-          'info'
-        );
-        
-        // Atualizar badge se for pendente
-        if (abast.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento')) {
-          atualizarBadgePendentes();
-        }
-      }
-    });
-    
-    // Listener para mudanças em abastecimentos (autorizações/rejeições)
-    db.ref('abastecimentos').on('child_changed', (snapshot) => {
-      const abast = snapshot.val();
-      
-      if (abast.solicitadoPor === loginUser.toUpperCase() && abast.status !== STATUS.AGUARDANDO) {
-        const tipo = abast.status === STATUS.AUTORIZADO ? 'success' : 'error';
-        const icone = abast.status === STATUS.AUTORIZADO ? '✅' : '❌';
-        const texto = abast.status === STATUS.AUTORIZADO ? 'AUTORIZADO' : 'REJEITADO';
-        
-        mostrarNotificacaoTempoReal(
-          `${icone} ABASTECIMENTO ${texto}`,
-          `${abast.placa} - R$ ${abast.valor.toFixed(2)}`,
-          tipo
-        );
-      }
-      
-      // Atualizar badge
-      if (temPermissao('autorizar_abastecimento')) {
-        atualizarBadgePendentes();
-      }
-    });
-  }
-  
-  function mostrarNotificacaoTempoReal(titulo, mensagem, tipo = 'info') {
-    // Criar elemento de notificação
-    const notif = document.createElement('div');
-    notif.className = `realtime-notification ${tipo}`;
-    notif.innerHTML = `
-      <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">${titulo}</div>
-      <div style="font-size: 12px; color: #64748b;">${mensagem}</div>
-    `;
-    
-    document.body.appendChild(notif);
-    
-    // Tocar som se ativado
-    if (localStorage.getItem('somNotificacao') !== 'false') {
-      tocarSomNotificacao();
-    }
-    
-    // Remover após 5 segundos
-    setTimeout(() => {
-      notif.style.animation = 'slideOutRight 0.3s forwards';
-      setTimeout(() => notif.remove(), 300);
-    }, 5000);
-  }
-  
-  function pararNotificacoesTempoReal() {
-    if (listenerAbastecimentos) {
-      db.ref('abastecimentos').off('child_added', listenerAbastecimentos);
-    }
-    if (listenerPendentes) {
-      db.ref('abastecimentos').off('child_changed', listenerPendentes);
-    }
-  }
-  
-  // ===========================================
-  // INICIALIZAÇÃO
-  // ===========================================
-  
-  // Modificar função iniciarSistema para incluir novas funcionalidades
-  const iniciarSistemaOriginal = iniciarSistema;
-  
-  function iniciarSistema() {
-    iniciarSistemaOriginal();
-    
-    // Inicializar novas funcionalidades
-    initDarkMode();
-    initBuscaGlobal();
-    initAtalhospTeclado();
-    addFadeInAnimation();
-    
-    // Inicializar melhorias críticas
-    iniciarBackupAutomatico();
-    iniciarNotificacoesTempoReal();
-    
-    // Carregar dashboard
-    setTimeout(() => {
-      carregarDashboard();
-    }, 500);
-  }
-  
-  // Modificar trocarAba para recarregar dashboard
-  const trocarAbaOriginal = trocarAba;
-  
-  function trocarAba(aba) {
-    trocarAbaOriginal(aba);
-    
-    if (aba === 'dashboard') {
-      setTimeout(() => {
-        carregarDashboard();
-      }, 100);
-    }
-  }
-</script>
-</body>
-</html>
+    if (!input || !container
