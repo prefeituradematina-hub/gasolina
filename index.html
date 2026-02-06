@@ -2930,7 +2930,7 @@
       
       <div class="grid-form">
         <div>
-          <label>PLACA *</label>
+          <label id="label-placa">PLACA *</label>
           <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
         </div>
         <div>
@@ -2962,7 +2962,7 @@
         </div>
         <div>
           <label>COMBUSTÍVEL *</label>
-          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
+          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); ajustarCamposGas()">
       <option value="GASOLINA">GASOLINA</option>
       <option value="ALCOOL">ÁLCOOL</option>
       <option value="DIESEL">DIESEL</option>
@@ -2976,7 +2976,7 @@
         </div>
         <div>
           <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
-          <input type="text" id="f-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this); validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
+          <input type="number" id="f-km" placeholder="12345.6" step="0.1" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>LITROS *</label>
@@ -4329,11 +4329,40 @@
   }
   
   // NOVO: Função para verificar média em tempo real no formulário
+  // NOVA FUNÇÃO: Formatar placa para exibição (GAS-0000 → "GÁS (SEM PLACA)")
+  function formatarPlacaParaExibicao(placa) {
+    if (!placa || placa === 'GAS-0000') {
+      return '<span style="color: var(--warning); font-style: italic;">GÁS (SEM PLACA)</span>';
+    }
+    return `<b>${placa}</b>`;
+  }
+  
+  // NOVA FUNÇÃO: Ajustar campos quando combustível for GÁS
+  function ajustarCamposGas() {
+    const tipo = document.getElementById('f-tipo').value;
+    const labelPlaca = document.getElementById('label-placa');
+    const inputPlaca = document.getElementById('f-placa');
+    
+    if (tipo === 'GAS') {
+      // GÁS: Placa não obrigatória
+      labelPlaca.textContent = 'PLACA';
+      inputPlaca.placeholder = 'ABC-1234 (Opcional para GÁS)';
+      inputPlaca.style.borderColor = '';
+    } else {
+      // Outros: Placa obrigatória
+      labelPlaca.textContent = 'PLACA *';
+      inputPlaca.placeholder = 'ABC-1234';
+    }
+  }
+  
   function verificarMediaEmTempoReal() {
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
     const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
+    
+    // GÁS não precisa validar média (não tem placa obrigatória)
+    if (tipo === 'GAS') return;
     
     if (!placa || litros <= 0 || kmAtual <= 0) {
       // Se não tiver dados suficientes, não mostra o alerta
@@ -4753,6 +4782,12 @@
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
     const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
     
+    // GÁS não tem previsão de consumo (não tem KM)
+    if (tipo === 'GAS') {
+      document.getElementById('previsao-consumo').style.display = 'none';
+      return;
+    }
+    
     if (!placa || litros === 0 || kmAtual === 0) {
       document.getElementById('previsao-consumo').style.display = 'none';
       return;
@@ -4884,7 +4919,10 @@
   function validarAbastecimento(dados) {
     const erros = [];
     
-    if (!dados.placa || dados.placa.length < 7) {
+    // NOVO: Placa é opcional apenas para GÁS
+    const isGas = dados.tipo === 'GAS';
+    
+    if (!isGas && (!dados.placa || dados.placa.length < 7)) {
       erros.push("❌ PLACA INVÁLIDA");
     }
     if (!dados.posto || dados.posto === "") {
@@ -5108,8 +5146,14 @@
       const agora = new Date();
       const horario = agora.toTimeString().slice(0, 5); // HH:MM
       
+      // NOVO: Se for GÁS sem placa, usar identificador padrão
+      const placaFinal = dados.tipo === 'GAS' && (!dados.placa || dados.placa.trim() === '') 
+        ? 'GAS-0000' 
+        : dados.placa;
+      
       await db.ref('abastecimentos').push({
         ...dados,
+        placa: placaFinal,
         status: status,
         solicitadoPor: loginUser.toUpperCase(),
         timestamp: Date.now(),
@@ -6495,7 +6539,7 @@
               : `<span style="color: var(--text-secondary); font-size: 10px; opacity: 0.5;">--:--</span>`
             }
           </td>
-          <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+          <td>${formatarPlacaParaExibicao(d.placa)} ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
           <td>${d.tipo}</td>
@@ -9023,15 +9067,18 @@
   }
   
   // NOVA FUNÇÃO: Converter KM formatado para número
-  function converterKMParaNumero(kmFormatado) {
-    if (!kmFormatado) return 0;
+  function converterKMParaNumero(kmValue) {
+    if (!kmValue) return 0;
     
-    // Remove pontos e substitui vírgula por ponto
-    // Ex: "12.345,6" -> "123456"
-    const semPontos = kmFormatado.replace(/\./g, '');
-    const semVirgula = semPontos.replace(',', '');
+    // Se for string (dados antigos com máscara), converter
+    if (typeof kmValue === 'string') {
+      const semPontos = kmValue.replace(/\./g, '');
+      const semVirgula = semPontos.replace(',', '');
+      return parseFloat(semVirgula) / 10 || 0;
+    }
     
-    return parseFloat(semVirgula) / 10;
+    // Se já for número, retornar direto
+    return parseFloat(kmValue) || 0;
   }
   
   // NOVA FUNÇÃO: Formatar número para KM com vírgula
@@ -9263,7 +9310,7 @@
             : `<span style="color: var(--text-secondary); font-size: 9px; opacity: 0.5;">--:--</span>`
           }
         </td>
-        <td><b>${r.placa}</b> ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+        <td>${formatarPlacaParaExibicao(r.placa)} ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
         <td>${r.posto || '---'}</td>
         <td>${r.secretaria}</td>
         <td>${r.motorista}</td>
