@@ -6103,10 +6103,13 @@
       anoAnterior = anoAtual - 1;
     }
     
+    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`;
+    
     let dadosMesPassado = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
+      const dataAbast = x.data.split('T')[0];
+      const anoMes = dataAbast.substring(0, 7);
+      return anoMes === anoMesAnterior;
     });
     
     // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
@@ -6486,7 +6489,12 @@
         
         linhas += `<tr class="${classeAlerta}">
           <td>${d.data.split('-').reverse().join('/')}</td>
-          <td><span style="color: var(--text-secondary); font-size: 11px;">🕐 ${d.horario || '--:--'}</span></td>
+          <td>
+            ${d.horario 
+              ? `<span style="color: var(--text-primary); font-size: 12px; font-weight: 600;">🕐 ${d.horario}</span>` 
+              : `<span style="color: var(--text-secondary); font-size: 10px; opacity: 0.5;">--:--</span>`
+            }
+          </td>
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
@@ -7124,16 +7132,22 @@
       anoAnterior = anoAtual - 1;
     }
     
+    // CORREÇÃO: Usar substring para comparação consistente
+    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
+    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`; // "2026-01"
+    
     const dadosMesAtual = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+      return anoMes === anoMesAtual;
     });
     
     const dadosMesPassado = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
+      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+      return anoMes === anoMesAnterior;
     });
     
     const totalAtual = dadosMesAtual.reduce((acc, item) => acc + item.valor, 0);
@@ -7321,10 +7335,14 @@
         ano -= 1;
       }
       
+      // CORREÇÃO: Usar substring para filtrar por mês
+      const anoMesAlvo = `${ano}-${String(mes + 1).padStart(2, '0')}`; // "2026-02"
+      
       const dadosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = new Date(x.data);
-        return dataAbast.getMonth() === mes && dataAbast.getFullYear() === ano;
+        const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
+        const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
+        return anoMes === anoMesAlvo;
       });
       
       const totalMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -9218,6 +9236,7 @@
             <thead>
               <tr>
                 <th>DATA</th>
+                <th>HORÁRIO</th>
                 <th>PLACA</th>
                 <th>POSTO</th>
                 <th>SECRETARIA</th>
@@ -9238,6 +9257,12 @@
       
       html += `<tr class="${classeAlerta}">
         <td>${r.data.split('-').reverse().join('/')}</td>
+        <td>
+          ${r.horario 
+            ? `<span style="color: var(--text-primary); font-size: 11px; font-weight: 600;">🕐 ${r.horario}</span>` 
+            : `<span style="color: var(--text-secondary); font-size: 9px; opacity: 0.5;">--:--</span>`
+          }
+        </td>
         <td><b>${r.placa}</b> ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
         <td>${r.posto || '---'}</td>
         <td>${r.secretaria}</td>
@@ -10231,10 +10256,13 @@
         ano -= 1;
       }
       
+      const anoMesAlvo = `${ano}-${String(mes + 1).padStart(2, '0')}`;
+      
       const dadosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = new Date(x.data);
-        return dataAbast.getMonth() === mes && dataAbast.getFullYear() === ano;
+        const dataAbast = x.data.split('T')[0];
+        const anoMes = dataAbast.substring(0, 7);
+        return anoMes === anoMesAlvo;
       });
       
       const totalMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -10438,6 +10466,7 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(pessoaId).once('value');
     let gastoMes = 0;
@@ -10445,8 +10474,9 @@
     if (gastosSnapshot.exists()) {
       gastosSnapshot.forEach(snap => {
         const abast = snap.val();
-        const dataAbast = new Date(abast.data);
-        if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+        const dataAbast = abast.data.split('T')[0];
+        const anoMes = dataAbast.substring(0, 7);
+        if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
           gastoMes += abast.valor;
         }
       });
@@ -10484,6 +10514,7 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     // Buscar VIPs do Firebase
     const snapshotVIPs = await db.ref('pessoas_vip').once('value');
@@ -10514,8 +10545,9 @@
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
-          const dataAbast = new Date(abast.data);
-          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+          const dataAbast = abast.data.split('T')[0];
+          const anoMes = dataAbast.substring(0, 7);
+          if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
             gastoMes += abast.valor;
             qtdAbastecimentos++;
           }
@@ -11296,6 +11328,7 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     for (const snap of Object.values(snapshot.val())) {
       const vip = snap;
@@ -11308,8 +11341,9 @@
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
-          const dataAbast = new Date(abast.data);
-          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+          const dataAbast = abast.data.split('T')[0];
+          const anoMes = dataAbast.substring(0, 7);
+          if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
             gastoMes += abast.valor;
           }
         });
@@ -13169,4 +13203,164 @@
     const input = document.getElementById(inputId);
     const container = document.getElementById(containerId);
     
-    if (!input || !container
+    if (!input || !container) return;
+    
+    input.addEventListener('input', function() {
+      const senha = this.value;
+      const validacao = validarSenhaForte(senha);
+      
+      let html = `
+        <div class="password-strength-bar">
+          <div class="password-strength-fill ${validacao.forca}"></div>
+        </div>
+        <div class="password-requirements">
+          <div class="${validacao.requisitos.tamanho ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.tamanho ? '✓' : '✗'} Mínimo 8 caracteres
+          </div>
+          <div class="${validacao.requisitos.maiuscula ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.maiuscula ? '✓' : '✗'} Letra maiúscula
+          </div>
+          <div class="${validacao.requisitos.minuscula ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.minuscula ? '✓' : '✗'} Letra minúscula
+          </div>
+          <div class="${validacao.requisitos.numero ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.numero ? '✓' : '✗'} Número
+          </div>
+          <div class="${validacao.requisitos.especial ? 'valid' : 'invalid'}">
+            ${validacao.requisitos.especial ? '✓' : '✗'} Caractere especial (!@#$%...)
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      container.style.display = senha ? 'block' : 'none';
+    });
+  }
+  
+  // ===========================================
+  // NOTIFICAÇÕES EM TEMPO REAL
+  // ===========================================
+  
+  let listenerAbastecimentos = null;
+  let listenerPendentes = null;
+  
+  function iniciarNotificacoesTempoReal() {
+    // Listener para novos abastecimentos
+    listenerAbastecimentos = db.ref('abastecimentos').limitToLast(1).on('child_added', (snapshot) => {
+      const abast = snapshot.val();
+      
+      // Não notificar se for o próprio usuário ou se for inicial
+      if (abast.solicitadoPor === loginUser.toUpperCase()) return;
+      
+      // Verificar se não é carregamento inicial
+      const agora = Date.now();
+      if (agora - abast.timestamp < 10000) { // Menos de 10 segundos
+        mostrarNotificacaoTempoReal(
+          '⛽ NOVO ABASTECIMENTO',
+          `${abast.placa} - ${abast.solicitadoPor}`,
+          'info'
+        );
+        
+        // Atualizar badge se for pendente
+        if (abast.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento')) {
+          atualizarBadgePendentes();
+        }
+      }
+    });
+    
+    // Listener para mudanças em abastecimentos (autorizações/rejeições)
+    db.ref('abastecimentos').on('child_changed', (snapshot) => {
+      const abast = snapshot.val();
+      
+      if (abast.solicitadoPor === loginUser.toUpperCase() && abast.status !== STATUS.AGUARDANDO) {
+        const tipo = abast.status === STATUS.AUTORIZADO ? 'success' : 'error';
+        const icone = abast.status === STATUS.AUTORIZADO ? '✅' : '❌';
+        const texto = abast.status === STATUS.AUTORIZADO ? 'AUTORIZADO' : 'REJEITADO';
+        
+        mostrarNotificacaoTempoReal(
+          `${icone} ABASTECIMENTO ${texto}`,
+          `${abast.placa} - R$ ${abast.valor.toFixed(2)}`,
+          tipo
+        );
+      }
+      
+      // Atualizar badge
+      if (temPermissao('autorizar_abastecimento')) {
+        atualizarBadgePendentes();
+      }
+    });
+  }
+  
+  function mostrarNotificacaoTempoReal(titulo, mensagem, tipo = 'info') {
+    // Criar elemento de notificação
+    const notif = document.createElement('div');
+    notif.className = `realtime-notification ${tipo}`;
+    notif.innerHTML = `
+      <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">${titulo}</div>
+      <div style="font-size: 12px; color: #64748b;">${mensagem}</div>
+    `;
+    
+    document.body.appendChild(notif);
+    
+    // Tocar som se ativado
+    if (localStorage.getItem('somNotificacao') !== 'false') {
+      tocarSomNotificacao();
+    }
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+      notif.style.animation = 'slideOutRight 0.3s forwards';
+      setTimeout(() => notif.remove(), 300);
+    }, 5000);
+  }
+  
+  function pararNotificacoesTempoReal() {
+    if (listenerAbastecimentos) {
+      db.ref('abastecimentos').off('child_added', listenerAbastecimentos);
+    }
+    if (listenerPendentes) {
+      db.ref('abastecimentos').off('child_changed', listenerPendentes);
+    }
+  }
+  
+  // ===========================================
+  // INICIALIZAÇÃO
+  // ===========================================
+  
+  // Modificar função iniciarSistema para incluir novas funcionalidades
+  const iniciarSistemaOriginal = iniciarSistema;
+  
+  function iniciarSistema() {
+    iniciarSistemaOriginal();
+    
+    // Inicializar novas funcionalidades
+    initDarkMode();
+    initBuscaGlobal();
+    initAtalhospTeclado();
+    addFadeInAnimation();
+    
+    // Inicializar melhorias críticas
+    iniciarBackupAutomatico();
+    iniciarNotificacoesTempoReal();
+    
+    // Carregar dashboard
+    setTimeout(() => {
+      carregarDashboard();
+    }, 500);
+  }
+  
+  // Modificar trocarAba para recarregar dashboard
+  const trocarAbaOriginal = trocarAba;
+  
+  function trocarAba(aba) {
+    trocarAbaOriginal(aba);
+    
+    if (aba === 'dashboard') {
+      setTimeout(() => {
+        carregarDashboard();
+      }, 100);
+    }
+  }
+</script>
+</body>
+</html>
