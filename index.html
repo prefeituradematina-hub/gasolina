@@ -2976,7 +2976,7 @@
         </div>
         <div>
           <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
-          <input type="number" id="f-km" placeholder="12345.6" step="0.1" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
+          <input type="text" id="f-km" placeholder="12345,6" inputmode="decimal" oninput="aplicarMascaraKmVirgula(this); validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>LITROS *</label>
@@ -4721,8 +4721,12 @@
     }
     
     if (role === 'secretarios' && sec !== "") {
+      // Define a secretaria padrão do usuário
       document.getElementById('f-sec').value = sec;
-      document.getElementById('f-sec').disabled = true;
+      
+      // REMOVIDO: disabled = true
+      // Permite que o secretário possa usar veículos de outras secretarias
+      // Mas mantém SUA secretaria como padrão
     }
     
     mostrarNotificacao(`✅ BEM-VINDO, ${u.toUpperCase()}!`, "success");
@@ -6286,39 +6290,86 @@
         return postoNome.includes('MATINA');
       }).reduce((acc, item) => acc + item.valor, 0);
       
-      const gastoTotal = gastosVictor + gastosMatina;
-      
       console.log("💸 GASTOS CALCULADOS:");
       console.log("  Gastos Victor:", gastosVictor.toFixed(2));
       console.log("  Gastos Matina:", gastosMatina.toFixed(2));
-      console.log("  Gasto Total:", gastoTotal.toFixed(2));
       console.log("");
       
-      // USAR APENAS OS VALORES DEFINIDOS PELO MASTER - SEM FALLBACK AUTOMÁTICO
-      const limiteVictor = usuarioData.limiteVictor || 0;
-      const limiteMatina = usuarioData.limiteMatina || 0;
-      const limiteTotal = limiteVictor + limiteMatina;
+      // CORREÇÃO: Mostrar apenas limites dos postos vinculados ao autorizador
+      let limitesAutorizador = {};
+      let gastosAutorizador = {};
       
-      console.log("🎯 LIMITES FINAIS (USADOS NO DASHBOARD):");
-      console.log("  limiteVictor:", limiteVictor);
-      console.log("  limiteMatina:", limiteMatina);
-      console.log("  limiteTotal:", limiteTotal);
-      console.log("");
-      console.log("💳 SALDOS CALCULADOS:");
-      console.log("  Saldo Victor:", (limiteVictor - gastosVictor).toFixed(2));
-      console.log("  Saldo Matina:", (limiteMatina - gastosMatina).toFixed(2));
+      // Se for autorizador, filtrar apenas os postos que ele tem acesso
+      if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+        console.log("🔐 AUTORIZADOR - Postos vinculados:", userPostosVinculados);
+        
+        userPostosVinculados.forEach(postoId => {
+          const posto = postos.find(p => p.id === postoId);
+          if (posto) {
+            const nomePostoUpper = posto.nome.toUpperCase();
+            
+            // Identificar qual limite usar baseado no nome do posto
+            if (nomePostoUpper.includes('VICTOR')) {
+              limitesAutorizador['VICTOR'] = usuarioData.limiteVictor || 0;
+              gastosAutorizador['VICTOR'] = gastosVictor;
+            } else if (nomePostoUpper.includes('MATINA')) {
+              limitesAutorizador['MATINA'] = usuarioData.limiteMatina || 0;
+              gastosAutorizador['MATINA'] = gastosMatina;
+            }
+          }
+        });
+        
+        console.log("💳 LIMITES DO AUTORIZADOR:", limitesAutorizador);
+        console.log("💸 GASTOS DO AUTORIZADOR:", gastosAutorizador);
+      } else {
+        // Se não for autorizador (secretário), mostrar ambos os postos
+        limitesAutorizador['VICTOR'] = usuarioData.limiteVictor || 0;
+        limitesAutorizador['MATINA'] = usuarioData.limiteMatina || 0;
+        gastosAutorizador['VICTOR'] = gastosVictor;
+        gastosAutorizador['MATINA'] = gastosMatina;
+      }
+      
+      // Calcular totais apenas dos postos vinculados
+      const limiteTotal = Object.values(limitesAutorizador).reduce((acc, val) => acc + val, 0);
+      const gastoTotal = Object.values(gastosAutorizador).reduce((acc, val) => acc + val, 0);
+      
+      console.log("🎯 TOTAIS CALCULADOS:");
+      console.log("  Limite Total:", limiteTotal);
+      console.log("  Gasto Total:", gastoTotal);
       console.log("  Saldo Total:", (limiteTotal - gastoTotal).toFixed(2));
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("");
       
-      // Calcular saldos
-      const saldoVictor = limiteVictor - gastosVictor;
-      const saldoMatina = limiteMatina - gastosMatina;
-      const saldoTotal = limiteTotal - gastoTotal;
+      // Montar HTML dos cards dinamicamente (apenas postos vinculados)
+      let cardsHTML = '';
       
-      // Calcular percentuais
-      const percentualVictor = limiteVictor > 0 ? (gastosVictor / limiteVictor * 100).toFixed(1) : 0;
-      const percentualMatina = limiteMatina > 0 ? (gastosMatina / limiteMatina * 100).toFixed(1) : 0;
+      Object.keys(limitesAutorizador).forEach(nomePosto => {
+        const limite = limitesAutorizador[nomePosto];
+        const gasto = gastosAutorizador[nomePosto];
+        const saldo = limite - gasto;
+        const percentual = limite > 0 ? (gasto / limite * 100).toFixed(1) : 0;
+        const cor = nomePosto === 'VICTOR' ? '#3b82f6' : '#10b981';
+        
+        cardsHTML += `
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid ${cor};">
+            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
+              ⛽ POSTO ${nomePosto}
+            </div>
+            <div style="font-size: 10px; line-height: 1.8;">
+              <div>💰 Limite: <strong>R$ ${limite.toFixed(2)}</strong></div>
+              <div>📉 Gasto: <strong>R$ ${gasto.toFixed(2)}</strong> (${percentual}%)</div>
+              <div>✅ Disponível: <strong style="color: ${saldo < limite * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldo.toFixed(2)}</strong></div>
+            </div>
+            <div class="progress-bar" style="margin-top: 8px;">
+              <div class="progress-fill ${saldo < limite * 0.2 ? 'danger' : (saldo < limite * 0.5 ? 'warning' : '')}" 
+                   style="width:${Math.min(percentual, 100)}%"></div>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Calcular saldo total
+      const saldoTotal = limiteTotal - gastoTotal;
       const percentualTotal = limiteTotal > 0 ? (gastoTotal / limiteTotal * 100).toFixed(1) : 0;
       
       statusDiv.innerHTML = `
@@ -6326,7 +6377,7 @@
           📊 ${userSecretaria}
         </div>
         
-        ${(limiteVictor === 0 && limiteMatina === 0) ? `
+        ${limiteTotal === 0 ? `
         <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ef4444; font-size: 11px;">
           ⚠️ <strong>LIMITES NÃO CONFIGURADOS</strong><br>
           <span style="opacity: 0.9; font-size: 10px;">Entre em contato com o administrador para definir os limites mensais por posto.<br>
@@ -6334,44 +6385,15 @@
         </div>
         ` : ''}
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-          <!-- POSTO VICTOR -->
-          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
-              ⛽ POSTO VICTOR
-            </div>
-            <div style="font-size: 10px; line-height: 1.8;">
-              <div>💰 Limite: <strong>R$ ${limiteVictor.toFixed(2)}</strong></div>
-              <div>📉 Gasto: <strong>R$ ${gastosVictor.toFixed(2)}</strong> (${percentualVictor}%)</div>
-              <div>✅ Disponível: <strong style="color: ${saldoVictor < limiteVictor * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoVictor.toFixed(2)}</strong></div>
-            </div>
-            <div class="progress-bar" style="margin-top: 8px;">
-              <div class="progress-fill ${saldoVictor < limiteVictor * 0.2 ? 'danger' : (saldoVictor < limiteVictor * 0.5 ? 'warning' : '')}" 
-                   style="width:${Math.min(percentualVictor, 100)}%"></div>
-            </div>
-          </div>
-          
-          <!-- POSTO MATINA -->
-          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
-              ⛽ POSTO MATINA
-            </div>
-            <div style="font-size: 10px; line-height: 1.8;">
-              <div>💰 Limite: <strong>R$ ${limiteMatina.toFixed(2)}</strong></div>
-              <div>📉 Gasto: <strong>R$ ${gastosMatina.toFixed(2)}</strong> (${percentualMatina}%)</div>
-              <div>✅ Disponível: <strong style="color: ${saldoMatina < limiteMatina * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoMatina.toFixed(2)}</strong></div>
-            </div>
-            <div class="progress-bar" style="margin-top: 8px;">
-              <div class="progress-fill ${saldoMatina < limiteMatina * 0.2 ? 'danger' : (saldoMatina < limiteMatina * 0.5 ? 'warning' : '')}" 
-                   style="width:${Math.min(percentualMatina, 100)}%"></div>
-            </div>
-          </div>
+        <div style="display: grid; grid-template-columns: ${Object.keys(limitesAutorizador).length === 1 ? '1fr' : '1fr 1fr'}; gap: 15px; margin-bottom: 15px;">
+          ${cardsHTML}
         </div>
         
-        <!-- TOTAL GERAL DO MÊS -->
+        <!-- TOTAL GERAL DO MÊS - Dinâmico -->
+        ${Object.keys(limitesAutorizador).length > 1 ? `
         <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
           <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-            📊 TOTAL DO MÊS (VICTOR + MATINA)
+            📊 TOTAL DO MÊS (${Object.keys(limitesAutorizador).join(' + ')})
           </div>
           <div style="font-size: 10px; display: flex; justify-content: space-between;">
             <span>💰 Limite Total: <strong>R$ ${limiteTotal.toFixed(2)}</strong></span>
@@ -6383,6 +6405,7 @@
                  style="width:${Math.min(percentualTotal, 100)}%"></div>
           </div>
         </div>
+        ` : ''}
         
         <!-- NOVO: Gastos do Mês e do Ano -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
@@ -9039,6 +9062,30 @@
   }
   
   // NOVA FUNÇÃO: Máscara de KM com vírgula decimal (ex: 12.345,6)
+  // NOVA MÁSCARA: KM com vírgula (SEM pontos)
+  // Permite: 12345,6 (números + vírgula + 1 decimal)
+  function aplicarMascaraKmVirgula(input) {
+    let valor = input.value;
+    
+    // Remove tudo exceto números e vírgula
+    valor = valor.replace(/[^\d,]/g, '');
+    
+    // Permite apenas UMA vírgula
+    const partes = valor.split(',');
+    if (partes.length > 2) {
+      valor = partes[0] + ',' + partes.slice(1).join('');
+    }
+    
+    // Limita a 1 casa decimal após a vírgula
+    if (partes.length === 2) {
+      partes[1] = partes[1].substring(0, 1);
+      valor = partes[0] + (partes[1] ? ',' + partes[1] : '');
+    }
+    
+    input.value = valor;
+  }
+  
+  // FUNÇÃO ANTIGA (manter para compatibilidade com dados antigos)
   function aplicarMascaraKM(input) {
     let valor = input.value;
     
@@ -9070,15 +9117,31 @@
   function converterKMParaNumero(kmValue) {
     if (!kmValue) return 0;
     
-    // Se for string (dados antigos com máscara), converter
-    if (typeof kmValue === 'string') {
-      const semPontos = kmValue.replace(/\./g, '');
-      const semVirgula = semPontos.replace(',', '');
-      return parseFloat(semVirgula) / 10 || 0;
+    // Se for número direto, retornar
+    if (typeof kmValue === 'number') {
+      return parseFloat(kmValue) || 0;
     }
     
-    // Se já for número, retornar direto
-    return parseFloat(kmValue) || 0;
+    // Se for string, processar
+    if (typeof kmValue === 'string') {
+      // Nova máscara: "12345,6" → 12345.6
+      if (kmValue.includes(',') && !kmValue.includes('.')) {
+        const numero = kmValue.replace(',', '.');
+        return parseFloat(numero) || 0;
+      }
+      
+      // Máscara antiga: "12.345,6" → 12345.6
+      if (kmValue.includes('.') || kmValue.includes(',')) {
+        const semPontos = kmValue.replace(/\./g, '');
+        const comPonto = semPontos.replace(',', '.');
+        return parseFloat(comPonto) || 0;
+      }
+      
+      // Apenas números: "12345" → 12345
+      return parseFloat(kmValue) || 0;
+    }
+    
+    return 0;
   }
   
   // NOVA FUNÇÃO: Formatar número para KM com vírgula
@@ -9104,9 +9167,8 @@
     const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
       document.getElementById('f-mot').value = veiculo.motorista || '';
-      if (veiculo.secretaria && veiculo.secretaria !== '') {
-        document.getElementById('f-sec').value = veiculo.secretaria;
-      }
+      // REMOVIDO: Não preencher secretaria automaticamente
+      // Cada secretário deve escolher SUA própria secretaria
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
       calc();
       return;
@@ -9116,7 +9178,8 @@
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     if (ultimoAbast) {
       document.getElementById('f-mot').value = ultimoAbast.motorista;
-      document.getElementById('f-sec').value = ultimoAbast.secretaria;
+      // REMOVIDO: Não preencher secretaria automaticamente
+      // Cada secretário deve escolher SUA própria secretaria
       document.getElementById('f-tipo').value = ultimoAbast.tipo;
       calc();
     }
@@ -13342,72 +13405,4 @@
     // Criar elemento de notificação
     const notif = document.createElement('div');
     notif.className = `realtime-notification ${tipo}`;
-    notif.innerHTML = `
-      <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">${titulo}</div>
-      <div style="font-size: 12px; color: #64748b;">${mensagem}</div>
-    `;
-    
-    document.body.appendChild(notif);
-    
-    // Tocar som se ativado
-    if (localStorage.getItem('somNotificacao') !== 'false') {
-      tocarSomNotificacao();
-    }
-    
-    // Remover após 5 segundos
-    setTimeout(() => {
-      notif.style.animation = 'slideOutRight 0.3s forwards';
-      setTimeout(() => notif.remove(), 300);
-    }, 5000);
-  }
-  
-  function pararNotificacoesTempoReal() {
-    if (listenerAbastecimentos) {
-      db.ref('abastecimentos').off('child_added', listenerAbastecimentos);
-    }
-    if (listenerPendentes) {
-      db.ref('abastecimentos').off('child_changed', listenerPendentes);
-    }
-  }
-  
-  // ===========================================
-  // INICIALIZAÇÃO
-  // ===========================================
-  
-  // Modificar função iniciarSistema para incluir novas funcionalidades
-  const iniciarSistemaOriginal = iniciarSistema;
-  
-  function iniciarSistema() {
-    iniciarSistemaOriginal();
-    
-    // Inicializar novas funcionalidades
-    initDarkMode();
-    initBuscaGlobal();
-    initAtalhospTeclado();
-    addFadeInAnimation();
-    
-    // Inicializar melhorias críticas
-    iniciarBackupAutomatico();
-    iniciarNotificacoesTempoReal();
-    
-    // Carregar dashboard
-    setTimeout(() => {
-      carregarDashboard();
-    }, 500);
-  }
-  
-  // Modificar trocarAba para recarregar dashboard
-  const trocarAbaOriginal = trocarAba;
-  
-  function trocarAba(aba) {
-    trocarAbaOriginal(aba);
-    
-    if (aba === 'dashboard') {
-      setTimeout(() => {
-        carregarDashboard();
-      }, 100);
-    }
-  }
-</script>
-</body>
-</html>
+    notif.innerHTML 
