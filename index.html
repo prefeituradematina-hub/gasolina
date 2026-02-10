@@ -14,10 +14,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- jsPDF para exportação em PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
 
 <!-- PWA Manifest -->
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiU2lzdGVtYSBkZSBDb21idXN0w61lbCIsInNob3J0X25hbWUiOiJDb21idXN0w61lbCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZjFmNWY5IiwidGhlbWVfY29sb3IiOiIjM2I4MmY2IiwiaWNvbnMiOlt7InNyYyI6Imh0dHBzOi8vaS5pbWd1ci5jb20vQUtNMjVXMS5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ==">
@@ -35,42 +31,9 @@
       --warning: #f59e0b; 
       --danger: #ef4444; 
       --bg: #f1f5f9; 
-      --card-bg: #ffffff;
-      --text-primary: #1e293b;
-      --text-secondary: #64748b;
-      --border-color: #e2e8f0;
-      --hover-bg: #f8fafc;
-      --shadow: rgba(0, 0, 0, 0.1);
-      
-      /* Transição suave */
-      --transition: all 0.3s ease;
   }
-  
-  /* MODO ESCURO */
-  [data-theme="dark"] {
-      --primary: #1e293b;
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text-primary: #f1f5f9;
-      --text-secondary: #94a3b8;
-      --border-color: #334155;
-      --hover-bg: #334155;
-      --shadow: rgba(0, 0, 0, 0.5);
-  }
-  
-  * { 
-      box-sizing: border-box; 
-      font-family: 'Segoe UI', sans-serif; 
-      text-transform: uppercase;
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-  }
-  
-  body { 
-      background-color: var(--bg); 
-      margin: 0; 
-      padding: 10px; 
-      color: var(--text-primary); 
-  }
+  * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; }
+  body { background-color: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
   .container { max-width: 1400px; margin: 0 auto; }
   .blurred { filter: blur(15px); pointer-events: none; }
   
@@ -202,10 +165,10 @@
       margin-bottom: 20px; 
       flex-wrap: wrap; 
       gap: 10px;
-      background: var(--card-bg);
+      background: white;
       padding: 15px 20px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px var(--shadow);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
   .nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
   .tab-btn { 
@@ -213,18 +176,15 @@
       border: none; 
       border-radius: 8px; 
       cursor: pointer; 
-      background: var(--hover-bg); 
-      color: var(--text-primary);
+      background: #e2e8f0; 
       font-weight: bold; 
       font-size: 11px; 
       transition: all 0.3s;
       position: relative;
-      border: 2px solid var(--border-color);
   }
   .tab-btn.active { 
       background: var(--accent); 
       color: white;
-      border-color: var(--accent);
       box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
   .tab-btn:hover { opacity: 0.8; transform: translateY(-1px); }
@@ -273,25 +233,6 @@
       50% { transform: scale(1.05); }
   }
   
-  /* Botão de tema */
-  .theme-toggle {
-      background: var(--card-bg);
-      color: var(--text-primary);
-      border: 2px solid var(--border-color);
-      padding: 10px 15px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 18px;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-  }
-  .theme-toggle:hover {
-      background: var(--hover-bg);
-      transform: translateY(-2px);
-  }
-  
   .btn-logout { 
       background: var(--danger); 
       color: white; 
@@ -308,20 +249,19 @@
   }
   
   .card { 
-      background: var(--card-bg); 
+      background: white; 
       border-radius: 12px; 
       padding: 24px; 
-      box-shadow: 0 2px 8px var(--shadow); 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
       margin-bottom: 20px;
       transition: all 0.3s;
-      border: 1px solid var(--border-color);
   }
   .card:hover {
-      box-shadow: 0 4px 16px var(--shadow);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   }
   .card h3 { 
       margin-top: 0; 
-      color: var(--text-primary);
+      color: var(--primary);
       font-size: 18px;
       border-bottom: 3px solid var(--accent);
       padding-bottom: 10px;
@@ -366,7 +306,7 @@
   .stat-card .stat-value {
       font-size: 24px;
       font-weight: bold;
-      color: var(--text-primary);
+      color: var(--primary);
   }
   .stat-card .stat-icon {
       font-size: 32px;
@@ -397,26 +337,20 @@
       width: 100%; 
       border-collapse: collapse; 
       min-width: 1000px; 
-      font-size: 11px;
-      background: var(--card-bg);
+      font-size: 11px; 
   }
   th { 
-      background: var(--hover-bg); 
+      background: #f8fafc; 
       padding: 12px; 
       text-align: left; 
-      border-bottom: 2px solid var(--border-color); 
+      border-bottom: 2px solid #e2e8f0; 
       font-weight: bold;
       position: sticky;
       top: 0;
       z-index: 10;
-      color: var(--text-primary);
   }
-  td { 
-      padding: 12px; 
-      border-bottom: 1px solid var(--border-color);
-      color: var(--text-primary);
-  }
-  tr:hover { background: var(--hover-bg); }
+  td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
   
   .alerta-media { 
       background-color: #fee2e2 !important; 
@@ -475,12 +409,10 @@
   input, select { 
       width: 100%; 
       padding: 12px; 
-      border: 2px solid var(--border-color); 
+      border: 2px solid #e2e8f0; 
       border-radius: 8px; 
       margin-bottom: 5px;
       transition: all 0.3s;
-      background: var(--card-bg);
-      color: var(--text-primary);
   }
   input:focus, select:focus { 
       outline: none; 
@@ -491,7 +423,7 @@
   label { 
       font-size: 10px; 
       font-weight: bold; 
-      color: var(--text-secondary); 
+      color: #64748b; 
       display: block; 
       margin-bottom: 5px;
   }
@@ -510,7 +442,6 @@
   }
   .btn-aprovar { background: var(--success); color: white; }
   .btn-rejeitar { background: var(--danger); color: white; }
-  .btn-editar { background: #f59e0b; color: white; }
   .btn-deletar { background: #64748b; color: white; }
   
   .grid-form { 
@@ -562,7 +493,7 @@
   .progress-bar {
       width: 100%;
       height: 8px;
-      background: var(--border-color);
+      background: #e2e8f0;
       border-radius: 4px;
       overflow: hidden;
       margin-top: 10px;
@@ -611,7 +542,7 @@
       to { opacity: 1; }
   }
   .modal-content {
-      background: var(--card-bg);
+      background: #fff;
       padding: 30px;
       border-radius: 16px;
       max-width: 500px;
@@ -620,7 +551,6 @@
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       animation: slideUp 0.3s;
-      border: 1px solid var(--border-color);
   }
   @keyframes slideUp {
       from { transform: translateY(50px); opacity: 0; }
@@ -2338,29 +2268,9 @@
           <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
         </select>
       </div>
-      <div id="edit-field-limit" style="display:none;">
-        <label style="font-size: 12px; font-weight: bold; color: var(--accent); margin-bottom: 10px; display: block;">
-          💰 LIMITES MENSAIS POR POSTO
-        </label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px; border: 2px solid var(--border-color);">
-          <div>
-            <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO VICTOR (R$)</label>
-            <input type="number" id="edit-limit-victor" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
-            <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
-              Gasolina, Diesel, Diesel S10, Gás
-            </div>
-          </div>
-          <div>
-            <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO MATINA (R$)</label>
-            <input type="number" id="edit-limit-matina" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
-            <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
-              Apenas Gasolina
-            </div>
-          </div>
-        </div>
-        <div style="margin-top: 8px; padding: 8px; background: #dbeafe; border-radius: 6px; font-size: 10px; color: #1e40af;">
-          💡 <strong>TOTAL:</strong> <span id="edit-total-limite-preview" style="color: #1e40af;">R$ 0,00</span>
-        </div>
+      <div id="edit-field-limit">
+        <label>LIMITE MENSAL (R$)</label>
+        <input type="number" id="edit-limit" placeholder="0.00" step="0.01">
       </div>
       <div id="edit-field-sec">
         <label>SECRETARIA VINCULADA</label>
@@ -2518,49 +2428,6 @@
   </div>
 </div>
 
-<!-- Modal de Trocar Senha -->
-<div id="modal-trocar-senha" class="modal">
-  <div class="modal-content" style="max-width: 500px;">
-    <span class="modal-close" onclick="fecharModalTrocarSenha()">&times;</span>
-    <h3>🔑 TROCAR SENHA DO USUÁRIO</h3>
-    <p style="font-size:12px; color:#64748b; margin-bottom:20px;">
-      Visualize a senha atual e defina uma nova senha para o usuário
-    </p>
-    
-    <div style="margin-bottom:20px;">
-      <label style="font-weight:bold; color:var(--text-primary);">USUÁRIO</label>
-      <input type="text" id="trocar-senha-usuario" readonly style="background:#f1f5f9; font-weight:bold; font-size:16px; text-transform:uppercase; cursor:not-allowed;">
-    </div>
-    
-    <div style="margin-bottom:20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 6px;">
-      <label style="font-weight:bold; color:#3b82f6; font-size: 12px;">🔓 SENHA ATUAL</label>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
-        <input type="password" id="trocar-senha-atual" readonly style="background:#fff; font-weight:bold; font-size:16px; cursor:text; flex: 1; border: 2px solid #3b82f6;">
-        <button onclick="toggleSenhaAtual()" style="padding: 10px 15px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="Mostrar/Ocultar senha">
-          👁️
-        </button>
-      </div>
-    </div>
-    
-    <div style="margin-bottom:20px;">
-      <label style="font-weight:bold; color:var(--text-primary);">🔒 NOVA SENHA *</label>
-      <input type="text" id="trocar-senha-nova" placeholder="Digite a nova senha" style="font-size:16px;">
-      <div style="font-size:10px; color:#64748b; margin-top:5px;">
-        💡 A senha deve ter pelo menos 4 caracteres
-      </div>
-    </div>
-    
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-      <button class="btn-save" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="confirmarTrocarSenha()">
-        ✅ CONFIRMAR
-      </button>
-      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="fecharModalTrocarSenha()">
-        ❌ CANCELAR
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- Modal de Permissões de Perfil -->
 <div id="modal-permissoes" class="modal">
   <div class="modal-content" style="max-width: 700px;">
@@ -2641,7 +2508,7 @@
       </div>
       <div>
         <label>ODÔMETRO FINAL (KM)</label>
-        <input type="text" id="tanque-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
+        <input type="number" id="tanque-km" placeholder="0" min="0">
       </div>
       <div>
         <label>OBSERVAÇÕES</label>
@@ -2760,9 +2627,6 @@
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
-      <button id="btn-toggle-theme" class="theme-toggle" onclick="toggleTheme()" title="Alternar Tema Claro/Escuro">
-        <span id="theme-icon">🌙</span>
-      </button>
       <button id="btn-toggle-som" class="tab-btn" onclick="toggleSomNotificacao()" 
               style="font-size: 18px; padding: 8px 12px;" 
               title="Ativar/Desativar som de notificações">
@@ -2786,91 +2650,6 @@
       <div style="padding:40px 20px; text-align:center; color:#64748b; font-size:12px;">
         📭 NENHUMA NOTIFICAÇÃO
       </div>
-    </div>
-  </div>
-  
-  <!-- Modal de Edição de Abastecimento -->
-  <div class="modal" id="modal-editar-abastecimento" style="display:none;">
-    <div class="modal-content" style="max-width: 800px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0; color:var(--text-primary);">✏️ EDITAR ABASTECIMENTO</h3>
-        <button onclick="fecharModalEditar()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--text-primary);">×</button>
-      </div>
-      
-      <div id="form-editar-abastecimento">
-        <div class="grid-form" style="grid-template-columns: repeat(2, 1fr);">
-          <div>
-            <label>PLACA *</label>
-            <input type="text" id="edit-placa" placeholder="ABC1234" maxlength="8">
-          </div>
-          <div>
-            <label>DATA *</label>
-            <input type="date" id="edit-data">
-          </div>
-          <div>
-            <label>POSTO *</label>
-            <select id="edit-posto">
-              <option value="">SELECIONE</option>
-            </select>
-          </div>
-          <div>
-            <label>SECRETARIA *</label>
-            <input type="text" id="edit-secretaria">
-          </div>
-          <div>
-            <label>MOTORISTA *</label>
-            <input type="text" id="edit-motorista">
-          </div>
-          <div>
-            <label>COMBUSTÍVEL *</label>
-            <select id="edit-tipo">
-              <option value="GASOLINA">GASOLINA</option>
-              <option value="ETANOL">ETANOL</option>
-              <option value="DIESEL">DIESEL</option>
-              <option value="DIESEL S10">DIESEL S10</option>
-              <option value="GNV">GNV</option>
-            </select>
-          </div>
-          <div>
-            <label>KM ATUAL *</label>
-            <input type="text" id="edit-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
-          </div>
-          <div>
-            <label>LITROS *</label>
-            <input type="number" id="edit-litros" step="0.01" placeholder="0.00">
-          </div>
-          <div>
-            <label>VALOR (R$) *</label>
-            <input type="number" id="edit-valor" step="0.01" placeholder="0.00">
-          </div>
-          <div>
-            <label>STATUS</label>
-            <select id="edit-status">
-              <option value="AGUARDANDO">AGUARDANDO</option>
-              <option value="AUTORIZADO">AUTORIZADO</option>
-              <option value="REJEITADO">REJEITADO</option>
-            </select>
-          </div>
-          <div>
-            <label style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="edit-tanque-cheio" style="width:auto; margin:0;">
-              TANQUE CHEIO
-            </label>
-          </div>
-        </div>
-        
-        <div style="display:flex; gap:10px; margin-top:20px;">
-          <button class="btn-save" onclick="salvarEdicaoAbastecimento()" style="flex:1;">
-            💾 SALVAR ALTERAÇÕES
-          </button>
-          <button class="btn-save" onclick="fecharModalEditar()" 
-                  style="flex:1; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
-            ❌ CANCELAR
-          </button>
-        </div>
-      </div>
-      
-      <input type="hidden" id="edit-abastecimento-id">
     </div>
   </div>
   
@@ -2930,7 +2709,7 @@
       
       <div class="grid-form">
         <div>
-          <label id="label-placa">PLACA *</label>
+          <label>PLACA *</label>
           <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
         </div>
         <div>
@@ -2962,7 +2741,7 @@
         </div>
         <div>
           <label>COMBUSTÍVEL *</label>
-          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); ajustarCamposGas()">
+          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
       <option value="GASOLINA">GASOLINA</option>
       <option value="ALCOOL">ÁLCOOL</option>
       <option value="DIESEL">DIESEL</option>
@@ -2976,7 +2755,7 @@
         </div>
         <div>
           <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
-          <input type="number" id="f-km" placeholder="12345.6" step="0.1" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
+          <input type="number" id="f-km" placeholder="0" min="0" oninput="validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
         </div>
         <div>
           <label>LITROS *</label>
@@ -3017,90 +2796,62 @@
     <!-- Filtro de Relatório -->
     <div class="card no-print" id="card-filtros-relatorio">
       <h3>🔍 FILTROS DE RELATÓRIO</h3>
-      
-      <!-- BUSCA RÁPIDA -->
-      <div style="margin-bottom: 15px;">
-        <label style="font-weight: bold; color: var(--primary); font-size: 13px;">🔎 BUSCA RÁPIDA</label>
-        <input 
-          type="text" 
-          id="busca-global" 
-          placeholder="🔍 Digite: placa, motorista, posto, secretaria, tipo..." 
-          style="width: 100%; padding: 12px; font-size: 14px; border: 2px solid var(--primary); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);"
-          oninput="aplicarBuscaGlobal()"
-        >
-        <div style="font-size: 10px; color: var(--text-secondary); margin-top: 5px;">
-          💡 A busca funciona em tempo real em: placa, motorista, posto, secretaria e combustível
+      <div class="grid-form">
+        <div>
+          <label>DATA INICIAL</label>
+          <input type="date" id="rel-data-inicial">
         </div>
-      </div>
-      
-      <!-- FILTROS AVANÇADOS -->
-      <details style="margin-bottom: 15px;">
-        <summary style="cursor: pointer; font-weight: bold; padding: 10px; background: var(--hover-bg); border-radius: 6px; user-select: none;">
-          ⚙️ FILTROS AVANÇADOS
-        </summary>
-        <div style="padding-top: 15px;">
-          <div class="grid-form">
-            <div>
-              <label>DATA INICIAL</label>
-              <input type="date" id="rel-data-inicial">
-            </div>
-            <div>
-              <label>DATA FINAL</label>
-              <input type="date" id="rel-data-final">
-            </div>
-            <div>
-              <label>SECRETARIA</label>
-              <select id="rel-secretaria">
-                <option value="">TODAS</option>
-                <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
-                <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
-                <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
-                <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
-                <option value="COMUNICAÇÃO">COMUNICAÇÃO</option>
-                <option value="CULTURA">CULTURA</option>
-                <option value="EDUCAÇÃO">EDUCAÇÃO</option>
-                <option value="ESPORTES">ESPORTES</option>
-                <option value="GOVERNO">GOVERNO</option>
-                <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
-                <option value="PLANEJAMENTO">PLANEJAMENTO</option>
-                <option value="SAÚDE">SAÚDE</option>
-              </select>
-            </div>
-            <div>
-              <label>POSTO</label>
-              <select id="rel-posto">
-                <option value="">TODOS</option>
-              </select>
-            </div>
-            <div>
-              <label>COMBUSTÍVEL</label>
-              <select id="rel-combustivel">
-                <option value="">TODOS</option>
-                <option value="GASOLINA">GASOLINA</option>
-                <option value="ALCOOL">ÁLCOOL</option>
-                <option value="DIESEL">DIESEL</option>
+        <div>
+          <label>DATA FINAL</label>
+          <input type="date" id="rel-data-final">
+        </div>
+        <div>
+          <label>SECRETARIA</label>
+          <select id="rel-secretaria">
+            <option value="">TODAS</option>
+            <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
+            <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
+            <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
+            <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
+            <option value="COMUNICAÇÃO">COMUNICAÇÃO</option>
+            <option value="CULTURA">CULTURA</option>
+            <option value="EDUCAÇÃO">EDUCAÇÃO</option>
+            <option value="ESPORTES">ESPORTES</option>
+            <option value="GOVERNO">GOVERNO</option>
+            <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
+            <option value="PLANEJAMENTO">PLANEJAMENTO</option>
+            <option value="SAÚDE">SAÚDE</option>
+          </select>
+        </div>
+        <div>
+          <label>POSTO</label>
+          <select id="rel-posto">
+            <option value="">TODOS</option>
+          </select>
+        </div>
+        <div>
+          <label>COMBUSTÍVEL</label>
+          <select id="rel-combustivel">
+            <option value="">TODOS</option>
+            <option value="GASOLINA">GASOLINA</option>
+            <option value="ALCOOL">ÁLCOOL</option>
+            <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
 <option value='GAS'>Gás</option>
-              </select>
-            </div>
-            <div>
-              <label>PLACA</label>
-              <input type="text" id="rel-placa" placeholder="ABC-1234">
-            </div>
-          </div>
+          </select>
         </div>
-      </details>
-      
+        <div>
+          <label>PLACA</label>
+          <input type="text" id="rel-placa" placeholder="ABC-1234">
+        </div>
+      </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
         <button class="btn-save" onclick="gerarRelatorio()">📊 GERAR</button>
         <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="limparFiltros()">🔄 LIMPAR</button>
-        <button class="btn-save" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);" onclick="exportarExcel()">📥 EXCEL</button>
+        <button class="btn-save" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);" onclick="exportarExcel()">📥 EXPORTAR EXCEL</button>
       </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-        <button class="btn-save" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);" onclick="exportarPDF()">📄 EXPORTAR PDF</button>
-        <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="window.print()">🖨️ IMPRIMIR</button>
-      </div>
+      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top:5px;" onclick="window.print()">🖨️ IMPRIMIR</button>
     </div>
     
     <!-- Relatórios -->
@@ -3147,7 +2898,7 @@
         </div>
         
         <div>
-          <label>PLACA DO VEÍCULO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
+          <label>PLACA DO VEÍCULO *</label>
           <input type="text" id="vip-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
         </div>
         
@@ -3187,7 +2938,7 @@
         
         <div>
           <label>ODÔMETRO (KM) <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
-          <input type="text" id="vip-km" placeholder="12.345,6" oninput="aplicarMascaraKM(this)">
+          <input type="number" id="vip-km" placeholder="0" min="0">
         </div>
         
         <div style="grid-column: 1/-1;">
@@ -3672,29 +3423,9 @@
             <option value="todos">TODOS</option>
           </select>
         </div>
-        <div id="field-limit" style="display:none;">
-          <label style="font-size: 12px; font-weight: bold; color: var(--accent); margin-bottom: 10px; display: block;">
-            💰 LIMITES MENSAIS POR POSTO
-          </label>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px; border: 2px solid var(--border-color);">
-            <div>
-              <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO VICTOR (R$)</label>
-              <input type="number" id="new-limit-victor" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
-              <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
-                Gasolina, Diesel, Diesel S10, Gás
-              </div>
-            </div>
-            <div>
-              <label style="font-size: 11px; color: var(--text-secondary);">⛽ POSTO MATINA (R$)</label>
-              <input type="number" id="new-limit-matina" placeholder="0.00" step="0.01" min="0" style="background: var(--card-bg); color: var(--text-primary); border: 2px solid var(--border-color);">
-              <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px;">
-                Apenas Gasolina
-              </div>
-            </div>
-          </div>
-          <div style="margin-top: 8px; padding: 8px; background: #dbeafe; border-radius: 6px; font-size: 10px; color: #1e40af;">
-            💡 <strong>TOTAL:</strong> <span id="total-limite-preview" style="color: #1e40af;">R$ 0,00</span>
-          </div>
+        <div id="field-limit">
+          <label>LIMITE MENSAL (R$)</label>
+          <input type="number" id="new-limit" placeholder="0.00" step="0.01">
         </div>
         <div id="field-sec">
           <label>SECRETARIA VINCULADA</label>
@@ -3740,12 +3471,7 @@
     </div>
     
     <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3 style="margin: 0;">📋 USUÁRIOS CADASTRADOS</h3>
-        <button class="btn-save" onclick="resetarLimitesMensais()" style="background: linear-gradient(135deg, var(--warning) 0%, #f97316 100%); padding: 10px 20px; font-size: 12px;">
-          🔄 RESETAR LIMITES MENSAIS
-        </button>
-      </div>
+      <h3>📋 USUÁRIOS CADASTRADOS</h3>
       <div class="table-wrapper">
         <table>
           <thead>
@@ -4022,13 +3748,12 @@
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
     'gerenciar_postos': { nome: 'Gerenciar Postos', descricao: 'Cadastrar postos', categoria: 'gestao' },
     'gerenciar_usuarios': { nome: 'Gerenciar Usuários', descricao: 'CRUD de usuários', categoria: 'gestao' },
-    'resetar_limites': { nome: 'Resetar Limites Mensais', descricao: 'Resetar limites de secretários', categoria: 'gestao' },
     'exportar_excel': { nome: 'Exportar Excel', descricao: 'Baixar relatórios', categoria: 'exportacao' }
   };
   
   const PERMISSOES_PADRAO = {
     master: Object.keys(PERMISSOES_DISPONIVEIS),
-    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'gerenciar_usuarios', 'resetar_limites', 'exportar_excel'],
+    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio'],
   autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_vip', 'abastecer_vips']
@@ -4047,116 +3772,6 @@
     return false;
   }
   
-  // NOVO: Função para filtrar abastecimentos por posto
-  function filtrarPorPosto(abastecimentos) {
-    console.log("========================================");
-    console.log("🔍 FILTRAR POR POSTO - INICIO");
-    console.log("Total de abastecimentos recebidos:", abastecimentos ? abastecimentos.length : 0);
-    console.log("loginUser:", loginUser);
-    console.log("userRole:", userRole);
-    console.log("userPostoVinculado:", userPostoVinculado);
-    console.log("userPostosVinculados:", userPostosVinculados);
-    console.log("userPostosPermitidos:", userPostosPermitidos);
-    console.log("ARRAY COMPLETO:", JSON.stringify(userPostosPermitidos));
-    console.log("Postos cadastrados no sistema:", postos.length);
-    
-    if (!abastecimentos) {
-      console.log("❌ Nenhum abastecimento recebido");
-      return [];
-    }
-    
-    if (loginUser === 'master' || userRole === 'admin') {
-      console.log("✅ Usuario é Master/Admin - RETORNANDO TODOS");
-      console.log("========================================");
-      return abastecimentos;
-    }
-    
-    if (!userPostosPermitidos || userPostosPermitidos.length === 0) {
-      console.log("⚠️ userPostosPermitidos está vazio ou undefined");
-      console.log("Isso significa que o usuário verá TODOS os abastecimentos");
-      console.log("========================================");
-      return abastecimentos;
-    }
-    
-    if (!postos || postos.length === 0) {
-      console.log("⚠️ Lista de postos não carregada ainda");
-      console.log("========================================");
-      return abastecimentos;
-    }
-    
-    console.log("🔍 FILTRANDO por postos permitidos:", userPostosPermitidos);
-    console.log("Lista de postos:", postos.map(function(p) { return {id: p.id, nome: p.nome}; }));
-    
-    // Pegar apenas os primeiros 3 para teste detalhado
-    var contador = 0;
-    var filtrados = abastecimentos.filter(function(abast) {
-      if (!abast.posto) {
-        return false;
-      }
-      
-      var posto = postos.find(function(p) { return p.nome === abast.posto; });
-      
-      if (!posto) {
-        return false;
-      }
-      
-      // Fazer log detalhado apenas dos primeiros 3
-      if (contador < 3) {
-        console.log("=== TESTE DETALHADO ===");
-        console.log("Posto ID:", posto.id);
-        console.log("Tipo de posto.id:", typeof posto.id);
-        console.log("userPostosPermitidos[0]:", userPostosPermitidos[0]);
-        console.log("Tipo de userPostosPermitidos[0]:", typeof userPostosPermitidos[0]);
-        console.log("São iguais? (===):", posto.id === userPostosPermitidos[0]);
-        console.log("indexOf:", userPostosPermitidos.indexOf(posto.id));
-        
-        // Tentar converter para string
-        var postoIdStr = String(posto.id);
-        var permitidoStr = String(userPostosPermitidos[0]);
-        console.log("Como string - posto:", postoIdStr);
-        console.log("Como string - permitido:", permitidoStr);
-        console.log("Strings iguais?:", postoIdStr === permitidoStr);
-        
-        contador++;
-      }
-      
-      // Tentar múltiplas formas de comparação
-      var permitido = false;
-      
-      // Forma 1: indexOf
-      if (userPostosPermitidos.indexOf(posto.id) !== -1) {
-        permitido = true;
-      }
-      
-      // Forma 2: loop manual
-      if (!permitido) {
-        for (var i = 0; i < userPostosPermitidos.length; i++) {
-          if (userPostosPermitidos[i] === posto.id) {
-            permitido = true;
-            break;
-          }
-        }
-      }
-      
-      // Forma 3: comparação com conversão de string
-      if (!permitido) {
-        for (var i = 0; i < userPostosPermitidos.length; i++) {
-          if (String(userPostosPermitidos[i]) === String(posto.id)) {
-            permitido = true;
-            console.log("✅ ENCONTRADO COM CONVERSÃO DE STRING!");
-            break;
-          }
-        }
-      }
-      
-      return permitido;
-    });
-    
-    console.log("✅ RESULTADO: Filtrados", filtrados.length, "de", abastecimentos.length);
-    console.log("========================================");
-    return filtrados;
-  }
-  
   let cache = [];
   let veiculos = [];
   let postos = [];
@@ -4166,17 +3781,12 @@
   let userSecretaria = "";
   let userPostoVinculado = ""; // Posto vinculado para frentistas
   let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
-  let userPostosPermitidos = []; // NOVO: Array de postos que o usuário pode visualizar
   let usuarioData = {};
   let precos = { GASOLINA: 6, ALCOOL: 4, DIESEL: 6 };
   let chartSec = null;
   let chartVec = null;
   let chartCombustivel = null;
   let chartTendencia = null;
-  
-  // PAGINAÇÃO
-  let paginaAtual = {};  // Objeto para armazenar página atual de cada secretaria
-  const itensPorPagina = 10;
   let chartExecutivo1 = null;
   let chartExecutivo2 = null;
   let chartAnual = null;
@@ -4235,41 +3845,6 @@
   }
   
   // NOVO: Função corrigida para calcular média
-  // FUNÇÃO CENTRALIZADA: Calcular gastos de um mês específico
-  function calcularGastosMes(abastecimentos, ano, mes) {
-    // mes: 1=Janeiro, 2=Fevereiro, etc (formato humano, não 0-based)
-    const anoMesAlvo = `${ano}-${String(mes).padStart(2, '0')}`; // "2026-02"
-    
-    return abastecimentos.filter(x => {
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-      return anoMes === anoMesAlvo;
-    }).reduce((acc, item) => acc + (item.valor || 0), 0);
-  }
-  
-  // FUNÇÃO CENTRALIZADA: Calcular gastos de um ano inteiro
-  function calcularGastosAno(abastecimentos, ano) {
-    const anoAlvo = String(ano); // "2026"
-    
-    return abastecimentos.filter(x => {
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoAbast = dataAbast.substring(0, 4); // "YYYY"
-      return anoAbast === anoAlvo;
-    }).reduce((acc, item) => acc + (item.valor || 0), 0);
-  }
-  
-  // FUNÇÃO CENTRALIZADA: Filtrar abastecimentos por período de datas
-  function filtrarPorPeriodo(abastecimentos, dataInicial, dataFinal) {
-    return abastecimentos.filter(abast => {
-      const dataAbast = abast.data.split('T')[0]; // Remove hora, fica só "YYYY-MM-DD"
-      
-      if (dataInicial && dataAbast < dataInicial) return false;
-      if (dataFinal && dataAbast > dataFinal) return false;
-      
-      return true;
-    });
-  }
-  
   function calcularMedia(abastecimento) {
     // Buscar o último abastecimento APROVADO do mesmo veículo e combustível
     const ultimoAbast = cache
@@ -4329,40 +3904,11 @@
   }
   
   // NOVO: Função para verificar média em tempo real no formulário
-  // NOVA FUNÇÃO: Formatar placa para exibição (GAS-0000 → "GÁS (SEM PLACA)")
-  function formatarPlacaParaExibicao(placa) {
-    if (!placa || placa === 'GAS-0000') {
-      return '<span style="color: var(--warning); font-style: italic;">GÁS (SEM PLACA)</span>';
-    }
-    return `<b>${placa}</b>`;
-  }
-  
-  // NOVA FUNÇÃO: Ajustar campos quando combustível for GÁS
-  function ajustarCamposGas() {
-    const tipo = document.getElementById('f-tipo').value;
-    const labelPlaca = document.getElementById('label-placa');
-    const inputPlaca = document.getElementById('f-placa');
-    
-    if (tipo === 'GAS') {
-      // GÁS: Placa não obrigatória
-      labelPlaca.textContent = 'PLACA';
-      inputPlaca.placeholder = 'ABC-1234 (Opcional para GÁS)';
-      inputPlaca.style.borderColor = '';
-    } else {
-      // Outros: Placa obrigatória
-      labelPlaca.textContent = 'PLACA *';
-      inputPlaca.placeholder = 'ABC-1234';
-    }
-  }
-  
   function verificarMediaEmTempoReal() {
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
-    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
-    
-    // GÁS não precisa validar média (não tem placa obrigatória)
-    if (tipo === 'GAS') return;
+    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
     
     if (!placa || litros <= 0 || kmAtual <= 0) {
       // Se não tiver dados suficientes, não mostra o alerta
@@ -4445,7 +3991,7 @@
     
     const gastoAtual = cache
       .filter(x => 
-        x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
+        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
         x.secretaria === userSecretaria
       )
       .reduce((acc, item) => acc + (item.valor || 0), 0);
@@ -4579,15 +4125,8 @@
           senha: user.senha,
           role: user.role,
           limite: user.limite || 0,
-          limiteVictor: user.limiteVictor || 0,
-          limiteMatina: user.limiteMatina || 0,
-          limiteUsadoVictor: user.limiteUsadoVictor || 0,
-          limiteUsadoMatina: user.limiteUsadoMatina || 0,
           secretariaVinculada: user.secretariaVinculada || "",
-          permissoes: permissoes,
-          postoVinculado: user.postoVinculado || "",
-          postosVinculados: user.postosVinculados || [],
-          postosPermitidos: user.postosPermitidos || []
+          permissoes: permissoes
         };
         entrar(u, user.role, user.limite || 0, user.secretariaVinculada || "", dadosUsuario);
         registrarAuditoria('LOGIN', { usuario: u });
@@ -4606,11 +4145,6 @@
   }
   
   function entrar(u, role, limit, sec, dadosExtras) {
-    console.log("============= FUNÇÃO ENTRAR =============");
-    console.log("Usuário:", u);
-    console.log("Role:", role);
-    console.log("Dados completos do usuário:", JSON.stringify(dadosExtras, null, 2));
-    
     loginUser = u;
     userRole = role;
     userLimit = limit;
@@ -4620,64 +4154,9 @@
     
     // CORREÇÃO: Suporte a múltiplos postos para autorizadores
     if (role === 'autorizador') {
-      if (dadosExtras.postosVinculados && dadosExtras.postosVinculados.length > 0) {
-        userPostosVinculados = dadosExtras.postosVinculados;
-      } else if (dadosExtras.postoVinculado) {
-        userPostosVinculados = [dadosExtras.postoVinculado];
-      } else {
-        userPostosVinculados = [];
-      }
-      console.log("→ Autorizador - userPostosVinculados:", userPostosVinculados);
-      console.log("→ JSON:", JSON.stringify(userPostosVinculados));
+      userPostosVinculados = dadosExtras.postosVinculados || dadosExtras.postoVinculado ? [dadosExtras.postoVinculado] : [];
     } else {
-      userPostoVinculado = dadosExtras.postoVinculado || "";
-      console.log("→ userPostoVinculado:", userPostoVinculado);
-    }
-    
-    // NOVO: Definir postos permitidos
-    if (dadosExtras.postosPermitidos && dadosExtras.postosPermitidos.length > 0) {
-      // Criar novo array copiando valores
-      userPostosPermitidos = [];
-      for (var i = 0; i < dadosExtras.postosPermitidos.length; i++) {
-        userPostosPermitidos.push(dadosExtras.postosPermitidos[i]);
-      }
-      console.log("✅ Usando postosPermitidos do cadastro:", userPostosPermitidos);
-    } else if (role === 'frentista' && userPostoVinculado) {
-      // Criar novo array com o posto
-      userPostosPermitidos = [userPostoVinculado];
-      console.log("✅ Frentista - definindo postosPermitidos:", userPostosPermitidos);
-    } else if (role === 'autorizador' && userPostosVinculados.length > 0) {
-      // AQUI ESTÁ O PROBLEMA! Criar novo array ao invés de referenciar
-      userPostosPermitidos = [];
-      for (var i = 0; i < userPostosVinculados.length; i++) {
-        userPostosPermitidos.push(userPostosVinculados[i]);
-      }
-      console.log("✅ Autorizador - definindo postosPermitidos:", userPostosPermitidos);
-      console.log("   Tamanho do array:", userPostosPermitidos.length);
-      console.log("   Primeiro elemento:", userPostosPermitidos[0]);
-      console.log("   JSON do array:", JSON.stringify(userPostosPermitidos));
-    } else {
-      userPostosPermitidos = [];
-      console.log("✅ Sem restrição de postos (array vazio)");
-    }
-    
-    console.log("RESULTADO FINAL:");
-    console.log("  - userPostosPermitidos:", userPostosPermitidos);
-    console.log("  - Quantidade:", userPostosPermitidos.length);
-    console.log("=========================================");
-    
-    // VALIDAÇÃO: Bloquear se frentista/autorizador sem posto
-    if ((role === 'frentista' || role === 'autorizador') && userPostosPermitidos.length === 0) {
-      console.error("❌ BLOQUEANDO LOGIN - Frentista/Autorizador sem posto vinculado");
-      alert(
-        "⚠️ CONFIGURAÇÃO INCOMPLETA\n\n" +
-        "Seu usuário não tem POSTO VINCULADO configurado.\n\n" +
-        "Entre em contato com o administrador para vincular seu posto.\n\n" +
-        "Usuário: " + u.toUpperCase()
-      );
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('app').classList.add('blurred');
-      return;
+      userPostoVinculado = dadosExtras.postoVinculado || ""; // Para frentistas
     }
     
     document.getElementById('login-screen').style.display = 'none';
@@ -4722,7 +4201,8 @@
     
     if (role === 'secretarios' && sec !== "") {
       document.getElementById('f-sec').value = sec;
-      document.getElementById('f-sec').disabled = true;
+      // Removido: disabled = true
+      // Permite mudança de secretaria para veículos compartilhados
     }
     
     mostrarNotificacao(`✅ BEM-VINDO, ${u.toUpperCase()}!`, "success");
@@ -4732,11 +4212,6 @@
     
     // Verificar PWA
     verificarPWA();
-    
-    // Verificar reset automático (dia 1º do mês)
-    setTimeout(() => {
-      verificarResetAutomatico();
-    }, 2000);
     
     setTimeout(() => {
       renderizar();
@@ -4780,13 +4255,7 @@
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
-    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
-    
-    // GÁS não tem previsão de consumo (não tem KM)
-    if (tipo === 'GAS') {
-      document.getElementById('previsao-consumo').style.display = 'none';
-      return;
-    }
+    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
     
     if (!placa || litros === 0 || kmAtual === 0) {
       document.getElementById('previsao-consumo').style.display = 'none';
@@ -4858,7 +4327,7 @@
   
   function validarKmAtual() {
     const placa = document.getElementById('f-placa').value.toUpperCase().trim();
-    const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
+    const kmAtual = parseFloat(document.getElementById('f-km').value) || 0;
     
     if (!placa || kmAtual === 0) return;
     
@@ -4919,10 +4388,7 @@
   function validarAbastecimento(dados) {
     const erros = [];
     
-    // NOVO: Placa é opcional apenas para GÁS
-    const isGas = dados.tipo === 'GAS';
-    
-    if (!isGas && (!dados.placa || dados.placa.length < 7)) {
+    if (!dados.placa || dados.placa.length < 7) {
       erros.push("❌ PLACA INVÁLIDA");
     }
     if (!dados.posto || dados.posto === "") {
@@ -4985,7 +4451,7 @@
         tipo: document.getElementById('f-tipo').value,
         secretaria: document.getElementById('f-sec').value,
         litro: parseFloat(document.getElementById('f-lit').value) || 0,
-        km: converterKMParaNumero(document.getElementById('f-km').value) || 0,
+        km: parseFloat(document.getElementById('f-km').value) || 0,
         tanqueCheio: document.getElementById('f-tanque-cheio').checked
       };
   
@@ -5031,57 +4497,23 @@
         dados.valor = dados.litro * dados.precoPorLitro;
       }
 
-      // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário POR POSTO
+      // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário
       if (userRole === 'secretarios' && !dados.tanqueCheio) {
-        // Determinar qual limite usar baseado no posto
-        const postoNome = (dados.posto || '').toUpperCase().trim();
-        let limitePostoAtual = 0;
-        let gastoPostoAtual = 0;
-        let nomePosto = '';
+        const gastoAtual = cache
+          .filter(x => 
+            (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+            x.secretaria === userSecretaria
+          )
+          .reduce((acc, item) => acc + (item.valor || 0), 0);
         
-        if (postoNome.includes('VICTOR')) {
-          limitePostoAtual = usuarioData.limiteVictor || 0;
-          gastoPostoAtual = cache
-            .filter(x => 
-              x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
-              x.secretaria === userSecretaria &&
-              (x.posto || '').toUpperCase().includes('VICTOR')
-            )
-            .reduce((acc, item) => acc + (item.valor || 0), 0);
-          nomePosto = 'VICTOR';
-        } else if (postoNome.includes('MATINA')) {
-          limitePostoAtual = usuarioData.limiteMatina || 0;
-          gastoPostoAtual = cache
-            .filter(x => 
-              x.status === STATUS.AUTORIZADO &&  // CORREÇÃO: Apenas autorizados (igual aos relatórios)
-              x.secretaria === userSecretaria &&
-              (x.posto || '').toUpperCase().includes('MATINA')
-            )
-            .reduce((acc, item) => acc + (item.valor || 0), 0);
-          nomePosto = 'MATINA';
-        }
+        const gastoProjetado = gastoAtual + dados.valor;
         
-        // Validar se tem limite configurado
-        if (limitePostoAtual === 0) {
+        if (gastoProjetado > userLimit) {
+          const saldoRestante = Math.max(0, userLimit - gastoAtual);
           mostrarNotificacao(
-            `⚠️ LIMITE NÃO CONFIGURADO!\n\n` +
-            `O limite mensal para o posto ${nomePosto} não foi definido.\n` +
-            `Entre em contato com o administrador.`,
-            "error"
-          );
-          btnRegistrar.disabled = false;
-          btnRegistrar.innerHTML = textoOriginal;
-          return;
-        }
-        
-        const gastoProjetado = gastoPostoAtual + dados.valor;
-        const saldoRestante = Math.max(0, limitePostoAtual - gastoPostoAtual);
-        
-        if (gastoProjetado > limitePostoAtual) {
-          mostrarNotificacao(
-            `❌ LIMITE ORÇAMENTÁRIO DO POSTO ${nomePosto} EXCEDIDO!\n\n` +
-            `Limite mensal (${nomePosto}): R$ ${limitePostoAtual.toFixed(2)}\n` +
-            `Gasto atual (${nomePosto}): R$ ${gastoPostoAtual.toFixed(2)}\n` +
+            `❌ LIMITE ORÇAMENTÁRIO EXCEDIDO!\n\n` +
+            `Limite mensal: R$ ${userLimit.toFixed(2)}\n` +
+            `Gasto atual: R$ ${gastoAtual.toFixed(2)}\n` +
             `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}\n` +
             `Gasto projetado: R$ ${gastoProjetado.toFixed(2)}\n` +
             `Saldo restante: R$ ${saldoRestante.toFixed(2)}\n\n` +
@@ -5091,15 +4523,6 @@
           btnRegistrar.disabled = false;
           btnRegistrar.innerHTML = textoOriginal;
           return;
-        }
-        
-        // Alerta quando estiver próximo do limite (80%)
-        if (gastoProjetado > limitePostoAtual * 0.8 && gastoPostoAtual <= limitePostoAtual * 0.8) {
-          mostrarNotificacao(
-            `⚠️ ATENÇÃO: Você atingiu 80% do limite do posto ${nomePosto}!\n` +
-            `Saldo restante: R$ ${(limitePostoAtual - gastoProjetado).toFixed(2)}`,
-            "warning"
-          );
         }
       }
   
@@ -5142,22 +4565,11 @@
         ? STATUS.AUTORIZADO 
         : STATUS.AGUARDANDO;
       
-      // Capturar data e hora atuais
-      const agora = new Date();
-      const horario = agora.toTimeString().slice(0, 5); // HH:MM
-      
-      // NOVO: Se for GÁS sem placa, usar identificador padrão
-      const placaFinal = dados.tipo === 'GAS' && (!dados.placa || dados.placa.trim() === '') 
-        ? 'GAS-0000' 
-        : dados.placa;
-      
       await db.ref('abastecimentos').push({
         ...dados,
-        placa: placaFinal,
         status: status,
         solicitadoPor: loginUser.toUpperCase(),
-        timestamp: Date.now(),
-        horario: horario
+        timestamp: Date.now()
       });
   
       mostrarNotificacao(
@@ -5395,7 +4807,7 @@
     const litros = parseFloat(document.getElementById('tanque-litros').value) || 0;
     const preco = parseFloat(document.getElementById('tanque-preco').value) || 0;
     const valor = litros * preco;
-    const kmFinal = converterKMParaNumero(document.getElementById('tanque-km').value);
+    const kmFinal = document.getElementById('tanque-km').value;
     const obs = document.getElementById('tanque-obs').value;
     
     if (!litros || litros <= 0) {
@@ -5445,13 +4857,6 @@
     
     db.ref('abastecimentos/' + abastecimentoTanqueCheioAtual.id).update(dadosAtualizados)
       .then(() => {
-        // NOVO: Atualizar gasto do posto
-        const abastecimentoAtualizado = {
-          ...abastecimentoTanqueCheioAtual,
-          ...dadosAtualizados
-        };
-        atualizarGastoPostoSecretario(abastecimentoAtualizado);
-        
         registrarAuditoria('ABASTECIMENTO_TANQUE_CHEIO_APROVADO', { 
           id: abastecimentoTanqueCheioAtual.id, 
           litros: litros, 
@@ -5502,46 +4907,8 @@
       aprovadoPor: loginUser.toUpperCase(),
       aprovadoEm: Date.now()
     }).then(() => {
-      // NOVO: Atualizar gasto do posto no usuário secretário
-      atualizarGastoPostoSecretario(abastecimento);
-      
       registrarAuditoria('ABASTECIMENTO_APROVADO', { id: id });
       mostrarNotificacao("✅ ABASTECIMENTO APROVADO!", "success");
-    });
-  }
-  
-  // NOVA FUNÇÃO: Atualizar gasto do posto específico do secretário
-  function atualizarGastoPostoSecretario(abastecimento) {
-    if (!abastecimento || !abastecimento.solicitadoPor) return;
-    
-    const usuario = abastecimento.solicitadoPor.toLowerCase();
-    const posto = (abastecimento.posto || '').toUpperCase().trim();
-    const valor = abastecimento.valor || 0;
-    
-    // Buscar dados atuais do usuário
-    db.ref('usuarios/' + usuario).once('value', snap => {
-      if (!snap.exists()) return;
-      
-      const userData = snap.val();
-      if (userData.role !== 'secretarios') return;
-      
-      // Determinar qual limite atualizar baseado no posto
-      let updates = {};
-      
-      if (posto.includes('VICTOR')) {
-        const gastoAtual = userData.limiteUsadoVictor || 0;
-        updates.limiteUsadoVictor = gastoAtual + valor;
-        console.log(`📊 Atualizando gasto Victor de ${usuario}: ${gastoAtual} + ${valor} = ${gastoAtual + valor}`);
-      } else if (posto.includes('MATINA')) {
-        const gastoAtual = userData.limiteUsadoMatina || 0;
-        updates.limiteUsadoMatina = gastoAtual + valor;
-        console.log(`📊 Atualizando gasto Matina de ${usuario}: ${gastoAtual} + ${valor} = ${gastoAtual + valor}`);
-      }
-      
-      // Atualizar no Firebase
-      if (Object.keys(updates).length > 0) {
-        db.ref('usuarios/' + usuario).update(updates);
-      }
     });
   }
   
@@ -5574,149 +4941,6 @@
     db.ref('abastecimentos/' + id).remove().then(() => {
       registrarAuditoria('ABASTECIMENTO_DELETADO', { id: id });
       mostrarNotificacao("🗑️ REGISTRO EXCLUÍDO COM SUCESSO!", "success");
-    });
-  }
-  
-  // Funções de Edição de Abastecimento
-  function abrirModalEditar(id) {
-    if (loginUser !== 'master') {
-      mostrarNotificacao("❌ APENAS O MASTER PODE EDITAR ABASTECIMENTOS!", "error");
-      return;
-    }
-    
-    // Buscar dados do abastecimento
-    const abastecimento = cache.find(a => a.id === id);
-    if (!abastecimento) {
-      mostrarNotificacao("❌ ABASTECIMENTO NÃO ENCONTRADO!", "error");
-      return;
-    }
-    
-    // Preencher formulário
-    document.getElementById('edit-abastecimento-id').value = id;
-    document.getElementById('edit-placa').value = abastecimento.placa || '';
-    document.getElementById('edit-data').value = abastecimento.data || '';
-    document.getElementById('edit-secretaria').value = abastecimento.secretaria || '';
-    document.getElementById('edit-motorista').value = abastecimento.motorista || '';
-    document.getElementById('edit-tipo').value = abastecimento.tipo || 'GASOLINA';
-    document.getElementById('edit-km').value = formatarKMParaExibir(abastecimento.km) || '';
-    document.getElementById('edit-litros').value = abastecimento.litro || 0;
-    document.getElementById('edit-valor').value = abastecimento.valor || 0;
-    document.getElementById('edit-status').value = abastecimento.status || 'AGUARDANDO';
-    document.getElementById('edit-tanque-cheio').checked = abastecimento.tanqueCheio || false;
-    
-    // Carregar postos no select
-    const selectPosto = document.getElementById('edit-posto');
-    selectPosto.innerHTML = '<option value="">SELECIONE</option>';
-    postos.forEach(p => {
-      const option = document.createElement('option');
-      option.value = p.nome;
-      option.textContent = p.nome;
-      if (p.nome === abastecimento.posto) {
-        option.selected = true;
-      }
-      selectPosto.appendChild(option);
-    });
-    
-    // Mostrar modal
-    document.getElementById('modal-editar-abastecimento').style.display = 'flex';
-  }
-  
-  function fecharModalEditar() {
-    document.getElementById('modal-editar-abastecimento').style.display = 'none';
-  }
-  
-  function salvarEdicaoAbastecimento() {
-    const id = document.getElementById('edit-abastecimento-id').value;
-    const placa = document.getElementById('edit-placa').value.toUpperCase().trim();
-    const data = document.getElementById('edit-data').value;
-    const posto = document.getElementById('edit-posto').value;
-    const secretaria = document.getElementById('edit-secretaria').value.trim();
-    const motorista = document.getElementById('edit-motorista').value.trim();
-    const tipo = document.getElementById('edit-tipo').value;
-    const km = converterKMParaNumero(document.getElementById('edit-km').value) || 0;
-    const litros = parseFloat(document.getElementById('edit-litros').value) || 0;
-    const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
-    const status = document.getElementById('edit-status').value;
-    const tanqueCheio = document.getElementById('edit-tanque-cheio').checked;
-    
-    // Validações
-    if (!placa || !data || !posto || !secretaria || !motorista) {
-      mostrarNotificacao("❌ PREENCHA TODOS OS CAMPOS OBRIGATÓRIOS!", "error");
-      return;
-    }
-    
-    if (km <= 0) {
-      mostrarNotificacao("❌ KM DEVE SER MAIOR QUE ZERO!", "error");
-      return;
-    }
-    
-    if (litros <= 0) {
-      mostrarNotificacao("❌ LITROS DEVE SER MAIOR QUE ZERO!", "error");
-      return;
-    }
-    
-    if (valor <= 0) {
-      mostrarNotificacao("❌ VALOR DEVE SER MAIOR QUE ZERO!", "error");
-      return;
-    }
-    
-    // Buscar dados antigos para auditoria
-    const abastecimentoAntigo = cache.find(a => a.id === id);
-    
-    // Calcular KM/L se tanque cheio
-    let kml = 0;
-    if (tanqueCheio) {
-      const abastecimentosVeiculo = cache
-        .filter(a => a.placa === placa && a.tanqueCheio && a.id !== id)
-        .sort((a, b) => new Date(b.data) - new Date(a.data));
-      
-      if (abastecimentosVeiculo.length > 0) {
-        const ultimoTanqueCheio = abastecimentosVeiculo[0];
-        const kmPercorrido = km - ultimoTanqueCheio.km;
-        if (kmPercorrido > 0 && litros > 0) {
-          kml = kmPercorrido / litros;
-        }
-      }
-    }
-    
-    // Atualizar no Firebase
-    const dadosAtualizados = {
-      placa: placa,
-      data: data,
-      posto: posto,
-      secretaria: secretaria,
-      motorista: motorista,
-      tipo: tipo,
-      km: km,
-      litro: litros,
-      valor: valor,
-      status: status,
-      tanqueCheio: tanqueCheio,
-      kml: kml,
-      editadoPor: loginUser,
-      dataEdicao: new Date().toISOString()
-    };
-    
-    db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
-      // Registrar auditoria com detalhes da alteração
-      const alteracoes = {};
-      if (abastecimentoAntigo.placa !== placa) alteracoes.placa = {de: abastecimentoAntigo.placa, para: placa};
-      if (abastecimentoAntigo.km !== km) alteracoes.km = {de: abastecimentoAntigo.km, para: km};
-      if (abastecimentoAntigo.litro !== litros) alteracoes.litros = {de: abastecimentoAntigo.litro, para: litros};
-      if (abastecimentoAntigo.valor !== valor) alteracoes.valor = {de: abastecimentoAntigo.valor, para: valor};
-      if (abastecimentoAntigo.status !== status) alteracoes.status = {de: abastecimentoAntigo.status, para: status};
-      
-      registrarAuditoria('ABASTECIMENTO_EDITADO', {
-        id: id,
-        placa: placa,
-        alteracoes: alteracoes
-      });
-      
-      mostrarNotificacao("✅ ABASTECIMENTO ATUALIZADO COM SUCESSO!", "success");
-      fecharModalEditar();
-    }).catch(error => {
-      console.error("Erro ao editar:", error);
-      mostrarNotificacao("❌ ERRO AO SALVAR: " + error.message, "error");
     });
   }
   
@@ -5760,8 +4984,14 @@
     // Alertas de média baixa por veículo
     const veiculosComMedia = {};
     
-    // CORREÇÃO: Aplicar filtro por posto
-    let cacheFiltrado = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    // NOVO: Filtrar por posto para frentistas e autorizadores
+    let cacheFiltrado = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheFiltrado = cacheFiltrado.filter(item => item.posto === postoVinculado.nome);
+      }
+    }
     
     cacheFiltrado.forEach(abast => {
       if (!veiculosComMedia[abast.placa]) {
@@ -5776,15 +5006,13 @@
     
     const alertasMediaBaixa = [];
     
-    // Calcular média de cada veículo e adicionar aos alertas
     Object.values(veiculosComMedia).forEach(veiculo => {
       const abasts = veiculo.abastecimentos.sort((a, b) => b.timestamp - a.timestamp);
       
       if (abasts.length >= 2) {
         let totalKm = 0, totalLitros = 0;
         
-        // MUDANÇA: Calcular TODOS os abastecimentos, não apenas os últimos 5
-        for (let i = 0; i < abasts.length - 1; i++) {
+        for (let i = 0; i < Math.min(5, abasts.length - 1); i++) {
           const kmDif = abasts[i].km - abasts[i + 1].km;
           if (kmDif > 0) {
             totalKm += kmDif;
@@ -5802,48 +5030,20 @@
             placa: veiculo.placa,
             media: mediaGeral,
             tipo: veiculo.tipo,
-            limite: limiteAlerta,
-            totalAbast: abasts.length
+            limite: limiteAlerta
           });
         }
       }
-      
-      // NOVO: Também verificar abastecimentos individuais com média baixa
-      abasts.forEach(abast => {
-        if (abast.kml && abast.kml > 0) {
-          const limiteAlerta = LIMITES_ALERTA[abast.tipo] || 9;
-          if (abast.kml < limiteAlerta) {
-            // Verificar se já não está na lista (evitar duplicação)
-            const jaExiste = alertasMediaBaixa.some(a => a.placa === veiculo.placa);
-            if (!jaExiste) {
-              alertasMediaBaixa.push({
-                placa: veiculo.placa,
-                media: abast.kml,
-                tipo: abast.tipo,
-                limite: limiteAlerta,
-                totalAbast: 1,
-                ultimo: true
-              });
-            }
-          }
-        }
-      });
     });
     
     if (alertasMediaBaixa.length > 0) {
-      // Ordenar por média (pior primeiro)
-      alertasMediaBaixa.sort((a, b) => a.media - b.media);
-      
       alertasHtml += '<div class="alert-box danger">';
       alertasHtml += '<h4 style="margin:0 0 10px 0; font-size:14px;">🚨 ALERTAS DE EFICIÊNCIA BAIXA</h4>';
-      alertasHtml += `<p style="font-size:11px; color:#64748b; margin:0 0 10px 0;">${alertasMediaBaixa.length} veículo(s) com eficiência abaixo do limite</p>`;
       alertasMediaBaixa.forEach(alerta => {
-        const iconeStatus = alerta.ultimo ? '⚠️' : '🚨';
-        const infoAbast = alerta.ultimo ? '(Último abastecimento)' : `(Média de ${alerta.totalAbast} abastecimentos)`;
         alertasHtml += `
           <div style="margin-bottom:8px; padding:10px; background:white; border-radius:6px; border-left:4px solid var(--danger);">
-            ${iconeStatus} <strong>${alerta.placa}</strong> - Média: <span style="color:var(--danger); font-weight:bold;">${alerta.media.toFixed(2)} km/l</span>
-            <span style="font-size:11px; color:#64748b;"> (${alerta.tipo} - Limite: ${alerta.limite} km/l) ${infoAbast}</span>
+            <strong>${alerta.placa}</strong> - Média: <span style="color:var(--danger); font-weight:bold;">${alerta.media.toFixed(2)} km/l</span>
+            <span style="font-size:11px; color:#64748b;"> (${alerta.tipo} - Limite mínimo: ${alerta.limite} km/l)</span>
             <button class="btn-action" style="background:var(--accent); color:white; margin-left:10px; font-size:10px;" onclick="analisarVeiculo('${alerta.placa}')">
               📊 VER ANÁLISE
             </button>
@@ -6070,8 +5270,22 @@
   function atualizarEstatisticas() {
     const container = document.getElementById('stats-container');
     
-    // CORREÇÃO: Aplicar filtro por posto
-    let dadosFiltrados = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
+    let dadosFiltrados = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        dadosFiltrados = dadosFiltrados.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        dadosFiltrados = dadosFiltrados.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
     
     const dadosAutorizados = dadosFiltrados;
     
@@ -6147,13 +5361,10 @@
       anoAnterior = anoAtual - 1;
     }
     
-    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`;
-    
     let dadosMesPassado = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = x.data.split('T')[0];
-      const anoMes = dataAbast.substring(0, 7);
-      return anoMes === anoMesAnterior;
+      const dataAbast = new Date(x.data);
+      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
     });
     
     // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
@@ -6182,8 +5393,22 @@
   function atualizarStatusFinanceiro() {
     const statusDiv = document.getElementById('status-financeiro');
     
-    // CORREÇÃO: Aplicar filtro por posto
-    let cacheFiltrado = filtrarPorPosto(cache);
+    // CORREÇÃO: Aplicar filtro por MÚLTIPLOS postos para autorizadores
+    let cacheFiltrado = cache;
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheFiltrado = cache.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        cacheFiltrado = cache.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
     
     // Frentista: mostrar apenas status de visualização SEM VALORES
     if (userRole === 'frentista') {
@@ -6205,25 +5430,17 @@
       return;
     }
     
-    // Autorizador: mostrar informações dos postos vinculados
+    // Autorizador: mostrar informações do posto vinculado
     if (userRole === 'autorizador') {
       const totalPendente = cacheFiltrado.filter(x => x.status === STATUS.AGUARDANDO).length;
       const totalAutorizado = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO).length;
       
-      // Buscar nomes dos postos vinculados
-      let nomesPostos = 'NÃO DEFINIDO';
-      if (userPostosVinculados && userPostosVinculados.length > 0) {
-        nomesPostos = userPostosVinculados
-          .map(id => {
-            const p = postos.find(posto => posto.id === id);
-            return p ? p.nome : '';
-          })
-          .filter(n => n)
-          .join(', ');
-      }
+      // Buscar nome do posto vinculado
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      const nomePosto = postoVinculado ? postoVinculado.nome : 'NÃO DEFINIDO';
       
       statusDiv.innerHTML = `
-        👤 AUTORIZADOR: ${loginUser.toUpperCase()} | ⛽ POSTO(S): ${nomesPostos}<br>
+        👤 AUTORIZADOR: ${loginUser.toUpperCase()} | ⛽ POSTO: ${nomePosto}<br>
         📊 ${totalAutorizado} APROVADOS | ⏳ ${totalPendente} AGUARDANDO APROVAÇÃO
       `;
       statusDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
@@ -6231,272 +5448,53 @@
     }
     
     if (userRole === 'secretarios') {
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("🔍 INÍCIO DEBUG SECRETÁRIO");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("📋 Secretaria:", userSecretaria);
-      console.log("👤 Usuário:", loginUser);
-      console.log("");
-      console.log("📊 DADOS DO USUÁRIO (usuarioData):");
-      console.log(JSON.stringify(usuarioData, null, 2));
-      console.log("");
-      console.log("💰 LIMITES DISPONÍVEIS:");
-      console.log("  userLimit (variável global):", userLimit);
-      console.log("  usuarioData.limite:", usuarioData.limite);
-      console.log("  usuarioData.limiteVictor:", usuarioData.limiteVictor);
-      console.log("  usuarioData.limiteMatina:", usuarioData.limiteMatina);
-      console.log("");
-      
-      // NOVO: Calcular gastos separados por posto APENAS DO MÊS ATUAL
-      const hoje = new Date();
-      const mesAtual = hoje.getMonth();
-      const anoAtual = hoje.getFullYear();
-      
-      // CORREÇÃO: Contar apenas AUTORIZADOS (igual aos relatórios)
-      const todosGastos = cache.filter(x => 
-        x.status === STATUS.AUTORIZADO &&  // Apenas autorizados
+      const gasto = cache.filter(x => 
+        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
         x.secretaria === userSecretaria
-      );
+      ).reduce((acc, item) => acc + item.valor, 0);
       
-      // Gastos do mês atual
-      const gastosMesAtual = todosGastos.filter(x => {
-        // CORREÇÃO: Usar comparação de string (igual ao filtro)
-        const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-        const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
-        return anoMes === anoMesAtual;
-      });
-      
-      console.log("=== DEBUG TODOS OS GASTOS ===");
-      console.log("Total de abastecimentos da secretaria:", todosGastos.length);
-      console.log("Abastecimentos do mês atual:", gastosMesAtual.length);
-      todosGastos.forEach(g => {
-        console.log("  Posto:", g.posto, "| Valor:", g.valor, "| Status:", g.status, "| Data:", g.data);
-      });
-      console.log("");
-      
-      // Separar por posto (APENAS DO MÊS ATUAL)
-      const gastosVictor = gastosMesAtual.filter(x => {
-        const postoNome = (x.posto || '').toUpperCase().trim();
-        return postoNome.includes('VICTOR');
-      }).reduce((acc, item) => acc + item.valor, 0);
-      
-      const gastosMatina = gastosMesAtual.filter(x => {
-        const postoNome = (x.posto || '').toUpperCase().trim();
-        return postoNome.includes('MATINA');
-      }).reduce((acc, item) => acc + item.valor, 0);
-      
-      const gastoTotal = gastosVictor + gastosMatina;
-      
-      console.log("💸 GASTOS CALCULADOS:");
-      console.log("  Gastos Victor:", gastosVictor.toFixed(2));
-      console.log("  Gastos Matina:", gastosMatina.toFixed(2));
-      console.log("  Gasto Total:", gastoTotal.toFixed(2));
-      console.log("");
-      
-      // USAR APENAS OS VALORES DEFINIDOS PELO MASTER - SEM FALLBACK AUTOMÁTICO
-      const limiteVictor = usuarioData.limiteVictor || 0;
-      const limiteMatina = usuarioData.limiteMatina || 0;
-      const limiteTotal = limiteVictor + limiteMatina;
-      
-      console.log("🎯 LIMITES FINAIS (USADOS NO DASHBOARD):");
-      console.log("  limiteVictor:", limiteVictor);
-      console.log("  limiteMatina:", limiteMatina);
-      console.log("  limiteTotal:", limiteTotal);
-      console.log("");
-      console.log("💳 SALDOS CALCULADOS:");
-      console.log("  Saldo Victor:", (limiteVictor - gastosVictor).toFixed(2));
-      console.log("  Saldo Matina:", (limiteMatina - gastosMatina).toFixed(2));
-      console.log("  Saldo Total:", (limiteTotal - gastoTotal).toFixed(2));
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("");
-      
-      // Calcular saldos
-      const saldoVictor = limiteVictor - gastosVictor;
-      const saldoMatina = limiteMatina - gastosMatina;
-      const saldoTotal = limiteTotal - gastoTotal;
-      
-      // Calcular percentuais
-      const percentualVictor = limiteVictor > 0 ? (gastosVictor / limiteVictor * 100).toFixed(1) : 0;
-      const percentualMatina = limiteMatina > 0 ? (gastosMatina / limiteMatina * 100).toFixed(1) : 0;
-      const percentualTotal = limiteTotal > 0 ? (gastoTotal / limiteTotal * 100).toFixed(1) : 0;
-      
+      const saldo = userLimit - gasto;
+      const percentual = (gasto / userLimit * 100).toFixed(1);
       statusDiv.innerHTML = `
-        <div style="font-size: 14px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid rgba(255,255,255,0.3);">
-          📊 ${userSecretaria}
-        </div>
-        
-        ${(limiteVictor === 0 && limiteMatina === 0) ? `
-        <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ef4444; font-size: 11px;">
-          ⚠️ <strong>LIMITES NÃO CONFIGURADOS</strong><br>
-          <span style="opacity: 0.9; font-size: 10px;">Entre em contato com o administrador para definir os limites mensais por posto.<br>
-          Sem limites configurados, não será possível registrar novos abastecimentos.</span>
-        </div>
-        ` : ''}
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-          <!-- POSTO VICTOR -->
-          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
-              ⛽ POSTO VICTOR
-            </div>
-            <div style="font-size: 10px; line-height: 1.8;">
-              <div>💰 Limite: <strong>R$ ${limiteVictor.toFixed(2)}</strong></div>
-              <div>📉 Gasto: <strong>R$ ${gastosVictor.toFixed(2)}</strong> (${percentualVictor}%)</div>
-              <div>✅ Disponível: <strong style="color: ${saldoVictor < limiteVictor * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoVictor.toFixed(2)}</strong></div>
-            </div>
-            <div class="progress-bar" style="margin-top: 8px;">
-              <div class="progress-fill ${saldoVictor < limiteVictor * 0.2 ? 'danger' : (saldoVictor < limiteVictor * 0.5 ? 'warning' : '')}" 
-                   style="width:${Math.min(percentualVictor, 100)}%"></div>
-            </div>
-          </div>
-          
-          <!-- POSTO MATINA -->
-          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; color: rgba(255,255,255,0.9);">
-              ⛽ POSTO MATINA
-            </div>
-            <div style="font-size: 10px; line-height: 1.8;">
-              <div>💰 Limite: <strong>R$ ${limiteMatina.toFixed(2)}</strong></div>
-              <div>📉 Gasto: <strong>R$ ${gastosMatina.toFixed(2)}</strong> (${percentualMatina}%)</div>
-              <div>✅ Disponível: <strong style="color: ${saldoMatina < limiteMatina * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoMatina.toFixed(2)}</strong></div>
-            </div>
-            <div class="progress-bar" style="margin-top: 8px;">
-              <div class="progress-fill ${saldoMatina < limiteMatina * 0.2 ? 'danger' : (saldoMatina < limiteMatina * 0.5 ? 'warning' : '')}" 
-                   style="width:${Math.min(percentualMatina, 100)}%"></div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- TOTAL GERAL DO MÊS -->
-        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
-          <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px;">
-            📊 TOTAL DO MÊS (VICTOR + MATINA)
-          </div>
-          <div style="font-size: 10px; display: flex; justify-content: space-between;">
-            <span>💰 Limite Total: <strong>R$ ${limiteTotal.toFixed(2)}</strong></span>
-            <span>📉 Gasto Total: <strong>R$ ${gastoTotal.toFixed(2)}</strong> (${percentualTotal}%)</span>
-            <span>✅ Disponível: <strong style="color: ${saldoTotal < limiteTotal * 0.2 ? '#fca5a5' : '#86efac'};">R$ ${saldoTotal.toFixed(2)}</strong></span>
-          </div>
-          <div class="progress-bar" style="margin-top: 8px;">
-            <div class="progress-fill ${saldoTotal < limiteTotal * 0.2 ? 'danger' : (saldoTotal < limiteTotal * 0.5 ? 'warning' : '')}" 
-                 style="width:${Math.min(percentualTotal, 100)}%"></div>
-          </div>
-        </div>
-        
-        <!-- NOVO: Gastos do Mês e do Ano -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-          <div style="background: rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.5);">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">
-              💰 GASTOS ${new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()}
-            </div>
-            <div style="font-size: 16px; font-weight: bold;">
-              R$ ${todosGastos.filter(x => {
-                const dataAbast = x.data.split('T')[0];
-                const anoMes = dataAbast.substring(0, 7);
-                const hoje = new Date();
-                const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-                return anoMes === anoMesAtual;
-              }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-            </div>
-            <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Mês atual (01 a 31)</div>
-          </div>
-          
-          <div style="background: rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; border: 2px solid rgba(59, 130, 246, 0.5);">
-            <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">
-              📊 GASTOS ${new Date().getFullYear()}
-            </div>
-            <div style="font-size: 16px; font-weight: bold;">
-              R$ ${todosGastos.filter(x => {
-                const dataAbast = x.data.split('T')[0];
-                const ano = dataAbast.substring(0, 4);
-                return ano === String(new Date().getFullYear());
-              }).reduce((acc, item) => acc + item.valor, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-            </div>
-            <div style="font-size: 9px; opacity: 0.8; margin-top: 3px;">Acumulado do ano</div>
-          </div>
+        📊 ${userSecretaria}<br>
+        💰 LIMITE: R$ ${userLimit.toFixed(2)} | 
+        📉 GASTO: R$ ${gasto.toFixed(2)} (${percentual}%) | 
+        ✅ SALDO: R$ ${saldo.toFixed(2)}
+        <div class="progress-bar">
+          <div class="progress-fill ${saldo < userLimit * 0.2 ? 'danger' : (saldo < userLimit * 0.5 ? 'warning' : '')}" style="width:${percentual}%"></div>
         </div>
       `;
-      
-      // Definir cor de fundo baseado no saldo total
-      if (saldoTotal < limiteTotal * 0.2) {
+      if (saldo < userLimit * 0.2) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
-      } else if (saldoTotal < limiteTotal * 0.5) {
+      } else if (saldo < userLimit * 0.5) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--warning) 0%, #f97316 100%)';
       } else {
         statusDiv.style.background = 'linear-gradient(135deg, var(--primary) 0%, #1e293b 100%)';
       }
     } else {
-      // Calcular gastos do mês atual (01 a 31)
-      const hoje = new Date();
-      const mesAtual = hoje.getMonth();
-      const anoAtual = hoje.getFullYear();
-      
-      // CORREÇÃO: Aplicar filtrarPorPosto ANTES de filtrar por data
-      const cacheFiltrado = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
-      
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("🔍 DEBUG GASTOS DO MÊS");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("Mês Atual:", mesAtual, "(0=Jan, 1=Fev, ...)");
-      console.log("Ano Atual:", anoAtual);
-      console.log("Total após filtrarPorPosto:", cacheFiltrado.length);
-      
-      // USAR FUNÇÃO CENTRALIZADA
-      const gastosMesAtual = calcularGastosMes(cacheFiltrado, anoAtual, mesAtual + 1);
-      
-      console.log("Total de abastecimentos do mês:", cacheFiltrado.filter(x => {
-        const dataAbast = x.data.split('T')[0];
-        const anoMes = dataAbast.substring(0, 7);
-        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
-        return anoMes === anoMesAtual;
-      }).length);
-      console.log("TOTAL CALCULADO:", gastosMesAtual.toFixed(2));
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("");
-      
-      // USAR FUNÇÃO CENTRALIZADA
-      const gastosTotaisAno = calcularGastosAno(cacheFiltrado, anoAtual);
-      
-      // Gastos pendentes
-      const totalPendente = filtrarPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO))
+      const totalGasto = cache.filter(x => x.status === STATUS.AUTORIZADO)
         .reduce((acc, item) => acc + item.valor, 0);
-      const pendentesQtd = filtrarPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO)).length;
-      
-      // Nome do mês atual
-      const nomeMes = new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
-      
+      const totalPendente = cache.filter(x => x.status === STATUS.AGUARDANDO)
+        .reduce((acc, item) => acc + item.valor, 0);
+      const pendentesQtd = cache.filter(x => x.status === STATUS.AGUARDANDO).length;
       statusDiv.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 10px;">
-          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 15px; border-radius: 8px; color: white;">
-            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">💰 GASTOS ${nomeMes}</div>
-            <div style="font-size: 20px; font-weight: bold;">R$ ${gastosMesAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">De 01 a 31 do mês</div>
-          </div>
-          
-          <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 15px; border-radius: 8px; color: white;">
-            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">📊 GASTOS TOTAIS ${anoAtual}</div>
-            <div style="font-size: 20px; font-weight: bold;">R$ ${gastosTotaisAno.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">Acumulado do ano</div>
-          </div>
-          
-          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 15px; border-radius: 8px; color: white;">
-            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 5px;">⏳ PENDENTES</div>
-            <div style="font-size: 20px; font-weight: bold;">R$ ${totalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-            <div style="font-size: 9px; opacity: 0.8; margin-top: 5px;">${pendentesQtd} aguardando</div>
-          </div>
-        </div>
-        
-        <div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 10px; background: var(--hover-bg); border-radius: 6px;">
-          👤 ${loginUser.toUpperCase()} | <span class="badge badge-success">${userRole.toUpperCase()}</span>
-        </div>
+        👤 OPERADOR: ${loginUser.toUpperCase()} 
+        <span class="badge badge-success">${userRole.toUpperCase()}</span><br>
+        💰 TOTAL APROVADO: R$ ${totalGasto.toFixed(2)} | 
+        ⏳ PENDENTE: R$ ${totalPendente.toFixed(2)} (${pendentesQtd})
       `;
     }
   }
   
   function atualizarRelatorio() {
-    // NOVO: Filtrar cache por posto
-    let cacheAtual = filtrarPorPosto(cache);
+    // NOVO: Filtrar cache por posto para frentistas e autorizadores
+    let cacheAtual = cache;
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        cacheAtual = cache.filter(item => item.posto === postoVinculado.nome);
+      }
+    }
     
     let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
     
@@ -6516,16 +5514,8 @@
       const itens = cacheAtual.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO)
         .sort((a, b) => b.timestamp - a.timestamp);
       if (itens.length === 0) return;
-      
-      // PAGINAÇÃO
-      if (!paginaAtual[sec]) paginaAtual[sec] = 1;
-      const totalPaginas = Math.ceil(itens.length / itensPorPagina);
-      const inicio = (paginaAtual[sec] - 1) * itensPorPagina;
-      const fim = inicio + itensPorPagina;
-      const itensPaginados = itens.slice(inicio, fim);
-      
       let linhas = "";
-      itensPaginados.forEach(d => {
+      itens.forEach(d => {
         const media = calcularMedia(d);
         // NOVO: Usar os limites de alerta específicos
         const limiteAlerta = LIMITES_ALERTA[d.tipo];
@@ -6533,13 +5523,7 @@
         
         linhas += `<tr class="${classeAlerta}">
           <td>${d.data.split('-').reverse().join('/')}</td>
-          <td>
-            ${d.horario 
-              ? `<span style="color: var(--text-primary); font-size: 12px; font-weight: 600;">🕐 ${d.horario}</span>` 
-              : `<span style="color: var(--text-secondary); font-size: 10px; opacity: 0.5;">--:--</span>`
-            }
-          </td>
-          <td>${formatarPlacaParaExibicao(d.placa)} ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+          <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
           <td>${d.tipo}</td>
@@ -6557,9 +5541,6 @@
               ? `<button class="btn-action btn-aprovar" onclick="aprovar('${d.id}')">✅</button>
                  <button class="btn-action btn-rejeitar" onclick="rejeitar('${d.id}')">❌</button>` 
               : ''}
-            ${(loginUser === 'master')
-              ? `<button class="btn-action btn-editar" onclick="abrirModalEditar('${d.id}')">✏️</button>` 
-              : ''}
             ${(temPermissao('deletar_abastecimento'))
               ? `<button class="btn-action btn-deletar" onclick="deletar('${d.id}')">🗑️</button>` 
               : ''}
@@ -6575,37 +5556,6 @@
         ? `${sec} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`
         : `${sec} | 💰 R$ ${totalSec.toFixed(2)} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`;
       
-      // CONTROLES DE PAGINAÇÃO
-      let paginacaoHTML = '';
-      if (totalPaginas > 1) {
-        paginacaoHTML = `
-          <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 15px; padding: 15px; background: var(--hover-bg); border-radius: 8px;">
-            <button 
-              class="btn-save" 
-              style="padding: 8px 15px; min-width: auto; ${paginaAtual[sec] === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
-              onclick="mudarPagina('${sec}', ${paginaAtual[sec] - 1})"
-              ${paginaAtual[sec] === 1 ? 'disabled' : ''}>
-              ◀ ANTERIOR
-            </button>
-            
-            <div style="display: flex; gap: 5px; align-items: center;">
-              ${gerarBotoesPaginas(sec, paginaAtual[sec], totalPaginas)}
-            </div>
-            
-            <button 
-              class="btn-save" 
-              style="padding: 8px 15px; min-width: auto; ${paginaAtual[sec] === totalPaginas ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
-              onclick="mudarPagina('${sec}', ${paginaAtual[sec] + 1})"
-              ${paginaAtual[sec] === totalPaginas ? 'disabled' : ''}>
-              PRÓXIMA ▶
-            </button>
-          </div>
-          <div style="text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-secondary);">
-            Mostrando ${inicio + 1} a ${Math.min(fim, itens.length)} de ${itens.length} registros
-          </div>
-        `;
-      }
-      
       container.innerHTML += `
         <div class="section-header">
           ${headerInfo}
@@ -6616,7 +5566,6 @@
               <thead>
                 <tr>
                   <th>DATA</th>
-                  <th>HORÁRIO</th>
                   <th>PLACA</th>
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
@@ -6631,81 +5580,9 @@
               <tbody>${linhas}</tbody>
             </table>
           </div>
-          ${paginacaoHTML}
         </div>
       `;
     });
-  }
-  
-  // NOVA FUNÇÃO: Gerar botões de páginas
-  function gerarBotoesPaginas(sec, paginaAtual, totalPaginas) {
-    let html = '';
-    
-    // Mostrar no máximo 5 botões de página
-    let inicio = Math.max(1, paginaAtual - 2);
-    let fim = Math.min(totalPaginas, inicio + 4);
-    
-    // Ajustar início se estiver no final
-    if (fim - inicio < 4) {
-      inicio = Math.max(1, fim - 4);
-    }
-    
-    // Botão primeira página
-    if (inicio > 1) {
-      html += `
-        <button 
-          class="btn-save" 
-          style="padding: 8px 12px; min-width: auto; font-size: 12px;"
-          onclick="mudarPagina('${sec}', 1)">
-          1
-        </button>
-      `;
-      if (inicio > 2) {
-        html += '<span style="padding: 0 5px;">...</span>';
-      }
-    }
-    
-    // Botões das páginas
-    for (let i = inicio; i <= fim; i++) {
-      const ativo = i === paginaAtual;
-      html += `
-        <button 
-          class="btn-save" 
-          style="padding: 8px 12px; min-width: auto; font-size: 12px; ${ativo ? 'background: var(--primary); font-weight: bold;' : ''}"
-          onclick="mudarPagina('${sec}', ${i})">
-          ${i}
-        </button>
-      `;
-    }
-    
-    // Botão última página
-    if (fim < totalPaginas) {
-      if (fim < totalPaginas - 1) {
-        html += '<span style="padding: 0 5px;">...</span>';
-      }
-      html += `
-        <button 
-          class="btn-save" 
-          style="padding: 8px 12px; min-width: auto; font-size: 12px;"
-          onclick="mudarPagina('${sec}', ${totalPaginas})">
-          ${totalPaginas}
-        </button>
-      `;
-    }
-    
-    return html;
-  }
-  
-  // NOVA FUNÇÃO: Mudar página
-  function mudarPagina(secretaria, novaPagina) {
-    paginaAtual[secretaria] = novaPagina;
-    atualizarRelatorio();
-    
-    // Scroll suave para o topo da tabela
-    const container = document.getElementById('relatorio-container');
-    if (container) {
-      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
   
   let chartAutorizadorTempo = null;
@@ -7013,8 +5890,18 @@
   }
   
   function atualizarPendentes() {
-    // CORREÇÃO: Aplicar filtro por posto
-    let pendentes = filtrarPorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
+    let pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
+    
+    // CORREÇÃO: Filtro automático por MÚLTIPLOS postos para autorizadores
+    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        pendentes = pendentes.filter(p => nomesPostosAutorizados.includes(p.posto));
+      }
+    }
     
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
@@ -7075,8 +5962,21 @@
       return x.status === STATUS.AUTORIZADO;
     });
     
-    // CORREÇÃO: Aplicar filtro por posto
-    dadosGrafico = filtrarPorPosto(dadosGrafico);
+    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        dadosGrafico = dadosGrafico.filter(item => item.posto === postoVinculado.nome);
+      }
+    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomesPostosAutorizados = postos
+        .filter(p => userPostosVinculados.includes(p.id))
+        .map(p => p.nome);
+      
+      if (nomesPostosAutorizados.length > 0) {
+        dadosGrafico = dadosGrafico.filter(item => nomesPostosAutorizados.includes(item.posto));
+      }
+    }
     
     if (dadosGrafico.length === 0) return;
     
@@ -7176,22 +6076,16 @@
       anoAnterior = anoAtual - 1;
     }
     
-    // CORREÇÃO: Usar substring para comparação consistente
-    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
-    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`; // "2026-01"
-    
     const dadosMesAtual = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-      return anoMes === anoMesAtual;
+      const dataAbast = new Date(x.data);
+      return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
     });
     
     const dadosMesPassado = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-      return anoMes === anoMesAnterior;
+      const dataAbast = new Date(x.data);
+      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
     });
     
     const totalAtual = dadosMesAtual.reduce((acc, item) => acc + item.valor, 0);
@@ -7379,14 +6273,10 @@
         ano -= 1;
       }
       
-      // CORREÇÃO: Usar substring para filtrar por mês
-      const anoMesAlvo = `${ano}-${String(mes + 1).padStart(2, '0')}`; // "2026-02"
-      
       const dadosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-        const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-        return anoMes === anoMesAlvo;
+        const dataAbast = new Date(x.data);
+        return dataAbast.getMonth() === mes && dataAbast.getFullYear() === ano;
       });
       
       const totalMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -7452,22 +6342,18 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    // CORREÇÃO: Aplicar filtro por posto
-    let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
     
-    // CORREÇÃO CRÍTICA: Usar split('T')[0] para comparar apenas a data
-    if (dataInicial) {
-      registros = registros.filter(r => {
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast >= dataInicial;
-      });
+    // NOVO: Filtro automático por posto para frentistas e autorizadores
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        registros = registros.filter(r => r.posto === postoVinculado.nome);
+      }
     }
-    if (dataFinal) {
-      registros = registros.filter(r => {
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast <= dataFinal;
-      });
-    }
+    
+    if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
+    if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
     if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
     if (posto) registros = registros.filter(r => r.posto === posto);
     if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
@@ -7486,7 +6372,6 @@
       
       return {
         'DATA': r.data.split('-').reverse().join('/'),
-        'HORÁRIO': r.horario || '--:--',
         'PLACA': r.placa,
         'POSTO': r.posto || '---',
         'SECRETARIA': r.secretaria,
@@ -7516,179 +6401,6 @@
     
     // Log de auditoria
     registrarAuditoria('EXPORTACAO_EXCEL', {
-      registros: registros.length,
-      filtros: { dataInicial, dataFinal, secretaria, posto, combustivel, placa }
-    });
-  }
-  
-  // NOVA FUNÇÃO: Exportar relatório em PDF
-  function exportarPDF() {
-    if (!temPermissao('exportar_excel')) {
-      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXPORTAR!", "error");
-      return;
-    }
-    
-    const dataInicial = document.getElementById('rel-data-inicial').value;
-    const dataFinal = document.getElementById('rel-data-final').value;
-    const secretaria = document.getElementById('rel-secretaria').value;
-    const posto = document.getElementById('rel-posto').value;
-    const combustivel = document.getElementById('rel-combustivel').value;
-    const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
-    
-    // Aplicar filtro por posto
-    let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
-    
-    // CORREÇÃO CRÍTICA: Usar split('T')[0] para comparar apenas a data
-    if (dataInicial) {
-      registros = registros.filter(r => {
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast >= dataInicial;
-      });
-    }
-    if (dataFinal) {
-      registros = registros.filter(r => {
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast <= dataFinal;
-      });
-    }
-    if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
-    if (posto) registros = registros.filter(r => r.posto === posto);
-    if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
-    if (placa) registros = registros.filter(r => r.placa.includes(placa));
-    
-    if (registros.length === 0) {
-      mostrarNotificacao("❌ NENHUM REGISTRO PARA EXPORTAR!", "error");
-      return;
-    }
-    
-    // Criar PDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('landscape', 'mm', 'a4');
-    
-    // Título
-    doc.setFontSize(18);
-    doc.setTextColor(59, 130, 246);
-    doc.text('RELATÓRIO DE ABASTECIMENTOS', 148, 15, { align: 'center' });
-    
-    // Informações do relatório
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    let yPos = 25;
-    
-    doc.text(`Data de Geração: ${new Date().toLocaleString('pt-BR')}`, 14, yPos);
-    yPos += 5;
-    
-    if (dataInicial || dataFinal) {
-      const periodo = `Período: ${dataInicial ? dataInicial.split('-').reverse().join('/') : 'Início'} a ${dataFinal ? dataFinal.split('-').reverse().join('/') : 'Hoje'}`;
-      doc.text(periodo, 14, yPos);
-      yPos += 5;
-    }
-    
-    if (secretaria) {
-      doc.text(`Secretaria: ${secretaria}`, 14, yPos);
-      yPos += 5;
-    }
-    
-    if (posto) {
-      doc.text(`Posto: ${posto}`, 14, yPos);
-      yPos += 5;
-    }
-    
-    doc.text(`Total de Registros: ${registros.length}`, 14, yPos);
-    yPos += 8;
-    
-    // Preparar dados da tabela
-    const dadosTabela = registros.map(r => {
-      const media = calcularMedia(r);
-      return [
-        r.data.split('-').reverse().join('/'),
-        r.horario || '--:--',
-        r.placa,
-        r.posto || '---',
-        r.motorista.substring(0, 20), // Limitar caracteres
-        r.tipo,
-        r.km.toLocaleString('pt-BR'),
-        r.litro.toFixed(2),
-        media > 0 ? media.toFixed(2) : '---',
-        'R$ ' + r.valor.toFixed(2)
-      ];
-    });
-    
-    // Criar tabela
-    doc.autoTable({
-      startY: yPos,
-      head: [['DATA', 'HORA', 'PLACA', 'POSTO', 'MOTORISTA', 'COMB.', 'KM', 'LITROS', 'MÉDIA', 'VALOR']],
-      body: dadosTabela,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [59, 130, 246],
-        textColor: [255, 255, 255],
-        fontSize: 8,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      bodyStyles: {
-        fontSize: 7,
-        cellPadding: 2
-      },
-      columnStyles: {
-        0: { cellWidth: 20, halign: 'center' },  // DATA
-        1: { cellWidth: 15, halign: 'center' },  // HORA
-        2: { cellWidth: 22, halign: 'center' },  // PLACA
-        3: { cellWidth: 25 },                    // POSTO
-        4: { cellWidth: 35 },                    // MOTORISTA
-        5: { cellWidth: 20, halign: 'center' },  // COMBUSTÍVEL
-        6: { cellWidth: 20, halign: 'right' },   // KM
-        7: { cellWidth: 18, halign: 'right' },   // LITROS
-        8: { cellWidth: 18, halign: 'center' },  // MÉDIA
-        9: { cellWidth: 25, halign: 'right' }    // VALOR
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      margin: { top: 10, right: 14, bottom: 10, left: 14 }
-    });
-    
-    // Totais
-    const totalLitros = registros.reduce((acc, r) => acc + r.litro, 0);
-    const totalValor = registros.reduce((acc, r) => acc + r.valor, 0);
-    const finalY = doc.lastAutoTable.finalY + 10;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'bold');
-    doc.text(`TOTAL DE LITROS: ${totalLitros.toFixed(2)} L`, 14, finalY);
-    doc.text(`TOTAL GASTO: R$ ${totalValor.toFixed(2)}`, 14, finalY + 6);
-    
-    // Rodapé
-    const pageCount = doc.internal.getNumberOfPages();
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.setFont(undefined, 'normal');
-    
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.text(
-        `Página ${i} de ${pageCount}`,
-        148,
-        doc.internal.pageSize.height - 10,
-        { align: 'center' }
-      );
-      doc.text(
-        'Sistema de Gestão de Combustível',
-        14,
-        doc.internal.pageSize.height - 10
-      );
-    }
-    
-    // Salvar PDF
-    const nomeArquivo = `Relatorio_Combustivel_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(nomeArquivo);
-    
-    mostrarNotificacao("✅ PDF EXPORTADO COM SUCESSO!", "success");
-    
-    // Log de auditoria
-    registrarAuditoria('EXPORTACAO_PDF', {
       registros: registros.length,
       filtros: { dataInicial, dataFinal, secretaria, posto, combustivel, placa }
     });
@@ -7964,19 +6676,6 @@
     document.getElementById('field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
-    // Adicionar eventos para calcular total
-    if (isSecretario) {
-      setTimeout(() => {
-        const victorInput = document.getElementById('new-limit-victor');
-        const matinaInput = document.getElementById('new-limit-matina');
-        
-        if (victorInput && matinaInput) {
-          victorInput.addEventListener('input', atualizarTotalLimite);
-          matinaInput.addEventListener('input', atualizarTotalLimite);
-        }
-      }, 100);
-    }
-    
     // Frentista não precisa de combustível permitido
     const combField = document.getElementById('new-combustivel').closest('div');
     if (combField) {
@@ -7996,32 +6695,6 @@
       if (postoSelectFrentista) postoSelectFrentista.value = '';
       const containerComb = document.getElementById('lista-combustiveis-autorizador');
       if (containerComb) containerComb.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>';
-    }
-  }
-  
-  function atualizarTotalLimite() {
-    const victor = parseFloat(document.getElementById('new-limit-victor').value) || 0;
-    const matina = parseFloat(document.getElementById('new-limit-matina').value) || 0;
-    const total = victor + matina;
-    
-    const preview = document.getElementById('total-limite-preview');
-    if (preview) {
-      preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-      preview.style.fontWeight = 'bold';
-      preview.style.color = total > 0 ? '#16a34a' : '#64748b';
-    }
-  }
-  
-  function atualizarTotalLimiteEdit() {
-    const victor = parseFloat(document.getElementById('edit-limit-victor').value) || 0;
-    const matina = parseFloat(document.getElementById('edit-limit-matina').value) || 0;
-    const total = victor + matina;
-    
-    const preview = document.getElementById('edit-total-limite-preview');
-    if (preview) {
-      preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-      preview.style.fontWeight = 'bold';
-      preview.style.color = total > 0 ? '#16a34a' : '#64748b';
     }
   }
   
@@ -8191,19 +6864,6 @@
     document.getElementById('edit-field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('edit-field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
-    // Adicionar eventos para calcular total na edição
-    if (isSecretario) {
-      setTimeout(() => {
-        const victorInput = document.getElementById('edit-limit-victor');
-        const matinaInput = document.getElementById('edit-limit-matina');
-        
-        if (victorInput && matinaInput) {
-          victorInput.addEventListener('input', atualizarTotalLimiteEdit);
-          matinaInput.addEventListener('input', atualizarTotalLimiteEdit);
-        }
-      }, 100);
-    }
-    
     // Frentista e autorizador não precisam de combustível permitido
     const combField = document.getElementById('edit-combustivel').closest('div');
     if (combField) {
@@ -8265,18 +6925,8 @@
     const senha = document.getElementById('new-pass').value.trim();
     const role = document.getElementById('new-role').value;
     const combustivel = document.getElementById('new-combustivel').value;
+    const limite = parseFloat(document.getElementById('new-limit').value) || 0;
     const secretaria = document.getElementById('new-sec-vinc').value;
-    
-    // NOVO: Pegar limites separados para secretários
-    let limite = 0;
-    let limiteVictor = 0;
-    let limiteMatina = 0;
-    
-    if (role === 'secretarios') {
-      limiteVictor = parseFloat(document.getElementById('new-limit-victor').value) || 0;
-      limiteMatina = parseFloat(document.getElementById('new-limit-matina').value) || 0;
-      limite = limiteVictor + limiteMatina; // Total para compatibilidade
-    }
     
     if (!usuario || !senha) {
       mostrarNotificacao("❌ PREENCHA USUÁRIO E SENHA!", "error");
@@ -8294,7 +6944,7 @@
     }
     
     if (role === 'secretarios' && (!limite || !secretaria)) {
-      mostrarNotificacao("❌ PREENCHA OS LIMITES E SECRETARIA PARA SECRETÁRIOS!", "error");
+      mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
       return;
     }
     
@@ -8306,14 +6956,6 @@
       secretariaVinculada: secretaria,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
-    
-    // NOVO: Adicionar limites separados para secretários
-    if (role === 'secretarios') {
-      dadosUsuario.limiteVictor = limiteVictor;
-      dadosUsuario.limiteMatina = limiteMatina;
-      dadosUsuario.limiteUsadoVictor = 0;
-      dadosUsuario.limiteUsadoMatina = 0;
-    }
     
     // Se for frentista, incluir posto vinculado
     if (role === 'frentista') {
@@ -8355,8 +6997,7 @@
       mostrarNotificacao("✅ USUÁRIO SALVO COM SUCESSO!", "success");
       document.getElementById('new-user').value = '';
       document.getElementById('new-pass').value = '';
-      if (document.getElementById('new-limit-victor')) document.getElementById('new-limit-victor').value = '';
-      if (document.getElementById('new-limit-matina')) document.getElementById('new-limit-matina').value = '';
+      document.getElementById('new-limit').value = '';
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
       document.getElementById('new-posto-vinc-frentista').value = '';
@@ -8427,9 +7068,6 @@
               <td style="font-size:11px;">${postoInfo}</td>
               <td class="no-print">
                 ${temPermissao('gerenciar_usuarios') || loginUser === 'master' ? `
-                  <button class="btn-action" style="background:#10b981;color:white;" onclick="abrirTrocarSenha('${c.key}')">
-                    🔑 SENHA
-                  </button>
                   <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="abrirPermissoes('${c.key}')">
                     🔐 PERMISSÕES
                   </button>
@@ -8460,15 +7098,7 @@
       document.getElementById('edit-pass').value = u.senha;
       document.getElementById('edit-combustivel').value = u.combustivelLiberado || 'todos';
       document.getElementById('edit-role').value = u.role;
-      
-      // NOVO: Carregar limites separados se for secretário
-      if (u.role === 'secretarios') {
-        document.getElementById('edit-limit-victor').value = u.limiteVictor || 0;
-        document.getElementById('edit-limit-matina').value = u.limiteMatina || 0;
-        // Atualizar preview do total
-        setTimeout(atualizarTotalLimiteEdit, 100);
-      }
-      
+      document.getElementById('edit-limit').value = u.limite || "";
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
       
       // Carregar dados de frentista se aplicável
@@ -8537,18 +7167,8 @@
     const novaPass = document.getElementById('edit-pass').value;
     const combus = document.getElementById('edit-combustivel').value;
     const role = document.getElementById('edit-role').value;
+    const limite = parseFloat(document.getElementById('edit-limit').value) || 0;
     const secretaria = document.getElementById('edit-sec-vinc').value;
-    
-    // NOVO: Pegar limites separados para secretários
-    let limite = 0;
-    let limiteVictor = 0;
-    let limiteMatina = 0;
-    
-    if (role === 'secretarios') {
-      limiteVictor = parseFloat(document.getElementById('edit-limit-victor').value) || 0;
-      limiteMatina = parseFloat(document.getElementById('edit-limit-matina').value) || 0;
-      limite = limiteVictor + limiteMatina; // Total para compatibilidade
-    }
     
     if (novaPass.length < 4) {
       mostrarNotificacao("❌ SENHA DEVE TER NO MÍNIMO 4 CARACTERES!", "error");
@@ -8569,12 +7189,10 @@
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'secretarios') {
       if (!limite || !secretaria) {
-        mostrarNotificacao("❌ PREENCHA OS LIMITES E SECRETARIA PARA SECRETÁRIOS!", "error");
+        mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
         return;
       }
       dadosAtualizados.limite = limite;
-      dadosAtualizados.limiteVictor = limiteVictor;
-      dadosAtualizados.limiteMatina = limiteMatina;
       dadosAtualizados.secretariaVinculada = secretaria;
       // Limpar dados de autorizador/frentista se houver
       dadosAtualizados.postoVinculado = "";
@@ -8700,92 +7318,6 @@
     usuarioEditandoPermissoes = null;
   }
   
-  // NOVAS FUNÇÕES: Trocar Senha de Usuário
-  let usuarioTrocandoSenha = null;
-  
-  function abrirTrocarSenha(username) {
-    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
-      mostrarNotificacao("❌ SEM PERMISSÃO PARA TROCAR SENHA!", "error");
-      return;
-    }
-    
-    usuarioTrocandoSenha = username;
-    document.getElementById('trocar-senha-usuario').value = username.toUpperCase();
-    document.getElementById('trocar-senha-nova').value = '';
-    
-    // Buscar senha atual do usuário
-    db.ref('usuarios/' + username).once('value', snap => {
-      const usuario = snap.val();
-      if (usuario && usuario.senha) {
-        document.getElementById('trocar-senha-atual').value = usuario.senha;
-      } else {
-        document.getElementById('trocar-senha-atual').value = 'Senha não encontrada';
-      }
-    });
-    
-    document.getElementById('modal-trocar-senha').style.display = 'flex';
-  }
-  
-  function fecharModalTrocarSenha() {
-    document.getElementById('modal-trocar-senha').style.display = 'none';
-    usuarioTrocandoSenha = null;
-    document.getElementById('trocar-senha-nova').value = '';
-    document.getElementById('trocar-senha-atual').value = '';
-    // Resetar para password
-    document.getElementById('trocar-senha-atual').type = 'password';
-  }
-  
-  function toggleSenhaAtual() {
-    const campo = document.getElementById('trocar-senha-atual');
-    if (campo.type === 'password') {
-      campo.type = 'text';
-    } else {
-      campo.type = 'password';
-    }
-  }
-  
-  function confirmarTrocarSenha() {
-    const novaSenha = document.getElementById('trocar-senha-nova').value.trim();
-    const senhaAtual = document.getElementById('trocar-senha-atual').value;
-    
-    if (!novaSenha) {
-      mostrarNotificacao("❌ DIGITE A NOVA SENHA!", "error");
-      return;
-    }
-    
-    if (novaSenha.length < 4) {
-      mostrarNotificacao("❌ A SENHA DEVE TER PELO MENOS 4 CARACTERES!", "error");
-      return;
-    }
-    
-    if (novaSenha === senhaAtual) {
-      mostrarNotificacao("⚠️ A NOVA SENHA É IGUAL À ATUAL!", "warning");
-      return;
-    }
-    
-    if (!confirm(`🔑 CONFIRMA A TROCA DE SENHA?\n\nUsuário: ${usuarioTrocandoSenha.toUpperCase()}\nSenha atual: ${senhaAtual}\nNova senha: ${novaSenha}\n\n⚠️ Esta ação não pode ser desfeita!`)) {
-      return;
-    }
-    
-    db.ref('usuarios/' + usuarioTrocandoSenha).update({
-      senha: novaSenha
-    }).then(() => {
-      registrarAuditoria('SENHA_ALTERADA_MASTER', {
-        usuario: usuarioTrocandoSenha,
-        senhaAnterior: senhaAtual,
-        novaSenha: novaSenha,
-        alteradoPor: loginUser,
-        data: new Date().toISOString()
-      });
-      
-      mostrarNotificacao(`✅ SENHA DO USUÁRIO ${usuarioTrocandoSenha.toUpperCase()} ALTERADA COM SUCESSO!`, "success");
-      fecharModalTrocarSenha();
-      listUsuarios();
-    }).catch(error => {
-      mostrarNotificacao("❌ ERRO AO TROCAR SENHA: " + error.message, "error");
-    });
-  }
-  
   function carregarPermissoesPerfil() {
     const perfil = document.getElementById('perfil-config').value;
     
@@ -8869,115 +7401,6 @@
     }
   }
   
-  function resetarLimitesMensais() {
-    if (!temPermissao('resetar_limites')) {
-      mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
-      return;
-    }
-    
-    const confirmacao = confirm(
-      "🔄 RESETAR LIMITES MENSAIS\n\n" +
-      "Esta ação irá:\n" +
-      "• Resetar 'limiteUsadoVictor' e 'limiteUsadoMatina' para 0\n" +
-      "• Permitir que secretários voltem a usar seus limites mensais\n\n" +
-      "Esta operação deve ser feita no início de cada mês.\n\n" +
-      "Deseja continuar?"
-    );
-    
-    if (!confirmacao) return;
-    
-    db.ref('usuarios').once('value', function(snapshot) {
-      let contador = 0;
-      const promises = [];
-      
-      snapshot.forEach(function(userSnap) {
-        const usuario = userSnap.val();
-        const username = userSnap.key;
-        
-        if (usuario.role === 'secretarios') {
-          promises.push(
-            db.ref('usuarios/' + username).update({
-              limiteUsadoVictor: 0,
-              limiteUsadoMatina: 0,
-              limiteUsado: 0,
-              dataResetLimite: new Date().toISOString()
-            })
-          );
-          contador++;
-        }
-      });
-      
-      if (contador === 0) {
-        mostrarNotificacao("ℹ️ NENHUM SECRETÁRIO PARA RESETAR!", "info");
-        return;
-      }
-      
-      Promise.all(promises).then(function() {
-        registrarAuditoria('RESET_LIMITES_MENSAIS', { 
-          usuariosAfetados: contador,
-          data: new Date().toISOString()
-        });
-        mostrarNotificacao(
-          "✅ LIMITES RESETADOS COM SUCESSO!\n\n" + contador + " secretário(s) tiveram seus limites zerados.",
-          "success"
-        );
-        listUsuarios();
-      }).catch(function(error) {
-        console.error("Erro ao resetar limites:", error);
-        mostrarNotificacao("❌ ERRO AO RESETAR LIMITES: " + error.message, "error");
-      });
-    });
-  }
-  
-  // NOVA FUNÇÃO: Reset Automático no início do mês
-  function verificarResetAutomatico() {
-    const hoje = new Date();
-    const dia = hoje.getDate();
-    
-    // Verifica se é dia 1º do mês
-    if (dia !== 1) return;
-    
-    // Verifica se já resetou hoje
-    const ultimoReset = localStorage.getItem('ultimoResetAutomatico');
-    const dataAtual = hoje.toISOString().split('T')[0];
-    
-    if (ultimoReset === dataAtual) {
-      console.log('✅ Reset automático já executado hoje');
-      return;
-    }
-    
-    // Só master pode fazer reset automático
-    if (loginUser !== 'master') return;
-    
-    console.log('🔄 Executando reset automático...');
-    
-    db.ref('usuarios').once('value', function(snapshot) {
-      const promises = [];
-      
-      snapshot.forEach(function(userSnap) {
-        const usuario = userSnap.val();
-        const username = userSnap.key;
-        
-        if (usuario.role === 'secretarios') {
-          promises.push(
-            db.ref('usuarios/' + username).update({
-              limiteUsadoVictor: 0,
-              limiteUsadoMatina: 0,
-              limiteUsado: 0,
-              dataResetLimite: new Date().toISOString()
-            })
-          );
-        }
-      });
-      
-      Promise.all(promises).then(function() {
-        localStorage.setItem('ultimoResetAutomatico', dataAtual);
-        registrarAuditoria('RESET_AUTOMATICO_LIMITES', { data: new Date().toISOString() });
-        console.log('✅ Reset automático concluído!');
-      });
-    });
-  }
-  
   function limparFormulario() {
     ['f-placa', 'f-mot', 'f-km', 'f-lit', 'f-val'].forEach(id => {
       document.getElementById(id).value = "";
@@ -9009,93 +7432,8 @@
     document.getElementById('rel-posto').value = '';
     document.getElementById('rel-combustivel').value = '';
     document.getElementById('rel-placa').value = '';
-    document.getElementById('busca-global').value = '';
     atualizarRelatorio();
     mostrarNotificacao("🔄 FILTROS LIMPOS!", "info");
-  }
-  
-  // NOVA FUNÇÃO: Busca Global em Tempo Real
-  function aplicarBuscaGlobal() {
-    const termoBusca = document.getElementById('busca-global').value.toUpperCase().trim();
-    
-    // Se busca vazia, mostrar todos
-    if (!termoBusca) {
-      document.querySelectorAll('#relatorio-container tbody tr').forEach(tr => {
-        tr.style.display = '';
-      });
-      return;
-    }
-    
-    // Filtrar linhas da tabela
-    document.querySelectorAll('#relatorio-container tbody tr').forEach(tr => {
-      const textoLinha = tr.textContent.toUpperCase();
-      
-      if (textoLinha.includes(termoBusca)) {
-        tr.style.display = '';
-      } else {
-        tr.style.display = 'none';
-      }
-    });
-  }
-  
-  // NOVA FUNÇÃO: Máscara de KM com vírgula decimal (ex: 12.345,6)
-  function aplicarMascaraKM(input) {
-    let valor = input.value;
-    
-    // Remove tudo exceto números
-    valor = valor.replace(/\D/g, '');
-    
-    // Se vazio, retorna
-    if (!valor) {
-      input.value = '';
-      return;
-    }
-    
-    // Converte para número
-    let numero = parseInt(valor);
-    
-    // Formata com ponto de milhar e vírgula decimal
-    // Ex: 123456 -> 12.345,6
-    let inteiro = Math.floor(numero / 10);
-    let decimal = numero % 10;
-    
-    // Formata parte inteira com pontos
-    let inteiroFormatado = inteiro.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    
-    // Resultado final
-    input.value = inteiroFormatado + ',' + decimal;
-  }
-  
-  // NOVA FUNÇÃO: Converter KM formatado para número
-  function converterKMParaNumero(kmValue) {
-    if (!kmValue) return 0;
-    
-    // Se for string (dados antigos com máscara), converter
-    if (typeof kmValue === 'string') {
-      const semPontos = kmValue.replace(/\./g, '');
-      const semVirgula = semPontos.replace(',', '');
-      return parseFloat(semVirgula) / 10 || 0;
-    }
-    
-    // Se já for número, retornar direto
-    return parseFloat(kmValue) || 0;
-  }
-  
-  // NOVA FUNÇÃO: Formatar número para KM com vírgula
-  function formatarKMParaExibir(km) {
-    if (!km || km === 0) return '';
-    
-    // Converte para string com 1 decimal
-    const kmString = (km * 10).toFixed(0);
-    
-    // Separa inteiro e decimal
-    const inteiro = kmString.slice(0, -1) || '0';
-    const decimal = kmString.slice(-1);
-    
-    // Formata inteiro com pontos de milhar
-    const inteiroFormatado = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    
-    return inteiroFormatado + ',' + decimal;
   }
   
   function sugerir(valor) {
@@ -9104,9 +7442,8 @@
     const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
       document.getElementById('f-mot').value = veiculo.motorista || '';
-      if (veiculo.secretaria && veiculo.secretaria !== '') {
-        document.getElementById('f-sec').value = veiculo.secretaria;
-      }
+      // Removido: preenchimento automático de secretaria
+      // Mantém a secretaria padrão do usuário logado
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
       calc();
       return;
@@ -9116,7 +7453,8 @@
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     if (ultimoAbast) {
       document.getElementById('f-mot').value = ultimoAbast.motorista;
-      document.getElementById('f-sec').value = ultimoAbast.secretaria;
+      // Removido: preenchimento automático de secretaria
+      // Mantém a secretaria padrão do usuário logado
       document.getElementById('f-tipo').value = ultimoAbast.tipo;
       calc();
     }
@@ -9174,45 +7512,28 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔍 DEBUG FILTRO DE RELATÓRIO");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Data Inicial:", dataInicial || "NÃO INFORMADA");
-    console.log("Data Final:", dataFinal || "NÃO INFORMADA");
-    console.log("Secretaria:", secretaria || "TODAS");
-    console.log("Posto:", posto || "TODOS");
+    let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
     
-    // CORREÇÃO: Aplicar filtro por posto ANTES dos outros filtros
-    let registros = filtrarPorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
-    console.log("Após filtrarPorPosto:", registros.length);
+    // NOVO: Filtro automático por posto para frentistas e autorizadores
+    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
+      // Buscar nome do posto vinculado
+      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
+      if (postoVinculado) {
+        registros = registros.filter(r => r.posto === postoVinculado.nome);
+      }
+    }
     
     if (dataInicial) {
-      const antes = registros.length;
-      registros = registros.filter(r => {
-        // Extrair apenas YYYY-MM-DD (sem hora)
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast >= dataInicial;
-      });
-      console.log(`Filtro dataInicial (>= ${dataInicial}): ${antes} → ${registros.length}`);
+      registros = registros.filter(r => r.data >= dataInicial);
     }
     if (dataFinal) {
-      const antes = registros.length;
-      registros = registros.filter(r => {
-        // Extrair apenas YYYY-MM-DD (sem hora)
-        const dataAbast = r.data.split('T')[0];
-        return dataAbast <= dataFinal;
-      });
-      console.log(`Filtro dataFinal (<= ${dataFinal}): ${antes} → ${registros.length}`);
+      registros = registros.filter(r => r.data <= dataFinal);
     }
     if (secretaria) {
-      const antes = registros.length;
       registros = registros.filter(r => r.secretaria === secretaria);
-      console.log(`Filtro secretaria (${secretaria}): ${antes} → ${registros.length}`);
     }
     if (posto) {
-      const antes = registros.length;
       registros = registros.filter(r => r.posto === posto);
-      console.log(`Filtro posto (${posto}): ${antes} → ${registros.length}`);
     }
     if (combustivel) {
       registros = registros.filter(r => r.tipo === combustivel);
@@ -9220,12 +7541,6 @@
     if (placa) {
       registros = registros.filter(r => r.placa.includes(placa));
     }
-    
-    const totalValor = registros.reduce((acc, r) => acc + r.valor, 0);
-    console.log("TOTAL FINAL:", registros.length, "registros");
-    console.log("VALOR TOTAL:", totalValor.toFixed(2));
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("");
     
     exibirRelatorioFiltrado(registros);
   }
@@ -9283,7 +7598,6 @@
             <thead>
               <tr>
                 <th>DATA</th>
-                <th>HORÁRIO</th>
                 <th>PLACA</th>
                 <th>POSTO</th>
                 <th>SECRETARIA</th>
@@ -9304,13 +7618,7 @@
       
       html += `<tr class="${classeAlerta}">
         <td>${r.data.split('-').reverse().join('/')}</td>
-        <td>
-          ${r.horario 
-            ? `<span style="color: var(--text-primary); font-size: 11px; font-weight: 600;">🕐 ${r.horario}</span>` 
-            : `<span style="color: var(--text-secondary); font-size: 9px; opacity: 0.5;">--:--</span>`
-          }
-        </td>
-        <td>${formatarPlacaParaExibicao(r.placa)} ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+        <td><b>${r.placa}</b> ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
         <td>${r.posto || '---'}</td>
         <td>${r.secretaria}</td>
         <td>${r.motorista}</td>
@@ -9327,42 +7635,6 @@
     html += `</tbody></table></div></div>`;
     container.innerHTML = html;
   }
-  
-  // Função para alternar tema claro/escuro
-  function toggleTheme() {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    html.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    
-    // Atualizar ícone
-    const icon = document.getElementById('theme-icon');
-    if (icon) {
-      icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-    
-    // Mostrar notificação
-    mostrarNotificacao(
-      newTheme === 'dark' ? '🌙 Modo Escuro Ativado' : '☀️ Modo Claro Ativado',
-      'success'
-    );
-  }
-  
-  // Inicializar tema ao carregar
-  function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    const icon = document.getElementById('theme-icon');
-    if (icon) {
-      icon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-    }
-  }
-  
-  // Chamar ao carregar a página
-  window.addEventListener('DOMContentLoaded', initTheme);
   
   function confirmarSair() {
     if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
@@ -9438,7 +7710,8 @@
     veiculoRef.set({
       placa: placa,
       modelo: modelo,
-      secretaria: secretaria,
+      // REMOVIDO: secretaria (veículo não tem secretaria fixa)
+      // A secretaria é definida em cada abastecimento
       motorista: motorista,
       combustivel: combustivel,
       ano: ano,
@@ -9970,14 +8243,11 @@
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
     
-    // CORREÇÃO: Usar função centralizada para dados do mês atual
+    // Dados do mês atual
     const dadosMes = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      // Usar substring para comparação consistente
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-      const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
-      return anoMes === anoMesAtual;
+      const dataAbast = new Date(x.data);
+      return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
     });
     
     // Calcular métricas executivas
@@ -9990,13 +8260,10 @@
     const mesAnterior = mesAtual - 1 < 0 ? 11 : mesAtual - 1;
     const anoAnterior = mesAtual - 1 < 0 ? anoAtual - 1 : anoAtual;
     
-    // CORREÇÃO: Usar substring para mês anterior
     const dadosMesAnterior = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = x.data.split('T')[0]; // "YYYY-MM-DD"
-      const anoMes = dataAbast.substring(0, 7); // "YYYY-MM"
-      const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`; // "2026-01"
-      return anoMes === anoMesAnterior;
+      const dataAbast = new Date(x.data);
+      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
     });
     
     const totalMesAnterior = dadosMesAnterior.reduce((acc, item) => acc + item.valor, 0);
@@ -10119,126 +8386,57 @@
   }
   
   function atualizarPerformanceSecretarias() {
-    // Buscar limites reais dos secretários do Firebase
-    db.ref('usuarios').once('value', snapshot => {
-      const tbody = document.getElementById('performance-body');
-      let html = '';
+    // Simulação de orçamento (em produção viria do banco)
+    const orcamentos = {
+      'SAÚDE': 15000,
+      'EDUCAÇÃO': 12000,
+      'INFRAESTRUTURA E SERVIÇOS': 10000,
+      'ASSISTÊNCIA SOCIAL': 8000,
+      'ADMINISTRAÇÃO E FINANÇAS': 7000
+    };
+    
+    const tbody = document.getElementById('performance-body');
+    let html = '';
+    
+    Object.keys(orcamentos).forEach(sec => {
+      const realizado = cache
+        .filter(x => x.secretaria === sec && x.status === STATUS.AUTORIZADO)
+        .reduce((acc, item) => acc + item.valor, 0);
       
-      // Agrupar secretários por secretaria
-      const secretariasPorNome = {};
+      const orcado = orcamentos[sec];
+      const diferenca = orcado - realizado;
+      const percentual = (realizado / orcado * 100).toFixed(1);
       
-      snapshot.forEach(userSnap => {
-        const usuario = userSnap.val();
-        if (usuario.role === 'secretarios' && usuario.secretariaVinculada) {
-          const sec = usuario.secretariaVinculada;
-          
-          if (!secretariasPorNome[sec]) {
-            secretariasPorNome[sec] = {
-              limiteVictor: 0,
-              limiteMatina: 0,
-              limiteTotal: 0
-            };
-          }
-          
-          // Somar limites de todos os secretários da mesma secretaria
-          secretariasPorNome[sec].limiteVictor += usuario.limiteVictor || 0;
-          secretariasPorNome[sec].limiteMatina += usuario.limiteMatina || 0;
-          secretariasPorNome[sec].limiteTotal += (usuario.limiteVictor || 0) + (usuario.limiteMatina || 0);
-        }
-      });
+      // Projeção
+      const hoje = new Date();
+      const diasDecorridos = hoje.getDate();
+      const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+      const projecao = (realizado / diasDecorridos) * diasNoMes;
       
-      // Ordenar por secretaria
-      const secretariasOrdenadas = Object.keys(secretariasPorNome).sort();
+      const status = projecao <= orcado ? '✅ NO ORÇAMENTO' : '⚠️ ACIMA';
+      const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
       
-      secretariasOrdenadas.forEach(sec => {
-        const limites = secretariasPorNome[sec];
-        
-        // CORREÇÃO: Calcular gastos APENAS DO MÊS ATUAL separados por posto
-        const hoje = new Date();
-        const mesAtual = hoje.getMonth();
-        const anoAtual = hoje.getFullYear();
-        const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`; // "2026-02"
-        
-        const gastosVictor = cache
-          .filter(x => {
-            if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
-            if (!(x.posto || '').toUpperCase().includes('VICTOR')) return false;
-            // Filtrar apenas mês atual
-            const dataAbast = x.data.split('T')[0];
-            const anoMes = dataAbast.substring(0, 7);
-            return anoMes === anoMesAtual;
-          })
-          .reduce((acc, item) => acc + item.valor, 0);
-        
-        const gastosMatina = cache
-          .filter(x => {
-            if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
-            if (!(x.posto || '').toUpperCase().includes('MATINA')) return false;
-            // Filtrar apenas mês atual
-            const dataAbast = x.data.split('T')[0];
-            const anoMes = dataAbast.substring(0, 7);
-            return anoMes === anoMesAtual;
-          })
-          .reduce((acc, item) => acc + item.valor, 0);
-        
-        const realizadoTotal = gastosVictor + gastosMatina;
-        const orcado = limites.limiteTotal;
-        const diferenca = orcado - realizadoTotal;
-        const percentual = orcado > 0 ? (realizadoTotal / orcado * 100).toFixed(1) : 0;
-        
-        // Projeção
-        const diasDecorridos = hoje.getDate();
-        const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-        const projecao = diasDecorridos > 0 ? (realizadoTotal / diasDecorridos) * diasNoMes : 0;
-        
-        const status = projecao <= orcado ? '✅ NO ORÇAMENTO' : '⚠️ ACIMA';
-        const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
-        
-        // Percentuais por posto
-        const percVictor = limites.limiteVictor > 0 ? (gastosVictor / limites.limiteVictor * 100).toFixed(1) : 0;
-        const percMatina = limites.limiteMatina > 0 ? (gastosMatina / limites.limiteMatina * 100).toFixed(1) : 0;
-        
-        html += `
-          <tr>
-            <td>
-              <strong>${sec}</strong>
-              <div style="font-size:9px; color:var(--text-secondary); margin-top:4px;">
-                Victor: ${percVictor}% | Matina: ${percMatina}%
-              </div>
-            </td>
-            <td>
-              <div><strong>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></div>
-              <div style="font-size:9px; color:var(--text-secondary);">
-                V: R$ ${limites.limiteVictor.toFixed(2)} | M: R$ ${limites.limiteMatina.toFixed(2)}
-              </div>
-            </td>
-            <td>
-              <div><strong>R$ ${realizadoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></div>
-              <div style="font-size:9px; color:var(--text-secondary);">
-                V: R$ ${gastosVictor.toFixed(2)} | M: R$ ${gastosMatina.toFixed(2)}
-              </div>
-            </td>
-            <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}">
-              R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-            </td>
-            <td>
-              <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
-                <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
-              </div>
-              ${percentual}%
-            </td>
-            <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td style="color:${corStatus}; font-weight:bold;">${status}</td>
-          </tr>
-        `;
-      });
-      
-      if (html === '') {
-        html = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#64748b;">📊 Nenhum secretário com limite cadastrado</td></tr>';
-      }
-      
-      tbody.innerHTML = html;
+      html += `
+        <tr>
+          <td><strong>${sec}</strong></td>
+          <td>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td>R$ ${realizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}">
+            R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+          </td>
+          <td>
+            <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
+              <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
+            </div>
+            ${percentual}%
+          </td>
+          <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td style="color:${corStatus}; font-weight:bold;">${status}</td>
+        </tr>
+      `;
     });
+    
+    tbody.innerHTML = html;
   }
   
   function atualizarAlertasExecutivos() {
@@ -10303,13 +8501,10 @@
         ano -= 1;
       }
       
-      const anoMesAlvo = `${ano}-${String(mes + 1).padStart(2, '0')}`;
-      
       const dadosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = x.data.split('T')[0];
-        const anoMes = dataAbast.substring(0, 7);
-        return anoMes === anoMesAlvo;
+        const dataAbast = new Date(x.data);
+        return dataAbast.getMonth() === mes && dataAbast.getFullYear() === ano;
       });
       
       const totalMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -10513,7 +8708,6 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
-    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(pessoaId).once('value');
     let gastoMes = 0;
@@ -10521,9 +8715,8 @@
     if (gastosSnapshot.exists()) {
       gastosSnapshot.forEach(snap => {
         const abast = snap.val();
-        const dataAbast = abast.data.split('T')[0];
-        const anoMes = dataAbast.substring(0, 7);
-        if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
+        const dataAbast = new Date(abast.data);
+        if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
           gastoMes += abast.valor;
         }
       });
@@ -10561,7 +8754,6 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
-    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     // Buscar VIPs do Firebase
     const snapshotVIPs = await db.ref('pessoas_vip').once('value');
@@ -10592,9 +8784,8 @@
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
-          const dataAbast = abast.data.split('T')[0];
-          const anoMes = dataAbast.substring(0, 7);
-          if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
+          const dataAbast = new Date(abast.data);
+          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
             gastoMes += abast.valor;
             qtdAbastecimentos++;
           }
@@ -10710,7 +8901,7 @@
     const combustivel = document.getElementById('vip-combustivel').value;
     const litros = parseFloat(document.getElementById('vip-litros').value);
     const preco = parseFloat(document.getElementById('vip-preco').value);
-    const km = converterKMParaNumero(document.getElementById('vip-km').value) || 0; // Opcional para VIP
+    const km = parseInt(document.getElementById('vip-km').value) || 0; // Opcional para VIP
     const obs = document.getElementById('vip-obs').value.trim();
     
     // Validações
@@ -10722,7 +8913,10 @@
       mostrarNotificacao("❌ INFORME A DATA!", "error");
       return;
     }
-    // PLACA AGORA É OPCIONAL
+    if (!placa || placa.length < 7) {
+      mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
+      return;
+    }
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
@@ -10743,12 +8937,10 @@
     
     const valor = litros * preco;
     
-    // NOVO: Mostrar histórico do veículo apenas SE tiver placa
-    if (placa && placa.length >= 7) {
-      const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
-      if (!confirmarHistorico) {
-        return;
-      }
+    // NOVO: Mostrar histórico do veículo antes de confirmar
+    const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
+    if (!confirmarHistorico) {
+      return;
     }
     
     // Buscar dados da pessoa VIP
@@ -10764,8 +8956,7 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    const mensagemPlaca = placa ? `\nPlaca: ${placa}` : '';
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}${mensagemPlaca}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
+    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
       return;
     }
     
@@ -10774,7 +8965,7 @@
       nomePessoaVIP: pessoa.nome,
       cargoPessoaVIP: pessoa.cargo,
       data: data,
-      placa: placa || 'NÃO INFORMADO',
+      placa: placa,
       posto: nomePosto,
       tipo: combustivel,
       litro: litros,
@@ -10789,7 +8980,6 @@
       aprovadoEm: Date.now(),
       solicitadoPor: loginUser.toUpperCase(),
       timestamp: Date.now(),
-      horario: new Date().toTimeString().slice(0, 5),
       tipoAbastecimento: 'VIP'
     };
     
@@ -11375,7 +9565,6 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
-    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
     for (const snap of Object.values(snapshot.val())) {
       const vip = snap;
@@ -11388,9 +9577,8 @@
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
-          const dataAbast = abast.data.split('T')[0];
-          const anoMes = dataAbast.substring(0, 7);
-          if (anoMes === anoMesAtual && abast.status === STATUS.AUTORIZADO) {
+          const dataAbast = new Date(abast.data);
+          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
             gastoMes += abast.valor;
           }
         });
@@ -11754,7 +9942,7 @@
   
   // Wrapper para pegar KM atual
   function obterKmAtual() {
-    return converterKMParaNumero(document.getElementById('f-km').value) || 0;
+    return parseFloat(document.getElementById('f-km').value) || 0;
   }
   
   // Wrapper para pegar litros
