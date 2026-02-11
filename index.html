@@ -2971,6 +2971,7 @@
           <thead>
             <tr>
               <th>DATA</th>
+              <th>HORÁRIO</th>
               <th>PESSOA</th>
               <th>PLACA</th>
               <th>POSTO</th>
@@ -2983,7 +2984,7 @@
           </thead>
           <tbody id="historico-vip-body">
             <tr>
-              <td colspan="9" style="text-align:center; padding:40px;">
+              <td colspan="10" style="text-align:center; padding:40px;">
                 ⏳ CARREGANDO HISTÓRICO...
               </td>
             </tr>
@@ -3059,6 +3060,7 @@
           <thead>
             <tr>
               <th>DATA</th>
+              <th>HORÁRIO</th>
               <th>PLACA</th>
               <th>POSTO</th>
               <th>SECRETARIA</th>
@@ -5994,12 +5996,18 @@
     }
     
     if (pendentes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
       return;
     }
     tbody.innerHTML = pendentes.map(d => `
       <tr>
         <td>${d.data.split('-').reverse().join('/')}</td>
+        <td>
+          ${d.horario 
+            ? `<span style="font-size: 11px;">🕐 ${d.horario}</span>` 
+            : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
+          }
+        </td>
         <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
         <td>${d.posto || '---'}</td>
         <td>${d.secretaria}</td>
@@ -9086,13 +9094,13 @@
     const tbody = document.getElementById('historico-vip-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">⏳ CARREGANDO...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">⏳ CARREGANDO...</td></tr>';
     
     db.ref('abastecimentos').orderByChild('tipoAbastecimento').equalTo('VIP').once('value', snap => {
       tbody.innerHTML = '';
       
       if (!snap.exists()) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO VIP REGISTRADO</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO VIP REGISTRADO</td></tr>';
         return;
       }
       
@@ -9112,6 +9120,12 @@
         tbody.innerHTML += `
           <tr>
             <td>${dataFormatada}</td>
+            <td>
+              ${abast.horario 
+                ? `<span style="font-size: 11px;">🕐 ${abast.horario}</span>` 
+                : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
+              }
+            </td>
             <td><strong>${abast.nomePessoaVIP}</strong><br><small>${abast.cargoPessoaVIP}</small></td>
             <td>${abast.placa}</td>
             <td>${abast.posto}</td>
@@ -9917,6 +9931,7 @@
               <thead>
                 <tr>
                   <th>DATA</th>
+                  <th>HORÁRIO</th>
                   <th>SECRETARIA</th>
                   <th>POSTO</th>
                   <th>COMBUSTÍVEL</th>
@@ -9937,6 +9952,12 @@
           html += `
             <tr ${classeAlerta}>
               <td>${new Date(abast.data).toLocaleDateString('pt-BR')}</td>
+              <td style="font-size:10px;">
+                ${abast.horario 
+                  ? `🕐 ${abast.horario}` 
+                  : `--:--`
+                }
+              </td>
               <td style="font-size:10px;">${abast.secretaria}</td>
               <td>${abast.posto || '---'}</td>
               <td><span class="badge">${abast.tipo}</span></td>
