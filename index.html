@@ -8522,57 +8522,80 @@
   }
   
   function atualizarPerformanceSecretarias() {
-    // Simulação de orçamento (em produção viria do banco)
-    const orcamentos = {
-      'SAÚDE': 15000,
-      'EDUCAÇÃO': 12000,
-      'INFRAESTRUTURA E SERVIÇOS': 10000,
-      'ASSISTÊNCIA SOCIAL': 8000,
-      'ADMINISTRAÇÃO E FINANÇAS': 7000
-    };
-    
     const tbody = document.getElementById('performance-body');
-    let html = '';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">⏳ Carregando...</td></tr>';
     
-    Object.keys(orcamentos).forEach(sec => {
-      const realizado = cache
-        .filter(x => x.secretaria === sec && x.status === STATUS.AUTORIZADO)
-        .reduce((acc, item) => acc + item.valor, 0);
+    // Buscar limites reais do Firebase
+    db.ref('usuarios').once('value', snap => {
+      if (!snap.exists()) return;
       
-      const orcado = orcamentos[sec];
-      const diferenca = orcado - realizado;
-      const percentual = (realizado / orcado * 100).toFixed(1);
+      // Montar mapa secretaria → limite total (limiteVictor + limiteMatina)
+      const orcamentos = {};
+      snap.forEach(userSnap => {
+        const u = userSnap.val();
+        if (u.role === 'secretarios' && u.secretariaVinculada) {
+          const sec = u.secretariaVinculada;
+          const limV = u.limiteVictor || 0;
+          const limM = u.limiteMatina || 0;
+          const total = limV + limM;
+          if (total > 0) {
+            // Pode ter mais de um usuário por secretaria, soma tudo
+            orcamentos[sec] = (orcamentos[sec] || 0) + total;
+          }
+        }
+      });
       
-      // Projeção
+      // Mês atual
       const hoje = new Date();
+      const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
       const diasDecorridos = hoje.getDate();
       const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-      const projecao = (realizado / diasDecorridos) * diasNoMes;
       
-      const status = projecao <= orcado ? '✅ NO ORÇAMENTO' : '⚠️ ACIMA';
-      const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
+      let html = '';
       
-      html += `
-        <tr>
-          <td><strong>${sec}</strong></td>
-          <td>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td>R$ ${realizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}">
-            R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-          </td>
-          <td>
-            <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
-              <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
-            </div>
-            ${percentual}%
-          </td>
-          <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td style="color:${corStatus}; font-weight:bold;">${status}</td>
-        </tr>
-      `;
+      if (Object.keys(orcamentos).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">⚠️ Nenhum limite configurado para as secretarias</td></tr>';
+        return;
+      }
+      
+      Object.keys(orcamentos).sort().forEach(sec => {
+        const realizado = cache
+          .filter(x => {
+            if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
+            const anoMes = x.data.split('T')[0].substring(0, 7);
+            return anoMes === anoMesAtual;
+          })
+          .reduce((acc, item) => acc + item.valor, 0);
+        
+        const orcado = orcamentos[sec];
+        const diferenca = orcado - realizado;
+        const percentual = orcado > 0 ? (realizado / orcado * 100).toFixed(1) : 0;
+        const projecao = diasDecorridos > 0 ? (realizado / diasDecorridos) * diasNoMes : 0;
+        const status = projecao <= orcado ? '✅ NO LIMITE' : '⚠️ ACIMA';
+        const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
+        
+        html += `
+          <tr>
+            <td><strong>${sec}</strong></td>
+            <td>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td>R$ ${realizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">
+              ${diferenca >= 0 ? '+' : '-'} R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+            </td>
+            <td>
+              <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
+                <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
+              </div>
+              ${percentual}%
+            </td>
+            <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="color:${corStatus}; font-weight:bold;">${status}</td>
+          </tr>
+        `;
+      });
+      
+      tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">📭 Sem dados para exibir</td></tr>';
     });
-    
-    tbody.innerHTML = html;
   }
   
   function atualizarAlertasExecutivos() {
