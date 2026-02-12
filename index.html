@@ -5591,6 +5591,39 @@
       `;
     }
     
+    const hoje = new Date();
+    const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    
+    const dadosMes = dadosAutorizados.filter(x => {
+      const anoMes = x.data.split('T')[0].substring(0, 7);
+      return anoMes === anoMesAtual;
+    });
+    
+    const gastoVictor = dadosMes
+      .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
+      .reduce((acc, x) => acc + x.valor, 0);
+    const gastoMatina = dadosMes
+      .filter(x => (x.posto || '').toUpperCase().includes('MATINA'))
+      .reduce((acc, x) => acc + x.valor, 0);
+    
+    // Cards de posto só aparecem se houver dados
+    const cardsPostos = (gastoVictor > 0 || gastoMatina > 0) ? `
+      ${gastoVictor > 0 ? `
+      <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+        <div class="stat-icon">🅥</div>
+        <h4>GASTOS VICTOR</h4>
+        <div class="stat-value" style="font-size:16px;">R$ ${gastoVictor.toFixed(2)}</div>
+        <div style="font-size:10px; color:#64748b; margin-top:4px;">Mês atual</div>
+      </div>` : ''}
+      ${gastoMatina > 0 ? `
+      <div class="stat-card" style="border-left: 4px solid #10b981;">
+        <div class="stat-icon">🅼</div>
+        <h4>GASTOS MATINA</h4>
+        <div class="stat-value" style="font-size:16px;">R$ ${gastoMatina.toFixed(2)}</div>
+        <div style="font-size:10px; color:#64748b; margin-top:4px;">Mês atual</div>
+      </div>` : ''}
+    ` : '';
+    
     container.innerHTML = `
       <div class="stat-card">
         <div class="stat-icon">💰</div>
@@ -5614,6 +5647,7 @@
         <h4>VEÍCULOS</h4>
         <div class="stat-value">${veiculosUnicos}</div>
       </div>
+      ${cardsPostos}
     `;
   }
   
