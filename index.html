@@ -4122,15 +4122,23 @@
       if (user && user.senha === s) {
         console.log("✅ Senha correta! Fazendo login...");
         const permissoes = user.permissoes || PERMISSOES_PADRAO[user.role] || [];
+        
+        // CORREÇÃO: Somar limiteVictor + limiteMatina para secretários
+        const limiteVictor = user.limiteVictor || 0;
+        const limiteMatina = user.limiteMatina || 0;
+        const limiteTotal = limiteVictor + limiteMatina || user.limite || 0;
+        
         const dadosUsuario = {
           combustivelLiberado: user.combustivelLiberado || "todos",
           senha: user.senha,
           role: user.role,
-          limite: user.limite || 0,
+          limite: limiteTotal,
+          limiteVictor: limiteVictor,
+          limiteMatina: limiteMatina,
           secretariaVinculada: user.secretariaVinculada || "",
           permissoes: permissoes
         };
-        entrar(u, user.role, user.limite || 0, user.secretariaVinculada || "", dadosUsuario);
+        entrar(u, user.role, limiteTotal, user.secretariaVinculada || "", dadosUsuario);
         registrarAuditoria('LOGIN', { usuario: u });
       } else {
         console.log("❌ Falha no login");
@@ -5507,25 +5515,81 @@
     }
     
     if (userRole === 'secretarios') {
-      const gasto = cache.filter(x => 
-        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-        x.secretaria === userSecretaria
-      ).reduce((acc, item) => acc + item.valor, 0);
+      const hoje = new Date();
+      const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
       
-      const saldo = userLimit - gasto;
-      const percentual = (gasto / userLimit * 100).toFixed(1);
+      const gastosMes = cache.filter(x => {
+        if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
+        if (x.secretaria !== userSecretaria) return false;
+        const anoMes = x.data.split('T')[0].substring(0, 7);
+        return anoMes === anoMesAtual;
+      });
+      
+      const limiteVictor = usuarioData.limiteVictor || 0;
+      const limiteMatina = usuarioData.limiteMatina || 0;
+      const limiteTotal = limiteVictor + limiteMatina || userLimit;
+      
+      // Calcular gastos por posto
+      const gastoVictor = gastosMes
+        .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
+        .reduce((acc, x) => acc + x.valor, 0);
+      const gastoMatina = gastosMes
+        .filter(x => (x.posto || '').toUpperCase().includes('MATINA'))
+        .reduce((acc, x) => acc + x.valor, 0);
+      const gastoTotal = gastoVictor + gastoMatina;
+      
+      const saldoTotal = limiteTotal - gastoTotal;
+      const percentual = limiteTotal > 0 ? (gastoTotal / limiteTotal * 100).toFixed(1) : 0;
+      
+      // Montar cards por posto
+      let cardsPostos = '';
+      if (limiteVictor > 0) {
+        const saldoV = limiteVictor - gastoVictor;
+        const pctV = limiteVictor > 0 ? (gastoVictor / limiteVictor * 100).toFixed(1) : 0;
+        cardsPostos += `
+          <div style="background:rgba(255,255,255,0.15); padding:10px; border-radius:8px; border-left:4px solid #3b82f6; font-size:11px;">
+            <div style="font-weight:bold; margin-bottom:5px;">⛽ VICTOR</div>
+            <div>💰 Limite: <strong>R$ ${limiteVictor.toFixed(2)}</strong></div>
+            <div>📉 Gasto: <strong>R$ ${gastoVictor.toFixed(2)}</strong> (${pctV}%)</div>
+            <div>✅ Saldo: <strong style="color:${saldoV < limiteVictor*0.2 ? '#fca5a5':'#86efac'}">R$ ${saldoV.toFixed(2)}</strong></div>
+            <div class="progress-bar" style="margin-top:5px;"><div class="progress-fill ${saldoV < limiteVictor*0.2 ? 'danger' : saldoV < limiteVictor*0.5 ? 'warning' : ''}" style="width:${Math.min(pctV,100)}%"></div></div>
+          </div>`;
+      }
+      if (limiteMatina > 0) {
+        const saldoM = limiteMatina - gastoMatina;
+        const pctM = limiteMatina > 0 ? (gastoMatina / limiteMatina * 100).toFixed(1) : 0;
+        cardsPostos += `
+          <div style="background:rgba(255,255,255,0.15); padding:10px; border-radius:8px; border-left:4px solid #10b981; font-size:11px;">
+            <div style="font-weight:bold; margin-bottom:5px;">⛽ MATINA</div>
+            <div>💰 Limite: <strong>R$ ${limiteMatina.toFixed(2)}</strong></div>
+            <div>📉 Gasto: <strong>R$ ${gastoMatina.toFixed(2)}</strong> (${pctM}%)</div>
+            <div>✅ Saldo: <strong style="color:${saldoM < limiteMatina*0.2 ? '#fca5a5':'#86efac'}">R$ ${saldoM.toFixed(2)}</strong></div>
+            <div class="progress-bar" style="margin-top:5px;"><div class="progress-fill ${saldoM < limiteMatina*0.2 ? 'danger' : saldoM < limiteMatina*0.5 ? 'warning' : ''}" style="width:${Math.min(pctM,100)}%"></div></div>
+          </div>`;
+      }
+      
       statusDiv.innerHTML = `
-        📊 ${userSecretaria}<br>
-        💰 LIMITE: R$ ${userLimit.toFixed(2)} | 
-        📉 GASTO: R$ ${gasto.toFixed(2)} (${percentual}%) | 
-        ✅ SALDO: R$ ${saldo.toFixed(2)}
-        <div class="progress-bar">
-          <div class="progress-fill ${saldo < userLimit * 0.2 ? 'danger' : (saldo < userLimit * 0.5 ? 'warning' : '')}" style="width:${percentual}%"></div>
+        <div style="font-weight:bold; font-size:14px; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid rgba(255,255,255,0.3);">
+          📊 ${userSecretaria}
         </div>
+        <div style="display:grid; grid-template-columns:${limiteVictor > 0 && limiteMatina > 0 ? '1fr 1fr' : '1fr'}; gap:10px; margin-bottom:12px;">
+          ${cardsPostos || '<div style="font-size:11px; opacity:0.8;">⚠️ Limites não configurados</div>'}
+        </div>
+        ${limiteVictor > 0 && limiteMatina > 0 ? `
+        <div style="background:rgba(255,255,255,0.2); padding:10px; border-radius:8px; border:2px solid rgba(255,255,255,0.3); font-size:11px;">
+          <div style="font-weight:bold; margin-bottom:5px;">📊 TOTAL (VICTOR + MATINA)</div>
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:5px;">
+            <span>💰 R$ ${limiteTotal.toFixed(2)}</span>
+            <span>📉 R$ ${gastoTotal.toFixed(2)} (${percentual}%)</span>
+            <span>✅ R$ ${saldoTotal.toFixed(2)}</span>
+          </div>
+          <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill ${saldoTotal < limiteTotal*0.2 ? 'danger' : saldoTotal < limiteTotal*0.5 ? 'warning' : ''}" style="width:${Math.min(percentual,100)}%"></div></div>
+        </div>` : ''}
       `;
-      if (saldo < userLimit * 0.2) {
+      
+      if (saldoTotal < limiteTotal * 0.2) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
-      } else if (saldo < userLimit * 0.5) {
+      } else if (saldoTotal < limiteTotal * 0.5) {
         statusDiv.style.background = 'linear-gradient(135deg, var(--warning) 0%, #f97316 100%)';
       } else {
         statusDiv.style.background = 'linear-gradient(135deg, var(--primary) 0%, #1e293b 100%)';
