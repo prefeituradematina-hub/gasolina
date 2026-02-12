@@ -3518,6 +3518,7 @@
               <th>VÍNCULO</th>
               <th>LIMITE</th>
               <th>POSTO</th>
+              <th>SENHA</th>
               <th class="no-print">AÇÕES</th>
             </tr>
           </thead>
@@ -3843,6 +3844,19 @@
   let userSecretaria = "";
   let userPostoVinculado = ""; // Posto vinculado para frentistas
   let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
+  
+  // Função centralizada de filtro por posto
+  function filtrarCachePorPosto(dados) {
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const posto = postos.find(p => p.id === userPostoVinculado);
+      if (posto) return dados.filter(x => x.posto === posto.nome);
+    }
+    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      const nomes = postos.filter(p => userPostosVinculados.includes(p.id)).map(p => p.nome);
+      if (nomes.length > 0) return dados.filter(x => nomes.includes(x.posto));
+    }
+    return dados;
+  }
   let usuarioData = {};
   let precos = { GASOLINA: 6, ALCOOL: 4, DIESEL: 6 };
   let chartSec = null;
@@ -4196,6 +4210,8 @@
           limiteVictor: limiteVictor,
           limiteMatina: limiteMatina,
           secretariaVinculada: user.secretariaVinculada || "",
+          postoVinculado: user.postoVinculado || "",
+          postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
           permissoes: permissoes
         };
         entrar(u, user.role, limiteTotal, user.secretariaVinculada || "", dadosUsuario);
@@ -4222,9 +4238,15 @@
     usuarioData = dadosExtras || {};
     userPermissions = dadosExtras.permissoes || PERMISSOES_PADRAO[role] || [];
     
-    // CORREÇÃO: Suporte a múltiplos postos para autorizadores
+    // Suporte a múltiplos postos para autorizadores
     if (role === 'autorizador') {
-      userPostosVinculados = dadosExtras.postosVinculados || dadosExtras.postoVinculado ? [dadosExtras.postoVinculado] : [];
+      if (dadosExtras.postosVinculados && dadosExtras.postosVinculados.length > 0) {
+        userPostosVinculados = dadosExtras.postosVinculados;
+      } else if (dadosExtras.postoVinculado) {
+        userPostosVinculados = [dadosExtras.postoVinculado];
+      } else {
+        userPostosVinculados = [];
+      }
     } else {
       userPostoVinculado = dadosExtras.postoVinculado || ""; // Para frentistas
     }
@@ -5238,14 +5260,7 @@
     // Alertas de média baixa por veículo
     const veiculosComMedia = {};
     
-    // NOVO: Filtrar por posto para frentistas e autorizadores
-    let cacheFiltrado = cache.filter(x => x.status === STATUS.AUTORIZADO);
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        cacheFiltrado = cacheFiltrado.filter(item => item.posto === postoVinculado.nome);
-      }
-    }
+    let cacheFiltrado = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     cacheFiltrado.forEach(abast => {
       if (!veiculosComMedia[abast.placa]) {
@@ -5647,22 +5662,7 @@
   function atualizarStatusFinanceiro() {
     const statusDiv = document.getElementById('status-financeiro');
     
-    // CORREÇÃO: Aplicar filtro por MÚLTIPLOS postos para autorizadores
-    let cacheFiltrado = cache;
-    if (userRole === 'frentista' && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        cacheFiltrado = cache.filter(item => item.posto === postoVinculado.nome);
-      }
-    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        cacheFiltrado = cache.filter(item => nomesPostosAutorizados.includes(item.posto));
-      }
-    }
+    let cacheFiltrado = filtrarCachePorPosto(cache);
     
     // Frentista: mostrar apenas status de visualização SEM VALORES
     if (userRole === 'frentista') {
@@ -5797,14 +5797,7 @@
   }
   
   function atualizarRelatorio() {
-    // NOVO: Filtrar cache por posto para frentistas e autorizadores
-    let cacheAtual = cache;
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        cacheAtual = cache.filter(item => item.posto === postoVinculado.nome);
-      }
-    }
+    let cacheAtual = filtrarCachePorPosto(cache);
     
     let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
     
@@ -6207,18 +6200,7 @@
   }
   
   function atualizarPendentes() {
-    let pendentes = cache.filter(x => x.status === STATUS.AGUARDANDO);
-    
-    // CORREÇÃO: Filtro automático por MÚLTIPLOS postos para autorizadores
-    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        pendentes = pendentes.filter(p => nomesPostosAutorizados.includes(p.posto));
-      }
-    }
+    let pendentes = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
     
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
@@ -6808,15 +6790,7 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
-    
-    // NOVO: Filtro automático por posto para frentistas e autorizadores
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        registros = registros.filter(r => r.posto === postoVinculado.nome);
-      }
-    }
+    let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
     if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
@@ -7532,6 +7506,19 @@
               <td>${u.secretariaVinculada || 'TODAS'}</td>
               <td><b>R$ ${(u.limite || 0).toFixed(2)}</b></td>
               <td style="font-size:11px;">${postoInfo}</td>
+              <td>
+                <span id="senha-${c.key}" style="font-family:monospace; letter-spacing:2px;">••••••</span>
+                <button onclick="
+                  const el = document.getElementById('senha-${c.key}');
+                  if(el.textContent === '••••••') {
+                    el.textContent = '${u.senha || '---'}';
+                    this.textContent = '🙈';
+                  } else {
+                    el.textContent = '••••••';
+                    this.textContent = '👁️';
+                  }
+                " style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px 4px;">👁️</button>
+              </td>
               <td class="no-print">
                 ${temPermissao('gerenciar_usuarios') || loginUser === 'master' ? `
                   <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="abrirPermissoes('${c.key}')">
@@ -7978,16 +7965,7 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    let registros = cache.filter(x => x.status === STATUS.AUTORIZADO);
-    
-    // NOVO: Filtro automático por posto para frentistas e autorizadores
-    if ((userRole === 'frentista' || userRole === 'autorizador') && userPostoVinculado) {
-      // Buscar nome do posto vinculado
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        registros = registros.filter(r => r.posto === postoVinculado.nome);
-      }
-    }
+    let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     if (dataInicial) {
       registros = registros.filter(r => r.data >= dataInicial);
@@ -9521,12 +9499,15 @@
         return;
       }
       
-      const registros = [];
+      let registros = [];
       snap.forEach(c => {
         const abast = c.val();
         abast.id = c.key;
         registros.push(abast);
       });
+      
+      // Filtrar por posto usando função central
+      registros = filtrarCachePorPosto(registros);
       
       // Ordenar por data decrescente
       registros.sort((a, b) => b.timestamp - a.timestamp);
