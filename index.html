@@ -4377,9 +4377,13 @@
     }
     
     if (role === 'secretarios' && sec !== "") {
-      document.getElementById('f-sec').value = sec;
-      // Removido: disabled = true
-      // Permite mudança de secretaria para veículos compartilhados
+      const selectSec = document.getElementById('f-sec');
+      selectSec.value = sec;
+      // Limpar todas as opções e deixar só a secretaria vinculada
+      selectSec.innerHTML = `<option value="${sec}">${sec}</option>`;
+      selectSec.disabled = true;
+      selectSec.style.opacity = '0.7';
+      selectSec.style.cursor = 'not-allowed';
     }
     
     mostrarNotificacao(`✅ BEM-VINDO, ${u.toUpperCase()}!`, "success");
