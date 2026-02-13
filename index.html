@@ -282,21 +282,20 @@
   
   .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
       margin-bottom: 20px;
   }
   .stat-card {
       background: white;
-      padding: 20px;
+      padding: 16px 18px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
       transition: all 0.3s;
   }
   .stat-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   }
   .stat-card h4 {
       font-size: 11px;
@@ -2269,8 +2268,22 @@
         </select>
       </div>
       <div id="edit-field-limit">
-        <label>LIMITE MENSAL (R$)</label>
-        <input type="number" id="edit-limit" placeholder="0.00" step="0.01">
+        <label>LIMITE MENSAL — ⛽ POSTO VICTOR (R$)</label>
+        <input type="number" id="edit-limit-victor" placeholder="0.00" step="0.01">
+        <label style="margin-top:8px; display:block;">LIMITE MENSAL — ⛽ POSTO MATINA (R$)</label>
+        <input type="number" id="edit-limit-matina" placeholder="0.00" step="0.01">
+      </div>
+      <div id="edit-field-postos-secretario" style="display:none;">
+        <label>POSTOS PERMITIDOS</label>
+        <div id="lista-postos-secretario-edit" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+          <p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>
+        </div>
+      </div>
+      <div id="edit-field-combustiveis-secretario" style="display:none;">
+        <label>COMBUSTÍVEIS PERMITIDOS</label>
+        <div id="lista-combustiveis-secretario-edit" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+          <p style="color:#64748b; font-size:11px; margin:0;">Selecione os postos primeiro</p>
+        </div>
       </div>
       <div id="edit-field-sec">
         <label>SECRETARIA VINCULADA</label>
@@ -2696,7 +2709,7 @@
     </div>
     
     <!-- Novo Abastecimento -->
-    <div class="card no-print">
+    <div class="card no-print" id="card-novo-abastecimento">
       <h3>⛽ NOVO ABASTECIMENTO</h3>
       
       <!-- CONTAINER PARA ALERTAS DINÂMICOS -->
@@ -2728,7 +2741,7 @@
         </div>
         <div>
           <label>SECRETARIA *</label>
-          <select id="f-sec">
+          <select id="f-sec" onchange="aplicarRestricoesSecretaria()">
             <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
             <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
             <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
@@ -3460,8 +3473,22 @@
           </select>
         </div>
         <div id="field-limit">
-          <label>LIMITE MENSAL (R$)</label>
-          <input type="number" id="new-limit" placeholder="0.00" step="0.01">
+          <label>LIMITE MENSAL — ⛽ POSTO VICTOR (R$)</label>
+          <input type="number" id="new-limit-victor" placeholder="0.00" step="0.01">
+          <label style="margin-top:8px; display:block;">LIMITE MENSAL — ⛽ POSTO MATINA (R$)</label>
+          <input type="number" id="new-limit-matina" placeholder="0.00" step="0.01">
+        </div>
+        <div id="field-postos-secretario" style="display:none;">
+          <label>POSTOS PERMITIDOS</label>
+          <div id="lista-postos-secretario-new" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+            <p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>
+          </div>
+        </div>
+        <div id="field-combustiveis-secretario" style="display:none;">
+          <label>COMBUSTÍVEIS PERMITIDOS</label>
+          <div id="lista-combustiveis-secretario-new" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+            <p style="color:#64748b; font-size:11px; margin:0;">Selecione os postos primeiro</p>
+          </div>
         </div>
         <div id="field-sec">
           <label>SECRETARIA VINCULADA</label>
@@ -4030,6 +4057,66 @@
     }
   }
   
+  // Aplica restrições de posto e combustível com base na secretaria selecionada
+  function aplicarRestricoesSecretaria() {
+    const secretariaSelecionada = document.getElementById('f-sec').value;
+    const selectPosto = document.getElementById('f-posto');
+    const selectTipo = document.getElementById('f-tipo');
+
+    // Buscar secretário correspondente
+    db.ref('usuarios').once('value', snap => {
+      let secretario = null;
+      snap.forEach(c => {
+        const u = c.val();
+        if (u.role === 'secretarios' && u.secretariaVinculada === secretariaSelecionada) {
+          secretario = u;
+        }
+      });
+
+      // Sem restrições se não encontrar secretário configurado
+      if (!secretario || !secretario.postosPermitidos || secretario.postosPermitidos.length === 0) {
+        // Restaurar todos os postos
+        Array.from(selectPosto.options).forEach(opt => opt.style.display = '');
+        // Restaurar todos os combustíveis
+        Array.from(selectTipo.options).forEach(opt => opt.style.display = '');
+        return;
+      }
+
+      const postosPermitidos = secretario.postosPermitidos || [];
+      const combustiveisPermitidos = secretario.combustiveisPermitidos || [];
+
+      // Filtrar opções de posto
+      let algumPostoVisivel = false;
+      Array.from(selectPosto.options).forEach(opt => {
+        if (!opt.value) { opt.style.display = ''; return; } // manter opção vazia
+        const posto = postos.find(p => p.nome === opt.value || p.id === opt.value);
+        const permitido = posto && postosPermitidos.includes(posto.id);
+        opt.style.display = permitido ? '' : 'none';
+        if (permitido) algumPostoVisivel = true;
+      });
+
+      // Se posto atual não é permitido, limpar seleção
+      const postoAtual = selectPosto.value;
+      const postoAtualObj = postos.find(p => p.nome === postoAtual);
+      if (postoAtualObj && !postosPermitidos.includes(postoAtualObj.id)) {
+        selectPosto.value = '';
+      }
+
+      // Filtrar combustíveis
+      Array.from(selectTipo.options).forEach(opt => {
+        if (!opt.value) { opt.style.display = ''; return; }
+        const permitido = combustiveisPermitidos.length === 0 || combustiveisPermitidos.includes(opt.value);
+        opt.style.display = permitido ? '' : 'none';
+      });
+
+      // Se combustível atual não é permitido, selecionar o primeiro permitido
+      const tipoAtual = selectTipo.value;
+      if (!combustiveisPermitidos.includes(tipoAtual) && combustiveisPermitidos.length > 0) {
+        selectTipo.value = combustiveisPermitidos[0];
+      }
+    });
+  }
+
   // NOVA FUNÇÃO: Verificar limite em tempo real
   function verificarLimiteEmTempoReal() {
     if (userRole !== 'secretarios' && userRole !== 'autorizador') return;
@@ -4274,11 +4361,9 @@
       (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
     
     // Esconder seção de novo abastecimento se não tiver permissão
-    if (!temPermissao('registrar_abastecimento')) {
-      const novoAbastCard = document.querySelector('.card.no-print h3');
-      if (novoAbastCard && novoAbastCard.textContent.includes('NOVO ABASTECIMENTO')) {
-        novoAbastCard.closest('.card').style.display = 'none';
-      }
+    const cardNovoAbast = document.getElementById('card-novo-abastecimento');
+    if (cardNovoAbast) {
+      cardNovoAbast.style.display = temPermissao('registrar_abastecimento') ? 'block' : 'none';
     }
     
     // Controlar visibilidade dos filtros de relatório
@@ -4818,20 +4903,37 @@
       return;
     }
     
-    // Calcular gasto atual da secretaria no mês atual
+    // Calcular gasto atual da secretaria no mês atual — filtrado pelo posto do abastecimento
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const postodoAbast = (abastecimento.posto || '').toUpperCase();
     
+    // Determinar qual limite usar baseado no posto do abastecimento
+    let limiteMensal = 0;
+    if (postodoAbast.includes('VICTOR') && secretarioEncontrado.limiteVictor > 0) {
+      limiteMensal = secretarioEncontrado.limiteVictor;
+    } else if (postodoAbast.includes('MATINA') && secretarioEncontrado.limiteMatina > 0) {
+      limiteMensal = secretarioEncontrado.limiteMatina;
+    } else {
+      // Fallback: soma total
+      limiteMensal = (secretarioEncontrado.limiteVictor || 0) + (secretarioEncontrado.limiteMatina || 0) || secretarioEncontrado.limite || 0;
+    }
+    
+    // Gasto no posto específico do abastecimento
     const gastoAtual = cache
       .filter(x => 
         x.status === STATUS.AUTORIZADO &&
         x.secretaria === secretaria &&
-        !x.tanqueCheio // Excluir tanques cheios pendentes
+        (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA')
+          ? (x.posto || '').toUpperCase().includes(
+              postodoAbast.includes('VICTOR') ? 'VICTOR' : 'MATINA'
+            )
+          : true) &&
+        !x.tanqueCheio
       )
       .reduce((acc, item) => acc + (item.valor || 0), 0);
     
-    const limiteMensal = secretarioEncontrado.limite || 0;
     const saldoRestante = Math.max(0, limiteMensal - gastoAtual);
     const percentualGasto = limiteMensal > 0 ? (gastoAtual / limiteMensal * 100) : 0;
     
@@ -4858,9 +4960,13 @@
     
     // Informações adicionais
     const infoDiv = document.getElementById('info-limite');
+    const nomePosto = postodoAbast.includes('VICTOR') ? '⛽ VICTOR' 
+                    : postodoAbast.includes('MATINA') ? '⛽ MATINA' 
+                    : '⛽ GERAL';
     infoDiv.innerHTML = `
       Secretário: <strong>${secretarioEncontrado.id.toUpperCase()}</strong> | 
-      Secretaria: <strong>${secretaria}</strong>
+      Secretaria: <strong>${secretaria}</strong> | 
+      Posto: <strong>${nomePosto}</strong>
     `;
     
     limiteDiv.style.display = 'block';
@@ -5170,7 +5276,7 @@
 
     // Montar medias por veículo
     const veicMap = {};
-    cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0).forEach(abast => {
+    filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0)).forEach(abast => {
       if (!veicMap[abast.placa]) veicMap[abast.placa] = { tipo: abast.tipo, abasts: [] };
       veicMap[abast.placa].abasts.push(abast);
     });
@@ -5539,24 +5645,8 @@
   function atualizarEstatisticas() {
     const container = document.getElementById('stats-container');
     
-    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
-    let dadosFiltrados = cache.filter(x => x.status === STATUS.AUTORIZADO);
-    if (userRole === 'frentista' && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        dadosFiltrados = dadosFiltrados.filter(item => item.posto === postoVinculado.nome);
-      }
-    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        dadosFiltrados = dadosFiltrados.filter(item => nomesPostosAutorizados.includes(item.posto));
-      }
-    }
-    
-    const dadosAutorizados = dadosFiltrados;
+    // Filtrar por posto usando função central
+    const dadosAutorizados = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     const totalGasto = dadosAutorizados.reduce((acc, item) => acc + item.valor, 0);
     const totalLitros = dadosAutorizados.reduce((acc, item) => acc + item.litro, 0);
@@ -5599,6 +5689,10 @@
       return anoMes === anoMesAtual;
     });
     
+    const gastoMes = dadosMes.reduce((acc, x) => acc + x.valor, 0);
+    const litrosMes = dadosMes.reduce((acc, x) => acc + x.litro, 0);
+    const nomeMes = hoje.toLocaleString('pt-BR', { month: 'long' }).toUpperCase();
+    
     const gastoVictor = dadosMes
       .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
       .reduce((acc, x) => acc + x.valor, 0);
@@ -5624,29 +5718,94 @@
       </div>` : ''}
     ` : '';
     
+    // Gastos da semana (últimos 7 dias)
+    const seteDiasAtras = new Date(hoje);
+    seteDiasAtras.setDate(hoje.getDate() - 6);
+    const semanaInicio = seteDiasAtras.toISOString().split('T')[0];
+    const semanaFim = hoje.toISOString().split('T')[0];
+
+    const dadosSemana = dadosAutorizados.filter(x => {
+      const d = x.data.split('T')[0];
+      return d >= semanaInicio && d <= semanaFim;
+    });
+    const gastoSemana = dadosSemana.reduce((acc, x) => acc + x.valor, 0);
+    const litrosSemana = dadosSemana.reduce((acc, x) => acc + x.litro, 0);
+
+    const nomeMesAbrev = hoje.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
+    const ticketMedio = dadosMes.length > 0 ? gastoMes / dadosMes.length : 0;
+
+    // Variação semana vs semana anterior
+    const seteDiasAtrasAnterior = new Date(hoje);
+    seteDiasAtrasAnterior.setDate(hoje.getDate() - 13);
+    const semanaAnteriorInicio = seteDiasAtrasAnterior.toISOString().split('T')[0];
+    const semanaAnteriorFim = new Date(hoje);
+    semanaAnteriorFim.setDate(hoje.getDate() - 7);
+    const semanaAnteriorFimStr = semanaAnteriorFim.toISOString().split('T')[0];
+
+    const gastoSemanaAnterior = dadosAutorizados
+      .filter(x => {
+        const d = x.data.split('T')[0];
+        return d >= semanaAnteriorInicio && d <= semanaAnteriorFimStr;
+      })
+      .reduce((acc, x) => acc + x.valor, 0);
+
+    const varSemana = gastoSemanaAnterior > 0
+      ? ((gastoSemana - gastoSemanaAnterior) / gastoSemanaAnterior * 100)
+      : null;
+    const varSemanaHTML = varSemana !== null
+      ? `<div style="font-size:10px; margin-top:4px; color:${varSemana >= 0 ? '#ef4444':'#10b981'};">
+           ${varSemana >= 0 ? '▲' : '▼'} ${Math.abs(varSemana).toFixed(1)}% vs semana anterior
+         </div>`
+      : '';
+
     container.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <h4>TOTAL GASTO</h4>
-        <div class="stat-value">R$ ${totalGasto.toFixed(2)}</div>
+      <!-- LINHA 1: Período -->
+      <div class="stat-card" style="border-top:3px solid #6366f1;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">📅 MÊS ATUAL</div>
+            <div style="font-size:22px; font-weight:bold; color:#6366f1; margin:4px 0;">R$ ${gastoMes.toFixed(2)}</div>
+            <div style="font-size:10px; color:#94a3b8;">${nomeMesAbrev} · ${dadosMes.length} abastec. · ${litrosMes.toFixed(0)}L</div>
+          </div>
+          <div style="font-size:28px; opacity:0.3;">📅</div>
+        </div>
         ${trendGasto}
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">⛽</div>
-        <h4>TOTAL LITROS</h4>
-        <div class="stat-value">${totalLitros.toFixed(1)} L</div>
+      <div class="stat-card" style="border-top:3px solid #f59e0b;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">🗓️ ESTA SEMANA</div>
+            <div style="font-size:22px; font-weight:bold; color:#f59e0b; margin:4px 0;">R$ ${gastoSemana.toFixed(2)}</div>
+            <div style="font-size:10px; color:#94a3b8;">Últimos 7 dias · ${dadosSemana.length} abastec. · ${litrosSemana.toFixed(0)}L</div>
+          </div>
+          <div style="font-size:28px; opacity:0.3;">🗓️</div>
+        </div>
+        ${varSemanaHTML}
+      </div>
+
+      <!-- LINHA 2: Frota -->
+      <div class="stat-card" style="border-top:3px solid #10b981;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">⛽ LITROS NO MÊS</div>
+            <div style="font-size:22px; font-weight:bold; color:#10b981; margin:4px 0;">${litrosMes.toFixed(1)} L</div>
+            <div style="font-size:10px; color:#94a3b8;">Ticket médio: R$ ${ticketMedio.toFixed(2)}</div>
+          </div>
+          <div style="font-size:28px; opacity:0.3;">⛽</div>
+        </div>
         ${trendLitros}
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <h4>ABASTECIMENTOS</h4>
-        <div class="stat-value">${totalAbastecimentos}</div>
+      <div class="stat-card" style="border-top:3px solid #3b82f6;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">🚗 FROTA ATIVA</div>
+            <div style="font-size:22px; font-weight:bold; color:#3b82f6; margin:4px 0;">${veiculosUnicos} veíc.</div>
+            <div style="font-size:10px; color:#94a3b8;">${totalAbastecimentos} abastecimentos no total</div>
+          </div>
+          <div style="font-size:28px; opacity:0.3;">🚗</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon">🚗</div>
-        <h4>VEÍCULOS</h4>
-        <div class="stat-value">${veiculosUnicos}</div>
-      </div>
+
       ${cardsPostos}
     `;
   }
@@ -5723,15 +5882,30 @@
       const totalPendente = cacheFiltrado.filter(x => x.status === STATUS.AGUARDANDO).length;
       const totalAutorizado = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO).length;
       
-      // Buscar nome do posto vinculado
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      const nomePosto = postoVinculado ? postoVinculado.nome : 'NÃO DEFINIDO';
-      
-      statusDiv.innerHTML = `
-        👤 AUTORIZADOR: ${loginUser.toUpperCase()} | ⛽ POSTO: ${nomePosto}<br>
-        📊 ${totalAutorizado} APROVADOS | ⏳ ${totalPendente} AGUARDANDO APROVAÇÃO
-      `;
-      statusDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+      const resolverNomesPostos = (listaPostos) => {
+        if (!userPostosVinculados || userPostosVinculados.length === 0) return 'NÃO DEFINIDO';
+        const nomes = listaPostos.filter(p => userPostosVinculados.includes(p.id)).map(p => p.nome);
+        return nomes.length > 0 ? nomes.join(' | ') : 'NÃO DEFINIDO';
+      };
+
+      const montarStatusAutorizador = (nomesPostos) => {
+        statusDiv.innerHTML = `
+          👤 AUTORIZADOR: ${loginUser.toUpperCase()} | ⛽ POSTO(S): ${nomesPostos}<br>
+          📊 ${totalAutorizado} APROVADOS | ⏳ ${totalPendente} AGUARDANDO APROVAÇÃO
+        `;
+        statusDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+      };
+
+      if (postos && postos.length > 0) {
+        montarStatusAutorizador(resolverNomesPostos(postos));
+      } else {
+        // postos ainda não carregou — buscar direto do Firebase
+        db.ref('postos').once('value', snap => {
+          const lista = [];
+          snap.forEach(c => { const p = c.val(); p.id = c.key; lista.push(p); });
+          montarStatusAutorizador(resolverNomesPostos(lista));
+        });
+      }
       return;
     }
     
@@ -5816,11 +5990,12 @@
         statusDiv.style.background = 'linear-gradient(135deg, var(--primary) 0%, #1e293b 100%)';
       }
     } else {
-      const totalGasto = cache.filter(x => x.status === STATUS.AUTORIZADO)
+      const cacheAdmin = filtrarCachePorPosto(cache);
+      const totalGasto = cacheAdmin.filter(x => x.status === STATUS.AUTORIZADO)
         .reduce((acc, item) => acc + item.valor, 0);
-      const totalPendente = cache.filter(x => x.status === STATUS.AGUARDANDO)
+      const totalPendente = cacheAdmin.filter(x => x.status === STATUS.AGUARDANDO)
         .reduce((acc, item) => acc + item.valor, 0);
-      const pendentesQtd = cache.filter(x => x.status === STATUS.AGUARDANDO).length;
+      const pendentesQtd = cacheAdmin.filter(x => x.status === STATUS.AGUARDANDO).length;
       statusDiv.innerHTML = `
         👤 OPERADOR: ${loginUser.toUpperCase()} 
         <span class="badge badge-success">${userRole.toUpperCase()}</span><br>
@@ -6294,28 +6469,12 @@
   }
   
   function atualizarGraficos() {
-    let dadosGrafico = cache.filter(x => {
+    let dadosGrafico = filtrarCachePorPosto(cache.filter(x => {
       if (userRole === 'secretarios') {
         return x.status === STATUS.AUTORIZADO && x.secretaria === userSecretaria;
       }
       return x.status === STATUS.AUTORIZADO;
-    });
-    
-    // CORREÇÃO: Filtrar por MÚLTIPLOS postos para autorizadores
-    if (userRole === 'frentista' && userPostoVinculado) {
-      const postoVinculado = postos.find(p => p.id === userPostoVinculado);
-      if (postoVinculado) {
-        dadosGrafico = dadosGrafico.filter(item => item.posto === postoVinculado.nome);
-      }
-    } else if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomesPostosAutorizados = postos
-        .filter(p => userPostosVinculados.includes(p.id))
-        .map(p => p.nome);
-      
-      if (nomesPostosAutorizados.length > 0) {
-        dadosGrafico = dadosGrafico.filter(item => nomesPostosAutorizados.includes(item.posto));
-      }
-    }
+    }));
     
     if (dadosGrafico.length === 0) return;
     
@@ -6474,7 +6633,7 @@
   function atualizarRankingEficiencia() {
     const veiculosComMedia = {};
     
-    cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0).forEach(abast => {
+    filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0)).forEach(abast => {
       if (!veiculosComMedia[abast.placa]) {
         const veiculo = veiculos.find(v => v.placa === abast.placa);
         veiculosComMedia[abast.placa] = {
@@ -6592,7 +6751,7 @@
 
     // Montar dados por veículo
     const veiculosMap = {};
-    cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0).forEach(abast => {
+    filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO && x.km > 0)).forEach(abast => {
       if (!veiculosMap[abast.placa]) {
         const veiculo = veiculos.find(v => v.placa === abast.placa);
         veiculosMap[abast.placa] = {
@@ -6705,7 +6864,7 @@
   }
 
   function atualizarGraficoCombustivel() {
-    const dadosAutorizados = cache.filter(x => x.status === STATUS.AUTORIZADO);
+    const dadosAutorizados = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
     const combustivelMap = {};
     dadosAutorizados.forEach(d => {
@@ -7146,6 +7305,8 @@
     
     document.getElementById('field-limit').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('field-sec').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('field-postos-secretario').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('field-combustiveis-secretario').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('field-posto-frentista').style.display = isFrentista ? 'block' : 'none';
     document.getElementById('field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
@@ -7156,13 +7317,13 @@
       combField.style.display = (isFrentista || isAutorizador) ? 'none' : 'block';
     }
     
-    // Carregar postos quando selecionar frentista ou autorizador
-    if (isFrentista) {
+    if (isSecretario) {
+      carregarPostosSecretarioNew();
+    } else if (isFrentista) {
       carregarPostosParaFrentista();
     } else if (isAutorizador) {
       carregarPostosParaAutorizador();
     } else {
-      // Limpar campos quando mudar para outro perfil
       const postoSelect = document.getElementById('new-posto-vinc');
       if (postoSelect) postoSelect.value = '';
       const postoSelectFrentista = document.getElementById('new-posto-vinc-frentista');
@@ -7326,7 +7487,7 @@
     });
   }
   
-  function toggleEditFields() {
+  function toggleEditFields(skipCarregarPostosSecretario) {
     const role = document.getElementById('edit-role').value;
     const isFrentista = (role === 'frentista');
     const isSecretario = (role === 'secretarios');
@@ -7334,21 +7495,26 @@
     
     document.getElementById('edit-field-limit').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('edit-field-sec').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('edit-field-postos-secretario').style.display = isSecretario ? 'block' : 'none';
+    document.getElementById('edit-field-combustiveis-secretario').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('edit-field-posto-frentista').style.display = isFrentista ? 'block' : 'none';
     document.getElementById('edit-field-posto-autorizador').style.display = isAutorizador ? 'block' : 'none';
     document.getElementById('edit-field-combustiveis-autorizador').style.display = isAutorizador ? 'block' : 'none';
     
-    // Frentista e autorizador não precisam de combustível permitido
     const combField = document.getElementById('edit-combustivel').closest('div');
     if (combField) {
       combField.style.display = (isFrentista || isAutorizador) ? 'none' : 'block';
+    }
+    
+    // Só carrega postos do secretário se não vier do editarUsuario (que já passa os dados salvos)
+    if (isSecretario && !skipCarregarPostosSecretario) {
+      carregarPostosSecretarioEdit();
     }
     
     // Carregar postos quando selecionar frentista
     if (isFrentista) {
       const select = document.getElementById('edit-posto-vinc-frentista');
       select.innerHTML = '<option value="">CARREGANDO...</option>';
-      
       db.ref('postos').once('value', snap => {
         select.innerHTML = '<option value="">SELECIONE...</option>';
         if (snap.exists()) {
@@ -7366,7 +7532,6 @@
     if (isAutorizador) {
       const select = document.getElementById('edit-posto-vinc');
       select.innerHTML = '<option value="">CARREGANDO...</option>';
-      
       db.ref('postos').once('value', snap => {
         select.innerHTML = '<option value="">SELECIONE...</option>';
         if (snap.exists()) {
@@ -7379,7 +7544,6 @@
         }
       });
     } else {
-      // Limpar campos quando mudar para outro perfil
       const postoSelect = document.getElementById('edit-posto-vinc');
       if (postoSelect) postoSelect.value = '';
       const postoSelectFrentista = document.getElementById('edit-posto-vinc-frentista');
@@ -7387,6 +7551,143 @@
       const containerComb = document.getElementById('lista-combustiveis-autorizador-edit');
       if (containerComb) containerComb.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">Selecione um posto primeiro</p>';
     }
+  }
+
+  function carregarPostosSecretarioEdit(postosJaSelecionados, combsJaSelecionados) {
+    db.ref('postos').once('value', snap => {
+      const containerPostos = document.getElementById('lista-postos-secretario-edit');
+      if (!snap.exists()) {
+        containerPostos.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Nenhum posto cadastrado</p>';
+        return;
+      }
+      
+      const todosPostos = [];
+      snap.forEach(c => {
+        const p = c.val();
+        p.id = c.key;
+        todosPostos.push(p);
+      });
+      
+      
+      // Guardar combustíveis pré-selecionados em variável global temporária
+      window._combsEditPreSel = combsJaSelecionados || [];
+
+      containerPostos.innerHTML = todosPostos.map(p => {
+        const combs = Object.keys(p.precos || {});
+        const checked = postosJaSelecionados && postosJaSelecionados.includes(p.id) ? 'checked' : '';
+        return `
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" class="posto-secretario-edit" value="${p.id}" 
+              data-nome="${p.nome}"
+              data-combs="${combs.join('|')}"
+              ${checked}>
+            ⛽ ${p.nome}
+          </label>
+        `;
+      }).join('');
+
+      // Adicionar listeners após montar HTML
+      document.querySelectorAll('.posto-secretario-edit').forEach(cb => {
+        cb.addEventListener('change', () => atualizarCombustiveisSecretarioEdit(window._combsEditPreSel));
+      });
+      
+      atualizarCombustiveisSecretarioEdit(combsJaSelecionados || []);
+    });
+  }
+
+  function atualizarCombustiveisSecretarioEdit(combsPreSelecionados) {
+    const checkboxesPostos = document.querySelectorAll('.posto-secretario-edit:checked');
+    const containerCombs = document.getElementById('lista-combustiveis-secretario-edit');
+    
+    if (checkboxesPostos.length === 0) {
+      containerCombs.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Selecione pelo menos um posto</p>';
+      return;
+    }
+    
+    const combsDisponiveis = new Set();
+    checkboxesPostos.forEach(cb => {
+      const combs = (cb.dataset.combs || '').split('|').filter(Boolean);
+      combs.forEach(c => combsDisponiveis.add(c));
+    });
+    
+    const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
+    
+    containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" class="comb-secretario-edit" value="${comb}"
+          ${presSel.includes(comb) ? 'checked' : ''}>
+        🛢️ ${comb}
+      </label>
+    `).join('');
+    // Após primeiro render, limpar os pré-selecionados para não interferir
+    window._combsEditPreSel = [];
+  }
+
+  function carregarPostosSecretarioNew(postosJaSelecionados, combsJaSelecionados) {
+    db.ref('postos').once('value', snap => {
+      const containerPostos = document.getElementById('lista-postos-secretario-new');
+      if (!snap.exists()) {
+        containerPostos.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Nenhum posto cadastrado</p>';
+        return;
+      }
+      
+      const todosPostos = [];
+      snap.forEach(c => {
+        const p = c.val();
+        p.id = c.key;
+        todosPostos.push(p);
+      });
+      
+      
+      window._combsNewPreSel = combsJaSelecionados || [];
+
+      containerPostos.innerHTML = todosPostos.map(p => {
+        const combs = Object.keys(p.precos || {});
+        const checked = postosJaSelecionados && postosJaSelecionados.includes(p.id) ? 'checked' : '';
+        return `
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" class="posto-secretario-new" value="${p.id}"
+              data-nome="${p.nome}"
+              data-combs="${combs.join('|')}"
+              ${checked}>
+            ⛽ ${p.nome}
+          </label>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.posto-secretario-new').forEach(cb => {
+        cb.addEventListener('change', () => atualizarCombustiveisSecretarioNew(window._combsNewPreSel));
+      });
+      
+      atualizarCombustiveisSecretarioNew(combsJaSelecionados || []);
+    });
+  }
+
+  function atualizarCombustiveisSecretarioNew(combsPreSelecionados) {
+    const checkboxesPostos = document.querySelectorAll('.posto-secretario-new:checked');
+    const containerCombs = document.getElementById('lista-combustiveis-secretario-new');
+    
+    if (checkboxesPostos.length === 0) {
+      containerCombs.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Selecione pelo menos um posto</p>';
+      return;
+    }
+    
+    const combsDisponiveis = new Set();
+    checkboxesPostos.forEach(cb => {
+      const combs = (cb.dataset.combs || '').split('|').filter(Boolean);
+      combs.forEach(c => combsDisponiveis.add(c));
+    });
+    
+    const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
+    
+    containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" class="comb-secretario-new" value="${comb}"
+          ${presSel.includes(comb) ? 'checked' : ''}>
+        🛢️ ${comb}
+      </label>
+    `).join('');
+    window._combsNewPreSel = [];
   }
   
   function addUsuario() {
@@ -7399,7 +7700,9 @@
     const senha = document.getElementById('new-pass').value.trim();
     const role = document.getElementById('new-role').value;
     const combustivel = document.getElementById('new-combustivel').value;
-    const limite = parseFloat(document.getElementById('new-limit').value) || 0;
+    const limiteVictor = parseFloat(document.getElementById('new-limit-victor').value) || 0;
+    const limiteMatina = parseFloat(document.getElementById('new-limit-matina').value) || 0;
+    const limite = limiteVictor + limiteMatina;
     const secretaria = document.getElementById('new-sec-vinc').value;
     
     if (!usuario || !senha) {
@@ -7417,15 +7720,32 @@
       return;
     }
     
-    if (role === 'secretarios' && (!limite || !secretaria)) {
-      mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
+    if (role === 'secretarios' && (!secretaria || (limiteVictor === 0 && limiteMatina === 0))) {
+      mostrarNotificacao("❌ PREENCHA A SECRETARIA E PELO MENOS UM LIMITE DE POSTO!", "error");
       return;
+    }
+    
+    if (role === 'secretarios') {
+      const postosPermitidos = Array.from(document.querySelectorAll('.posto-secretario-new:checked')).map(cb => cb.value);
+      const combustiveisPermitidos = Array.from(document.querySelectorAll('.comb-secretario-new:checked')).map(cb => cb.value);
+      if (postosPermitidos.length === 0) {
+        mostrarNotificacao("❌ SELECIONE PELO MENOS UM POSTO PERMITIDO!", "error");
+        return;
+      }
+      if (combustiveisPermitidos.length === 0) {
+        mostrarNotificacao("❌ SELECIONE PELO MENOS UM COMBUSTÍVEL PERMITIDO!", "error");
+        return;
+      }
+      dadosUsuario.postosPermitidos = postosPermitidos;
+      dadosUsuario.combustiveisPermitidos = combustiveisPermitidos;
     }
     
     const dadosUsuario = {
       senha: senha,
       role: role,
       combustivelLiberado: combustivel,
+      limiteVictor: limiteVictor,
+      limiteMatina: limiteMatina,
       limite: limite,
       secretariaVinculada: secretaria,
       permissoes: PERMISSOES_PADRAO[role] || []
@@ -7471,7 +7791,8 @@
       mostrarNotificacao("✅ USUÁRIO SALVO COM SUCESSO!", "success");
       document.getElementById('new-user').value = '';
       document.getElementById('new-pass').value = '';
-      document.getElementById('new-limit').value = '';
+      document.getElementById('new-limit-victor').value = '';
+      document.getElementById('new-limit-matina').value = '';
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
       document.getElementById('new-posto-vinc-frentista').value = '';
@@ -7585,7 +7906,8 @@
       document.getElementById('edit-pass').value = u.senha;
       document.getElementById('edit-combustivel').value = u.combustivelLiberado || 'todos';
       document.getElementById('edit-role').value = u.role;
-      document.getElementById('edit-limit').value = u.limite || "";
+      document.getElementById('edit-limit-victor').value = u.limiteVictor || "";
+      document.getElementById('edit-limit-matina').value = u.limiteMatina || "";
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
       
       // Carregar dados de frentista se aplicável
@@ -7635,7 +7957,15 @@
         }
       }
       
-      toggleEditFields();
+      toggleEditFields(true); // true = não recarregar postos (editarUsuario já faz isso com dados salvos)
+
+      // Se for secretário, carregar postos e combustíveis já salvos
+      if (u.role === 'secretarios') {
+        const postosPermitidos = u.postosPermitidos || [];
+        const combustiveisPermitidos = u.combustiveisPermitidos || [];
+        carregarPostosSecretarioEdit(postosPermitidos, combustiveisPermitidos);
+      }
+
       document.getElementById('modal-edit').style.display = 'flex';
     });
   }
@@ -7654,7 +7984,9 @@
     const novaPass = document.getElementById('edit-pass').value;
     const combus = document.getElementById('edit-combustivel').value;
     const role = document.getElementById('edit-role').value;
-    const limite = parseFloat(document.getElementById('edit-limit').value) || 0;
+    const limiteVictor = parseFloat(document.getElementById('edit-limit-victor').value) || 0;
+    const limiteMatina = parseFloat(document.getElementById('edit-limit-matina').value) || 0;
+    const limite = limiteVictor + limiteMatina;
     const secretaria = document.getElementById('edit-sec-vinc').value;
     
     if (novaPass.length < 4) {
@@ -7675,13 +8007,23 @@
       dadosAtualizados.secretariaVinculada = "";
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'secretarios') {
-      if (!limite || !secretaria) {
-        mostrarNotificacao("❌ PREENCHA LIMITE E SECRETARIA PARA SECRETÁRIOS!", "error");
+      if (!secretaria) {
+        mostrarNotificacao("❌ PREENCHA A SECRETARIA PARA SECRETÁRIOS!", "error");
         return;
       }
+      if (limiteVictor === 0 && limiteMatina === 0) {
+        mostrarNotificacao("❌ INFORME O LIMITE DE PELO MENOS UM POSTO!", "error");
+        return;
+      }
+      const postosPermitidos = Array.from(document.querySelectorAll('.posto-secretario-edit:checked')).map(cb => cb.value);
+      const combustiveisPermitidos = Array.from(document.querySelectorAll('.comb-secretario-edit:checked')).map(cb => cb.value);
+      
+      dadosAtualizados.limiteVictor = limiteVictor;
+      dadosAtualizados.limiteMatina = limiteMatina;
       dadosAtualizados.limite = limite;
       dadosAtualizados.secretariaVinculada = secretaria;
-      // Limpar dados de autorizador/frentista se houver
+      dadosAtualizados.postosPermitidos = postosPermitidos;
+      dadosAtualizados.combustiveisPermitidos = combustiveisPermitidos;
       dadosAtualizados.postoVinculado = "";
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'autorizador') {
@@ -7722,6 +8064,9 @@
       mostrarNotificacao("✅ USUÁRIO ATUALIZADO COM SUCESSO!", "success");
       fecharModal();
       listUsuarios();
+    }).catch(err => {
+      console.error('ERRO AO SALVAR:', err);
+      mostrarNotificacao("❌ ERRO AO SALVAR: " + err.message, "error");
     });
   }
   
@@ -8947,7 +9292,7 @@
     // Verificar veículos com eficiência crítica usando os novos limites
     const veiculosCriticos = [];
     
-    cache.filter(x => x.status === STATUS.AUTORIZADO).forEach(abast => {
+    filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO)).forEach(abast => {
       const media = calcularMedia(abast);
       const limiteAlerta = LIMITES_ALERTA[abast.tipo];
       if (media > 0 && media < limiteAlerta) {
@@ -9049,7 +9394,7 @@
   
   // Gráfico da Frota
   function atualizarGraficoFrota() {
-    const veiculosAtivos = [...new Set(cache.filter(x => x.status === STATUS.AUTORIZADO).map(x => x.placa))].length;
+    const veiculosAtivos = [...new Set(filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO)).map(x => x.placa))].length;
     const totalVeiculos = veiculos.length;
     const veiculosInativos = totalVeiculos - veiculosAtivos;
     
