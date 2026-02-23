@@ -2762,7 +2762,7 @@
         </div>
         <div>
           <label>COMBUSTÍVEL *</label>
-          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal()">
+          <select id="f-tipo" onchange="calc(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); ajustarCamposPorCombustivel()">
       <option value="GASOLINA">GASOLINA</option>
       <option value="ALCOOL">ÁLCOOL</option>
       <option value="DIESEL">DIESEL</option>
@@ -4477,10 +4477,42 @@
     
     // Atualizar previsão de consumo
     atualizarPrevisaoConsumo();
+  }
+  
+  // BUG FIX: Tornar placa e KM opcionais para GÁS
+  function ajustarCamposPorCombustivel() {
+    const tipo = document.getElementById('f-tipo').value;
+    const isGas = tipo === 'GAS' || tipo === 'GÁS';
     
-    // Verificar limite em tempo real para secretários
-    if (userRole === 'secretarios') {
-      verificarLimiteEmTempoReal();
+    const inputPlaca = document.getElementById('f-placa');
+    const inputKm = document.getElementById('f-km');
+    const labelPlaca = inputPlaca?.closest('div')?.querySelector('label');
+    const labelKm = inputKm?.closest('div')?.querySelector('label');
+    
+    if (isGas) {
+      // GÁS: campos opcionais
+      if (labelPlaca) labelPlaca.innerHTML = 'PLACA <span style="font-size:9px; color:#64748b;">(Opcional para gás)</span>';
+      if (labelKm) labelKm.innerHTML = 'KM ATUAL <span style="font-size:9px; color:#64748b;">(Opcional para gás)</span>';
+      if (inputPlaca) {
+        inputPlaca.placeholder = 'Opcional';
+        inputPlaca.style.borderColor = '#94a3b8';
+      }
+      if (inputKm) {
+        inputKm.placeholder = 'Opcional';
+        inputKm.style.borderColor = '#94a3b8';
+      }
+    } else {
+      // Outros combustíveis: campos obrigatórios
+      if (labelPlaca) labelPlaca.innerHTML = 'PLACA *';
+      if (labelKm) labelKm.innerHTML = 'KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span>';
+      if (inputPlaca) {
+        inputPlaca.placeholder = 'ABC-1234';
+        inputPlaca.style.borderColor = '';
+      }
+      if (inputKm) {
+        inputKm.placeholder = '12345,6';
+        inputKm.style.borderColor = '';
+      }
     }
   }
   
@@ -4664,7 +4696,10 @@
   function validarAbastecimento(dados) {
     const erros = [];
     
-    if (!dados.placa || dados.placa.length < 7) {
+    // GÁS não precisa de placa nem KM (cilindros/botijões)
+    const isGas = dados.tipo === 'GAS' || dados.tipo === 'GÁS';
+    
+    if (!isGas && (!dados.placa || dados.placa.length < 7)) {
       erros.push("❌ PLACA INVÁLIDA");
     }
     if (!dados.posto || dados.posto === "") {
@@ -4686,15 +4721,15 @@
       erros.push("❌ LITROS DEVE SER MAIOR QUE ZERO");
     }
     
-    // KM é opcional apenas para abastecimentos AVULSOS / GERAL
+    // KM é opcional para AVULSOS ou GÁS
     const isAvulso = dados.secretaria === 'AVULSOS / GERAL';
     
-    if (!isAvulso && dados.km <= 0) {
+    if (!isAvulso && !isGas && dados.km <= 0) {
       erros.push("❌ KM DEVE SER MAIOR QUE ZERO");
     }
     
-    // Validar KM apenas se foi informado (para avulsos) ou sempre (para não avulsos)
-    if (!isAvulso || (isAvulso && dados.km > 0)) {
+    // Validar KM apenas se foi informado e não for GÁS
+    if (!isGas && (!isAvulso || (isAvulso && dados.km > 0))) {
       const ultimoAbast = cache
         .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -9069,12 +9104,16 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
-    // Dados do mês atual
-    const dadosMes = cache.filter(x => {
-      if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual;
+    // CORREÇÃO: Aplicar filtro de permissões igual ao dashboard principal
+    const cacheFiltrado = filtrarCachePorPosto(cache);
+    const dadosAutorizados = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO);
+    
+    // Dados do mês atual - USAR MESMA LÓGICA DO DASHBOARD
+    const dadosMes = dadosAutorizados.filter(x => {
+      const anoMes = x.data.split('T')[0].substring(0, 7);
+      return anoMes === anoMesAtual;
     });
     
     // Calcular métricas executivas
@@ -9083,14 +9122,14 @@
     const totalAbastecimentos = dadosMes.length;
     const ticketMedio = totalAbastecimentos > 0 ? totalGastoMes / totalAbastecimentos : 0;
     
-    // Dados do mês anterior
+    // Dados do mês anterior - USAR MESMA LÓGICA DO DASHBOARD
     const mesAnterior = mesAtual - 1 < 0 ? 11 : mesAtual - 1;
     const anoAnterior = mesAtual - 1 < 0 ? anoAtual - 1 : anoAtual;
+    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`;
     
-    const dadosMesAnterior = cache.filter(x => {
-      if (x.status !== STATUS.AUTORIZADO) return false;
-      const dataAbast = new Date(x.data);
-      return dataAbast.getMonth() === mesAnterior && dataAbast.getFullYear() === anoAnterior;
+    const dadosMesAnterior = dadosAutorizados.filter(x => {
+      const anoMes = x.data.split('T')[0].substring(0, 7);
+      return anoMes === anoMesAnterior;
     });
     
     const totalMesAnterior = dadosMesAnterior.reduce((acc, item) => acc + item.valor, 0);
