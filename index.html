@@ -4152,21 +4152,38 @@
     const precoPorLitro = postoData.precos[tipo] || 0;
     const valorAbastecimento = litros * precoPorLitro;
     
-    const gastoAtual = cache
+    // CORREÇÃO: Verificar limite específico do posto selecionado
+    const postoNome = posto.toUpperCase();
+    const isVictor = postoNome.includes('VICTOR');
+    const isMatina = postoNome.includes('MATINA');
+    
+    let limitePosto = 0;
+    if (isVictor && usuarioData.limiteVictor) {
+      limitePosto = usuarioData.limiteVictor;
+    } else if (isMatina && usuarioData.limiteMatina) {
+      limitePosto = usuarioData.limiteMatina;
+    } else {
+      // Fallback para limite total se não identificar posto
+      limitePosto = userLimit;
+    }
+    
+    // Calcular gasto APENAS no posto específico
+    const gastoAtualPosto = cache
       .filter(x => 
         (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-        x.secretaria === userSecretaria
+        x.secretaria === userSecretaria &&
+        (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')
       )
       .reduce((acc, item) => acc + (item.valor || 0), 0);
     
-    const gastoProjetado = gastoAtual + valorAbastecimento;
-    const saldoRestante = Math.max(0, userLimit - gastoAtual);
+    const gastoProjetado = gastoAtualPosto + valorAbastecimento;
+    const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
     
     // Atualizar interface para mostrar situação
     const valorInput = document.getElementById('f-val');
     const btnRegistrar = document.getElementById('btn-registrar');
     
-    if (gastoProjetado > userLimit) {
+    if (gastoProjetado > limitePosto) {
       // Excedeu o limite
       btnRegistrar.disabled = true;
       btnRegistrar.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
@@ -4188,9 +4205,9 @@
         alerta.style.borderLeft = '4px solid var(--danger)';
         alerta.style.fontSize = '11px';
         alerta.innerHTML = `
-          <strong>⚠️ LIMITE EXCEDIDO!</strong><br>
-          Limite: R$ ${userLimit.toFixed(2)}<br>
-          Gasto atual: R$ ${gastoAtual.toFixed(2)}<br>
+          <strong>⚠️ LIMITE EXCEDIDO NO ${isVictor ? 'POSTO VICTOR' : isMatina ? 'POSTO MATINA' : 'POSTO'}!</strong><br>
+          Limite do posto: R$ ${limitePosto.toFixed(2)}<br>
+          Gasto atual neste posto: R$ ${gastoAtualPosto.toFixed(2)}<br>
           Valor deste abastecimento: R$ ${valorAbastecimento.toFixed(2)}<br>
           <strong>Reduza os litros para continuar.</strong>
         `;
@@ -4217,7 +4234,7 @@
       }
       
       // Mostrar informação de saldo se estiver próximo do limite
-      if (saldoRestante < userLimit * 0.3 && saldoRestante > 0) {
+      if (saldoRestante < limitePosto * 0.3 && saldoRestante > 0) {
         if (!document.getElementById('info-limite')) {
           const info = document.createElement('div');
           info.id = 'info-limite';
@@ -4228,8 +4245,8 @@
           info.style.borderLeft = '4px solid var(--warning)';
           info.style.fontSize = '10px';
           info.innerHTML = `
-            <strong>⚠️ ATENÇÃO AO LIMITE</strong><br>
-            Saldo restante: <strong>R$ ${saldoRestante.toFixed(2)}</strong>
+            <strong>⚠️ ATENÇÃO AO LIMITE DO ${isVictor ? 'POSTO VICTOR' : isMatina ? 'POSTO MATINA' : 'POSTO'}</strong><br>
+            Saldo restante neste posto: <strong>R$ ${saldoRestante.toFixed(2)}</strong>
           `;
           
           const form = document.querySelector('.grid-form');
