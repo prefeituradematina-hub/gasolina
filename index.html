@@ -2606,11 +2606,11 @@
       </div>
       <div>
         <label>POSTO *</label>
-        <select id="edit-abast-posto"></select>
+        <select id="edit-abast-posto" onchange="calcularValorEditAbast()"></select>
       </div>
       <div>
         <label>COMBUSTÍVEL *</label>
-        <select id="edit-abast-tipo">
+        <select id="edit-abast-tipo" onchange="calcularValorEditAbast()">
           <option value="GASOLINA">GASOLINA</option>
           <option value="ALCOOL">ÁLCOOL</option>
           <option value="DIESEL">DIESEL</option>
@@ -2649,11 +2649,11 @@
       </div>
       <div>
         <label>LITROS/UNIDADES *</label>
-        <input type="number" id="edit-abast-litros" placeholder="0.00" step="0.01" min="0">
+        <input type="number" id="edit-abast-litros" placeholder="0.00" step="0.01" min="0" oninput="calcularValorEditAbast()">
       </div>
       <div>
-        <label>VALOR (R$) *</label>
-        <input type="number" id="edit-abast-valor" placeholder="0.00" step="0.01" min="0">
+        <label>VALOR (R$) - CALCULADO AUTOMATICAMENTE</label>
+        <input type="text" id="edit-abast-valor" placeholder="R$ 0,00" readonly style="background:#f1f5f9; cursor:not-allowed; color:#64748b; font-weight:bold;">
       </div>
       <div>
         <label>STATUS</label>
@@ -10881,6 +10881,28 @@
   
   // ==================== EDIÇÃO DE ABASTECIMENTO (MASTER) ====================
   
+  function calcularValorEditAbast() {
+    const postoNome = document.getElementById('edit-abast-posto').value;
+    const tipo = document.getElementById('edit-abast-tipo').value;
+    const litros = parseFloat(document.getElementById('edit-abast-litros').value) || 0;
+    
+    if (!postoNome || litros <= 0) {
+      document.getElementById('edit-abast-valor').value = 'R$ 0,00';
+      return;
+    }
+    
+    const postoData = postos.find(p => p.nome === postoNome);
+    if (!postoData || !postoData.precos || !postoData.precos[tipo]) {
+      document.getElementById('edit-abast-valor').value = 'R$ 0,00 (preço não cadastrado)';
+      return;
+    }
+    
+    const precoPorLitro = postoData.precos[tipo];
+    const valorTotal = litros * precoPorLitro;
+    
+    document.getElementById('edit-abast-valor').value = 'R$ ' + valorTotal.toFixed(2);
+  }
+  
   function editarAbastecimento(id) {
     if (loginUser !== 'master' && !temPermissao('deletar_abastecimento')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR ABASTECIMENTOS!", "error");
@@ -10906,7 +10928,6 @@
       document.getElementById('edit-abast-horario').value = abast.horario || '';
       document.getElementById('edit-abast-km').value = abast.km || '';
       document.getElementById('edit-abast-litros').value = abast.litro || '';
-      document.getElementById('edit-abast-valor').value = abast.valor || '';
       document.getElementById('edit-abast-status').value = abast.status || 'AGUARDANDO';
       
       // Carregar postos no select
@@ -10916,6 +10937,9 @@
         const selected = p.nome === abast.posto ? 'selected' : '';
         selectPosto.innerHTML += `<option value="${p.nome}" ${selected}>${p.nome}</option>`;
       });
+      
+      // Calcular valor automaticamente com base nos dados atuais
+      setTimeout(() => calcularValorEditAbast(), 100);
       
       // Abrir modal
       document.getElementById('modal-edit-abastecimento').style.display = 'flex';
@@ -10933,14 +10957,23 @@
     const horario = document.getElementById('edit-abast-horario').value;
     const km = parseFloat(document.getElementById('edit-abast-km').value) || 0;
     const litros = parseFloat(document.getElementById('edit-abast-litros').value) || 0;
-    const valor = parseFloat(document.getElementById('edit-abast-valor').value) || 0;
     const status = document.getElementById('edit-abast-status').value;
     
     // Validações básicas
-    if (!placa || !motorista || !posto || !data || litros <= 0 || valor <= 0) {
+    if (!placa || !motorista || !posto || !data || litros <= 0) {
       mostrarNotificacao("❌ PREENCHA TODOS OS CAMPOS OBRIGATÓRIOS!", "error");
       return;
     }
+    
+    // CALCULAR VALOR AUTOMATICAMENTE - NÃO ACEITA VALOR MANUAL
+    const postoData = postos.find(p => p.nome === posto);
+    if (!postoData || !postoData.precos || !postoData.precos[tipo]) {
+      mostrarNotificacao("❌ PREÇO DO COMBUSTÍVEL NÃO CADASTRADO NO POSTO!", "error");
+      return;
+    }
+    
+    const precoPorLitro = postoData.precos[tipo];
+    const valor = litros * precoPorLitro;
     
     const dadosAtualizados = {
       placa,
@@ -10952,7 +10985,8 @@
       horario,
       km,
       litro: litros,
-      valor,
+      valor,  // VALOR SEMPRE CALCULADO
+      precoPorLitro, // Salvar também o preço usado
       status,
       editadoPor: loginUser,
       editadoEm: Date.now()
