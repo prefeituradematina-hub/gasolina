@@ -2398,8 +2398,8 @@
             <span style="font-weight: bold; color: #0891b2;">GÁS</span>
           </label>
           <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-            <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-            <input type="number" id="edit-posto-gas-gnv" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+            <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/UNIDADE):</label>
+            <input type="number" id="edit-posto-gas-gnv" placeholder="Ex: 95.00" step="0.01" min="0" disabled style="flex: 1;">
           </div>
         </div>
       </div>
@@ -2585,6 +2585,94 @@
     <button class="btn-save" onclick="salvarEdicaoVIP()" style="margin-top: 20px; background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">
       💾 SALVAR ALTERAÇÕES
     </button>
+  </div>
+</div>
+
+<!-- Modal de Edição de Abastecimento -->
+<div id="modal-edit-abastecimento" class="modal">
+  <div class="modal-content" style="max-width: 800px;">
+    <span class="modal-close" onclick="fecharModalEditAbastecimento()">&times;</span>
+    <h3>✏️ EDITAR ABASTECIMENTO</h3>
+    <input type="hidden" id="edit-abast-id">
+    
+    <div class="grid-form">
+      <div>
+        <label>PLACA *</label>
+        <input type="text" id="edit-abast-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+      </div>
+      <div>
+        <label>MOTORISTA *</label>
+        <input type="text" id="edit-abast-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+      </div>
+      <div>
+        <label>POSTO *</label>
+        <select id="edit-abast-posto"></select>
+      </div>
+      <div>
+        <label>COMBUSTÍVEL *</label>
+        <select id="edit-abast-tipo">
+          <option value="GASOLINA">GASOLINA</option>
+          <option value="ALCOOL">ÁLCOOL</option>
+          <option value="DIESEL">DIESEL</option>
+          <option value="DIESEL S10">DIESEL S10</option>
+          <option value="GAS">GÁS</option>
+        </select>
+      </div>
+      <div>
+        <label>SECRETARIA *</label>
+        <select id="edit-abast-secretaria">
+          <option value="">SELECIONE...</option>
+          <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
+          <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
+          <option value="CULTURA">CULTURA</option>
+          <option value="EDUCAÇÃO">EDUCAÇÃO</option>
+          <option value="ESPORTE">ESPORTE</option>
+          <option value="GABINETE">GABINETE</option>
+          <option value="INFRAESTRUTURA">INFRAESTRUTURA</option>
+          <option value="MEIO AMBIENTE">MEIO AMBIENTE</option>
+          <option value="SAÚDE">SAÚDE</option>
+          <option value="AGRICULTURA">AGRICULTURA</option>
+          <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
+        </select>
+      </div>
+      <div>
+        <label>DATA *</label>
+        <input type="date" id="edit-abast-data">
+      </div>
+      <div>
+        <label>HORÁRIO</label>
+        <input type="time" id="edit-abast-horario">
+      </div>
+      <div>
+        <label>KM ATUAL</label>
+        <input type="text" id="edit-abast-km" placeholder="12345,6">
+      </div>
+      <div>
+        <label>LITROS/UNIDADES *</label>
+        <input type="number" id="edit-abast-litros" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div>
+        <label>VALOR (R$) *</label>
+        <input type="number" id="edit-abast-valor" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div>
+        <label>STATUS</label>
+        <select id="edit-abast-status">
+          <option value="AGUARDANDO">⏳ AGUARDANDO</option>
+          <option value="AUTORIZADO">✅ AUTORIZADO</option>
+          <option value="REJEITADO">❌ REJEITADO</option>
+        </select>
+      </div>
+    </div>
+    
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn-save" onclick="salvarEdicaoAbastecimento()" style="flex:1; background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">
+        💾 SALVAR ALTERAÇÕES
+      </button>
+      <button class="btn-save" onclick="fecharModalEditAbastecimento()" style="flex:0.3; background:#64748b;">
+        ❌ CANCELAR
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3120,13 +3208,20 @@
         <table>
           <thead>
             <tr>
-              <th>SECRETARIA</th>
-              <th>ORÇADO</th>
-              <th>REALIZADO</th>
-              <th>DIFERENÇA</th>
-              <th>% EXECUÇÃO</th>
-              <th>PROJEÇÃO MÊS</th>
-              <th>STATUS</th>
+              <th rowspan="2">SECRETARIA</th>
+              <th colspan="3" style="background:#3b82f6; color:white;">⛽ POSTO VICTOR</th>
+              <th colspan="3" style="background:#10b981; color:white;">⛽ POSTO MATINA</th>
+              <th rowspan="2">TOTAL ORÇADO</th>
+              <th rowspan="2">TOTAL REALIZADO</th>
+              <th rowspan="2">STATUS</th>
+            </tr>
+            <tr>
+              <th style="background:#60a5fa; color:white; font-size:10px;">ORÇADO</th>
+              <th style="background:#60a5fa; color:white; font-size:10px;">REALIZADO</th>
+              <th style="background:#60a5fa; color:white; font-size:10px;">% EXEC</th>
+              <th style="background:#34d399; color:white; font-size:10px;">ORÇADO</th>
+              <th style="background:#34d399; color:white; font-size:10px;">REALIZADO</th>
+              <th style="background:#34d399; color:white; font-size:10px;">% EXEC</th>
             </tr>
           </thead>
           <tbody id="performance-body"></tbody>
@@ -3357,8 +3452,8 @@
               <span style="font-weight: bold; color: #0891b2;">GÁS</span>
             </label>
             <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-              <input type="number" id="posto-gas-gnv" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/UNIDADE):</label>
+              <input type="number" id="posto-gas-gnv" placeholder="Ex: 95.00" step="0.01" min="0" disabled style="flex: 1;">
             </div>
           </div>
         </div>
@@ -4472,7 +4567,7 @@
   function calc() {
     const postoNome = document.getElementById('f-posto').value;
     const tipo = document.getElementById('f-tipo').value;
-    const litros = parseFloat(document.getElementById('f-lit').value) || 0;
+    const litros = parseFloat(document.getElementById('f-lit').value) || 0; // Para GÁS = quantidade de botijões
     
     if (!postoNome) {
       document.getElementById('f-val').value = "R$ 0.00";
@@ -4487,6 +4582,7 @@
       return;
     }
     
+    // Para GÁS: precoLitro é na verdade o preço por UNIDADE/BOTIJÃO
     const precoLitro = postoData.precos[tipo] || 0;
     const valorTotal = litros * precoLitro;
     
@@ -4496,20 +4592,23 @@
     atualizarPrevisaoConsumo();
   }
   
-  // BUG FIX: Tornar placa e KM opcionais para GÁS
+  // BUG FIX: Tornar placa e KM opcionais para GÁS + mudar label de litros
   function ajustarCamposPorCombustivel() {
     const tipo = document.getElementById('f-tipo').value;
     const isGas = tipo === 'GAS' || tipo === 'GÁS';
     
     const inputPlaca = document.getElementById('f-placa');
     const inputKm = document.getElementById('f-km');
+    const inputLitros = document.getElementById('f-lit');
     const labelPlaca = inputPlaca?.closest('div')?.querySelector('label');
     const labelKm = inputKm?.closest('div')?.querySelector('label');
+    const labelLitros = inputLitros?.closest('div')?.querySelector('label');
     
     if (isGas) {
-      // GÁS: campos opcionais
+      // GÁS: campos opcionais + trocar "LITROS" por "UNIDADES"
       if (labelPlaca) labelPlaca.innerHTML = 'PLACA <span style="font-size:9px; color:#64748b;">(Opcional para gás)</span>';
       if (labelKm) labelKm.innerHTML = 'KM ATUAL <span style="font-size:9px; color:#64748b;">(Opcional para gás)</span>';
+      if (labelLitros) labelLitros.innerHTML = 'UNIDADES/BOTIJÕES *';
       if (inputPlaca) {
         inputPlaca.placeholder = 'Opcional';
         inputPlaca.style.borderColor = '#94a3b8';
@@ -4518,10 +4617,15 @@
         inputKm.placeholder = 'Opcional';
         inputKm.style.borderColor = '#94a3b8';
       }
+      if (inputLitros) {
+        inputLitros.placeholder = 'Quantidade';
+        inputLitros.step = '1'; // Unidades inteiras
+      }
     } else {
       // Outros combustíveis: campos obrigatórios
       if (labelPlaca) labelPlaca.innerHTML = 'PLACA *';
       if (labelKm) labelKm.innerHTML = 'KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span>';
+      if (labelLitros) labelLitros.innerHTML = 'LITROS *';
       if (inputPlaca) {
         inputPlaca.placeholder = 'ABC-1234';
         inputPlaca.style.borderColor = '';
@@ -4529,6 +4633,10 @@
       if (inputKm) {
         inputKm.placeholder = '12345,6';
         inputKm.style.borderColor = '';
+      }
+      if (inputLitros) {
+        inputLitros.placeholder = '0.00';
+        inputLitros.step = '0.01'; // Litros com decimais
       }
     }
   }
@@ -6114,6 +6222,9 @@
             ${(d.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento'))
               ? `<button class="btn-action btn-aprovar" onclick="aprovar('${d.id}')">✅</button>
                  <button class="btn-action btn-rejeitar" onclick="rejeitar('${d.id}')">❌</button>` 
+              : ''}
+            ${(loginUser === 'master' || temPermissao('deletar_abastecimento'))
+              ? `<button class="btn-action" style="background:#3b82f6;color:white;" onclick="editarAbastecimento('${d.id}')">✏️</button>` 
               : ''}
             ${(temPermissao('deletar_abastecimento'))
               ? `<button class="btn-action btn-deletar" onclick="deletar('${d.id}')">🗑️</button>` 
@@ -8753,7 +8864,7 @@
     if (document.getElementById('posto-tem-gas').checked) {
       const preco = parseFloat(document.getElementById('posto-gas-gnv').value);
       if (!preco || preco <= 0) {
-        mostrarNotificacao("❌ PREENCHA O PREÇO DO GÁS!", "error");
+        mostrarNotificacao("❌ PREENCHA O PREÇO DO GÁS (PREÇO POR BOTIJÃO/UNIDADE)!", "error");
         return;
       }
       combustiveis['GAS'] = preco;
@@ -9270,13 +9381,13 @@
   
   function atualizarPerformanceSecretarias() {
     const tbody = document.getElementById('performance-body');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">⏳ Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">⏳ Carregando...</td></tr>';
     
     // Buscar limites reais do Firebase
     db.ref('usuarios').once('value', snap => {
       if (!snap.exists()) return;
       
-      // Montar mapa secretaria → limite total (limiteVictor + limiteMatina)
+      // Montar mapa secretaria → limites separados por posto
       const orcamentos = {};
       snap.forEach(userSnap => {
         const u = userSnap.val();
@@ -9284,64 +9395,129 @@
           const sec = u.secretariaVinculada;
           const limV = u.limiteVictor || 0;
           const limM = u.limiteMatina || 0;
-          const total = limV + limM;
-          if (total > 0) {
-            // Pode ter mais de um usuário por secretaria, soma tudo
-            orcamentos[sec] = (orcamentos[sec] || 0) + total;
+          
+          if (!orcamentos[sec]) {
+            orcamentos[sec] = { victor: 0, matina: 0 };
           }
+          orcamentos[sec].victor += limV;
+          orcamentos[sec].matina += limM;
         }
       });
       
       // Mês atual
       const hoje = new Date();
       const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-      const diasDecorridos = hoje.getDate();
-      const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
       
       let html = '';
       
       if (Object.keys(orcamentos).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">⚠️ Nenhum limite configurado para as secretarias</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:#64748b;">⚠️ Nenhum limite configurado para as secretarias</td></tr>';
         return;
       }
       
       Object.keys(orcamentos).sort().forEach(sec => {
-        const realizado = cache
+        const dadosMes = cache
           .filter(x => {
             if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
             const anoMes = x.data.split('T')[0].substring(0, 7);
             return anoMes === anoMesAtual;
-          })
+          });
+        
+        // Separar por posto
+        const realizadoVictor = dadosMes
+          .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
           .reduce((acc, item) => acc + item.valor, 0);
         
-        const orcado = orcamentos[sec];
-        const diferenca = orcado - realizado;
-        const percentual = orcado > 0 ? (realizado / orcado * 100).toFixed(1) : 0;
-        const projecao = diasDecorridos > 0 ? (realizado / diasDecorridos) * diasNoMes : 0;
-        const status = projecao <= orcado ? '✅ NO LIMITE' : '⚠️ ACIMA';
-        const corStatus = projecao <= orcado ? 'var(--success)' : 'var(--warning)';
+        const realizadoMatina = dadosMes
+          .filter(x => (x.posto || '').toUpperCase().includes('MATINA'))
+          .reduce((acc, item) => acc + item.valor, 0);
+        
+        const orcadoVictor = orcamentos[sec].victor;
+        const orcadoMatina = orcamentos[sec].matina;
+        const totalOrcado = orcadoVictor + orcadoMatina;
+        const totalRealizado = realizadoVictor + realizadoMatina;
+        
+        const percentualVictor = orcadoVictor > 0 ? (realizadoVictor / orcadoVictor * 100) : 0;
+        const percentualMatina = orcadoMatina > 0 ? (realizadoMatina / orcadoMatina * 100) : 0;
+        const percentualTotal = totalOrcado > 0 ? (totalRealizado / totalOrcado * 100) : 0;
+        
+        // Calcular quanto deveria ter gasto proporcionalmente aos dias do mês
+        const hoje = new Date();
+        const diasDecorridos = hoje.getDate();
+        const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+        const percentualDiasDecorridos = (diasDecorridos / diasNoMes) * 100;
+        
+        // Projeção para fim do mês (quanto vai gastar se continuar nesse ritmo)
+        const projecaoVictor = diasDecorridos > 0 ? (realizadoVictor / diasDecorridos) * diasNoMes : 0;
+        const projecaoMatina = diasDecorridos > 0 ? (realizadoMatina / diasDecorridos) * diasNoMes : 0;
+        
+        // Determinar status com base em múltiplos critérios
+        let status = '';
+        let corStatus = '';
+        let iconeStatus = '';
+        
+        // 1. CRÍTICO: Já estourou o limite de algum posto
+        if (percentualVictor > 100 || percentualMatina > 100) {
+          status = 'ESTOURADO';
+          corStatus = '#dc2626'; // vermelho escuro
+          iconeStatus = '🔴';
+        }
+        // 2. ALERTA: Projeção indica que vai estourar
+        else if (projecaoVictor > orcadoVictor || projecaoMatina > orcadoMatina) {
+          status = 'VAI ESTOURAR';
+          corStatus = '#ea580c'; // laranja escuro
+          iconeStatus = '⚠️';
+        }
+        // 3. ATENÇÃO: Gastando acima do proporcional (mais de 10% acima do esperado)
+        else if (percentualVictor > percentualDiasDecorridos + 10 || percentualMatina > percentualDiasDecorridos + 10) {
+          status = 'ACIMA RITMO';
+          corStatus = '#f59e0b'; // amarelo/laranja
+          iconeStatus = '⚡';
+        }
+        // 4. OK: Dentro do esperado
+        else {
+          status = 'NO LIMITE';
+          corStatus = '#16a34a'; // verde
+          iconeStatus = '✅';
+        }
         
         html += `
           <tr>
             <td><strong>${sec}</strong></td>
-            <td>R$ ${orcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td>R$ ${realizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td style="color:${diferenca >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">
-              ${diferenca >= 0 ? '+' : '-'} R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-            </td>
-            <td>
-              <div style="background:#e2e8f0; border-radius:4px; height:20px; overflow:hidden;">
-                <div style="background:${percentual > 100 ? 'var(--danger)' : 'var(--accent)'}; height:100%; width:${Math.min(percentual, 100)}%;"></div>
+            
+            <!-- VICTOR -->
+            <td style="background:#eff6ff;">R$ ${orcadoVictor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="background:#eff6ff;">R$ ${realizadoVictor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="background:#eff6ff;">
+              <div style="display:flex; align-items:center; gap:5px;">
+                <div style="background:#dbeafe; border-radius:4px; height:16px; overflow:hidden; flex:1;">
+                  <div style="background:${percentualVictor > 100 ? 'var(--danger)' : '#3b82f6'}; height:100%; width:${Math.min(percentualVictor, 100)}%;"></div>
+                </div>
+                <span style="font-size:10px; font-weight:bold; color:${percentualVictor > 100 ? 'var(--danger)' : '#3b82f6'}">${percentualVictor.toFixed(1)}%</span>
               </div>
-              ${percentual}%
             </td>
-            <td>R$ ${projecao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-            <td style="color:${corStatus}; font-weight:bold;">${status}</td>
+            
+            <!-- MATINA -->
+            <td style="background:#f0fdf4;">R$ ${orcadoMatina.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="background:#f0fdf4;">R$ ${realizadoMatina.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td style="background:#f0fdf4;">
+              <div style="display:flex; align-items:center; gap:5px;">
+                <div style="background:#d1fae5; border-radius:4px; height:16px; overflow:hidden; flex:1;">
+                  <div style="background:${percentualMatina > 100 ? 'var(--danger)' : '#10b981'}; height:100%; width:${Math.min(percentualMatina, 100)}%;"></div>
+                </div>
+                <span style="font-size:10px; font-weight:bold; color:${percentualMatina > 100 ? 'var(--danger)' : '#10b981'}">${percentualMatina.toFixed(1)}%</span>
+              </div>
+            </td>
+            
+            <!-- TOTAIS -->
+            <td><strong>R$ ${totalOrcado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+            <td><strong>R$ ${totalRealizado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+            <td style="color:${corStatus}; font-weight:bold; font-size:11px;">${iconeStatus} ${status}</td>
           </tr>
         `;
       });
       
-      tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">📭 Sem dados para exibir</td></tr>';
+      tbody.innerHTML = html || '<tr><td colspan="10" style="text-align:center; padding:30px; color:#64748b;">📭 Sem dados para exibir</td></tr>';
     });
   }
   
@@ -10701,6 +10877,105 @@
   // Fechar modal de edição de VIP
   function fecharModalEditVIP() {
     document.getElementById('modal-edit-vip').style.display = 'none';
+  }
+  
+  // ==================== EDIÇÃO DE ABASTECIMENTO (MASTER) ====================
+  
+  function editarAbastecimento(id) {
+    if (loginUser !== 'master' && !temPermissao('deletar_abastecimento')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR ABASTECIMENTOS!", "error");
+      return;
+    }
+    
+    // Buscar dados do abastecimento
+    db.ref('abastecimentos/' + id).once('value', snap => {
+      if (!snap.exists()) {
+        mostrarNotificacao("❌ ABASTECIMENTO NÃO ENCONTRADO!", "error");
+        return;
+      }
+      
+      const abast = snap.val();
+      
+      // Preencher campos
+      document.getElementById('edit-abast-id').value = id;
+      document.getElementById('edit-abast-placa').value = abast.placa || '';
+      document.getElementById('edit-abast-motorista').value = abast.motorista || '';
+      document.getElementById('edit-abast-tipo').value = abast.tipo || 'GASOLINA';
+      document.getElementById('edit-abast-secretaria').value = abast.secretaria || '';
+      document.getElementById('edit-abast-data').value = abast.data ? abast.data.split('T')[0] : '';
+      document.getElementById('edit-abast-horario').value = abast.horario || '';
+      document.getElementById('edit-abast-km').value = abast.km || '';
+      document.getElementById('edit-abast-litros').value = abast.litro || '';
+      document.getElementById('edit-abast-valor').value = abast.valor || '';
+      document.getElementById('edit-abast-status').value = abast.status || 'AGUARDANDO';
+      
+      // Carregar postos no select
+      const selectPosto = document.getElementById('edit-abast-posto');
+      selectPosto.innerHTML = '<option value="">SELECIONE...</option>';
+      postos.forEach(p => {
+        const selected = p.nome === abast.posto ? 'selected' : '';
+        selectPosto.innerHTML += `<option value="${p.nome}" ${selected}>${p.nome}</option>`;
+      });
+      
+      // Abrir modal
+      document.getElementById('modal-edit-abastecimento').style.display = 'flex';
+    });
+  }
+  
+  function salvarEdicaoAbastecimento() {
+    const id = document.getElementById('edit-abast-id').value;
+    const placa = document.getElementById('edit-abast-placa').value.toUpperCase().trim();
+    const motorista = document.getElementById('edit-abast-motorista').value.toUpperCase().trim();
+    const posto = document.getElementById('edit-abast-posto').value;
+    const tipo = document.getElementById('edit-abast-tipo').value;
+    const secretaria = document.getElementById('edit-abast-secretaria').value;
+    const data = document.getElementById('edit-abast-data').value;
+    const horario = document.getElementById('edit-abast-horario').value;
+    const km = parseFloat(document.getElementById('edit-abast-km').value) || 0;
+    const litros = parseFloat(document.getElementById('edit-abast-litros').value) || 0;
+    const valor = parseFloat(document.getElementById('edit-abast-valor').value) || 0;
+    const status = document.getElementById('edit-abast-status').value;
+    
+    // Validações básicas
+    if (!placa || !motorista || !posto || !data || litros <= 0 || valor <= 0) {
+      mostrarNotificacao("❌ PREENCHA TODOS OS CAMPOS OBRIGATÓRIOS!", "error");
+      return;
+    }
+    
+    const dadosAtualizados = {
+      placa,
+      motorista,
+      posto,
+      tipo,
+      secretaria,
+      data,
+      horario,
+      km,
+      litro: litros,
+      valor,
+      status,
+      editadoPor: loginUser,
+      editadoEm: Date.now()
+    };
+    
+    db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
+      registrarAuditoria('ABASTECIMENTO_EDITADO', { 
+        id, 
+        placa, 
+        valor: valor.toFixed(2),
+        editadoPor: loginUser 
+      });
+      mostrarNotificacao("✅ ABASTECIMENTO ATUALIZADO COM SUCESSO!", "success");
+      fecharModalEditAbastecimento();
+      renderizar();
+    }).catch(err => {
+      console.error('ERRO AO SALVAR:', err);
+      mostrarNotificacao("❌ ERRO AO SALVAR: " + err.message, "error");
+    });
+  }
+  
+  function fecharModalEditAbastecimento() {
+    document.getElementById('modal-edit-abastecimento').style.display = 'none';
   }
   
   // Atualizar dropdowns de VIP em todo o sistema
