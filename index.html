@@ -3628,6 +3628,20 @@
       <button class="btn-save" onclick="addUsuario()" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">➕ SALVAR USUÁRIO</button>
     </div>
     
+    <!-- Botão de Resetar Limites -->
+    <div class="card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">⚠️ RESETAR LIMITES MENSAIS</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.9;">
+        Esta ação zerará todos os gastos mensais de TODOS os secretários.<br>
+        Use apenas no início do mês ou em caso de necessidade urgente.
+      </p>
+      <button 
+        onclick="confirmarResetLimites()" 
+        style="background: white; color: #dc2626; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        🔄 RESETAR TODOS OS LIMITES
+      </button>
+    </div>
+    
     <div class="card">
       <h3>📋 USUÁRIOS CADASTRADOS</h3>
       <div class="table-wrapper">
@@ -4253,13 +4267,50 @@
     const isMatina = postoNome.includes('MATINA');
     
     let limitePosto = 0;
-    if (isVictor && usuarioData.limiteVictor) {
-      limitePosto = usuarioData.limiteVictor;
-    } else if (isMatina && usuarioData.limiteMatina) {
-      limitePosto = usuarioData.limiteMatina;
-    } else {
-      // Fallback para limite total se não identificar posto
-      limitePosto = userLimit;
+    
+    // LIMITES ESTRITAMENTE SEPARADOS - NÃO PODE USAR UM PELO OUTRO
+    if (isVictor) {
+      limitePosto = usuarioData.limiteVictor || 0;
+    } else if (isMatina) {
+      limitePosto = usuarioData.limiteMatina || 0;
+    }
+    
+    console.log('💰 LIMITES EM MEMÓRIA:', {
+      userLimit,
+      limiteVictor: usuarioData.limiteVictor,
+      limiteMatina: usuarioData.limiteMatina,
+      limitePosto,
+      posto: postoNome
+    });
+    
+    // Se não tiver limite configurado para este posto, bloquear
+    if (limitePosto === 0) {
+      btnRegistrar.disabled = true;
+      btnRegistrar.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
+      btnRegistrar.innerHTML = '⛔ SEM LIMITE NESTE POSTO';
+      
+      const alerta = document.getElementById('alerta-limite');
+      if (alerta) alerta.remove();
+      const info = document.getElementById('info-limite');
+      if (info) info.remove();
+      
+      const alertaDiv = document.createElement('div');
+      alertaDiv.id = 'alerta-limite';
+      alertaDiv.style.marginTop = '10px';
+      alertaDiv.style.padding = '10px';
+      alertaDiv.style.background = '#fee2e2';
+      alertaDiv.style.borderRadius = '6px';
+      alertaDiv.style.borderLeft = '4px solid var(--danger)';
+      alertaDiv.style.fontSize = '11px';
+      alertaDiv.innerHTML = `
+        <strong>⚠️ SEM LIMITE NESTE POSTO!</strong><br>
+        Você não tem orçamento configurado para este posto.<br>
+        Os limites são separados: Victor e Matina não compartilham saldo.
+      `;
+      
+      const form = document.querySelector('.grid-form');
+      if (form) form.appendChild(alertaDiv);
+      return;
     }
     
     // Calcular gasto APENAS no posto específico
@@ -4273,6 +4324,19 @@
     
     const gastoProjetado = gastoAtualPosto + valorAbastecimento;
     const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
+    
+    // LOG DE DEBUG
+    console.log('📊 VERIFICAÇÃO DE LIMITE:', {
+      posto: posto,
+      isVictor,
+      isMatina,
+      limitePosto,
+      gastoAtualPosto,
+      valorAbastecimento,
+      gastoProjetado,
+      saldoRestante,
+      bloqueado: gastoProjetado > limitePosto
+    });
     
     // Atualizar interface para mostrar situação
     const valorInput = document.getElementById('f-val');
@@ -4300,11 +4364,11 @@
         alerta.style.borderLeft = '4px solid var(--danger)';
         alerta.style.fontSize = '11px';
         alerta.innerHTML = `
-          <strong>⚠️ LIMITE EXCEDIDO NO ${isVictor ? 'POSTO VICTOR' : isMatina ? 'POSTO MATINA' : 'POSTO'}!</strong><br>
-          Limite do posto: R$ ${limitePosto.toFixed(2)}<br>
-          Gasto atual neste posto: R$ ${gastoAtualPosto.toFixed(2)}<br>
-          Valor deste abastecimento: R$ ${valorAbastecimento.toFixed(2)}<br>
-          <strong>Reduza os litros para continuar.</strong>
+          <strong>❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!</strong><br>
+          Seu limite no ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'posto'}: R$ ${limitePosto.toFixed(2)}<br>
+          Já gastou neste posto: R$ ${gastoAtualPosto.toFixed(2)}<br>
+          Saldo disponível: R$ ${(limitePosto - gastoAtualPosto).toFixed(2)}<br>
+          Valor deste abastecimento: R$ ${valorAbastecimento.toFixed(2)}
         `;
         
         const form = document.querySelector('.grid-form');
@@ -4499,6 +4563,37 @@
     }
     
     mostrarNotificacao(`✅ BEM-VINDO, ${u.toUpperCase()}!`, "success");
+    
+    // CORREÇÃO: Listener para atualizar limites em tempo real quando admin edita
+    if (role === 'secretarios' || role === 'autorizador') {
+      db.ref('usuarios/' + u).on('value', snap => {
+        if (!snap.exists()) return;
+        
+        const userData = snap.val();
+        
+        // Atualizar limites se mudaram
+        const novoLimiteVictor = userData.limiteVictor || 0;
+        const novoLimiteMatina = userData.limiteMatina || 0;
+        const novoLimiteTotal = novoLimiteVictor + novoLimiteMatina || userData.limite || 0;
+        
+        if (userLimit !== novoLimiteTotal) {
+          console.log('🔄 LIMITE ATUALIZADO PELO ADMIN:', {
+            anterior: userLimit,
+            novo: novoLimiteTotal
+          });
+          
+          userLimit = novoLimiteTotal;
+          usuarioData.limite = novoLimiteTotal;
+          usuarioData.limiteVictor = novoLimiteVictor;
+          usuarioData.limiteMatina = novoLimiteMatina;
+          
+          // Recalcular validação de limite em tempo real
+          verificarLimiteEmTempoReal();
+          
+          mostrarNotificacao(`🔄 Seu limite foi atualizado para R$ ${novoLimiteTotal.toFixed(2)}`, "info");
+        }
+      });
+    }
     
     // Inicializar notificações
     inicializarNotificacoes();
@@ -4934,26 +5029,54 @@
       }
 
       // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário
+      // 🔴 VALIDAÇÃO DE LIMITE POR POSTO (SEPARADO)
       if (userRole === 'secretarios' && !dados.tanqueCheio) {
-        const gastoAtual = cache
+        // Identificar qual posto
+        const postoNome = dados.posto.toUpperCase();
+        const isVictor = postoNome.includes('VICTOR');
+        const isMatina = postoNome.includes('MATINA');
+        
+        // Pegar limite específico do posto
+        let limitePosto = 0;
+        if (isVictor) {
+          limitePosto = usuarioData.limiteVictor || 0;
+        } else if (isMatina) {
+          limitePosto = usuarioData.limiteMatina || 0;
+        }
+        
+        // Se não tiver limite neste posto, bloquear
+        if (limitePosto === 0) {
+          mostrarNotificacao(
+            `❌ SEM LIMITE NESTE POSTO!\n\n` +
+            `Você não tem orçamento configurado para ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'este posto'}.\n` +
+            `Os limites são separados por posto.`,
+            "error"
+          );
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
+        }
+        
+        // Calcular gasto atual APENAS neste posto
+        const gastoAtualPosto = cache
           .filter(x => 
             (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-            x.secretaria === userSecretaria
+            x.secretaria === userSecretaria &&
+            (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')
           )
           .reduce((acc, item) => acc + (item.valor || 0), 0);
         
-        const gastoProjetado = gastoAtual + dados.valor;
+        const gastoProjetado = gastoAtualPosto + dados.valor;
         
-        if (gastoProjetado > userLimit) {
-          const saldoRestante = Math.max(0, userLimit - gastoAtual);
+        if (gastoProjetado > limitePosto) {
+          const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
           mostrarNotificacao(
-            `❌ LIMITE ORÇAMENTÁRIO EXCEDIDO!\n\n` +
-            `Limite mensal: R$ ${userLimit.toFixed(2)}\n` +
-            `Gasto atual: R$ ${gastoAtual.toFixed(2)}\n` +
-            `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}\n` +
-            `Gasto projetado: R$ ${gastoProjetado.toFixed(2)}\n` +
-            `Saldo restante: R$ ${saldoRestante.toFixed(2)}\n\n` +
-            `Você precisa reduzir os litros ou cancelar o registro.`,
+            `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
+            `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
+            `Seu limite neste posto: R$ ${limitePosto.toFixed(2)}\n` +
+            `Já gastou: R$ ${gastoAtualPosto.toFixed(2)}\n` +
+            `Saldo disponível: R$ ${saldoRestante.toFixed(2)}\n` +
+            `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}`,
             "error"
           );
           btnRegistrar.disabled = false;
@@ -7968,6 +8091,98 @@
     });
   }
   
+  // ==================== RESETAR LIMITES MENSAIS ====================
+  
+  function confirmarResetLimites() {
+    if (loginUser !== 'master' && !temPermissao('gerenciar_usuarios')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
+      return;
+    }
+    
+    const confirmacao = confirm(
+      "⚠️ ATENÇÃO: RESETAR TODOS OS LIMITES MENSAIS\n\n" +
+      "Esta ação irá:\n" +
+      "✓ Marcar TODOS os abastecimentos como do mês anterior\n" +
+      "✓ Zerar contadores de gasto de TODAS as secretarias\n" +
+      "✓ Permitir que secretários recomecem do zero\n\n" +
+      "⚠️ ESTA AÇÃO NÃO PODE SER DESFEITA!\n\n" +
+      "Deseja continuar?"
+    );
+    
+    if (!confirmacao) return;
+    
+    const confirmacaoFinal = confirm(
+      "🔴 CONFIRMAÇÃO FINAL\n\n" +
+      "Você tem CERTEZA ABSOLUTA que deseja resetar os limites?\n\n" +
+      "Digite OK no próximo prompt para confirmar."
+    );
+    
+    if (!confirmacaoFinal) return;
+    
+    const digitado = prompt("Digite OK (em letras maiúsculas) para confirmar:");
+    
+    if (digitado !== "OK") {
+      mostrarNotificacao("❌ Cancelado - você não digitou OK corretamente.", "error");
+      return;
+    }
+    
+    resetarLimitesMensais();
+  }
+  
+  async function resetarLimitesMensais() {
+    mostrarNotificacao("🔄 Processando reset de limites...", "info");
+    
+    try {
+      const snapshot = await db.ref('usuarios').once('value');
+      const updates = {};
+      
+      if (snapshot.exists()) {
+        snapshot.forEach(userSnap => {
+          const user = userSnap.val();
+          if (user.role === 'secretarios') {
+            // Zerar contadores de gasto
+            updates[`usuarios/${userSnap.key}/limiteUsadoVictor`] = 0;
+            updates[`usuarios/${userSnap.key}/limiteUsadoMatina`] = 0;
+          }
+        });
+      }
+      
+      // Aplicar atualizações
+      await db.ref().update(updates);
+      
+      // Registrar na auditoria
+      await registrarAuditoria('LIMITES_RESETADOS', { 
+        realizadoPor: loginUser,
+        timestamp: Date.now(),
+        secretariasAfetadas: Object.keys(updates).length / 2
+      });
+      
+      mostrarNotificacao(
+        `✅ LIMITES RESETADOS COM SUCESSO!\n\n` +
+        `${Object.keys(updates).length / 2} secretarias foram resetadas.\n` +
+        `Os secretários podem abastecer normalmente agora.`,
+        "success"
+      );
+      
+      // Recarregar lista de usuários
+      listUsuarios();
+      
+      // Se o usuário logado for secretário, recarregar seus dados
+      if (userRole === 'secretarios') {
+        recarregarDadosUsuarioLogado();
+      }
+      
+    } catch (error) {
+      console.error('Erro ao resetar limites:', error);
+      mostrarNotificacao(
+        `❌ ERRO AO RESETAR LIMITES!\n\n${error.message}`,
+        "error"
+      );
+    }
+  }
+  
+  // ==================== GESTÃO DE USUÁRIOS ====================
+  
   function listUsuarios() {
     db.ref('usuarios').once('value', snap => {
       const tbody = document.getElementById('user-body');
@@ -8231,9 +8446,54 @@
       mostrarNotificacao("✅ USUÁRIO ATUALIZADO COM SUCESSO!", "success");
       fecharModal();
       listUsuarios();
+      
+      // CORREÇÃO: Se editou o próprio usuário logado, atualizar dados em memória
+      if (id === loginUser) {
+        recarregarDadosUsuarioLogado();
+      }
     }).catch(err => {
       console.error('ERRO AO SALVAR:', err);
       mostrarNotificacao("❌ ERRO AO SALVAR: " + err.message, "error");
+    });
+  }
+  
+  // Recarregar dados do usuário logado (limites, permissões, etc)
+  function recarregarDadosUsuarioLogado() {
+    db.ref('usuarios/' + loginUser).once('value', snap => {
+      if (!snap.exists()) return;
+      
+      const user = snap.val();
+      
+      // Atualizar limites
+      const limiteVictor = user.limiteVictor || 0;
+      const limiteMatina = user.limiteMatina || 0;
+      const limiteTotal = limiteVictor + limiteMatina || user.limite || 0;
+      
+      userLimit = limiteTotal;
+      
+      // Atualizar usuarioData completo
+      usuarioData = {
+        ...usuarioData,
+        limite: limiteTotal,
+        limiteVictor: limiteVictor,
+        limiteMatina: limiteMatina,
+        secretariaVinculada: user.secretariaVinculada || "",
+        postoVinculado: user.postoVinculado || "",
+        postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
+        permissoes: user.permissoes || PERMISSOES_PADRAO[user.role] || []
+      };
+      
+      userPermissions = usuarioData.permissoes;
+      
+      console.log('✅ Dados do usuário recarregados:', {
+        limiteVictor,
+        limiteMatina,
+        limiteTotal,
+        usuarioData
+      });
+      
+      // Atualizar interface se necessário
+      verificarLimiteEmTempoReal();
     });
   }
   
