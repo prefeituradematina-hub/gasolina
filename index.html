@@ -5377,16 +5377,45 @@
       <p><strong>Secretaria:</strong> ${abast.secretaria}</p>
     `;
     
-    // Preencher preço padrão
-    const precoPadrao = precos[abast.tipo] || 0;
-    document.getElementById('tanque-preco').value = precoPadrao;
+    // BUSCAR PREÇO DO POSTO CADASTRADO
+    const postoData = postos.find(p => p.nome === abast.posto);
+    let precoPadrao = 0;
+    
+    if (postoData && postoData.precos && postoData.precos[abast.tipo]) {
+      precoPadrao = postoData.precos[abast.tipo];
+    } else {
+      mostrarNotificacao("⚠️ PREÇO NÃO CADASTRADO NO POSTO! Preencha manualmente.", "warning");
+    }
+    
+    document.getElementById('tanque-preco').value = precoPadrao.toFixed(2);
     
     // Preencher KM atual
     document.getElementById('tanque-km').value = abast.km;
     
-    // Limpar litros e valor
-    document.getElementById('tanque-litros').value = '';
-    document.getElementById('tanque-valor').value = '';
+    // SUGESTÃO DE LITROS: Buscar capacidade média do tanque baseado no histórico
+    const historicoVeiculo = cache
+      .filter(v => v.placa === abast.placa && v.tipo === abast.tipo && v.litro > 0)
+      .sort((a, b) => b.litro - a.litro)
+      .slice(0, 5);
+    
+    let litrosSugeridos = '';
+    if (historicoVeiculo.length > 0) {
+      const maiorAbastecimento = Math.max(...historicoVeiculo.map(v => v.litro));
+      litrosSugeridos = maiorAbastecimento.toFixed(2);
+      document.getElementById('tanque-litros').value = litrosSugeridos;
+      document.getElementById('tanque-litros').placeholder = `Sugestão: ${litrosSugeridos} L (maior histórico)`;
+    } else {
+      document.getElementById('tanque-litros').value = '';
+      document.getElementById('tanque-litros').placeholder = '0.00';
+    }
+    
+    // Calcular valor automaticamente se tiver preço e litros
+    if (precoPadrao > 0 && litrosSugeridos) {
+      const valorTotal = parseFloat(litrosSugeridos) * precoPadrao;
+      document.getElementById('tanque-valor').value = "R$ " + valorTotal.toFixed(2);
+    } else {
+      document.getElementById('tanque-valor').value = '';
+    }
     
     // Carregar informações do limite do secretário
     if (userRole === 'admin' || userRole === 'autorizador' || loginUser === 'master') {
