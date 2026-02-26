@@ -3162,6 +3162,22 @@
       </div>
     </div>
     
+    <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h4 style="color: white; margin: 0 0 5px 0; font-size: 14px;">🗑️ LIMPEZA AUTOMÁTICA ATIVA</h4>
+          <p style="margin: 0; font-size: 12px; opacity: 0.9;">
+            Abastecimentos não aprovados são deletados automaticamente após 24 horas.
+          </p>
+        </div>
+        <button 
+          onclick="limparAbastecimentosExpiradosManual()" 
+          style="background: white; color: #d97706; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap;">
+          🗑️ LIMPAR AGORA
+        </button>
+      </div>
+    </div>
+    
     <div class="card">
       <h3>⏳ SOLICITAÇÕES PENDENTES DE APROVAÇÃO</h3>
       <div class="table-wrapper">
@@ -4601,6 +4617,9 @@
     // Verificar PWA
     verificarPWA();
     
+    // Executar limpeza automática de abastecimentos expirados
+    setTimeout(() => limparAbastecimentosExpirados(), 2000);
+    
     setTimeout(() => {
       renderizar();
       calcularDadosMesAnterior();
@@ -5528,6 +5547,102 @@
       mostrarNotificacao("🗑️ REGISTRO EXCLUÍDO COM SUCESSO!", "success");
     });
   }
+  
+  // ==================== LIMPEZA AUTOMÁTICA DE PENDENTES ====================
+  
+  async function limparAbastecimentosExpirados() {
+    try {
+      const agora = Date.now();
+      const VINTE_QUATRO_HORAS = 24 * 60 * 60 * 1000; // 24h em milissegundos
+      
+      const snapshot = await db.ref('abastecimentos').once('value');
+      
+      if (!snapshot.exists()) return;
+      
+      const deletados = [];
+      const updates = {};
+      
+      snapshot.forEach(abastSnap => {
+        const abast = abastSnap.val();
+        const id = abastSnap.key;
+        
+        // Verificar se está AGUARDANDO e tem mais de 24h
+        if (abast.status === 'AGUARDANDO' && abast.timestamp) {
+          const tempoDecorrido = agora - abast.timestamp;
+          
+          if (tempoDecorrido > VINTE_QUATRO_HORAS) {
+            updates[`abastecimentos/${id}`] = null; // Marcar para deletar
+            deletados.push({
+              id,
+              placa: abast.placa || 'SEM PLACA',
+              valor: abast.valor || 0,
+              secretaria: abast.secretaria || 'N/A',
+              horas: Math.floor(tempoDecorrido / (60 * 60 * 1000))
+            });
+          }
+        }
+      });
+      
+      if (deletados.length > 0) {
+        // Deletar do Firebase
+        await db.ref().update(updates);
+        
+        // Registrar auditoria
+        await registrarAuditoria('LIMPEZA_AUTOMATICA', {
+          quantidade: deletados.length,
+          abastecimentos: deletados,
+          timestamp: agora
+        });
+        
+        console.log(`🗑️ Limpeza automática: ${deletados.length} abastecimentos deletados`, deletados);
+        
+        // Atualizar cache
+        deletados.forEach(item => {
+          const index = cache.findIndex(x => x.id === item.id);
+          if (index > -1) cache.splice(index, 1);
+        });
+        
+        // Recarregar interface
+        renderizar();
+        
+        // Notificar apenas master/admin
+        if (loginUser === 'master' || temPermissao('gerenciar_usuarios')) {
+          mostrarNotificacao(
+            `🗑️ LIMPEZA AUTOMÁTICA EXECUTADA\n\n` +
+            `${deletados.length} abastecimento(s) pendente(s) há mais de 24h foram deletados automaticamente.`,
+            "info"
+          );
+        }
+      }
+      
+    } catch (error) {
+      console.error('Erro na limpeza automática:', error);
+    }
+  }
+  
+  // Função manual para executar limpeza imediatamente
+  async function limparAbastecimentosExpiradosManual() {
+    if (!temPermissao('autorizar_abastecimento') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXECUTAR LIMPEZA!", "error");
+      return;
+    }
+    
+    const confirmacao = confirm(
+      "🗑️ EXECUTAR LIMPEZA MANUAL\n\n" +
+      "Esta ação irá deletar TODOS os abastecimentos pendentes há mais de 24 horas.\n\n" +
+      "Deseja continuar?"
+    );
+    
+    if (!confirmacao) return;
+    
+    mostrarNotificacao("🔄 Executando limpeza...", "info");
+    await limparAbastecimentosExpirados();
+  }
+  
+  // Executar limpeza automática a cada 1 hora
+  setInterval(limparAbastecimentosExpirados, 60 * 60 * 1000); // 1 hora
+  
+  // ==================== RENDERIZAÇÃO ====================
   
   function renderizar() {
     if (!loginUser) return;
