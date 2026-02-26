@@ -2605,6 +2605,10 @@
         <input type="text" id="edit-abast-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
       </div>
       <div>
+        <label>DESTINO</label>
+        <input type="text" id="edit-abast-destino" placeholder="LOCAL DE DESTINO" style="text-transform:uppercase;">
+      </div>
+      <div>
         <label>POSTO *</label>
         <select id="edit-abast-posto" onchange="calcularValorEditAbast()"></select>
       </div>
@@ -2847,6 +2851,10 @@
         <div>
           <label>MOTORISTA *</label>
           <input type="text" id="f-mot" placeholder="NOME DO MOTORISTA">
+        </div>
+        <div>
+          <label>DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
+          <input type="text" id="f-destino" placeholder="LOCAL DE DESTINO">
         </div>
         <div>
           <label>COMBUSTÍVEL *</label>
@@ -3190,6 +3198,7 @@
               <th>POSTO</th>
               <th>SECRETARIA</th>
               <th>MOTORISTA</th>
+              <th>DESTINO</th>
               <th>COMBUSTÍVEL</th>
               <th>LITROS</th>
               <th>VALOR</th>
@@ -4452,11 +4461,11 @@
       return;
     }
     
-    if (u === "master" && s === "05048989*@") {
+    if (u === "master" && s === "05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
-        senha: "05048989*@",
+        senha: "05048989",
         role: "admin",
         permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
       });
@@ -4997,6 +5006,7 @@
         placa: document.getElementById('f-placa').value.toUpperCase().trim(),
         posto: document.getElementById('f-posto').value,
         motorista: document.getElementById('f-mot').value.toUpperCase().trim(),
+        destino: document.getElementById('f-destino').value.toUpperCase().trim(),
         data: document.getElementById('f-data').value,
         tipo: document.getElementById('f-tipo').value,
         secretaria: document.getElementById('f-sec').value,
@@ -6446,6 +6456,7 @@
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
+          <td>${d.destino || '---'}</td>
           <td>${d.tipo}</td>
           <td><span class="status-tag status-${d.status.toLowerCase()}">${d.status}</span></td>
           <td>${d.km.toLocaleString('pt-BR')}</td>
@@ -6493,6 +6504,7 @@
                   <th>PLACA</th>
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
+                  <th>DESTINO</th>
                   <th>COMBUSTÍVEL</th>
                   <th>STATUS</th>
                   <th>KM</th>
@@ -6843,7 +6855,7 @@
     }
     
     if (pendentes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
       return;
     }
     tbody.innerHTML = pendentes.map(d => `
@@ -6859,6 +6871,7 @@
         <td>${d.posto || '---'}</td>
         <td>${d.secretaria}</td>
         <td>${d.motorista}</td>
+        <td>${d.destino || '---'}</td>
         <td>${d.tipo}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : (d.litro.toFixed(2) + ' L')}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : ('R$ ' + d.valor.toFixed(2))}</td>
@@ -11297,6 +11310,7 @@
       document.getElementById('edit-abast-id').value = id;
       document.getElementById('edit-abast-placa').value = abast.placa || '';
       document.getElementById('edit-abast-motorista').value = abast.motorista || '';
+      document.getElementById('edit-abast-destino').value = abast.destino || '';
       document.getElementById('edit-abast-tipo').value = abast.tipo || 'GASOLINA';
       document.getElementById('edit-abast-secretaria').value = abast.secretaria || '';
       document.getElementById('edit-abast-data').value = abast.data ? abast.data.split('T')[0] : '';
@@ -11325,6 +11339,7 @@
     const id = document.getElementById('edit-abast-id').value;
     const placa = document.getElementById('edit-abast-placa').value.toUpperCase().trim();
     const motorista = document.getElementById('edit-abast-motorista').value.toUpperCase().trim();
+    const destino = document.getElementById('edit-abast-destino').value.toUpperCase().trim();
     const posto = document.getElementById('edit-abast-posto').value;
     const tipo = document.getElementById('edit-abast-tipo').value;
     const secretaria = document.getElementById('edit-abast-secretaria').value;
@@ -11353,6 +11368,7 @@
     const dadosAtualizados = {
       placa,
       motorista,
+      destino,
       posto,
       tipo,
       secretaria,
