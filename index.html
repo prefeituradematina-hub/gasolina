@@ -4461,11 +4461,11 @@
       return;
     }
     
-    if (u === "master" && s === "05048989*@") {
+    if (u === "master" && s === "05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
-        senha: "05048989*@",
+        senha: "05048989",
         role: "admin",
         permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
       });
@@ -8290,18 +8290,42 @@
     mostrarNotificacao("🔄 Processando reset de limites...", "info");
     
     try {
-      const snapshot = await db.ref('usuarios').once('value');
+      // Buscar todos os abastecimentos
+      const snapshot = await db.ref('abastecimentos').once('value');
       const updates = {};
+      let totalAfetados = 0;
       
       if (snapshot.exists()) {
-        snapshot.forEach(userSnap => {
-          const user = userSnap.val();
-          if (user.role === 'secretarios') {
-            // Zerar contadores de gasto
-            updates[`usuarios/${userSnap.key}/limiteUsadoVictor`] = 0;
-            updates[`usuarios/${userSnap.key}/limiteUsadoMatina`] = 0;
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth() + 1; // 1-12
+        const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`; // "2025-02"
+        
+        // Data do mês anterior (para marcar abastecimentos como antigos)
+        const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1;
+        const anoAnterior = mesAtual === 1 ? anoAtual - 1 : anoAtual;
+        const dataMesAnterior = `${anoAnterior}-${String(mesAnterior).padStart(2, '0')}-15`; // Dia 15 do mês anterior
+        
+        snapshot.forEach(abastSnap => {
+          const abast = abastSnap.val();
+          const id = abastSnap.key;
+          
+          // Verificar se o abastecimento é do mês atual
+          if (abast.data && abast.data.startsWith(anoMesAtual)) {
+            // Alterar data para mês anterior
+            updates[`abastecimentos/${id}/data`] = dataMesAnterior;
+            totalAfetados++;
           }
         });
+      }
+      
+      if (totalAfetados === 0) {
+        mostrarNotificacao(
+          "ℹ️ NENHUM ABASTECIMENTO DO MÊS ATUAL ENCONTRADO!\n\n" +
+          "Não há nada para resetar.",
+          "info"
+        );
+        return;
       }
       
       // Aplicar atualizações
@@ -8311,18 +8335,19 @@
       await registrarAuditoria('LIMITES_RESETADOS', { 
         realizadoPor: loginUser,
         timestamp: Date.now(),
-        secretariasAfetadas: Object.keys(updates).length / 2
+        abastecimentosMovidos: totalAfetados
       });
       
       mostrarNotificacao(
         `✅ LIMITES RESETADOS COM SUCESSO!\n\n` +
-        `${Object.keys(updates).length / 2} secretarias foram resetadas.\n` +
+        `${totalAfetados} abastecimento(s) foram movidos para o mês anterior.\n` +
         `Os secretários podem abastecer normalmente agora.`,
         "success"
       );
       
-      // Recarregar lista de usuários
-      listUsuarios();
+      // Recarregar cache e interface
+      await carregarAbastecimentos();
+      renderizar();
       
       // Se o usuário logado for secretário, recarregar seus dados
       if (userRole === 'secretarios') {
