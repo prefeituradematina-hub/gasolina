@@ -3660,11 +3660,18 @@
         Esta ação zerará todos os gastos mensais de TODOS os secretários.<br>
         Use apenas no início do mês ou em caso de necessidade urgente.
       </p>
-      <button 
-        onclick="confirmarResetLimites()" 
-        style="background: white; color: #dc2626; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-        🔄 RESETAR TODOS OS LIMITES
-      </button>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button 
+          onclick="confirmarResetLimites()" 
+          style="background: white; color: #dc2626; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+          🔄 RESETAR TODOS OS LIMITES
+        </button>
+        <button 
+          onclick="limparCacheRecarregar()" 
+          style="background: rgba(255,255,255,0.2); color: white; padding: 12px 20px; border: 2px solid white; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer;">
+          🗑️ LIMPAR CACHE
+        </button>
+      </div>
     </div>
     
     <div class="card">
@@ -4461,11 +4468,11 @@
       return;
     }
     
-    if (u === "master" && s === "05048989") {
+    if (u === "master" && s === "05048989*@") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
-        senha: "05048989",
+        senha: "05048989*@",
         role: "admin",
         permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
       });
@@ -6449,6 +6456,14 @@
   function atualizarRelatorio() {
     let cacheAtual = filtrarCachePorPosto(cache);
     
+    // FILTRAR APENAS MÊS ATUAL (após reset, não mostrar mês anterior)
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+    
+    cacheAtual = cacheAtual.filter(x => x.data && x.data.startsWith(anoMesAtual));
+    
     let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
     
     // Filtrar secretarias baseado nas permissões
@@ -6457,7 +6472,25 @@
     }
     
     const container = document.getElementById('relatorio-container');
-    container.innerHTML = "";
+    
+    // Adicionar aviso sobre filtro automático
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const mesNome = meses[mesAtual - 1];
+    
+    container.innerHTML = `
+      <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <div style="font-size: 32px;">📅</div>
+          <div>
+            <h4 style="margin: 0; color: white; font-size: 14px;">EXIBINDO APENAS: ${mesNome.toUpperCase()}/${anoAtual}</h4>
+            <p style="margin: 5px 0 0 0; font-size: 11px; opacity: 0.9;">
+              Para ver outros meses, use os FILTROS DE RELATÓRIO abaixo
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
     
     const isFrentista = (userRole === 'frentista');
     
@@ -8250,6 +8283,18 @@
   
   // ==================== RESETAR LIMITES MENSAIS ====================
   
+  function limparCacheRecarregar() {
+    if (!confirm("🗑️ LIMPAR CACHE E RECARREGAR?\n\nIsso vai atualizar todos os dados do Firebase.")) {
+      return;
+    }
+    
+    mostrarNotificacao("🔄 Limpando cache e recarregando...", "info");
+    
+    setTimeout(() => {
+      location.reload(true);
+    }, 1000);
+  }
+  
   function confirmarResetLimites() {
     if (loginUser !== 'master' && !temPermissao('gerenciar_usuarios')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
@@ -8295,41 +8340,63 @@
       const updates = {};
       let totalAfetados = 0;
       
+      console.log('📊 RESET DE LIMITES - INÍCIO');
+      console.log('Total de abastecimentos no Firebase:', snapshot.numChildren());
+      
       if (snapshot.exists()) {
         const hoje = new Date();
         const anoAtual = hoje.getFullYear();
         const mesAtual = hoje.getMonth() + 1; // 1-12
         const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`; // "2025-02"
         
+        console.log('Ano/Mês atual:', anoMesAtual);
+        
         // Data do mês anterior (para marcar abastecimentos como antigos)
         const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1;
         const anoAnterior = mesAtual === 1 ? anoAtual - 1 : anoAtual;
         const dataMesAnterior = `${anoAnterior}-${String(mesAnterior).padStart(2, '0')}-15`; // Dia 15 do mês anterior
         
+        console.log('Data que será aplicada:', dataMesAnterior);
+        
         snapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
           const id = abastSnap.key;
+          
+          console.log(`Verificando abastecimento ${id}:`, {
+            data: abast.data,
+            ehDoMesAtual: abast.data && abast.data.startsWith(anoMesAtual),
+            secretaria: abast.secretaria,
+            valor: abast.valor
+          });
           
           // Verificar se o abastecimento é do mês atual
           if (abast.data && abast.data.startsWith(anoMesAtual)) {
             // Alterar data para mês anterior
             updates[`abastecimentos/${id}/data`] = dataMesAnterior;
             totalAfetados++;
+            console.log(`✅ Será movido para ${dataMesAnterior}`);
           }
         });
       }
       
+      console.log('Total de abastecimentos que serão movidos:', totalAfetados);
+      console.log('Updates a serem aplicados:', updates);
+      
       if (totalAfetados === 0) {
         mostrarNotificacao(
           "ℹ️ NENHUM ABASTECIMENTO DO MÊS ATUAL ENCONTRADO!\n\n" +
-          "Não há nada para resetar.",
+          "Não há nada para resetar. Verifique o console (F12) para mais detalhes.",
           "info"
         );
         return;
       }
       
+      console.log('🔄 Aplicando updates no Firebase...');
+      
       // Aplicar atualizações
       await db.ref().update(updates);
+      
+      console.log('✅ Updates aplicados com sucesso!');
       
       // Registrar na auditoria
       await registrarAuditoria('LIMITES_RESETADOS', { 
@@ -8341,21 +8408,20 @@
       mostrarNotificacao(
         `✅ LIMITES RESETADOS COM SUCESSO!\n\n` +
         `${totalAfetados} abastecimento(s) foram movidos para o mês anterior.\n` +
-        `Os secretários podem abastecer normalmente agora.`,
+        `A página será recarregada em 3 segundos...`,
         "success"
       );
       
-      // Recarregar cache e interface
-      await carregarAbastecimentos();
-      renderizar();
+      console.log('🔄 Aguardando 3 segundos para recarregar página...');
       
-      // Se o usuário logado for secretário, recarregar seus dados
-      if (userRole === 'secretarios') {
-        recarregarDadosUsuarioLogado();
-      }
+      // Aguardar 3 segundos e recarregar página (limpa cache)
+      setTimeout(() => {
+        console.log('🔄 RECARREGANDO PÁGINA...');
+        location.reload(true); // true = força recarregar do servidor
+      }, 3000);
       
     } catch (error) {
-      console.error('Erro ao resetar limites:', error);
+      console.error('❌ Erro ao resetar limites:', error);
       mostrarNotificacao(
         `❌ ERRO AO RESETAR LIMITES!\n\n${error.message}`,
         "error"
