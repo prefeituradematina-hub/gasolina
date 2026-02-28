@@ -4345,30 +4345,74 @@
       return;
     }
     
-    // Calcular gasto APENAS no posto específico
+    // Calcular gasto APENAS no posto específico E APENAS DO MÊS ATUAL
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+    
     const gastoAtualPosto = cache
       .filter(x => 
         (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
         x.secretaria === userSecretaria &&
-        (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')
+        (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
+        x.data && x.data.startsWith(anoMesAtual) // APENAS MÊS ATUAL
       )
       .reduce((acc, item) => acc + (item.valor || 0), 0);
     
     const gastoProjetado = gastoAtualPosto + valorAbastecimento;
     const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
     
-    // LOG DE DEBUG
-    console.log('📊 VERIFICAÇÃO DE LIMITE:', {
-      posto: posto,
-      isVictor,
-      isMatina,
-      limitePosto,
-      gastoAtualPosto,
-      valorAbastecimento,
-      gastoProjetado,
-      saldoRestante,
-      bloqueado: gastoProjetado > limitePosto
+    // LOG DE DEBUG EXTREMO
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔍 DEBUG VERIFICAÇÃO DE LIMITE - TEMPO REAL');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📋 DADOS DO USUÁRIO:');
+    console.log('  • Login:', loginUser);
+    console.log('  • Secretaria:', userSecretaria);
+    console.log('  • Limite Victor:', usuarioData.limiteVictor);
+    console.log('  • Limite Matina:', usuarioData.limiteMatina);
+    console.log('  • Limite Total:', userLimit);
+    console.log('');
+    console.log('📅 FILTRO DE DATA:');
+    console.log('  • Ano/Mês atual:', anoMesAtual);
+    console.log('  • Considerando apenas:', `Abastecimentos de ${anoMesAtual}-*`);
+    console.log('');
+    console.log('⛽ POSTO SELECIONADO:');
+    console.log('  • Nome:', posto);
+    console.log('  • É Victor?', isVictor);
+    console.log('  • É Matina?', isMatina);
+    console.log('  • Limite deste posto:', limitePosto);
+    console.log('');
+    console.log('💰 CÁLCULO DE GASTO:');
+    console.log('  • Total de registros no cache:', cache.length);
+    
+    const itensDoCalculo = cache.filter(x => 
+      (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
+      x.secretaria === userSecretaria &&
+      (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
+      x.data && x.data.startsWith(anoMesAtual)
+    );
+    
+    console.log('  • Registros filtrados para cálculo:', itensDoCalculo.length);
+    console.log('  • Detalhes dos registros:');
+    itensDoCalculo.slice(0, 10).forEach((item, i) => {
+      console.log(`    ${i+1}. ID: ${item.id}, Data: ${item.data}, Posto: ${item.posto}, Valor: R$ ${item.valor}, Status: ${item.status}`);
     });
+    if (itensDoCalculo.length > 10) {
+      console.log(`    ... e mais ${itensDoCalculo.length - 10} registros`);
+    }
+    
+    console.log('  • Gasto atual neste posto (só mês atual):', gastoAtualPosto);
+    console.log('  • Valor deste abastecimento:', valorAbastecimento);
+    console.log('  • Gasto projetado (atual + novo):', gastoProjetado);
+    console.log('  • Saldo restante:', saldoRestante);
+    console.log('');
+    console.log('❓ COMPARAÇÃO:');
+    console.log('  • Gasto projetado:', gastoProjetado);
+    console.log('  • Limite do posto:', limitePosto);
+    console.log('  • Vai bloquear?', gastoProjetado > limitePosto);
+    console.log('═══════════════════════════════════════════════════════════');
     
     // Atualizar interface para mostrar situação
     const valorInput = document.getElementById('f-val');
@@ -4468,11 +4512,11 @@
       return;
     }
     
-    if (u === "master" && s === "05048989*@") {
+    if (u === "master" && s === "05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
-        senha: "05048989*@",
+        senha: "05048989",
         role: "admin",
         permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
       });
@@ -5093,12 +5137,18 @@
           return;
         }
         
-        // Calcular gasto atual APENAS neste posto
+        // Calcular gasto atual APENAS neste posto E APENAS DO MÊS ATUAL
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth() + 1;
+        const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+        
         const gastoAtualPosto = cache
           .filter(x => 
             (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
             x.secretaria === userSecretaria &&
-            (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')
+            (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
+            x.data && x.data.startsWith(anoMesAtual) // APENAS MÊS ATUAL
           )
           .reduce((acc, item) => acc + (item.valor || 0), 0);
         
@@ -5110,7 +5160,7 @@
             `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
             `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
             `Seu limite neste posto: R$ ${limitePosto.toFixed(2)}\n` +
-            `Já gastou: R$ ${gastoAtualPosto.toFixed(2)}\n` +
+            `Já gastou (mês atual): R$ ${gastoAtualPosto.toFixed(2)}\n` +
             `Saldo disponível: R$ ${saldoRestante.toFixed(2)}\n` +
             `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}`,
             "error"
@@ -6358,14 +6408,17 @@
     }
     
     if (userRole === 'secretarios') {
+      // Calcular gastos APENAS DO MÊS ATUAL
       const hoje = new Date();
-      const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+      const anoAtual = hoje.getFullYear();
+      const mesAtual = hoje.getMonth() + 1;
+      const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
       
       const gastosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
         if (x.secretaria !== userSecretaria) return false;
-        const anoMes = x.data.split('T')[0].substring(0, 7);
-        return anoMes === anoMesAtual;
+        if (!x.data || !x.data.startsWith(anoMesAtual)) return false; // APENAS MÊS ATUAL
+        return true;
       });
       
       const limiteVictor = usuarioData.limiteVictor || 0;
@@ -6454,51 +6507,76 @@
   }
   
   function atualizarRelatorio() {
+    console.log('═══════════════════════════════════════');
+    console.log('🔍 DIAGNÓSTICO COMPLETO DO RELATÓRIO');
+    console.log('═══════════════════════════════════════');
+    
+    console.log('1. Cache total:', cache.length);
+    console.log('2. Primeiros 3 registros:', cache.slice(0, 3).map(x => ({
+      id: x.id,
+      data: x.data,
+      secretaria: x.secretaria,
+      placa: x.placa,
+      valor: x.valor,
+      posto: x.posto,
+      tipoAbastecimento: x.tipoAbastecimento
+    })));
+    
     let cacheAtual = filtrarCachePorPosto(cache);
     
-    // FILTRAR APENAS MÊS ATUAL (após reset, não mostrar mês anterior)
-    const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = hoje.getMonth() + 1;
-    const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+    console.log('3. Após filtro de posto:', cacheAtual.length);
+    console.log('4. User role:', userRole);
+    console.log('5. User posto vinculado:', userPostoVinculado);
+    console.log('6. User postos vinculados:', userPostosVinculados);
     
-    cacheAtual = cacheAtual.filter(x => x.data && x.data.startsWith(anoMesAtual));
+    // Separar abastecimentos VIP e normais
+    const abastVIPs = cacheAtual.filter(x => x.tipoAbastecimento === 'VIP');
+    const abastNormais = cacheAtual.filter(x => !x.tipoAbastecimento || x.tipoAbastecimento !== 'VIP');
     
-    let listaSecs = [...new Set(cacheAtual.map(x => x.secretaria))].sort();
+    console.log('7. VIPs encontrados:', abastVIPs.length);
+    console.log('8. Normais encontrados:', abastNormais.length);
+    console.log('9. Exemplo VIP:', abastVIPs.length > 0 ? abastVIPs[0] : 'nenhum');
+    console.log('10. Exemplo Normal:', abastNormais.length > 0 ? abastNormais[0] : 'nenhum');
+    
+    let listaSecs = [...new Set(abastNormais.map(x => x.secretaria))].sort();
+    
+    console.log('11. Secretarias únicas encontradas:', listaSecs);
+    
+    // Adicionar "VIPs" como uma categoria se houver abastecimentos VIP
+    if (abastVIPs.length > 0) {
+      listaSecs.push('🌟 VIPs');
+    }
+    
+    console.log('12. Lista final (com VIPs):', listaSecs);
     
     // Filtrar secretarias baseado nas permissões
     if (temPermissao('ver_relatorio_secretaria') && !temPermissao('ver_relatorio_geral')) {
+      console.log('13. Aplicando filtro de permissão - só pode ver:', userSecretaria);
       listaSecs = listaSecs.filter(sec => sec === userSecretaria);
     }
     
+    console.log('14. Lista após permissões:', listaSecs);
+    console.log('═══════════════════════════════════════');
+    
     const container = document.getElementById('relatorio-container');
     
-    // Adicionar aviso sobre filtro automático
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const mesNome = meses[mesAtual - 1];
-    
-    container.innerHTML = `
-      <div class="card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; margin-bottom: 15px;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-          <div style="font-size: 32px;">📅</div>
-          <div>
-            <h4 style="margin: 0; color: white; font-size: 14px;">EXIBINDO APENAS: ${mesNome.toUpperCase()}/${anoAtual}</h4>
-            <p style="margin: 5px 0 0 0; font-size: 11px; opacity: 0.9;">
-              Para ver outros meses, use os FILTROS DE RELATÓRIO abaixo
-            </p>
-          </div>
-        </div>
-      </div>
-    `;
+    // Remover aviso de filtro de mês
+    container.innerHTML = ``;
     
     const isFrentista = (userRole === 'frentista');
     
     listaSecs.forEach(sec => {
-      if (!podeVerRelatorio(sec)) return;
+      if (!podeVerRelatorio(sec) && sec !== '🌟 VIPs') return;
       
-      const itens = cacheAtual.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO)
-        .sort((a, b) => b.timestamp - a.timestamp);
+      console.log(`Processando seção: ${sec}`);
+      
+      // Se for VIPs, pegar abastecimentos VIP; senão, filtrar por secretaria
+      const itens = (sec === '🌟 VIPs') 
+        ? abastVIPs.filter(x => x.status !== STATUS.REJEITADO).sort((a, b) => b.timestamp - a.timestamp)
+        : abastNormais.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO).sort((a, b) => b.timestamp - a.timestamp);
+      
+      console.log(`Itens encontrados para ${sec}:`, itens.length);
+      
       if (itens.length === 0) return;
       let linhas = "";
       itens.forEach(d => {
@@ -6516,6 +6594,7 @@
             }
           </td>
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+          ${sec === '🌟 VIPs' ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaVIP || 'VIP'}</span></td>` : ''}
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
           <td>${d.destino || '---'}</td>
@@ -6547,13 +6626,32 @@
       const totalSec = itens.reduce((acc, item) => acc + item.valor, 0);
       const totalLitros = itens.reduce((acc, item) => acc + item.litro, 0);
       
+      console.log(`💰 CÁLCULOS PARA ${sec}:`, {
+        quantidadeItens: itens.length,
+        totalValor: totalSec,
+        totalLitros: totalLitros,
+        primeiroItem: itens[0] ? {
+          id: itens[0].id,
+          valor: itens[0].valor,
+          litro: itens[0].litro,
+          data: itens[0].data
+        } : null,
+        todosValores: itens.map(i => i.valor).slice(0, 10) // Primeiros 10 valores
+      });
+      
       // Frentista não vê valores financeiros
       const headerInfo = isFrentista 
         ? `${sec} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`
         : `${sec} | 💰 R$ ${totalSec.toFixed(2)} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`;
       
+      // Estilo especial para VIPs
+      const isVIP = sec === '🌟 VIPs';
+      const headerStyle = isVIP 
+        ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-weight: bold;' 
+        : '';
+      
       container.innerHTML += `
-        <div class="section-header">
+        <div class="section-header" style="${headerStyle}">
           ${headerInfo}
         </div>
         <div class="card">
@@ -6564,6 +6662,7 @@
                   <th>DATA</th>
                   <th>HORÁRIO</th>
                   <th>PLACA</th>
+                  ${isVIP ? '<th>PESSOA VIP</th>' : ''}
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
                   <th>DESTINO</th>
@@ -9104,6 +9203,7 @@
                 <th>KM</th>
                 <th>LITROS</th>
                 ${!isFrentista ? '<th>MÉDIA</th><th>VALOR</th>' : ''}
+                ${(loginUser === 'master' || temPermissao('deletar_abastecimento')) ? '<th class="no-print">AÇÕES</th>' : ''}
               </tr>
             </thead>
             <tbody>`;
@@ -9126,6 +9226,12 @@
         ${!isFrentista ? `
         <td ${classeAlerta ? 'style="font-weight:bold;"' : ''}>${media > 0 ? media.toFixed(2) + ' km/l' + (classeAlerta ? ' 🚨' : '') : '---'}</td>
         <td><b>R$ ${r.valor.toFixed(2)}</b></td>
+        ` : ''}
+        ${(loginUser === 'master' || temPermissao('deletar_abastecimento')) ? `
+        <td class="no-print">
+          <button class="btn-action" style="background:#3b82f6;color:white;" onclick="editarAbastecimento('${r.id}')">✏️</button>
+          <button class="btn-action btn-rejeitar" onclick="deletar('${r.id}')">🗑️</button>
+        </td>
         ` : ''}
       </tr>`;
     });
@@ -9740,43 +9846,25 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
-    const anoMesAtual = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
     
-    // CORREÇÃO: Aplicar filtro de permissões igual ao dashboard principal
+    console.log('📊 DASHBOARD EXECUTIVO - Mostrando TODOS os dados');
+    
+    // Aplicar filtro de permissões
     const cacheFiltrado = filtrarCachePorPosto(cache);
     const dadosAutorizados = cacheFiltrado.filter(x => x.status === STATUS.AUTORIZADO);
     
-    // Dados do mês atual - USAR MESMA LÓGICA DO DASHBOARD
-    const dadosMes = dadosAutorizados.filter(x => {
-      const anoMes = x.data.split('T')[0].substring(0, 7);
-      return anoMes === anoMesAtual;
-    });
+    console.log('Total de abastecimentos autorizados:', dadosAutorizados.length);
+    
+    // MOSTRAR TODOS OS DADOS (sem filtro de mês)
+    const dadosMes = dadosAutorizados;
+    
+    console.log('Abastecimentos exibidos:', dadosMes.length);
     
     // Calcular métricas executivas
     const totalGastoMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
     const totalLitrosMes = dadosMes.reduce((acc, item) => acc + item.litro, 0);
     const totalAbastecimentos = dadosMes.length;
     const ticketMedio = totalAbastecimentos > 0 ? totalGastoMes / totalAbastecimentos : 0;
-    
-    // Dados do mês anterior - USAR MESMA LÓGICA DO DASHBOARD
-    const mesAnterior = mesAtual - 1 < 0 ? 11 : mesAtual - 1;
-    const anoAnterior = mesAtual - 1 < 0 ? anoAtual - 1 : anoAtual;
-    const anoMesAnterior = `${anoAnterior}-${String(mesAnterior + 1).padStart(2, '0')}`;
-    
-    const dadosMesAnterior = dadosAutorizados.filter(x => {
-      const anoMes = x.data.split('T')[0].substring(0, 7);
-      return anoMes === anoMesAnterior;
-    });
-    
-    const totalMesAnterior = dadosMesAnterior.reduce((acc, item) => acc + item.valor, 0);
-    const variacaoPercentual = totalMesAnterior > 0 
-      ? ((totalGastoMes - totalMesAnterior) / totalMesAnterior * 100) 
-      : 0;
-    
-    // Projeção para o final do mês
-    const diasDecorridos = hoje.getDate();
-    const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
-    const projecaoMes = (totalGastoMes / diasDecorridos) * diasNoMes;
     
     // Economia estimada
     const mediaLitro = totalLitrosMes > 0 ? totalGastoMes / totalLitrosMes : 0;
@@ -9790,17 +9878,17 @@
     const metricsContainer = document.getElementById('executive-metrics');
     metricsContainer.innerHTML = `
       <div class="executive-metric">
-        <div class="executive-metric-label">GASTO MENSAL</div>
+        <div class="executive-metric-label">GASTO TOTAL</div>
         <div class="executive-metric-value">R$ ${totalGastoMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
         <div class="executive-metric-trend">
-          ${variacaoPercentual >= 0 ? '▲' : '▼'} ${Math.abs(variacaoPercentual).toFixed(1)}% vs mês anterior
+          Todos os abastecimentos autorizados
         </div>
       </div>
       <div class="executive-metric">
-        <div class="executive-metric-label">PROJEÇÃO DO MÊS</div>
-        <div class="executive-metric-value">R$ ${projecaoMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+        <div class="executive-metric-label">TOTAL LITROS</div>
+        <div class="executive-metric-value">${totalLitrosMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})} L</div>
         <div class="executive-metric-trend">
-          Baseado em ${diasDecorridos} de ${diasNoMes} dias
+          Volume total abastecido
         </div>
       </div>
       <div class="executive-metric">
@@ -9854,23 +9942,31 @@
       }
     });
     
-    // Gráfico 2: Evolução Diária do Mês
-    const gastosPorDia = {};
+    // Gráfico 2: Evolução - Últimos 30 Abastecimentos
+    const gastosPorData = {};
+    
     dadosMes.forEach(d => {
-      const dia = new Date(d.data).getDate();
-      gastosPorDia[dia] = (gastosPorDia[dia] || 0) + d.valor;
+      const data = d.data.split('T')[0]; // "2025-02-26"
+      const [ano, mes, dia] = data.split('-');
+      const label = `${dia}/${mes}`;
+      
+      if (!gastosPorData[data]) {
+        gastosPorData[data] = { valor: 0, label };
+      }
+      gastosPorData[data].valor += d.valor;
     });
     
-    const diasOrdenados = Object.keys(gastosPorDia).sort((a, b) => a - b);
+    const datasOrdenadas = Object.keys(gastosPorData).sort();
+    const ultimas30 = datasOrdenadas.slice(-30);
     
     if (chartExecutivo2) chartExecutivo2.destroy();
     chartExecutivo2 = new Chart(document.getElementById('chartExecutivo2'), {
       type: 'line',
       data: {
-        labels: diasOrdenados.map(d => `Dia ${d}`),
+        labels: ultimas30.map(data => gastosPorData[data].label),
         datasets: [{
           label: 'GASTO DIÁRIO (R$)',
-          data: diasOrdenados.map(d => gastosPorDia[d]),
+          data: ultimas30.map(data => gastosPorData[data].valor),
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           tension: 0.4,
@@ -9881,7 +9977,17 @@
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          title: { display: true, text: 'EVOLUÇÃO DIÁRIA' }
+          title: { display: true, text: 'EVOLUÇÃO - ÚLTIMOS 30 DIAS' }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return 'R$ ' + value.toFixed(0);
+              }
+            }
+          }
         }
       }
     });
@@ -9912,10 +10018,6 @@
         }
       });
       
-      // Mês atual
-      const hoje = new Date();
-      const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-      
       let html = '';
       
       if (Object.keys(orcamentos).length === 0) {
@@ -9924,11 +10026,11 @@
       }
       
       Object.keys(orcamentos).sort().forEach(sec => {
+        // MOSTRAR GASTOS TOTAIS (sem filtro de mês)
         const dadosMes = cache
           .filter(x => {
             if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
-            const anoMes = x.data.split('T')[0].substring(0, 7);
-            return anoMes === anoMesAtual;
+            return true;
           });
         
         // Separar por posto
@@ -9949,17 +10051,7 @@
         const percentualMatina = orcadoMatina > 0 ? (realizadoMatina / orcadoMatina * 100) : 0;
         const percentualTotal = totalOrcado > 0 ? (totalRealizado / totalOrcado * 100) : 0;
         
-        // Calcular quanto deveria ter gasto proporcionalmente aos dias do mês
-        const hoje = new Date();
-        const diasDecorridos = hoje.getDate();
-        const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-        const percentualDiasDecorridos = (diasDecorridos / diasNoMes) * 100;
-        
-        // Projeção para fim do mês (quanto vai gastar se continuar nesse ritmo)
-        const projecaoVictor = diasDecorridos > 0 ? (realizadoVictor / diasDecorridos) * diasNoMes : 0;
-        const projecaoMatina = diasDecorridos > 0 ? (realizadoMatina / diasDecorridos) * diasNoMes : 0;
-        
-        // Determinar status com base em múltiplos critérios
+        // Determinar status com base no percentual total
         let status = '';
         let corStatus = '';
         let iconeStatus = '';
