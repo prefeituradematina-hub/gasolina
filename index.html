@@ -7159,21 +7159,66 @@
     const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     const ultimoReset = usuarioData.ultimoResetLimite || 0;
     
-    let dadosGrafico = filtrarCachePorPosto(cache.filter(x => {
-      if (!x.status || x.status !== STATUS.AUTORIZADO) return false;
-      
-      if (userRole === 'secretarios') {
-        // Secretário: só sua secretaria + após reset
+    let dadosGrafico;
+    
+    if (userRole === 'secretarios') {
+      // Secretário: só sua secretaria + após reset
+      dadosGrafico = filtrarCachePorPosto(cache.filter(x => {
+        if (!x.status || x.status !== STATUS.AUTORIZADO) return false;
         if (x.secretaria !== userSecretaria) return false;
         return (x.timestamp || 0) > ultimoReset;
-      } else {
-        // Outros: mês atual
-        const anoMes = x.data.split('T')[0].substring(0, 7);
-        return anoMes === anoMesAtual;
-      }
-    }));
+      }));
+    } else {
+      // Master/Admin/Autorizadores: precisa considerar reset de cada secretaria
+      // Primeiro, buscar os resets de todas as secretarias
+      db.ref('usuarios').once('value', usuariosSnap => {
+        const resetsSecretarias = {};
+        
+        if (usuariosSnap.exists()) {
+          usuariosSnap.forEach(userSnap => {
+            const u = userSnap.val();
+            if (u.role === 'secretarios' && u.secretariaVinculada) {
+              const sec = u.secretariaVinculada;
+              const reset = u.ultimoResetLimite || 0;
+              // Usar o reset mais recente da secretaria
+              if (!resetsSecretarias[sec] || reset > resetsSecretarias[sec]) {
+                resetsSecretarias[sec] = reset;
+              }
+            }
+          });
+        }
+        
+        console.log('📊 GRÁFICOS - Resets por secretaria:', resetsSecretarias);
+        
+        // Filtrar dados considerando reset de cada secretaria
+        dadosGrafico = filtrarCachePorPosto(cache.filter(x => {
+          if (!x.status || x.status !== STATUS.AUTORIZADO) return false;
+          
+          const resetDaSecretaria = resetsSecretarias[x.secretaria] || 0;
+          
+          // Se a secretaria foi resetada, só conta após reset
+          if (resetDaSecretaria > 0) {
+            return (x.timestamp || 0) > resetDaSecretaria;
+          } else {
+            // Se nunca foi resetada, mostra dados do mês atual
+            const anoMes = x.data.split('T')[0].substring(0, 7);
+            return anoMes === anoMesAtual;
+          }
+        }));
+        
+        console.log('📊 GRÁFICOS - Dados filtrados:', dadosGrafico.length);
+        
+        renderizarGraficos(dadosGrafico);
+      });
+      
+      return; // Sai aqui pois vai renderizar depois do Firebase
+    }
     
     console.log('📊 GRÁFICOS - Dados filtrados:', dadosGrafico.length);
+    renderizarGraficos(dadosGrafico);
+  }
+  
+  function renderizarGraficos(dadosGrafico) {
     
     if (dadosGrafico.length === 0) return;
     
@@ -7258,7 +7303,7 @@
     if (document.getElementById('tab-analytics').style.display !== 'none') {
       atualizarAnalytics();
     }
-  }
+  } // Fim de renderizarGraficos
   
   function atualizarAnalytics() {
     // Analytics não disponível para secretários (usam sistema de reset)
