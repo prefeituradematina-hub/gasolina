@@ -10319,8 +10319,9 @@
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
+    const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     
-    console.log('📊 DASHBOARD EXECUTIVO - Mostrando TODOS os dados');
+    console.log('📊 DASHBOARD EXECUTIVO - Considerando reset de cada secretaria');
     
     // Aplicar filtro de permissões
     const cacheFiltrado = filtrarCachePorPosto(cache);
@@ -10328,10 +10329,47 @@
     
     console.log('Total de abastecimentos autorizados:', dadosAutorizados.length);
     
-    // MOSTRAR TODOS OS DADOS (sem filtro de mês)
-    const dadosMes = dadosAutorizados;
-    
-    console.log('Abastecimentos exibidos:', dadosMes.length);
+    // Buscar resets de todas as secretarias
+    db.ref('usuarios').once('value', usuariosSnap => {
+      const resetsSecretarias = {};
+      
+      if (usuariosSnap.exists()) {
+        usuariosSnap.forEach(userSnap => {
+          const u = userSnap.val();
+          if (u.role === 'secretarios' && u.secretariaVinculada) {
+            const sec = u.secretariaVinculada;
+            const reset = u.ultimoResetLimite || 0;
+            // Usar o reset mais recente da secretaria
+            if (!resetsSecretarias[sec] || reset > resetsSecretarias[sec]) {
+              resetsSecretarias[sec] = reset;
+            }
+          }
+        });
+      }
+      
+      console.log('📊 Resets por secretaria:', resetsSecretarias);
+      
+      // Filtrar dados considerando reset de cada secretaria
+      const dadosMes = dadosAutorizados.filter(x => {
+        const resetDaSecretaria = resetsSecretarias[x.secretaria] || 0;
+        
+        // Se a secretaria foi resetada, só conta após reset
+        if (resetDaSecretaria > 0) {
+          return (x.timestamp || 0) > resetDaSecretaria;
+        } else {
+          // Se nunca foi resetada, mostra dados do mês atual
+          const anoMes = x.data.split('T')[0].substring(0, 7);
+          return anoMes === anoMesAtual;
+        }
+      });
+      
+      console.log('Abastecimentos exibidos (após filtro):', dadosMes.length);
+      
+      renderizarDashboardExecutivo(dadosMes);
+    });
+  }
+  
+  function renderizarDashboardExecutivo(dadosMes) {
     
     // Calcular métricas executivas
     const totalGastoMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -10386,7 +10424,7 @@
     atualizarAlertasExecutivos();
     atualizarGraficoAnual();
     atualizarGraficoFrota();
-  }
+  } // Fim de renderizarDashboardExecutivo
   
   function atualizarGraficosExecutivos(dadosMes) {
     // Gráfico 1: Gastos por Tipo de Combustível
