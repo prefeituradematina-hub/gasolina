@@ -2922,7 +2922,7 @@
           <label>DATA FINAL</label>
           <input type="date" id="rel-data-final">
         </div>
-        <div>
+        <div id="filtro-secretaria-container">
           <label>SECRETARIA</label>
           <select id="rel-secretaria">
             <option value="">TODAS</option>
@@ -3674,6 +3674,34 @@
       </div>
     </div>
     
+    <!-- Botão de Corrigir Datas -->
+    <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">🔧 CORRIGIR DATAS DOS ABASTECIMENTOS</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.9;">
+        Esta função corrige as datas dos abastecimentos que foram alteradas pelo reset antigo.<br>
+        Restaura as datas usando os timestamps originais.
+      </p>
+      <button 
+        onclick="corrigirDatasAbastecimentos()" 
+        style="background: white; color: #d97706; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        🔧 CORRIGIR TODAS AS DATAS
+      </button>
+    </div>
+    
+    <!-- Botão de Corrigir Timestamp do Reset -->
+    <div class="card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">⚙️ CORRIGIR TIMESTAMP DO ÚLTIMO RESET</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.9;">
+        Se você resetou dia 26/02 mas os limites ainda aparecem estourados,<br>
+        use esta função para ajustar o timestamp para 26/02/2026 23:59:59.
+      </p>
+      <button 
+        onclick="corrigirTimestampReset()" 
+        style="background: white; color: #7c3aed; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        ⚙️ CORRIGIR TIMESTAMP (26/02/2026)
+      </button>
+    </div>
+    
     <div class="card">
       <h3>📋 USUÁRIOS CADASTRADOS</h3>
       <div class="table-wrapper">
@@ -4345,19 +4373,18 @@
       return;
     }
     
-    // Calcular gasto APENAS no posto específico E APENAS DO MÊS ATUAL
-    const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = hoje.getMonth() + 1;
-    const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+    // Calcular gasto após último reset
+    const ultimoReset = usuarioData.ultimoResetLimite || 0;
     
     const gastoAtualPosto = cache
-      .filter(x => 
-        (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-        x.secretaria === userSecretaria &&
-        (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
-        x.data && x.data.startsWith(anoMesAtual) // APENAS MÊS ATUAL
-      )
+      .filter(x => {
+        if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
+        if (x.secretaria !== userSecretaria) return false;
+        if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+        
+        // Só conta abastecimentos DEPOIS do último reset
+        return (x.timestamp || 0) > ultimoReset;
+      })
       .reduce((acc, item) => acc + (item.valor || 0), 0);
     
     const gastoProjetado = gastoAtualPosto + valorAbastecimento;
@@ -4373,10 +4400,9 @@
     console.log('  • Limite Victor:', usuarioData.limiteVictor);
     console.log('  • Limite Matina:', usuarioData.limiteMatina);
     console.log('  • Limite Total:', userLimit);
-    console.log('');
-    console.log('📅 FILTRO DE DATA:');
-    console.log('  • Ano/Mês atual:', anoMesAtual);
-    console.log('  • Considerando apenas:', `Abastecimentos de ${anoMesAtual}-*`);
+    console.log('  • Último reset:', ultimoReset);
+    console.log('  • Data último reset:', ultimoReset > 0 ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca resetado');
+    console.log('  • usuarioData completo:', usuarioData);
     console.log('');
     console.log('⛽ POSTO SELECIONADO:');
     console.log('  • Nome:', posto);
@@ -4384,26 +4410,38 @@
     console.log('  • É Matina?', isMatina);
     console.log('  • Limite deste posto:', limitePosto);
     console.log('');
-    console.log('💰 CÁLCULO DE GASTO:');
+    console.log('💰 CÁLCULO DE GASTO (após reset):');
     console.log('  • Total de registros no cache:', cache.length);
     
-    const itensDoCalculo = cache.filter(x => 
-      (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-      x.secretaria === userSecretaria &&
-      (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
-      x.data && x.data.startsWith(anoMesAtual)
-    );
+    const itensDoCalculo = cache.filter(x => {
+      if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
+      if (x.secretaria !== userSecretaria) return false;
+      if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+      return (x.timestamp || 0) > ultimoReset;
+    });
     
-    console.log('  • Registros filtrados para cálculo:', itensDoCalculo.length);
-    console.log('  • Detalhes dos registros:');
+    console.log('  • Registros APÓS último reset:', itensDoCalculo.length);
+    console.log('  • Detalhes dos registros (primeiros 10):');
     itensDoCalculo.slice(0, 10).forEach((item, i) => {
-      console.log(`    ${i+1}. ID: ${item.id}, Data: ${item.data}, Posto: ${item.posto}, Valor: R$ ${item.valor}, Status: ${item.status}`);
+      const dataReg = item.timestamp ? new Date(item.timestamp).toLocaleString('pt-BR') : 'sem timestamp';
+      const aposReset = (item.timestamp || 0) > ultimoReset;
+      console.log(`    ${i+1}. ${item.data} (${dataReg}) - R$ ${item.valor} - Após reset? ${aposReset ? 'SIM ✅' : 'NÃO ❌'}`);
     });
     if (itensDoCalculo.length > 10) {
       console.log(`    ... e mais ${itensDoCalculo.length - 10} registros`);
     }
     
-    console.log('  • Gasto atual neste posto (só mês atual):', gastoAtualPosto);
+    // Verificar abastecimentos SEM timestamp
+    const semTimestamp = cache.filter(x => 
+      x.secretaria === userSecretaria &&
+      (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
+      !x.timestamp
+    );
+    if (semTimestamp.length > 0) {
+      console.log(`  ⚠️ ATENÇÃO: ${semTimestamp.length} abastecimentos SEM timestamp (serão ignorados)`);
+    }
+    
+    console.log('  • Gasto após reset:', gastoAtualPosto.toFixed(2));
     console.log('  • Valor deste abastecimento:', valorAbastecimento);
     console.log('  • Gasto projetado (atual + novo):', gastoProjetado);
     console.log('  • Saldo restante:', saldoRestante);
@@ -4548,6 +4586,7 @@
           limite: limiteTotal,
           limiteVictor: limiteVictor,
           limiteMatina: limiteMatina,
+          ultimoResetLimite: user.ultimoResetLimite || 0, // ← CRÍTICO! Estava faltando
           secretariaVinculada: user.secretariaVinculada || "",
           postoVinculado: user.postoVinculado || "",
           postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
@@ -4568,6 +4607,8 @@
       mostrarNotificacao("ERRO AO CONECTAR AO BANCO DE DADOS!", "error");
     });
   }
+  
+  // ==================== LOGIN ====================
   
   function entrar(u, role, limit, sec, dadosExtras) {
     loginUser = u;
@@ -5137,19 +5178,16 @@
           return;
         }
         
-        // Calcular gasto atual APENAS neste posto E APENAS DO MÊS ATUAL
-        const hoje = new Date();
-        const anoAtual = hoje.getFullYear();
-        const mesAtual = hoje.getMonth() + 1;
-        const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+        // Calcular gasto após último reset
+        const ultimoReset = usuarioData.ultimoResetLimite || 0;
         
         const gastoAtualPosto = cache
-          .filter(x => 
-            (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) &&
-            x.secretaria === userSecretaria &&
-            (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
-            x.data && x.data.startsWith(anoMesAtual) // APENAS MÊS ATUAL
-          )
+          .filter(x => {
+            if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
+            if (x.secretaria !== userSecretaria) return false;
+            if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+            return (x.timestamp || 0) > ultimoReset;
+          })
           .reduce((acc, item) => acc + (item.valor || 0), 0);
         
         const gastoProjetado = gastoAtualPosto + dados.valor;
@@ -5160,7 +5198,7 @@
             `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
             `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
             `Seu limite neste posto: R$ ${limitePosto.toFixed(2)}\n` +
-            `Já gastou (mês atual): R$ ${gastoAtualPosto.toFixed(2)}\n` +
+            `Já gastou (após reset): R$ ${gastoAtualPosto.toFixed(2)}\n` +
             `Saldo disponível: R$ ${saldoRestante.toFixed(2)}\n` +
             `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}`,
             "error"
@@ -5763,6 +5801,44 @@
     
     atualizarRelatorio();
     
+    // Configurar filtro de secretaria para secretários
+    const filtroSecretariaContainer = document.getElementById('filtro-secretaria-container');
+    const selectSecretaria = document.getElementById('rel-secretaria');
+    
+    if (userRole === 'secretarios' && filtroSecretariaContainer && selectSecretaria) {
+      // Para secretários: desabilitar e pré-selecionar sua secretaria
+      selectSecretaria.value = userSecretaria;
+      selectSecretaria.disabled = true;
+      selectSecretaria.style.opacity = '0.6';
+      selectSecretaria.style.cursor = 'not-allowed';
+      selectSecretaria.style.backgroundColor = '#f1f5f9';
+      
+      // Adicionar label explicativo
+      const label = filtroSecretariaContainer.querySelector('label');
+      if (label && !label.querySelector('.secretario-info')) {
+        const info = document.createElement('span');
+        info.className = 'secretario-info';
+        info.style.cssText = 'color: #64748b; font-size: 11px; font-weight: normal; margin-left: 8px;';
+        info.textContent = '(Fixo - só sua secretaria)';
+        label.appendChild(info);
+      }
+      
+      console.log('🔒 Filtro de secretaria configurado:');
+      console.log('  • Secretaria fixa:', userSecretaria);
+      console.log('  • Campo desabilitado para secretário');
+    } else if (selectSecretaria) {
+      // Para outros perfis: habilitar normalmente
+      selectSecretaria.disabled = false;
+      selectSecretaria.style.opacity = '1';
+      selectSecretaria.style.cursor = 'pointer';
+      selectSecretaria.style.backgroundColor = '';
+      
+      // Remover label explicativo se existir
+      const label = filtroSecretariaContainer?.querySelector('label');
+      const info = label?.querySelector('.secretario-info');
+      if (info) info.remove();
+    }
+    
     if (temPermissao('autorizar_abastecimento')) {
       atualizarPendentes();
     }
@@ -6151,11 +6227,11 @@
     const totalAbastecimentos = dadosAutorizados.length;
     const veiculosUnicos = [...new Set(dadosAutorizados.map(x => x.placa))].length;
     
-    // Comparar com mês anterior
+    // Comparar com mês anterior (só para não-secretários)
     let trendGasto = '';
     let trendLitros = '';
     
-    if (dadosMesAnterior) {
+    if (dadosMesAnterior && userRole !== 'secretarios') {
       const diferencaGasto = totalGasto - dadosMesAnterior.totalGasto;
       const percentualGasto = dadosMesAnterior.totalGasto > 0 
         ? (diferencaGasto / dadosMesAnterior.totalGasto * 100) 
@@ -6179,17 +6255,53 @@
       `;
     }
     
+    // GASTOS: Secretários veem após reset, outros veem mês atual
     const hoje = new Date();
     const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📊 DEBUG DASHBOARD - atualizarEstatisticas');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('👤 USUÁRIO:');
+    console.log('  • Login:', loginUser);
+    console.log('  • Role:', userRole);
+    console.log('  • Secretaria:', userSecretaria);
+    console.log('  • ultimoResetLimite:', ultimoReset);
+    console.log('  • Data do reset:', ultimoReset > 0 ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca');
+    console.log('  • Ano/Mês atual:', anoMesAtual);
+    console.log('');
     
     const dadosMes = dadosAutorizados.filter(x => {
-      const anoMes = x.data.split('T')[0].substring(0, 7);
-      return anoMes === anoMesAtual;
+      if (userRole === 'secretarios') {
+        // Secretários: apenas após reset
+        const passa = (x.timestamp || 0) > ultimoReset;
+        return passa;
+      } else {
+        // Outros: mês atual
+        const anoMes = x.data.split('T')[0].substring(0, 7);
+        return anoMes === anoMesAtual;
+      }
     });
+    
+    console.log('✂️ FILTRO APLICADO:');
+    console.log('  • Tipo:', userRole === 'secretarios' ? 'APÓS RESET' : 'MÊS ATUAL');
+    console.log('  • Registros encontrados:', dadosMes.length);
+    console.log('');
     
     const gastoMes = dadosMes.reduce((acc, x) => acc + x.valor, 0);
     const litrosMes = dadosMes.reduce((acc, x) => acc + x.litro, 0);
-    const nomeMes = hoje.toLocaleString('pt-BR', { month: 'long' }).toUpperCase();
+    
+    const nomeLabel = userRole === 'secretarios' 
+      ? (ultimoReset > 0 ? `DESDE ${new Date(ultimoReset).toLocaleDateString('pt-BR')}` : 'TOTAL GERAL')
+      : hoje.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
+    
+    console.log('💰 RESULTADO:');
+    console.log('  • Gasto total:', gastoMes.toFixed(2));
+    console.log('  • Litros total:', litrosMes.toFixed(2));
+    console.log('  • Label:', nomeLabel);
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
     
     const gastoVictor = dadosMes
       .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
@@ -6229,7 +6341,6 @@
     const gastoSemana = dadosSemana.reduce((acc, x) => acc + x.valor, 0);
     const litrosSemana = dadosSemana.reduce((acc, x) => acc + x.litro, 0);
 
-    const nomeMesAbrev = hoje.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
     const ticketMedio = dadosMes.length > 0 ? gastoMes / dadosMes.length : 0;
 
     // Variação semana vs semana anterior
@@ -6261,9 +6372,9 @@
       <div class="stat-card" style="border-top:3px solid #6366f1;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
-            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">📅 MÊS ATUAL</div>
+            <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">📅 ${userRole === 'secretarios' ? 'APÓS RESET' : 'MÊS ATUAL'}</div>
             <div style="font-size:22px; font-weight:bold; color:#6366f1; margin:4px 0;">R$ ${gastoMes.toFixed(2)}</div>
-            <div style="font-size:10px; color:#94a3b8;">${nomeMesAbrev} · ${dadosMes.length} abastec. · ${litrosMes.toFixed(0)}L</div>
+            <div style="font-size:10px; color:#94a3b8;">${nomeLabel} · ${dadosMes.length} abastec. · ${litrosMes.toFixed(0)}L</div>
           </div>
           <div style="font-size:28px; opacity:0.3;">📅</div>
         </div>
@@ -6408,17 +6519,13 @@
     }
     
     if (userRole === 'secretarios') {
-      // Calcular gastos APENAS DO MÊS ATUAL
-      const hoje = new Date();
-      const anoAtual = hoje.getFullYear();
-      const mesAtual = hoje.getMonth() + 1;
-      const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`;
+      // Calcular gastos após último reset
+      const ultimoReset = usuarioData.ultimoResetLimite || 0;
       
       const gastosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
         if (x.secretaria !== userSecretaria) return false;
-        if (!x.data || !x.data.startsWith(anoMesAtual)) return false; // APENAS MÊS ATUAL
-        return true;
+        return (x.timestamp || 0) > ultimoReset;
       });
       
       const limiteVictor = usuarioData.limiteVictor || 0;
@@ -7048,12 +7155,25 @@
   }
   
   function atualizarGraficos() {
+    const hoje = new Date();
+    const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    
     let dadosGrafico = filtrarCachePorPosto(cache.filter(x => {
+      if (!x.status || x.status !== STATUS.AUTORIZADO) return false;
+      
       if (userRole === 'secretarios') {
-        return x.status === STATUS.AUTORIZADO && x.secretaria === userSecretaria;
+        // Secretário: só sua secretaria + após reset
+        if (x.secretaria !== userSecretaria) return false;
+        return (x.timestamp || 0) > ultimoReset;
+      } else {
+        // Outros: mês atual
+        const anoMes = x.data.split('T')[0].substring(0, 7);
+        return anoMes === anoMesAtual;
       }
-      return x.status === STATUS.AUTORIZADO;
     }));
+    
+    console.log('📊 GRÁFICOS - Dados filtrados:', dadosGrafico.length);
     
     if (dadosGrafico.length === 0) return;
     
@@ -7141,7 +7261,16 @@
   }
   
   function atualizarAnalytics() {
-    // Comparação Mensal
+    // Analytics não disponível para secretários (usam sistema de reset)
+    if (userRole === 'secretarios') {
+      const container = document.getElementById('analytics-container');
+      if (container) {
+        container.style.display = 'none';
+      }
+      return;
+    }
+    
+    // Comparação Mensal (só para não-secretários)
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
@@ -7493,10 +7622,17 @@
         ano -= 1;
       }
       
+      // Criar string YYYY-MM para comparação
+      const anoMes = `${ano}-${String(mes + 1).padStart(2, '0')}`;
+      
       const dadosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO) return false;
-        const dataAbast = new Date(x.data);
-        return dataAbast.getMonth() === mes && dataAbast.getFullYear() === ano;
+        
+        // Secretários: só própria secretaria
+        if (userRole === 'secretarios' && x.secretaria !== userSecretaria) return false;
+        
+        const dataAnoMes = x.data.split('T')[0].substring(0, 7); // "2026-02-27" -> "2026-02"
+        return dataAnoMes === anoMes;
       });
       
       const totalMes = dadosMes.reduce((acc, item) => acc + item.valor, 0);
@@ -7564,8 +7700,13 @@
     
     let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
-    if (dataInicial) registros = registros.filter(r => r.data >= dataInicial);
-    if (dataFinal) registros = registros.filter(r => r.data <= dataFinal);
+    // FILTRO AUTOMÁTICO: Secretários só exportam dados da própria secretaria
+    if (userRole === 'secretarios') {
+      registros = registros.filter(r => r.secretaria === userSecretaria);
+    }
+    
+    if (dataInicial) registros = registros.filter(r => r.data.split('T')[0] >= dataInicial);
+    if (dataFinal) registros = registros.filter(r => r.data.split('T')[0] <= dataFinal);
     if (secretaria) registros = registros.filter(r => r.secretaria === secretaria);
     if (posto) registros = registros.filter(r => r.posto === posto);
     if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
@@ -8380,6 +8521,202 @@
     });
   }
   
+  // ==================== CORRIGIR TIMESTAMP DO RESET ====================
+  
+  async function corrigirTimestampReset() {
+    if (!confirm("⚙️ CORRIGIR TIMESTAMP DO ÚLTIMO RESET?\n\nEsta função irá:\n✅ Definir o último reset para 26/02/2026 23:59:59\n✅ A partir de 27/02/2026 00:00, conta no novo limite\n\n⚠️ Esta operação afeta TODOS os secretários!\n\nDeseja continuar?")) {
+      return;
+    }
+    
+    mostrarNotificacao("🔄 Processando correção de timestamp...", "info");
+    
+    try {
+      // Criar timestamp de 26/02/2026 23:59:59
+      const dia26Fim = new Date(2026, 1, 26, 23, 59, 59, 999).getTime(); // mês 1 = fevereiro
+      
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('⚙️ CORREÇÃO DE TIMESTAMP DO RESET');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('Timestamp alvo: 26/02/2026 23:59:59');
+      console.log('Valor timestamp:', dia26Fim);
+      console.log('Data completa:', new Date(dia26Fim).toLocaleString('pt-BR'));
+      console.log('');
+      
+      const snapshot = await db.ref('usuarios').once('value');
+      const updates = {};
+      let totalCorrigidos = 0;
+      
+      if (snapshot.exists()) {
+        snapshot.forEach(userSnap => {
+          const userData = userSnap.val();
+          const userId = userSnap.key;
+          
+          if (userData.role === 'secretarios') {
+            const ultimoResetAtual = userData.ultimoResetLimite || 0;
+            updates[`usuarios/${userId}/ultimoResetLimite`] = dia26Fim;
+            totalCorrigidos++;
+            
+            console.log(`✅ ${userId} (${userData.secretariaVinculada})`);
+            console.log(`   Antes: ${ultimoResetAtual > 0 ? new Date(ultimoResetAtual).toLocaleString('pt-BR') : 'Nunca resetado'}`);
+            console.log(`   Depois: ${new Date(dia26Fim).toLocaleString('pt-BR')}`);
+          }
+        });
+      }
+      
+      console.log('');
+      console.log('📊 RESUMO:');
+      console.log('Total de secretários corrigidos:', totalCorrigidos);
+      console.log('');
+      
+      if (totalCorrigidos === 0) {
+        mostrarNotificacao(
+          "ℹ️ NENHUM SECRETÁRIO ENCONTRADO!",
+          "info"
+        );
+        return;
+      }
+      
+      console.log('🔄 Aplicando updates no Firebase...');
+      
+      // Aplicar atualizações
+      await db.ref().update(updates);
+      
+      console.log('✅ Updates aplicados com sucesso!');
+      console.log('═══════════════════════════════════════════════════════════');
+      
+      // Registrar na auditoria
+      await registrarAuditoria('TIMESTAMP_RESET_CORRIGIDO', { 
+        realizadoPor: loginUser,
+        timestamp: dia26Fim,
+        dataReset: '26/02/2026 23:59:59',
+        secretariosAfetados: totalCorrigidos
+      });
+      
+      mostrarNotificacao(
+        `✅ TIMESTAMP CORRIGIDO COM SUCESSO!\n\n` +
+        `${totalCorrigidos} secretário(s) atualizados.\n\n` +
+        `📅 Reset configurado para: 26/02/2026 23:59:59\n` +
+        `✅ Abastecimentos até 26/02: limite antigo\n` +
+        `✅ Abastecimentos de 27/02 em diante: limite novo\n\n` +
+        `A página será recarregada em 3 segundos...`,
+        "success"
+      );
+      
+      console.log('🔄 Aguardando 3 segundos para recarregar página...');
+      
+      // Aguardar 3 segundos e recarregar página
+      setTimeout(() => {
+        console.log('🔄 RECARREGANDO PÁGINA...');
+        location.reload(true);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao corrigir timestamp:', error);
+      mostrarNotificacao(
+        `❌ ERRO AO CORRIGIR TIMESTAMP!\n\n${error.message}`,
+        "error"
+      );
+    }
+  }
+  
+  // ==================== CORRIGIR DATAS DOS ABASTECIMENTOS ====================
+  
+  async function corrigirDatasAbastecimentos() {
+    if (!confirm("🔧 CORRIGIR DATAS DOS ABASTECIMENTOS?\n\nEsta função irá:\n✅ Restaurar as datas usando os timestamps originais\n✅ Corrigir abastecimentos com datas alteradas\n\n⚠️ Esta operação não pode ser desfeita!\n\nDeseja continuar?")) {
+      return;
+    }
+    
+    mostrarNotificacao("🔄 Processando correção de datas...", "info");
+    
+    try {
+      const snapshot = await db.ref('abastecimentos').once('value');
+      const updates = {};
+      let totalCorrigidos = 0;
+      
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('🔧 CORREÇÃO DE DATAS - INÍCIO');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('Total de abastecimentos no Firebase:', snapshot.numChildren());
+      console.log('');
+      
+      if (snapshot.exists()) {
+        snapshot.forEach(abastSnap => {
+          const abast = abastSnap.val();
+          const id = abastSnap.key;
+          
+          // Verificar se tem timestamp
+          if (!abast.timestamp) {
+            console.log(`⚠️  ${id}: SEM TIMESTAMP - não pode corrigir`);
+            return;
+          }
+          
+          // Converter timestamp para data YYYY-MM-DD
+          const dataCorreta = new Date(abast.timestamp).toISOString().split('T')[0];
+          const dataAtual = abast.data ? abast.data.split('T')[0] : 'sem data';
+          
+          // Só corrigir se a data estiver diferente
+          if (dataAtual !== dataCorreta) {
+            updates[`abastecimentos/${id}/data`] = dataCorreta;
+            totalCorrigidos++;
+            console.log(`✅ ${id}: ${dataAtual} → ${dataCorreta}`);
+          } else {
+            console.log(`✓  ${id}: ${dataAtual} (já está correta)`);
+          }
+        });
+      }
+      
+      console.log('');
+      console.log('📊 RESUMO:');
+      console.log('Total de datas corrigidas:', totalCorrigidos);
+      console.log('═══════════════════════════════════════════════════════════');
+      
+      if (totalCorrigidos === 0) {
+        mostrarNotificacao(
+          "ℹ️ NENHUMA DATA PRECISA SER CORRIGIDA!\n\nTodas as datas já estão corretas.",
+          "info"
+        );
+        return;
+      }
+      
+      console.log('🔄 Aplicando updates no Firebase...');
+      
+      // Aplicar atualizações
+      await db.ref().update(updates);
+      
+      console.log('✅ Updates aplicados com sucesso!');
+      
+      // Registrar na auditoria
+      await registrarAuditoria('DATAS_CORRIGIDAS', { 
+        realizadoPor: loginUser,
+        timestamp: Date.now(),
+        datasCorrigidas: totalCorrigidos
+      });
+      
+      mostrarNotificacao(
+        `✅ DATAS CORRIGIDAS COM SUCESSO!\n\n` +
+        `${totalCorrigidos} data(s) foram restauradas usando os timestamps originais.\n` +
+        `As datas agora refletem quando os abastecimentos foram realmente registrados.\n\n` +
+        `A página será recarregada em 3 segundos...`,
+        "success"
+      );
+      
+      console.log('🔄 Aguardando 3 segundos para recarregar página...');
+      
+      // Aguardar 3 segundos e recarregar página
+      setTimeout(() => {
+        console.log('🔄 RECARREGANDO PÁGINA...');
+        location.reload(true);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao corrigir datas:', error);
+      mostrarNotificacao(
+        `❌ ERRO AO CORRIGIR DATAS!\n\n${error.message}`,
+        "error"
+      );
+    }
+  }
+  
   // ==================== RESETAR LIMITES MENSAIS ====================
   
   function limparCacheRecarregar() {
@@ -8434,59 +8771,62 @@
     mostrarNotificacao("🔄 Processando reset de limites...", "info");
     
     try {
-      // Buscar todos os abastecimentos
-      const snapshot = await db.ref('abastecimentos').once('value');
+      const hoje = new Date();
+      // Timestamp do HOJE às 23:59:59 (fim do dia)
+      const fimDeHoje = new Date(
+        hoje.getFullYear(),
+        hoje.getMonth(),
+        hoje.getDate(),
+        23, 59, 59, 999
+      ).getTime();
+      
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('📊 RESET MANUAL DE LIMITES');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('Data/hora atual:', hoje.toLocaleString('pt-BR'));
+      console.log('Timestamp do reset:', fimDeHoje);
+      console.log('Data do reset:', new Date(fimDeHoje).toLocaleString('pt-BR'));
+      console.log('');
+      console.log('ℹ️ ESTRATÉGIA:');
+      console.log('  • Marca reset no fim de HOJE (23:59:59)');
+      console.log('  • A partir de AMANHÃ, conta no novo limite');
+      console.log('  • Abastecimentos de hoje e antes: limite antigo');
+      console.log('  • Abastecimentos de amanhã em diante: limite novo');
+      console.log('');
+      
+      // Buscar todos os usuários secretários
+      const usuariosSnapshot = await db.ref('usuarios').once('value');
       const updates = {};
-      let totalAfetados = 0;
+      let totalSecretarios = 0;
       
-      console.log('📊 RESET DE LIMITES - INÍCIO');
-      console.log('Total de abastecimentos no Firebase:', snapshot.numChildren());
-      
-      if (snapshot.exists()) {
-        const hoje = new Date();
-        const anoAtual = hoje.getFullYear();
-        const mesAtual = hoje.getMonth() + 1; // 1-12
-        const anoMesAtual = `${anoAtual}-${String(mesAtual).padStart(2, '0')}`; // "2025-02"
-        
-        console.log('Ano/Mês atual:', anoMesAtual);
-        
-        // Data do mês anterior (para marcar abastecimentos como antigos)
-        const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1;
-        const anoAnterior = mesAtual === 1 ? anoAtual - 1 : anoAtual;
-        const dataMesAnterior = `${anoAnterior}-${String(mesAnterior).padStart(2, '0')}-15`; // Dia 15 do mês anterior
-        
-        console.log('Data que será aplicada:', dataMesAnterior);
-        
-        snapshot.forEach(abastSnap => {
-          const abast = abastSnap.val();
-          const id = abastSnap.key;
+      if (usuariosSnapshot.exists()) {
+        usuariosSnapshot.forEach(userSnap => {
+          const userData = userSnap.val();
+          const userId = userSnap.key;
           
-          console.log(`Verificando abastecimento ${id}:`, {
-            data: abast.data,
-            ehDoMesAtual: abast.data && abast.data.startsWith(anoMesAtual),
-            secretaria: abast.secretaria,
-            valor: abast.valor
-          });
-          
-          // Verificar se o abastecimento é do mês atual
-          if (abast.data && abast.data.startsWith(anoMesAtual)) {
-            // Alterar data para mês anterior
-            updates[`abastecimentos/${id}/data`] = dataMesAnterior;
-            totalAfetados++;
-            console.log(`✅ Será movido para ${dataMesAnterior}`);
+          if (userData.role === 'secretarios') {
+            const ultimoReset = userData.ultimoResetLimite || 0;
+            updates[`usuarios/${userId}/ultimoResetLimite`] = fimDeHoje;
+            totalSecretarios++;
+            
+            console.log(`✅ ${userId} (${userData.secretariaVinculada})`);
+            console.log(`   Último reset: ${ultimoReset > 0 ? new Date(ultimoReset).toLocaleDateString('pt-BR') : 'Nunca'}`);
+            console.log(`   Novo reset: ${new Date(fimDeHoje).toLocaleDateString('pt-BR')}`);
+            console.log(`   Limites: Victor R$ ${userData.limiteVictor || 0} + Matina R$ ${userData.limiteMatina || 0}`);
           }
         });
       }
       
-      console.log('Total de abastecimentos que serão movidos:', totalAfetados);
-      console.log('Updates a serem aplicados:', updates);
+      console.log('');
+      console.log('📋 RESUMO:');
+      console.log(`Total de secretários afetados: ${totalSecretarios}`);
       
-      if (totalAfetados === 0) {
+      if (totalSecretarios === 0) {
         mostrarNotificacao(
-          "ℹ️ NENHUM ABASTECIMENTO DO MÊS ATUAL ENCONTRADO!\n\n" +
-          "Não há nada para resetar. Verifique o console (F12) para mais detalhes.",
+          "ℹ️ NENHUM SECRETÁRIO ENCONTRADO!",
           "info"
         );
+        console.log('═══════════════════════════════════════════════════════════');
         return;
       }
       
@@ -8496,27 +8836,33 @@
       await db.ref().update(updates);
       
       console.log('✅ Updates aplicados com sucesso!');
+      console.log('═══════════════════════════════════════════════════════════');
       
       // Registrar na auditoria
-      await registrarAuditoria('LIMITES_RESETADOS', { 
+      await registrarAuditoria('LIMITES_RESETADOS_MANUAL', { 
         realizadoPor: loginUser,
-        timestamp: Date.now(),
-        abastecimentosMovidos: totalAfetados
+        timestampReset: fimDeHoje,
+        dataReset: new Date(fimDeHoje).toLocaleDateString('pt-BR'),
+        secretariosAfetados: totalSecretarios
       });
       
       mostrarNotificacao(
         `✅ LIMITES RESETADOS COM SUCESSO!\n\n` +
-        `${totalAfetados} abastecimento(s) foram movidos para o mês anterior.\n` +
+        `${totalSecretarios} secretário(s) tiveram seus limites resetados.\n\n` +
+        `📅 Data do reset: ${new Date(fimDeHoje).toLocaleDateString('pt-BR')}\n\n` +
+        `✅ Limites voltaram ao TOTAL estabelecido\n` +
+        `✅ Abastecimentos de HOJE e ANTES: limite antigo\n` +
+        `✅ Abastecimentos de AMANHÃ em diante: limite novo\n\n` +
         `A página será recarregada em 3 segundos...`,
         "success"
       );
       
       console.log('🔄 Aguardando 3 segundos para recarregar página...');
       
-      // Aguardar 3 segundos e recarregar página (limpa cache)
+      // Aguardar 3 segundos e recarregar página
       setTimeout(() => {
         console.log('🔄 RECARREGANDO PÁGINA...');
-        location.reload(true); // true = força recarregar do servidor
+        location.reload(true);
       }, 3000);
       
     } catch (error) {
@@ -8824,6 +9170,7 @@
         limite: limiteTotal,
         limiteVictor: limiteVictor,
         limiteMatina: limiteMatina,
+        ultimoResetLimite: user.ultimoResetLimite || 0, // ← CRÍTICO! Estava faltando
         secretariaVinculada: user.secretariaVinculada || "",
         postoVinculado: user.postoVinculado || "",
         postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
@@ -9118,26 +9465,107 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📊 GERANDO RELATÓRIO FILTRADO');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔍 FILTROS APLICADOS:');
+    console.log('  • Data Inicial:', dataInicial || 'Não filtrado');
+    console.log('  • Data Final:', dataFinal || 'Não filtrado');
+    console.log('  • Secretaria:', secretaria || 'Todas');
+    console.log('  • Posto:', posto || 'Todos');
+    console.log('  • Combustível:', combustivel || 'Todos');
+    console.log('  • Placa:', placa || 'Todas');
+    console.log('');
+    
     let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
+    // FILTRO AUTOMÁTICO: Secretários só veem dados da própria secretaria
+    if (userRole === 'secretarios') {
+      registros = registros.filter(r => r.secretaria === userSecretaria);
+      console.log('🔒 FILTRO AUTOMÁTICO APLICADO:');
+      console.log('  • Perfil: Secretário');
+      console.log('  • Secretaria:', userSecretaria);
+      console.log('  • Registros filtrados:', registros.length);
+      console.log('  ℹ️ Você só pode ver dados da sua própria secretaria');
+      console.log('');
+    }
+    
+    console.log('📦 ANTES DOS FILTROS MANUAIS:', registros.length, 'registros');
+    console.log('  Primeiros 5 (verificando formato de data):');
+    registros.slice(0, 5).forEach((r, i) => {
+      const dataCompleta = r.data;
+      const dataSemHora = r.data.split('T')[0];
+      console.log(`    ${i+1}. Data completa: "${dataCompleta}" | Sem hora: "${dataSemHora}" | Formato: ${/^\d{4}-\d{2}-\d{2}/.test(dataSemHora) ? 'YYYY-MM-DD ✅' : 'OUTRO ❌'}`);
+    });
+    
     if (dataInicial) {
-      registros = registros.filter(r => r.data >= dataInicial);
+      const antes = registros.length;
+      console.log('');
+      console.log('🔍 APLICANDO FILTRO DATA INICIAL >= ' + dataInicial);
+      console.log('  Tipo de dataInicial:', typeof dataInicial, '| Valor:', JSON.stringify(dataInicial));
+      
+      registros.slice(0, 5).forEach((r, i) => {
+        const dataSemHora = r.data.split('T')[0];
+        const passa = dataSemHora >= dataInicial;
+        console.log(`  ${i+1}. "${dataSemHora}" >= "${dataInicial}"? ${passa ? '✅' : '❌'} (${dataSemHora.length} chars vs ${dataInicial.length} chars)`);
+      });
+      
+      registros = registros.filter(r => {
+        const dataSemHora = r.data.split('T')[0];
+        return dataSemHora >= dataInicial;
+      });
+      console.log(`  ✂️ Resultado: ${antes} → ${registros.length}`);
     }
+    
     if (dataFinal) {
-      registros = registros.filter(r => r.data <= dataFinal);
+      const antes = registros.length;
+      console.log('');
+      console.log('🔍 APLICANDO FILTRO DATA FINAL <= ' + dataFinal);
+      console.log('  Tipo de dataFinal:', typeof dataFinal, '| Valor:', JSON.stringify(dataFinal));
+      
+      registros.slice(0, 5).forEach((r, i) => {
+        const dataSemHora = r.data.split('T')[0];
+        const passa = dataSemHora <= dataFinal;
+        console.log(`  ${i+1}. "${dataSemHora}" <= "${dataFinal}"? ${passa ? '✅' : '❌'} (${dataSemHora.length} chars vs ${dataFinal.length} chars)`);
+      });
+      
+      registros = registros.filter(r => {
+        const dataSemHora = r.data.split('T')[0];
+        return dataSemHora <= dataFinal;
+      });
+      console.log(`  ✂️ Resultado: ${antes} → ${registros.length}`);
     }
+    
     if (secretaria) {
+      const antes = registros.length;
       registros = registros.filter(r => r.secretaria === secretaria);
+      console.log(`  ✂️ Filtro Secretaria (${secretaria}): ${antes} → ${registros.length}`);
     }
     if (posto) {
+      const antes = registros.length;
       registros = registros.filter(r => r.posto === posto);
+      console.log(`  ✂️ Filtro Posto (${posto}): ${antes} → ${registros.length}`);
     }
     if (combustivel) {
+      const antes = registros.length;
       registros = registros.filter(r => r.tipo === combustivel);
+      console.log(`  ✂️ Filtro Combustível (${combustivel}): ${antes} → ${registros.length}`);
     }
     if (placa) {
+      const antes = registros.length;
       registros = registros.filter(r => r.placa.includes(placa));
+      console.log(`  ✂️ Filtro Placa (${placa}): ${antes} → ${registros.length}`);
     }
+    
+    console.log('');
+    console.log('📋 APÓS TODOS OS FILTROS:', registros.length, 'registros');
+    if (registros.length > 0) {
+      console.log('  Primeiros 10:');
+      registros.slice(0, 10).forEach((r, i) => {
+        console.log(`    ${i+1}. ${r.data.split('T')[0]} - ${r.secretaria} - R$ ${r.valor.toFixed(2)}`);
+      });
+    }
+    console.log('═══════════════════════════════════════════════════════════');
     
     exibirRelatorioFiltrado(registros);
   }
@@ -9942,11 +10370,11 @@
       }
     });
     
-    // Gráfico 2: Evolução - Últimos 30 Abastecimentos
+    // Gráfico 2: Evolução - Últimos 30 Dias MAIS RECENTES
     const gastosPorData = {};
     
     dadosMes.forEach(d => {
-      const data = d.data.split('T')[0]; // "2025-02-26"
+      const data = d.data.split('T')[0]; // "2026-02-26"
       const [ano, mes, dia] = data.split('-');
       const label = `${dia}/${mes}`;
       
@@ -9956,8 +10384,15 @@
       gastosPorData[data].valor += d.valor;
     });
     
+    // Ordenar por data e pegar os 30 MAIS RECENTES
     const datasOrdenadas = Object.keys(gastosPorData).sort();
-    const ultimas30 = datasOrdenadas.slice(-30);
+    const ultimas30 = datasOrdenadas.slice(-30); // Últimos 30 dias
+    
+    console.log('📊 Gráfico Evolução Diária:');
+    console.log('  Total de dias com dados:', datasOrdenadas.length);
+    console.log('  Primeira data:', datasOrdenadas[0]);
+    console.log('  Última data:', datasOrdenadas[datasOrdenadas.length - 1]);
+    console.log('  Exibindo últimos 30 dias:', ultimas30[0], 'até', ultimas30[ultimas30.length - 1]);
     
     if (chartExecutivo2) chartExecutivo2.destroy();
     chartExecutivo2 = new Chart(document.getElementById('chartExecutivo2'), {
@@ -9994,14 +10429,31 @@
   }
   
   function atualizarPerformanceSecretarias() {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📊 ATUALIZANDO PERFORMANCE POR SECRETARIA');
+    console.log('═══════════════════════════════════════════════════════════');
+    
     const tbody = document.getElementById('performance-body');
+    
+    if (!tbody) {
+      console.error('❌ Elemento performance-body não encontrado!');
+      return;
+    }
+    
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">⏳ Carregando...</td></tr>';
+    
+    console.log('📦 Total de registros no cache:', cache.length);
     
     // Buscar limites reais do Firebase
     db.ref('usuarios').once('value', snap => {
-      if (!snap.exists()) return;
+      if (!snap.exists()) {
+        console.log('⚠️ Nenhum usuário encontrado no Firebase');
+        return;
+      }
       
-      // Montar mapa secretaria → limites separados por posto
+      console.log('✅ Usuários carregados do Firebase');
+      
+      // Montar mapa secretaria → limites + timestamp reset
       const orcamentos = {};
       snap.forEach(userSnap => {
         const u = userSnap.val();
@@ -10009,29 +10461,50 @@
           const sec = u.secretariaVinculada;
           const limV = u.limiteVictor || 0;
           const limM = u.limiteMatina || 0;
+          const ultimoReset = u.ultimoResetLimite || 0;
+          
+          console.log(`  Secretário encontrado: ${sec} (Victor: R$ ${limV}, Matina: R$ ${limM}, Reset: ${ultimoReset > 0 ? new Date(ultimoReset).toLocaleDateString('pt-BR') : 'Nunca'})`);
           
           if (!orcamentos[sec]) {
-            orcamentos[sec] = { victor: 0, matina: 0 };
+            orcamentos[sec] = { victor: 0, matina: 0, ultimoReset: 0 };
           }
           orcamentos[sec].victor += limV;
           orcamentos[sec].matina += limM;
+          // Usar o timestamp de reset mais recente da secretaria
+          if (ultimoReset > orcamentos[sec].ultimoReset) {
+            orcamentos[sec].ultimoReset = ultimoReset;
+          }
         }
       });
+      
+      console.log('');
+      console.log('📋 Orçamentos processados:', Object.keys(orcamentos).length, 'secretarias');
+      console.log('  Secretarias:', Object.keys(orcamentos));
       
       let html = '';
       
       if (Object.keys(orcamentos).length === 0) {
+        console.log('⚠️ Nenhum limite configurado');
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:#64748b;">⚠️ Nenhum limite configurado para as secretarias</td></tr>';
         return;
       }
       
       Object.keys(orcamentos).sort().forEach(sec => {
-        // MOSTRAR GASTOS TOTAIS (sem filtro de mês)
+        console.log('');
+        console.log(`📊 Processando: ${sec}`);
+        
+        const ultimoReset = orcamentos[sec].ultimoReset || 0;
+        console.log(`  Último reset: ${ultimoReset > 0 ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca'}`);
+        
+        // FILTRAR: Apenas dados após o último reset
         const dadosMes = cache
           .filter(x => {
             if (x.secretaria !== sec || x.status !== STATUS.AUTORIZADO) return false;
-            return true;
+            // Só conta abastecimentos após o reset
+            return (x.timestamp || 0) > ultimoReset;
           });
+        
+        console.log(`  Abastecimentos após reset: ${dadosMes.length}`);
         
         // Separar por posto
         const realizadoVictor = dadosMes
@@ -10042,14 +10515,38 @@
           .filter(x => (x.posto || '').toUpperCase().includes('MATINA'))
           .reduce((acc, item) => acc + item.valor, 0);
         
+        console.log(`  Realizado Victor: R$ ${realizadoVictor.toFixed(2)}`);
+        console.log(`  Realizado Matina: R$ ${realizadoMatina.toFixed(2)}`);
+        
         const orcadoVictor = orcamentos[sec].victor;
         const orcadoMatina = orcamentos[sec].matina;
         const totalOrcado = orcadoVictor + orcadoMatina;
         const totalRealizado = realizadoVictor + realizadoMatina;
         
+        console.log(`  Orçado Victor: R$ ${orcadoVictor.toFixed(2)}`);
+        console.log(`  Orçado Matina: R$ ${orcadoMatina.toFixed(2)}`);
+        console.log(`  Total: R$ ${totalRealizado.toFixed(2)} / R$ ${totalOrcado.toFixed(2)}`);
+        
         const percentualVictor = orcadoVictor > 0 ? (realizadoVictor / orcadoVictor * 100) : 0;
         const percentualMatina = orcadoMatina > 0 ? (realizadoMatina / orcadoMatina * 100) : 0;
         const percentualTotal = totalOrcado > 0 ? (totalRealizado / totalOrcado * 100) : 0;
+        
+        // Calcular percentual de dias decorridos no mês
+        const hoje = new Date();
+        const diaAtual = hoje.getDate();
+        const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+        const percentualDiasDecorridos = (diaAtual / ultimoDiaMes) * 100;
+        
+        // Calcular projeção (quanto vai gastar no final do mês no ritmo atual)
+        const diasRestantes = ultimoDiaMes - diaAtual;
+        const mediaDiariaVictor = diaAtual > 0 ? realizadoVictor / diaAtual : 0;
+        const mediaDiariaMatina = diaAtual > 0 ? realizadoMatina / diaAtual : 0;
+        const projecaoVictor = realizadoVictor + (mediaDiariaVictor * diasRestantes);
+        const projecaoMatina = realizadoMatina + (mediaDiariaMatina * diasRestantes);
+        
+        console.log(`  Percentual dias: ${percentualDiasDecorridos.toFixed(1)}%`);
+        console.log(`  Projeção Victor: R$ ${projecaoVictor.toFixed(2)}`);
+        console.log(`  Projeção Matina: R$ ${projecaoMatina.toFixed(2)}`);
         
         // Determinar status com base no percentual total
         let status = '';
