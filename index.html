@@ -2853,7 +2853,7 @@
           <input type="text" id="f-mot" placeholder="NOME DO MOTORISTA">
         </div>
         <div>
-          <label>DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
+          <label id="label-destino">DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
           <input type="text" id="f-destino" placeholder="LOCAL DE DESTINO">
         </div>
         <div>
@@ -4550,11 +4550,11 @@
       return;
     }
     
-    if (u === "master" && s === "05048989*@") {
+    if (u === "master" && s === "05048989") {
       console.log("Login como MASTER");
       return entrar("master", "admin", 0, "", { 
         combustivelLiberado: "todos",
-        senha: "05048989*@",
+        senha: "05048989",
         role: "admin",
         permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
       });
@@ -5048,6 +5048,12 @@
     if (!dados.motorista || dados.motorista.trim() === "") {
       erros.push("❌ MOTORISTA OBRIGATÓRIO");
     }
+    
+    // DESTINO OBRIGATÓRIO PARA SECRETÁRIOS
+    if (userRole === 'secretarios' && (!dados.destino || dados.destino.trim() === "")) {
+      erros.push("❌ DESTINO OBRIGATÓRIO PARA SECRETÁRIOS");
+    }
+    
     if (!dados.data) {
       erros.push("❌ DATA OBRIGATÓRIA");
     }
@@ -5800,6 +5806,22 @@
     }
     
     atualizarRelatorio();
+    
+    // Configurar campo DESTINO como obrigatório para secretários
+    const labelDestino = document.getElementById('label-destino');
+    const inputDestino = document.getElementById('f-destino');
+    
+    if (userRole === 'secretarios' && labelDestino && inputDestino) {
+      // Atualizar label para mostrar obrigatoriedade
+      labelDestino.innerHTML = 'DESTINO <span style="color:#ef4444;">*</span> <span style="font-size:9px; color:#ef4444;">(Obrigatório)</span>';
+      inputDestino.placeholder = 'LOCAL DE DESTINO (OBRIGATÓRIO)';
+      inputDestino.style.borderColor = '#fecaca';
+    } else if (labelDestino && inputDestino) {
+      // Para outros perfis, manter opcional
+      labelDestino.innerHTML = 'DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span>';
+      inputDestino.placeholder = 'LOCAL DE DESTINO';
+      inputDestino.style.borderColor = '';
+    }
     
     // Configurar filtro de secretaria para secretários
     const filtroSecretariaContainer = document.getElementById('filtro-secretaria-container');
