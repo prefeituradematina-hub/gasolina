@@ -10011,15 +10011,15 @@
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 10;">
             <tr style="border-bottom: 2px solid #d1d5db;">
-              <th style="padding: 10px; text-align: left;">DATA</th>
-              <th style="padding: 10px; text-align: left;">PLACA</th>
-              <th style="padding: 10px; text-align: left;">MOTORISTA</th>
-              <th style="padding: 10px; text-align: left;">SECRETARIA</th>
-              <th style="padding: 10px; text-align: left;">POSTO</th>
-              <th style="padding: 10px; text-align: left;">COMBUSTÍVEL</th>
-              <th style="padding: 10px; text-align: right;">LITROS</th>
-              <th style="padding: 10px; text-align: right;">VALOR</th>
-              <th style="padding: 10px; text-align: center;">STATUS</th>
+              <th style="padding: 8px; text-align: left; min-width: 80px;">DATA</th>
+              <th style="padding: 8px; text-align: left; min-width: 90px;">PLACA</th>
+              <th style="padding: 8px; text-align: left; min-width: 120px;">MOTORISTA</th>
+              <th style="padding: 8px; text-align: left; min-width: 100px;">SECRETARIA</th>
+              <th style="padding: 8px; text-align: left; min-width: 100px;">POSTO</th>
+              <th style="padding: 8px; text-align: left; min-width: 80px;">COMB.</th>
+              <th style="padding: 8px; text-align: right; min-width: 70px;">LITROS</th>
+              <th style="padding: 8px; text-align: right; min-width: 80px;">VALOR</th>
+              <th style="padding: 8px; text-align: center; min-width: 90px;">STATUS</th>
             </tr>
           </thead>
           <tbody>
@@ -10030,34 +10030,41 @@
       const valorFormatado = r.valor ? 'R$ ' + r.valor.toFixed(2) : '---';
       const litrosFormatado = r.litro ? r.litro.toFixed(2) + 'L' : '---';
       
+      // Pegar dados corretos
+      const placa = r.placa || '---';
+      const motorista = r.motorista || '---';
+      const secretaria = r.secretaria || '---';
+      const posto = r.posto || '---';
+      const combustivel = r.tipo || '---'; // Campo 'tipo' contém o combustível
+      
       // Cor de fundo alternada
       const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
       
       // Badge de status
       let statusBadge = '';
       if (r.status === STATUS.AUTORIZADO) {
-        statusBadge = '<span style="background:#10b981;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">✅ AUTORIZADO</span>';
+        statusBadge = '<span style="background:#10b981;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">✅ OK</span>';
       } else if (r.status === STATUS.AGUARDANDO) {
-        statusBadge = '<span style="background:#f59e0b;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">⏳ PENDENTE</span>';
+        statusBadge = '<span style="background:#f59e0b;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">⏳ PEND</span>';
       }
       
       // Destacar campo que deu match
-      const destacarCampo = (valor, campo) => {
+      const destacarCampo = (valor) => {
         const valorUpper = (valor || '').toUpperCase();
         if (valorUpper.includes(termo)) {
           return `<strong style="background:#fef3c7; padding:2px 4px; border-radius:3px;">${valor}</strong>`;
         }
-        return valor || '---';
+        return valor;
       };
       
       html += `
         <tr style="background:${bgColor}; border-bottom:1px solid #e5e7eb;">
-          <td style="padding: 8px;">${dataFormatada}</td>
-          <td style="padding: 8px;">${destacarCampo(r.placa, 'placa')}</td>
-          <td style="padding: 8px;">${destacarCampo(r.motorista, 'motorista')}</td>
-          <td style="padding: 8px; font-size:11px;">${destacarCampo(r.secretaria, 'secretaria')}</td>
-          <td style="padding: 8px;">${destacarCampo(r.posto, 'posto')}</td>
-          <td style="padding: 8px;">${r.tipo || '---'}</td>
+          <td style="padding: 8px; white-space: nowrap;">${dataFormatada}</td>
+          <td style="padding: 8px; font-weight: bold;">${destacarCampo(placa)}</td>
+          <td style="padding: 8px;">${destacarCampo(motorista)}</td>
+          <td style="padding: 8px; font-size:10px;">${destacarCampo(secretaria)}</td>
+          <td style="padding: 8px; font-size:11px;">${destacarCampo(posto)}</td>
+          <td style="padding: 8px; font-size:11px;">${combustivel}</td>
           <td style="padding: 8px; text-align:right; font-weight:bold;">${litrosFormatado}</td>
           <td style="padding: 8px; text-align:right; font-weight:bold; color:#1e40af;">${valorFormatado}</td>
           <td style="padding: 8px; text-align:center;">${statusBadge}</td>
