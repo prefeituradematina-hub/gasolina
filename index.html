@@ -2994,6 +2994,40 @@
       <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top:5px;" onclick="window.print()">🖨️ IMPRIMIR</button>
     </div>
     
+    <!-- BUSCA GERAL -->
+    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6;">
+      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e40af;">
+            🔍 BUSCA GERAL
+          </label>
+          <input 
+            type="text" 
+            id="busca-geral" 
+            placeholder="Digite: NOME, PLACA, CPF, MOTORISTA..." 
+            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px;"
+            oninput="aplicarBuscaGeral()"
+          >
+          <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
+            💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
+          </div>
+        </div>
+        <div>
+          <button 
+            class="btn-save" 
+            onclick="limparBuscaGeral()" 
+            style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top: 20px;"
+          >
+            🔄 LIMPAR BUSCA
+          </button>
+        </div>
+      </div>
+      <div id="busca-resultado" style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; display: none;">
+        <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">📊 RESULTADOS:</div>
+        <div id="busca-resultado-texto" style="font-size: 13px; color: #64748b;"></div>
+      </div>
+    </div>
+    
     <!-- Relatórios -->
     <div id="relatorio-container"></div>
   </div>
@@ -6981,7 +7015,15 @@
         const limiteAlerta = LIMITES_ALERTA[d.tipo];
         const classeAlerta = (media > 0 && media < limiteAlerta) ? "alerta-media" : "";
         
-        linhas += `<tr class="${classeAlerta}">
+        linhas += `<tr 
+          class="abastecimento-linha ${classeAlerta}"
+          data-placa="${d.placa || ''}"
+          data-motorista="${d.motorista || ''}"
+          data-cpf="${d.cpf || d.cpfBeneficiado || ''}"
+          data-posto="${d.posto || ''}"
+          data-vipnome="${d.nomeVIP || d.pessoaDiversas || ''}"
+          data-secretaria="${d.secretaria || ''}"
+        >
           <td>${d.data.split('-').reverse().join('/')}</td>
           <td>
             ${d.horario 
@@ -7047,10 +7089,11 @@
         : '';
       
       container.innerHTML += `
-        <div class="section-header" style="${headerStyle}">
-          ${headerInfo}
-        </div>
-        <div class="card">
+        <div class="relatorio-section">
+          <div class="section-header" style="${headerStyle}">
+            ${headerInfo}
+          </div>
+          <div class="card">
           <div class="table-wrapper">
             <table>
               <thead>
@@ -7073,6 +7116,7 @@
               <tbody>${linhas}</tbody>
             </table>
           </div>
+        </div>
         </div>
       `;
     });
@@ -9744,6 +9788,109 @@
     atualizarRelatorio();
     mostrarNotificacao("🔄 FILTROS LIMPOS!", "info");
   }
+  
+  // ==================== BUSCA GERAL ====================
+  
+  function aplicarBuscaGeral() {
+    const termo = document.getElementById('busca-geral').value.toUpperCase().trim();
+    const resultadoDiv = document.getElementById('busca-resultado');
+    const resultadoTexto = document.getElementById('busca-resultado-texto');
+    
+    if (!termo || termo.length < 2) {
+      resultadoDiv.style.display = 'none';
+      // Mostrar todos os relatórios
+      document.querySelectorAll('.relatorio-section').forEach(section => {
+        section.style.display = 'block';
+      });
+      document.querySelectorAll('.abastecimento-linha').forEach(linha => {
+        linha.style.display = '';
+      });
+      return;
+    }
+    
+    // Normalizar termo (remover pontos, traços)
+    const termoLimpo = termo.replace(/[.\-\/\s]/g, '');
+    
+    let encontrados = 0;
+    let secoesMostradas = new Set();
+    
+    // Buscar em todas as linhas de abastecimento
+    document.querySelectorAll('.abastecimento-linha').forEach(linha => {
+      const placa = (linha.dataset.placa || '').toUpperCase();
+      const motorista = (linha.dataset.motorista || '').toUpperCase();
+      const cpf = (linha.dataset.cpf || '').replace(/[.\-\/\s]/g, '');
+      const posto = (linha.dataset.posto || '').toUpperCase();
+      const vipNome = (linha.dataset.vipnome || '').toUpperCase();
+      const secretaria = (linha.dataset.secretaria || '').toUpperCase();
+      
+      // Busca parcial em todos os campos
+      const match = 
+        placa.includes(termo) ||
+        motorista.includes(termo) ||
+        cpf.includes(termoLimpo) ||
+        posto.includes(termo) ||
+        vipNome.includes(termo) ||
+        secretaria.includes(termo);
+      
+      if (match) {
+        linha.style.display = '';
+        linha.style.background = '#fff7ed'; // Destacar resultado
+        linha.style.borderLeft = '4px solid #f59e0b';
+        encontrados++;
+        
+        // Marcar seção como visível
+        const section = linha.closest('.relatorio-section');
+        if (section) {
+          secoesMostradas.add(section);
+        }
+      } else {
+        linha.style.display = 'none';
+      }
+    });
+    
+    // Mostrar/ocultar seções baseado nos resultados
+    document.querySelectorAll('.relatorio-section').forEach(section => {
+      if (secoesMostradas.has(section)) {
+        section.style.display = 'block';
+      } else {
+        section.style.display = 'none';
+      }
+    });
+    
+    // Mostrar resultado
+    resultadoDiv.style.display = 'block';
+    if (encontrados > 0) {
+      resultadoTexto.innerHTML = `
+        ✅ <strong>${encontrados}</strong> abastecimento(s) encontrado(s) para <strong>"${termo}"</strong>
+      `;
+      resultadoTexto.style.color = '#15803d';
+    } else {
+      resultadoTexto.innerHTML = `
+        ❌ Nenhum resultado encontrado para <strong>"${termo}"</strong>
+      `;
+      resultadoTexto.style.color = '#dc2626';
+    }
+  }
+  
+  function limparBuscaGeral() {
+    document.getElementById('busca-geral').value = '';
+    document.getElementById('busca-resultado').style.display = 'none';
+    
+    // Remover destaque e mostrar tudo
+    document.querySelectorAll('.abastecimento-linha').forEach(linha => {
+      linha.style.display = '';
+      linha.style.background = '';
+      linha.style.borderLeft = '';
+    });
+    
+    document.querySelectorAll('.relatorio-section').forEach(section => {
+      section.style.display = 'block';
+    });
+    
+    mostrarNotificacao("🔄 BUSCA LIMPA!", "info");
+  }
+  
+  // ==================== FIM BUSCA GERAL ====================
   
   function sugerir(valor) {
     const placa = valor.toUpperCase().trim();
