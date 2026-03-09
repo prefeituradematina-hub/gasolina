@@ -2540,21 +2540,31 @@
   </div>
 </div>
 
-<!-- Modal de Edição de VIP -->
-<div id="modal-edit-vip" class="modal">
+<!-- Modal de Edição de DIVERSAS -->
+<div id="modal-edit-diversas" class="modal">
   <div class="modal-content">
-    <span class="modal-close" onclick="fecharModalEditVIP()">&times;</span>
-    <h3>✏️ EDITAR PESSOA VIP</h3>
-    <input type="hidden" id="edit-vip-id">
+    <span class="modal-close" onclick="fecharModalEditDiversas()">&times;</span>
+    <h3>✏️ EDITAR PESSOA DIVERSAS</h3>
+    <input type="hidden" id="edit-diversas-id">
     
     <div class="grid-form">
       <div>
         <label>NOME COMPLETO *</label>
-        <input type="text" id="edit-vip-nome" placeholder="Ex: Maria da Silva">
+        <input type="text" id="edit-diversas-nome" placeholder="Ex: Maria da Silva">
+      </div>
+      <div>
+        <label>CPF *</label>
+        <input 
+          type="text" 
+          id="edit-diversas-cpf" 
+          placeholder="000.000.000-00" 
+          maxlength="14"
+          oninput="formatarCPF(this)"
+        >
       </div>
       <div>
         <label>CARGO *</label>
-        <select id="edit-vip-cargo">
+        <select id="edit-diversas-cargo">
           <option value="">SELECIONE...</option>
           <option value="Prefeito(a)">Prefeito(a)</option>
           <option value="Vice-Prefeito(a)">Vice-Prefeito(a)</option>
@@ -2566,7 +2576,7 @@
       </div>
       <div>
         <label>CATEGORIA</label>
-        <select id="edit-vip-categoria">
+        <select id="edit-diversas-categoria">
           <option value="executivo">Executivo</option>
           <option value="legislativo">Legislativo</option>
           <option value="administrativo">Administrativo</option>
@@ -2574,15 +2584,15 @@
       </div>
       <div>
         <label>LIMITE MENSAL (R$)</label>
-        <input type="number" id="edit-vip-limite" placeholder="0.00" step="0.01" min="0">
+        <input type="number" id="edit-diversas-limite" placeholder="0.00" step="0.01" min="0">
         <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer;">
-          <input type="checkbox" id="edit-vip-sem-limite" onchange="toggleLimiteVIP('edit')">
+          <input type="checkbox" id="edit-diversas-sem-limite" onchange="toggleLimiteDiversas('edit')">
           <span>⭐ Sem limite (ilimitado)</span>
         </label>
       </div>
     </div>
     
-    <button class="btn-save" onclick="salvarEdicaoVIP()" style="margin-top: 20px; background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">
+    <button class="btn-save" onclick="salvarEdicaoDiversas()" style="margin-top: 20px; background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);">
       💾 SALVAR ALTERAÇÕES
     </button>
   </div>
@@ -2680,7 +2690,7 @@
   </div>
 </div>
 
-<!-- Modal de Histórico do Veículo (VIP/AVULSO) -->
+<!-- Modal de Histórico do Veículo (DIVERSAS/AVULSO) -->
 <div id="modal-historico-veiculo" class="modal">
   <div class="modal-content" style="max-width: 900px;">
     <span class="modal-close" onclick="fecharModalHistoricoVeiculo(false)">&times;</span>
@@ -2721,7 +2731,7 @@
     <div class="nav-tabs">
       <button id="btn-tab-geral" class="tab-btn active" onclick="switchTab('geral')">📊 DASHBOARD</button>
       <button id="btn-tab-executivo" class="tab-btn" style="display:none;" onclick="switchTab('executivo')">👔 EXECUTIVO</button>
-      <button id="btn-tab-vip" class="tab-btn" style="display:none;" onclick="switchTab('vip')">⭐ VIP</button>
+      <button id="btn-tab-diversas" class="tab-btn" style="display:none;" onclick="switchTab('diversas')">📋 DIVERSAS</button>
       <button id="btn-tab-pendentes" class="tab-btn" style="display:none;" onclick="switchTab('pendentes')">
         ⏳ PENDENTES
         <span id="pendentes-badge" class="notification-badge" style="display:none;">0</span>
@@ -2833,7 +2843,7 @@
         </div>
         <div>
           <label>SECRETARIA *</label>
-          <select id="f-sec" onchange="aplicarRestricoesSecretaria()">
+          <select id="f-sec" onchange="aplicarRestricoesSecretaria(); controlarVisibilidadeCPF()">
             <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
             <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
             <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
@@ -2851,6 +2861,19 @@
         <div>
           <label>MOTORISTA *</label>
           <input type="text" id="f-mot" placeholder="NOME DO MOTORISTA">
+        </div>
+        <div id="campo-cpf-container" style="display:none;">
+          <label id="label-cpf">CPF <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
+          <input 
+            type="text" 
+            id="f-cpf" 
+            placeholder="000.000.000-00" 
+            maxlength="14"
+          >
+          <div id="historico-cpf" style="display:none; margin-top:10px; padding:10px; background:#f8fafc; border-radius:6px; border-left:4px solid #3b82f6;">
+            <div style="font-size:11px; font-weight:bold; color:#1e40af; margin-bottom:8px;">📋 HISTÓRICO DESTE CPF</div>
+            <div id="historico-cpf-content"></div>
+          </div>
         </div>
         <div>
           <label id="label-destino">DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
@@ -2975,18 +2998,18 @@
     <div id="relatorio-container"></div>
   </div>
   
-  <!-- Tab VIP - Prefeita e Vereadores -->
-  <div id="tab-vip" style="display:none;">
+  <!-- Tab DIVERSAS - Prefeita e Vereadores -->
+  <div id="tab-diversas" style="display:none;">
     <div class="card">
-      <h2>⭐ ABASTECIMENTOS VIP - PREFEITA E VEREADORES</h2>
+      <h2>⭐ ABASTECIMENTOS DIVERSAS - DIVERSAS FINALIDADES</h2>
       <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
         Lançamento direto de abastecimentos para Prefeita e Vereadores (aprovação automática)
       </p>
     </div>
     
-    <!-- Dashboard de Limites VIP -->
-    <div class="card" id="dashboard-vip">
-      <h3>💰 LIMITES MENSAIS - PESSOAS VIP</h3>
+    <!-- Dashboard de Limites DIVERSAS -->
+    <div class="card" id="dashboard-diversas">
+      <h3>💰 LIMITES MENSAIS - PESSOAS DIVERSAS</h3>
       <div id="container-limites-vip" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
         <!-- Será preenchido dinamicamente -->
       </div>
@@ -2994,11 +3017,11 @@
     
     <!-- Formulário de Abastecimento VIP -->
     <div class="card">
-      <h3>⛽ NOVO ABASTECIMENTO VIP</h3>
+      <h3>⛽ NOVO ABASTECIMENTO DIVERSAS</h3>
       <div class="grid-form">
         <div>
-          <label>PESSOA VIP *</label>
-          <select id="vip-pessoa" onchange="atualizarLimiteVIP()">
+          <label>PESSOA DIVERSAS *</label>
+          <select id="diversas-pessoa" onchange="atualizarLimiteDiversas()">
             <option value="">SELECIONE...</option>
             <option value="PREFEITA">👑 PREFEITA</option>
             <option value="WAGNER">🏛️ Wagner (Vereador)</option>
@@ -3011,61 +3034,76 @@
         
         <div>
           <label>DATA *</label>
-          <input type="date" id="vip-data">
+          <input type="date" id="diversas-data">
         </div>
         
         <div>
           <label>PLACA DO VEÍCULO *</label>
-          <input type="text" id="vip-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+          <input type="text" id="diversas-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
         </div>
         
         <div>
           <label>MOTORISTA *</label>
-          <input type="text" id="vip-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+          <input type="text" id="diversas-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+        </div>
+        
+        <div>
+          <label>CPF DO BENEFICIADO *</label>
+          <input 
+            type="text" 
+            id="diversas-cpf" 
+            placeholder="000.000.000-00" 
+            maxlength="14"
+            style="font-weight:bold; border:2px solid #f59e0b;"
+          >
+          <div id="historico-diversas-cpf" style="display:none; margin-top:10px; padding:12px; background:#fef3c7; border-radius:6px; border-left:4px solid #f59e0b;">
+            <div style="font-size:11px; font-weight:bold; color:#92400e; margin-bottom:8px;">📋 HISTÓRICO DESTE CPF DIVERSAS</div>
+            <div id="historico-diversas-cpf-content"></div>
+          </div>
         </div>
         
         <div>
           <label>POSTO *</label>
-          <select id="vip-posto" onchange="carregarCombustiveisVIP()">
+          <select id="diversas-posto" onchange="carregarCombustiveisDiversas()">
             <option value="">SELECIONE...</option>
           </select>
         </div>
         
         <div>
           <label>COMBUSTÍVEL *</label>
-          <select id="vip-combustivel" onchange="calcularValorVIP()">
+          <select id="diversas-combustivel" onchange="calcularValorDiversas()">
             <option value="">SELECIONE O POSTO PRIMEIRO</option>
           </select>
         </div>
         
         <div>
           <label>LITROS *</label>
-          <input type="number" id="vip-litros" placeholder="0.00" step="0.01" min="0" oninput="calcularValorVIP()">
+          <input type="number" id="diversas-litros" placeholder="0.00" step="0.01" min="0" oninput="calcularValorDiversas()">
         </div>
         
         <div>
           <label>PREÇO/LITRO (R$)</label>
-          <input type="number" id="vip-preco" placeholder="0.00" step="0.01" min="0" readonly style="background:#f1f5f9;">
+          <input type="number" id="diversas-preco" placeholder="0.00" step="0.01" min="0" readonly style="background:#f1f5f9;">
         </div>
         
         <div>
           <label>VALOR TOTAL (R$)</label>
-          <input type="text" id="vip-valor" readonly style="background:#f1f5f9; font-weight:bold; font-size:16px; color:var(--primary);">
+          <input type="text" id="diversas-valor" readonly style="background:#f1f5f9; font-weight:bold; font-size:16px; color:var(--primary);">
         </div>
         
         <div>
           <label>ODÔMETRO (KM) <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
-          <input type="number" id="vip-km" placeholder="0" min="0">
+          <input type="number" id="diversas-km" placeholder="0" min="0">
         </div>
         
         <div style="grid-column: 1/-1;">
           <label>OBSERVAÇÕES</label>
-          <textarea id="vip-obs" placeholder="Observações adicionais (opcional)" rows="2"></textarea>
+          <textarea id="diversas-obs" placeholder="Observações adicionais (opcional)" rows="2"></textarea>
         </div>
       </div>
       
       <!-- Alerta de Limite -->
-      <div id="alerta-limite-vip" style="display:none; margin-top:15px; padding:15px; background:#fef3c7; border-left:4px solid var(--warning); border-radius:8px;">
+      <div id="alerta-limite-diversas" style="display:none; margin-top:15px; padding:15px; background:#fef3c7; border-left:4px solid var(--warning); border-radius:8px;">
         <div style="display:flex; align-items:center; gap:10px;">
           <div style="font-size:24px;">⚠️</div>
           <div>
@@ -3075,14 +3113,14 @@
         </div>
       </div>
       
-      <button class="btn-save" onclick="lancarAbastecimentoVIP()" style="margin-top:20px; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-        ⭐ LANÇAR ABASTECIMENTO VIP
+      <button class="btn-save" onclick="lancarAbastecimentoDiversas()" style="margin-top:20px; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        ⭐ LANÇAR ABASTECIMENTO DIVERSAS
       </button>
     </div>
     
     <!-- Histórico de Abastecimentos VIP -->
     <div class="card">
-      <h3>📋 HISTÓRICO DE ABASTECIMENTOS VIP</h3>
+      <h3>📋 HISTÓRICO DE ABASTECIMENTOS DIVERSAS</h3>
       <div class="table-wrapper">
         <table>
           <thead>
@@ -3198,6 +3236,7 @@
               <th>POSTO</th>
               <th>SECRETARIA</th>
               <th>MOTORISTA</th>
+              <th>CPF</th>
               <th>DESTINO</th>
               <th>COMBUSTÍVEL</th>
               <th>LITROS</th>
@@ -3336,24 +3375,34 @@
   </div>
   
   <div id="tab-users" style="display:none;">
-    <!-- Gestão de Pessoas VIP -->
+    <!-- Gestão de Pessoas Diversas -->
     <div class="card" id="gestao-vips" style="display:none;">
-      <h3>⭐ GESTÃO DE PESSOAS VIP</h3>
+      <h3>⭐ GESTÃO DE PESSOAS DIVERSAS</h3>
       <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
         Configure as pessoas autorizadas a receber abastecimentos diretos (Prefeita, Vereadores, etc)
       </p>
       
       <!-- Formulário de Novo VIP -->
       <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
-        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ ADICIONAR NOVA PESSOA VIP</h4>
+        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ ADICIONAR NOVA PESSOA DIVERSAS</h4>
         <div class="grid-form">
           <div>
             <label>NOME COMPLETO *</label>
-            <input type="text" id="novo-vip-nome" placeholder="Ex: Maria da Silva">
+            <input type="text" id="novo-diversas-nome" placeholder="Ex: Maria da Silva">
+          </div>
+          <div>
+            <label>CPF *</label>
+            <input 
+              type="text" 
+              id="novo-diversas-cpf" 
+              placeholder="000.000.000-00" 
+              maxlength="14"
+              oninput="formatarCPF(this)"
+            >
           </div>
           <div>
             <label>CARGO *</label>
-            <select id="novo-vip-cargo">
+            <select id="novo-diversas-cargo">
               <option value="">SELECIONE...</option>
               <option value="Prefeito(a)">Prefeito(a)</option>
               <option value="Vice-Prefeito(a)">Vice-Prefeito(a)</option>
@@ -3365,7 +3414,7 @@
           </div>
           <div>
             <label>CATEGORIA</label>
-            <select id="novo-vip-categoria">
+            <select id="novo-diversas-categoria">
               <option value="executivo">Executivo</option>
               <option value="legislativo">Legislativo</option>
               <option value="administrativo">Administrativo</option>
@@ -3373,21 +3422,21 @@
           </div>
           <div>
             <label>LIMITE MENSAL (R$)</label>
-            <input type="number" id="novo-vip-limite" placeholder="0.00" step="0.01" min="0">
+            <input type="number" id="novo-diversas-limite" placeholder="0.00" step="0.01" min="0">
             <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="novo-vip-sem-limite" onchange="toggleLimiteVIP('novo')">
+              <input type="checkbox" id="novo-diversas-sem-limite" onchange="toggleLimiteDiversas('novo')">
               <span>⭐ Sem limite (ilimitado)</span>
             </label>
           </div>
         </div>
-        <button class="btn-save" onclick="adicionarVIP()" style="margin-top: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-          ⭐ ADICIONAR PESSOA VIP
+        <button class="btn-save" onclick="adicionarDiversas()" style="margin-top: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          ⭐ ADICIONAR PESSOA DIVERSAS
         </button>
       </div>
       
       <!-- Lista de VIPs Cadastrados -->
       <div style="margin-top: 25px;">
-        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">📋 PESSOAS VIP CADASTRADAS</h4>
+        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
         <div class="table-wrapper">
           <table>
             <thead>
@@ -3404,7 +3453,7 @@
             <tbody id="vips-body">
               <tr>
                 <td colspan="7" style="text-align:center; padding:40px;">
-                  ⏳ CARREGANDO PESSOAS VIP...
+                  ⏳ CARREGANDO PESSOAS DIVERSAS...
                 </td>
               </tr>
             </tbody>
@@ -3833,7 +3882,7 @@
           <option value="ABASTECIMENTO_DELETADO">Abastecimento Deletado</option>
           <option value="VEICULO_ADICIONADO">Veículo Adicionado</option>
           <option value="USUARIO_CRIADO">Usuário Criado</option>
-          <option value="VIP_ADICIONADO">VIP Adicionado</option>
+          <option value="DIVERSAS_ADICIONADO">VIP Adicionado</option>
           <option value="EXPORTACAO_EXCEL">Exportação Excel</option>
         </select>
       </div>
@@ -3902,7 +3951,7 @@
     REJEITADO: 'REJEITADO'
   };
   
-  // PESSOAS VIP - PREFEITA E VEREADORES
+  // PESSOAS DIVERSAS - DIVERSAS FINALIDADES
   const PESSOAS_VIP = {
     'PREFEITA': {
       nome: 'PREFEITA',
@@ -4000,8 +4049,8 @@
     'ver_relatorio_secretaria': { nome: 'Ver Relatório Secretaria', descricao: 'Ver apenas sua secretaria', categoria: 'visualizacao' },
     'usar_filtros_relatorio': { nome: 'Usar Filtros de Relatório', descricao: 'Aplicar filtros nos relatórios', categoria: 'visualizacao' },
     'registrar_abastecimento': { nome: 'Registrar Abastecimento', descricao: 'Criar novos registros', categoria: 'operacoes' },
-    'registrar_abastecimento_vip': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
-    'abastecer_vips': { nome: 'Abastecer VIPs', descricao: 'Registrar abastecimentos de VIPs', categoria: 'operacoes' },
+    'registrar_abastecimento_diversas': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
+    'abastecer_diversas': { nome: 'Abastecer VIPs', descricao: 'Registrar abastecimentos de VIPs', categoria: 'operacoes' },
     'autorizar_abastecimento': { nome: 'Autorizar Abastecimento', descricao: 'Aprovar/rejeitar solicitações', categoria: 'operacoes' },
     'deletar_abastecimento': { nome: 'Deletar Abastecimento', descricao: 'Excluir registros', categoria: 'operacoes' },
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
@@ -4012,10 +4061,10 @@
   
   const PERMISSOES_PADRAO = {
     master: Object.keys(PERMISSOES_DISPONIVEIS),
-    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_vip', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
+    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio'],
-  autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_vip', 'abastecer_vips']
+  autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_diversas', 'abastecer_diversas']
 };
   
   // Função para verificar permissões
@@ -4284,6 +4333,207 @@
         selectTipo.value = combustiveisPermitidos[0];
       }
     });
+  }
+
+  // ==================== SISTEMA DE CPF PARA AVULSOS E VIPS ====================
+  
+  function formatarCPF(input) {
+    let valor = input.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+    
+    if (valor.length <= 11) {
+      // Formata: 000.000.000-00
+      valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+      valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+      valor = valor.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    
+    input.value = valor;
+  }
+  
+  function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, ''); // Remove formatação
+    
+    if (cpf.length !== 11) return false;
+    
+    // Verifica CPFs inválidos conhecidos
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+    
+    // Validação do dígito verificador
+    let soma = 0;
+    let resto;
+    
+    for (let i = 1; i <= 9; i++) {
+      soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    }
+    
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    
+    soma = 0;
+    for (let i = 1; i <= 10; i++) {
+      soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    }
+    
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+    
+    return true;
+  }
+  
+  function controlarVisibilidadeCPF() {
+    const secretaria = document.getElementById('f-sec').value;
+    const campoCPF = document.getElementById('campo-cpf-container');
+    const labelCPF = document.getElementById('label-cpf');
+    const inputCPF = document.getElementById('f-cpf');
+    
+    const isDiversas = secretaria === 'DIVERSAS';
+    
+    if (isDiversas) {
+      campoCPF.style.display = 'block';
+      labelCPF.innerHTML = 'CPF <span style="color:#ef4444;">*</span> <span style="font-size:9px; color:#ef4444;">(Obrigatório)</span>';
+      inputCPF.style.borderColor = '#fecaca';
+      console.log('✅ Campo CPF ativado para DIVERSAS');
+    } else {
+      campoCPF.style.display = 'none';
+      labelCPF.innerHTML = 'CPF <span style="font-size:9px; color:#64748b;">(Opcional)</span>';
+      inputCPF.style.borderColor = '';
+      inputCPF.value = '';
+      document.getElementById('historico-cpf').style.display = 'none';
+      console.log('❌ Campo CPF desativado');
+    }
+  }
+  
+  function buscarHistoricoPorCPF() {
+    const cpfInput = document.getElementById('f-cpf');
+    const cpf = cpfInput.value.replace(/\D/g, '');
+    const historicoDiv = document.getElementById('historico-cpf');
+    const historicoContent = document.getElementById('historico-cpf-content');
+    
+    // Só busca se CPF tiver 11 dígitos
+    if (cpf.length !== 11) {
+      historicoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Buscar abastecimentos deste CPF
+    const historico = cache
+      .filter(x => x.cpf && x.cpf.replace(/\D/g, '') === cpf)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 5); // Últimos 5
+    
+    if (historico.length === 0) {
+      historicoDiv.style.display = 'block';
+      historicoContent.innerHTML = `
+        <div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">
+          🆕 Nenhum abastecimento anterior encontrado<br>
+          <span style="font-size:10px;">Este é o primeiro registro deste CPF</span>
+        </div>
+      `;
+      return;
+    }
+    
+    // Mostrar histórico
+    const totalGasto = historico.reduce((acc, h) => acc + h.valor, 0);
+    const totalLitros = historico.reduce((acc, h) => acc + h.litro, 0);
+    
+    let html = `
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; text-align:center;">
+        <div>
+          <div style="font-size:9px; color:#64748b;">ABASTECIMENTOS</div>
+          <div style="font-size:14px; font-weight:bold; color:#1e40af;">${historico.length}</div>
+        </div>
+        <div>
+          <div style="font-size:9px; color:#64748b;">TOTAL GASTO</div>
+          <div style="font-size:14px; font-weight:bold; color:#1e40af;">R$ ${totalGasto.toFixed(2)}</div>
+        </div>
+        <div>
+          <div style="font-size:9px; color:#64748b;">TOTAL LITROS</div>
+          <div style="font-size:14px; font-weight:bold; color:#1e40af;">${totalLitros.toFixed(1)}L</div>
+        </div>
+      </div>
+      <div style="font-size:10px; color:#64748b; margin-bottom:6px; font-weight:bold;">ÚLTIMOS ABASTECIMENTOS:</div>
+    `;
+    
+    historico.forEach((h, i) => {
+      const dataFormatada = new Date(h.timestamp).toLocaleDateString('pt-BR');
+      html += `
+        <div style="font-size:10px; padding:6px; background:white; border-radius:4px; margin-bottom:4px; display:flex; justify-content:space-between;">
+          <span>${dataFormatada} • ${h.posto}</span>
+          <span style="font-weight:bold; color:#1e40af;">${h.litro.toFixed(1)}L • R$ ${h.valor.toFixed(2)}</span>
+        </div>
+      `;
+    });
+    
+    historicoContent.innerHTML = html;
+    historicoDiv.style.display = 'block';
+  }
+  
+  // FUNÇÃO: Buscar histórico de abastecimentos VIP por CPF
+  function buscarHistoricoDiversasPorCPF() {
+    const cpfInput = document.getElementById('diversas-cpf');
+    const cpf = cpfInput.value.replace(/\D/g, '');
+    const historicoDiv = document.getElementById('historico-diversas-cpf');
+    const historicoContent = document.getElementById('historico-diversas-cpf-content');
+    
+    // Só busca se CPF tiver 11 dígitos
+    if (cpf.length !== 11) {
+      historicoDiv.style.display = 'none';
+      return;
+    }
+    
+    // Buscar abastecimentos VIP deste CPF
+    const historico = cache
+      .filter(x => x.cpfBeneficiado && x.cpfBeneficiado.replace(/\D/g, '') === cpf && (x.secretaria === 'DIVERSAS' || x.secretaria === 'VIP' || x.tipoAbastecimento === 'DIVERSAS' || x.tipoAbastecimento === 'VIP'))
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 5); // Últimos 5
+    
+    if (historico.length === 0) {
+      historicoDiv.style.display = 'block';
+      historicoContent.innerHTML = `
+        <div style="font-size:11px; color:#92400e; text-align:center; padding:10px;">
+          🆕 Nenhum abastecimento DIVERSAS anterior encontrado<br>
+          <span style="font-size:10px;">Este é o primeiro registro DIVERSAS deste CPF</span>
+        </div>
+      `;
+      return;
+    }
+    
+    // Mostrar histórico
+    const totalGasto = historico.reduce((acc, h) => acc + h.valor, 0);
+    const totalLitros = historico.reduce((acc, h) => acc + h.litro, 0);
+    
+    let html = `
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; text-align:center;">
+        <div>
+          <div style="font-size:9px; color:#92400e;">ABASTECIMENTOS</div>
+          <div style="font-size:14px; font-weight:bold; color:#92400e;">${historico.length}</div>
+        </div>
+        <div>
+          <div style="font-size:9px; color:#92400e;">TOTAL GASTO</div>
+          <div style="font-size:14px; font-weight:bold; color:#92400e;">R$ ${totalGasto.toFixed(2)}</div>
+        </div>
+        <div>
+          <div style="font-size:9px; color:#92400e;">TOTAL LITROS</div>
+          <div style="font-size:14px; font-weight:bold; color:#92400e;">${totalLitros.toFixed(1)}L</div>
+        </div>
+      </div>
+      <div style="font-size:10px; color:#92400e; margin-bottom:6px; font-weight:bold;">⭐ ÚLTIMOS ABASTECIMENTOS DIVERSAS:</div>
+    `;
+    
+    historico.forEach((h, i) => {
+      const dataFormatada = new Date(h.timestamp).toLocaleDateString('pt-BR');
+      html += `
+        <div style="font-size:10px; padding:6px; background:white; border-radius:4px; margin-bottom:4px; display:flex; justify-content:space-between;">
+          <span>${dataFormatada} • ${h.posto} • ${h.vipNome || "DIVERSAS"}</span>
+          <span style="font-weight:bold; color:#92400e;">${h.litro.toFixed(1)}L • R$ ${h.valor.toFixed(2)}</span>
+        </div>
+      `;
+    });
+    
+    historicoContent.innerHTML = html;
+    historicoDiv.style.display = 'block';
   }
 
   // NOVA FUNÇÃO: Verificar limite em tempo real
@@ -4641,8 +4891,8 @@
     document.getElementById('btn-tab-pendentes').style.display = 
       (temPermissao('autorizar_abastecimento')) ? 'block' : 'none';
     
-    document.getElementById('btn-tab-vip').style.display = 
-      (temPermissao('registrar_abastecimento_vip') || temPermissao('abastecer_vips')) ? 'block' : 'none';
+    document.getElementById('btn-tab-diversas').style.display = 
+      (temPermissao('registrar_abastecimento_diversas') || temPermissao('abastecer_diversas')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-executivo').style.display = 
       (temPermissao('ver_dashboard')) ? 'block' : 'none';
@@ -5054,6 +5304,16 @@
       erros.push("❌ DESTINO OBRIGATÓRIO PARA SECRETÁRIOS");
     }
     
+    // CPF OBRIGATÓRIO APENAS PARA DIVERSAS
+    const isDiversas = dados.secretaria === 'DIVERSAS';
+    if (isDiversas) {
+      if (!dados.cpf || dados.cpf.trim() === "") {
+        erros.push("❌ CPF OBRIGATÓRIO PARA DIVERSAS");
+      } else if (!validarCPF(dados.cpf)) {
+        erros.push("❌ CPF INVÁLIDO - Verifique os números digitados");
+      }
+    }
+    
     if (!dados.data) {
       erros.push("❌ DATA OBRIGATÓRIA");
     }
@@ -5104,6 +5364,7 @@
         placa: document.getElementById('f-placa').value.toUpperCase().trim(),
         posto: document.getElementById('f-posto').value,
         motorista: document.getElementById('f-mot').value.toUpperCase().trim(),
+        cpf: document.getElementById('f-cpf').value.trim(),
         destino: document.getElementById('f-destino').value.toUpperCase().trim(),
         data: document.getElementById('f-data').value,
         tipo: document.getElementById('f-tipo').value,
@@ -5785,6 +6046,9 @@
   // ==================== RENDERIZAÇÃO ====================
   
   function renderizar() {
+    console.log("🎨 RENDERIZAR CHAMADO - User:", loginUser, "Role:", userRole);
+    console.log("📦 Cache tem:", cache.length, "abastecimentos");
+    
     if (!loginUser) return;
     
     // Verificar se usuário pode ver dashboard
@@ -5860,6 +6124,9 @@
       const info = label?.querySelector('.secretario-info');
       if (info) info.remove();
     }
+    
+    // Configurar campo CPF ao carregar (chamar uma vez)
+    controlarVisibilidadeCPF();
     
     if (temPermissao('autorizar_abastecimento')) {
       atualizarPendentes();
@@ -6659,8 +6926,8 @@
     console.log('6. User postos vinculados:', userPostosVinculados);
     
     // Separar abastecimentos VIP e normais
-    const abastVIPs = cacheAtual.filter(x => x.tipoAbastecimento === 'VIP');
-    const abastNormais = cacheAtual.filter(x => !x.tipoAbastecimento || x.tipoAbastecimento !== 'VIP');
+    const abastVIPs = cacheAtual.filter(x => x.tipoAbastecimento === "DIVERSAS");
+    const abastNormais = cacheAtual.filter(x => !x.tipoAbastecimento || x.tipoAbastecimento !== "DIVERSAS");
     
     console.log('7. VIPs encontrados:', abastVIPs.length);
     console.log('8. Normais encontrados:', abastNormais.length);
@@ -6723,7 +6990,7 @@
             }
           </td>
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
-          ${sec === '🌟 VIPs' ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaVIP || 'VIP'}</span></td>` : ''}
+          ${sec === '🌟 VIPs' ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaDiversas || "DIVERSAS"}</span></td>` : ''}
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
           <td>${d.destino || '---'}</td>
@@ -6791,7 +7058,7 @@
                   <th>DATA</th>
                   <th>HORÁRIO</th>
                   <th>PLACA</th>
-                  ${isVIP ? '<th>PESSOA VIP</th>' : ''}
+                  ${isVIP ? '<th>PESSOA DIVERSAS</th>' : ''}
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
                   <th>DESTINO</th>
@@ -7046,6 +7313,28 @@
         btn.textContent = notificacaoSomHabilitado ? '🔊' : '🔇';
         btn.title = notificacaoSomHabilitado ? 'Som ativado' : 'Som desativado';
       }
+    }
+    
+    // Adicionar evento ao campo CPF normal (AVULSOS)
+    const cpfInput = document.getElementById('f-cpf');
+    if (cpfInput) {
+      cpfInput.addEventListener('input', function() {
+        formatarCPF(this);
+        if (typeof buscarHistoricoPorCPF === 'function') {
+          buscarHistoricoPorCPF();
+        }
+      });
+    }
+    
+    // Adicionar evento ao campo CPF VIP
+    const vipCpfInput = document.getElementById('diversas-cpf');
+    if (vipCpfInput) {
+      vipCpfInput.addEventListener('input', function() {
+        formatarCPF(this);
+        if (typeof buscarHistoricoDiversasPorCPF === 'function') {
+          buscarHistoricoDiversasPorCPF();
+        }
+      });
     }
   });
   
@@ -9484,7 +9773,11 @@
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('tab-geral').style.display = 'none';
     document.getElementById('tab-pendentes').style.display = 'none';
-    document.getElementById('tab-vip').style.display = 'none';
+    
+    // Verificar se elemento existe antes de acessar
+    const tabDiversas = document.getElementById('tab-diversas');
+    if (tabDiversas) tabDiversas.style.display = 'none';
+    
     document.getElementById('tab-executivo').style.display = 'none';
     document.getElementById('tab-analytics').style.display = 'none';
     document.getElementById('tab-auditoria').style.display = 'none';
@@ -9497,10 +9790,12 @@
       document.getElementById('tab-pendentes').style.display = 'block';
       document.getElementById('btn-tab-pendentes').classList.add('active');
       atualizarPendentes();
-    } else if (tab === 'vip') {
-      document.getElementById('tab-vip').style.display = 'block';
-      document.getElementById('btn-tab-vip').classList.add('active');
-      inicializarTabVIP();
+    } else if (tab === 'diversas') {
+      if (tabDiversas) {
+        tabDiversas.style.display = 'block';
+        document.getElementById('btn-tab-diversas').classList.add('active');
+        inicializarTabDiversas();
+      }
     } else if (tab === 'executivo') {
       document.getElementById('tab-executivo').style.display = 'block';
       document.getElementById('btn-tab-executivo').classList.add('active');
@@ -9694,6 +9989,7 @@
                 <th>POSTO</th>
                 <th>SECRETARIA</th>
                 <th>MOTORISTA</th>
+                <th>CPF</th>
                 <th>COMBUSTÍVEL</th>
                 <th>KM</th>
                 <th>LITROS</th>
@@ -9715,6 +10011,7 @@
         <td>${r.posto || '---'}</td>
         <td>${r.secretaria}</td>
         <td>${r.motorista}</td>
+        <td>${r.cpf || '---'}</td>
         <td><span class="badge ${r.tipo === 'GASOLINA' ? 'badge-danger' : r.tipo === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${r.tipo}</span></td>
         <td>${r.km.toLocaleString('pt-BR')}</td>
         <td>${r.litro.toFixed(2)} L</td>
@@ -9777,12 +10074,15 @@
   }
   
   db.ref('abastecimentos').on('value', snap => {
+    console.log("🔄 CARREGANDO ABASTECIMENTOS DO FIREBASE...");
     cache = [];
     snap.forEach(item => {
       let v = item.val();
       v.id = item.key;
       cache.push(v);
     });
+    console.log(`✅ ${cache.length} ABASTECIMENTOS CARREGADOS`);
+    console.log("📊 Primeiros 3:", cache.slice(0, 3));
     renderizar();
   });
   
@@ -10891,7 +11191,7 @@
       fecharModalEditPosto();
     }
     if (event.target === modalEditVIP) {
-      fecharModalEditVIP();
+      fecharModalEditDiversas();
     }
     if (event.target === modalHistoricoVeiculo) {
       fecharModalHistoricoVeiculo(false);
@@ -10899,7 +11199,7 @@
   };
   
   // ============================================
-  // FUNÇÕES VIP - PREFEITA E VEREADORES
+  // FUNÇÕES VIP - DIVERSAS FINALIDADES
   // ============================================
   
   let limitesVIPCache = {};
@@ -10907,7 +11207,7 @@
   
   // Carregar postos no select VIP
   function carregarPostosVIP() {
-    const select = document.getElementById('vip-posto');
+    const select = document.getElementById('diversas-posto');
     if (!select) return;
     
     select.innerHTML = '<option value="">SELECIONE...</option>';
@@ -10923,13 +11223,13 @@
   }
   
   // Carregar combustíveis do posto selecionado
-  function carregarCombustiveisVIP() {
-    const postoId = document.getElementById('vip-posto').value;
-    const selectComb = document.getElementById('vip-combustivel');
+  function carregarCombustiveisDiversas() {
+    const postoId = document.getElementById('diversas-posto').value;
+    const selectComb = document.getElementById('diversas-combustivel');
     
     selectComb.innerHTML = '<option value="">SELECIONE...</option>';
-    document.getElementById('vip-preco').value = '';
-    document.getElementById('vip-valor').value = '';
+    document.getElementById('diversas-preco').value = '';
+    document.getElementById('diversas-valor').value = '';
     
     if (!postoId) {
       selectComb.innerHTML = '<option value="">SELECIONE O POSTO PRIMEIRO</option>';
@@ -10946,17 +11246,17 @@
     });
   }
   
-  // Calcular valor do abastecimento VIP
-  function calcularValorVIP() {
-    const selectComb = document.getElementById('vip-combustivel');
-    const litros = parseFloat(document.getElementById('vip-litros').value) || 0;
+  // Calcular valor do abastecimento DIVERSAS
+  function calcularValorDiversas() {
+    const selectComb = document.getElementById('diversas-combustivel');
+    const litros = parseFloat(document.getElementById('diversas-litros').value) || 0;
     
     if (selectComb.selectedIndex > 0) {
       const preco = parseFloat(selectComb.options[selectComb.selectedIndex].getAttribute('data-preco')) || 0;
-      document.getElementById('vip-preco').value = preco.toFixed(2);
+      document.getElementById('diversas-preco').value = preco.toFixed(2);
       
       const valorTotal = litros * preco;
-      document.getElementById('vip-valor').value = 'R$ ' + valorTotal.toFixed(2);
+      document.getElementById('diversas-valor').value = 'R$ ' + valorTotal.toFixed(2);
       
       // Verificar limite
       verificarLimiteVIP(valorTotal);
@@ -10965,7 +11265,7 @@
   
   // Verificar se o abastecimento excede o limite
   async function verificarLimiteVIP(valorTotal) {
-    const pessoaId = document.getElementById('vip-pessoa').value;
+    const pessoaId = document.getElementById('diversas-pessoa').value;
     if (!pessoaId) return;
     
     const alerta = document.getElementById('alerta-limite-vip');
@@ -10993,7 +11293,7 @@
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
     
-    const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(pessoaId).once('value');
+    const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(pessoaId).once('value');
     let gastoMes = 0;
     
     if (gastosSnapshot.exists()) {
@@ -11024,12 +11324,12 @@
   }
   
   // Atualizar informações de limite ao selecionar pessoa
-  async function atualizarLimiteVIP() {
-    await atualizarDashboardVIP();
+  async function atualizarLimiteDiversas() {
+    await atualizarDashboardDiversas();
   }
   
   // Atualizar dashboard de limites VIP
-  async function atualizarDashboardVIP() {
+  async function atualizarDashboardDiversas() {
     const container = document.getElementById('container-limites-vip');
     if (!container) return;
     
@@ -11043,7 +11343,7 @@
     const snapshotVIPs = await db.ref('pessoas_vip').once('value');
     
     if (!snapshotVIPs.exists()) {
-      container.innerHTML = '<p style="text-align:center; color:#64748b;">⭐ Nenhuma pessoa VIP cadastrada. <br>Configure em CONFIGURAÇÕES → Gestão de Pessoas VIP</p>';
+      container.innerHTML = '<p style="text-align:center; color:#64748b;">⭐ Nenhuma pessoa VIP cadastrada. <br>Configure em CONFIGURAÇÕES → Gestão de Pessoas Diversas</p>';
       return;
     }
     
@@ -11060,7 +11360,7 @@
       const limite = pessoa.limite;
       const semLimite = pessoa.semLimite || false;
       
-      // Calcular gasto do mês
+      // Calcular gasto do mês - buscar por pessoaVIP (campo antigo) e pessoaDiversas (novo)
       const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(key).once('value');
       let gastoMes = 0;
       let qtdAbastecimentos = 0;
@@ -11170,27 +11470,28 @@
     container.innerHTML = html;
   }
   
-  // Lançar abastecimento VIP
-  async function lancarAbastecimentoVIP() {
-    if (!temPermissao('registrar_abastecimento_vip') && !temPermissao('abastecer_vips')) {
-      mostrarNotificacao("❌ SEM PERMISSÃO PARA LANÇAR ABASTECIMENTOS VIP!", "error");
+  // Lançar abastecimento DIVERSAS
+  async function lancarAbastecimentoDiversas() {
+    if (!temPermissao('registrar_abastecimento_diversas') && !temPermissao('abastecer_diversas')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA LANÇAR ABASTECIMENTOS DIVERSAS!", "error");
       return;
     }
     
-    const pessoaId = document.getElementById('vip-pessoa').value;
-    const data = document.getElementById('vip-data').value;
-    const placa = document.getElementById('vip-placa').value.toUpperCase().trim();
-    const motorista = document.getElementById('vip-motorista').value.toUpperCase().trim();
-    const postoId = document.getElementById('vip-posto').value;
-    const combustivel = document.getElementById('vip-combustivel').value;
-    const litros = parseFloat(document.getElementById('vip-litros').value);
-    const preco = parseFloat(document.getElementById('vip-preco').value);
-    const km = parseInt(document.getElementById('vip-km').value) || 0; // Opcional para VIP
-    const obs = document.getElementById('vip-obs').value.trim();
+    const pessoaId = document.getElementById('diversas-pessoa').value;
+    const data = document.getElementById('diversas-data').value;
+    const placa = document.getElementById('diversas-placa').value.toUpperCase().trim();
+    const motorista = document.getElementById('diversas-motorista').value.toUpperCase().trim();
+    const cpfBeneficiado = document.getElementById('diversas-cpf').value.trim();
+    const postoId = document.getElementById('diversas-posto').value;
+    const combustivel = document.getElementById('diversas-combustivel').value;
+    const litros = parseFloat(document.getElementById('diversas-litros').value);
+    const preco = parseFloat(document.getElementById('diversas-preco').value);
+    const km = parseInt(document.getElementById('diversas-km').value) || 0; // Opcional para VIP
+    const obs = document.getElementById('diversas-obs').value.trim();
     
     // Validações
     if (!pessoaId) {
-      mostrarNotificacao("❌ SELECIONE A PESSOA VIP!", "error");
+      mostrarNotificacao("❌ SELECIONE A PESSOA DIVERSAS!", "error");
       return;
     }
     if (!data) {
@@ -11203,6 +11504,14 @@
     }
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
+      return;
+    }
+    if (!cpfBeneficiado || cpfBeneficiado === "") {
+      mostrarNotificacao("❌ INFORME O CPF DO BENEFICIADO!", "error");
+      return;
+    }
+    if (!validarCPF(cpfBeneficiado)) {
+      mostrarNotificacao("❌ CPF DO BENEFICIADO INVÁLIDO! Verifique os números digitados.", "error");
       return;
     }
     if (!postoId) {
@@ -11222,7 +11531,7 @@
     const valor = litros * preco;
     
     // NOVO: Mostrar histórico do veículo antes de confirmar
-    const confirmarHistorico = await mostrarHistoricoVeiculo(placa, 'VIP');
+    const confirmarHistorico = await mostrarHistoricoVeiculo(placa, "DIVERSAS");
     if (!confirmarHistorico) {
       return;
     }
@@ -11230,7 +11539,7 @@
     // Buscar dados da pessoa VIP
     const vipSnapshot = await db.ref('pessoas_vip/' + pessoaId).once('value');
     if (!vipSnapshot.exists()) {
-      mostrarNotificacao("❌ PESSOA VIP NÃO ENCONTRADA!", "error");
+      mostrarNotificacao("❌ PESSOA DIVERSAS NÃO ENCONTRADA!", "error");
       return;
     }
     
@@ -11240,14 +11549,19 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO VIP?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
+    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO DIVERSAS?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
       return;
     }
     
     const abastecimento = {
-      pessoaVIP: pessoaId,
-      nomePessoaVIP: pessoa.nome,
-      cargoPessoaVIP: pessoa.cargo,
+      pessoaVIP: pessoaId,  // Campo antigo mantido para compatibilidade
+      pessoaDiversas: pessoaId,  // Campo novo
+      vipNome: pessoa.nome,
+      nomePessoaVIP: pessoa.nome,  // Campo antigo
+      nomePessoaDiversas: pessoa.nome,  // Campo novo
+      cargoPessoaVIP: pessoa.cargo,  // Campo antigo
+      cargoPessoaDiversas: pessoa.cargo,  // Campo novo
+      cpfBeneficiado: cpfBeneficiado,
       data: data,
       placa: placa,
       posto: nomePosto,
@@ -11257,44 +11571,46 @@
       valor: valor,
       km: km,
       motorista: motorista,
-      secretaria: 'VIP - ' + pessoa.cargo,
+      secretaria: 'DIVERSAS',
       observacoes: obs,
       status: STATUS.AUTORIZADO,  // Aprovação automática
       aprovadoPor: loginUser.toUpperCase(),
       aprovadoEm: Date.now(),
       solicitadoPor: loginUser.toUpperCase(),
       timestamp: Date.now(),
-      tipoAbastecimento: 'VIP'
+      tipoAbastecimento: "DIVERSAS"
     };
     
     db.ref('abastecimentos').push(abastecimento)
       .then(() => {
-        registrarAuditoria('ABASTECIMENTO_VIP_LANCADO', {
-          pessoaVIP: pessoa.nome,
+        registrarAuditoria('ABASTECIMENTO_DIVERSAS_LANCADO', {
+          pessoaDiversas: pessoa.nome,
           motorista: motorista,
           placa: placa,
           valor: valor
         });
         
-        mostrarNotificacao("✅ ABASTECIMENTO VIP LANÇADO COM SUCESSO!", "success");
+        mostrarNotificacao("✅ ABASTECIMENTO DIVERSAS LANÇADO COM SUCESSO!", "success");
         
         // Limpar formulário
-        document.getElementById('vip-pessoa').value = '';
-        document.getElementById('vip-data').value = new Date().toISOString().split('T')[0];
-        document.getElementById('vip-placa').value = '';
-        document.getElementById('vip-motorista').value = '';
-        document.getElementById('vip-posto').value = '';
-        document.getElementById('vip-combustivel').innerHTML = '<option value="">SELECIONE O POSTO PRIMEIRO</option>';
-        document.getElementById('vip-litros').value = '';
-        document.getElementById('vip-preco').value = '';
-        document.getElementById('vip-valor').value = '';
-        document.getElementById('vip-km').value = '';
-        document.getElementById('vip-obs').value = '';
+        document.getElementById('diversas-pessoa').value = '';
+        document.getElementById('diversas-data').value = new Date().toISOString().split('T')[0];
+        document.getElementById('diversas-placa').value = '';
+        document.getElementById('diversas-motorista').value = '';
+        document.getElementById('diversas-cpf').value = '';
+        document.getElementById('historico-vip-cpf').style.display = 'none';
+        document.getElementById('diversas-posto').value = '';
+        document.getElementById('diversas-combustivel').innerHTML = '<option value="">SELECIONE O POSTO PRIMEIRO</option>';
+        document.getElementById('diversas-litros').value = '';
+        document.getElementById('diversas-preco').value = '';
+        document.getElementById('diversas-valor').value = '';
+        document.getElementById('diversas-km').value = '';
+        document.getElementById('diversas-obs').value = '';
         document.getElementById('alerta-limite-vip').style.display = 'none';
         
         // Atualizar dashboard e histórico
-        atualizarDashboardVIP();
-        atualizarHistoricoVIP();
+        atualizarDashboardDiversas();
+        atualizarHistoricoDiversas();
       })
       .catch(error => {
         mostrarNotificacao("❌ ERRO AO LANÇAR: " + error.message, "error");
@@ -11302,25 +11618,29 @@
   }
   
   // Atualizar histórico VIP
-  function atualizarHistoricoVIP() {
+  function atualizarHistoricoDiversas() {
     const tbody = document.getElementById('historico-vip-body');
     if (!tbody) return;
     
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">⏳ CARREGANDO...</td></tr>';
     
-    db.ref('abastecimentos').orderByChild('tipoAbastecimento').equalTo('VIP').once('value', snap => {
+    // Buscar TODOS os abastecimentos e filtrar VIP/DIVERSAS manualmente
+    db.ref('abastecimentos').once('value', snap => {
       tbody.innerHTML = '';
       
       if (!snap.exists()) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO VIP REGISTRADO</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO DIVERSAS REGISTRADO</td></tr>';
         return;
       }
       
       let registros = [];
       snap.forEach(c => {
         const abast = c.val();
-        abast.id = c.key;
-        registros.push(abast);
+        // Filtrar VIP ou DIVERSAS (compatibilidade com dados antigos)
+        if (abast.tipoAbastecimento === "VIP" || abast.tipoAbastecimento === "DIVERSAS") {
+          abast.id = c.key;
+          registros.push(abast);
+        }
       });
       
       // Filtrar por posto usando função central
@@ -11341,7 +11661,7 @@
                 : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
               }
             </td>
-            <td><strong>${abast.nomePessoaVIP}</strong><br><small>${abast.cargoPessoaVIP}</small></td>
+            <td><strong>${abast.nomePessoaDiversas || abast.nomePessoaVIP || abast.vipNome || 'N/A'}</strong><br><small>${abast.cargoPessoaDiversas || abast.cargoPessoaVIP || ''}</small></td>
             <td>${abast.placa}</td>
             <td>${abast.posto}</td>
             <td>${abast.tipo}</td>
@@ -11350,7 +11670,7 @@
             <td>${abast.aprovadoPor}</td>
             <td class="no-print">
               ${temPermissao('deletar_abastecimento') ? `
-                <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR ESTE ABASTECIMENTO VIP?')) { db.ref('abastecimentos/${abast.id}').remove().then(() => { mostrarNotificacao('🗑️ EXCLUÍDO!', 'success'); atualizarHistoricoVIP(); atualizarDashboardVIP(); }); }">
+                <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR ESTE ABASTECIMENTO DIVERSAS?')) { db.ref('abastecimentos/${abast.id}').remove().then(() => { mostrarNotificacao('🗑️ EXCLUÍDO!', 'success'); atualizarHistoricoDiversas(); atualizarDashboardDiversas(); }); }">
                   🗑️
                 </button>
               ` : '-'}
@@ -11362,22 +11682,22 @@
   }
   
   // Inicializar tab VIP quando acessada
-  function inicializarTabVIP() {
+  function inicializarTabDiversas() {
     const hoje = new Date().toISOString().split('T')[0];
-    document.getElementById('vip-data').value = hoje;
+    document.getElementById('diversas-data').value = hoje;
     
     carregarPostosVIP();
-    atualizarDropdownsVIP();
-    atualizarDashboardVIP();
-    atualizarHistoricoVIP();
+    atualizarDropdownsDiversas();
+    atualizarDashboardDiversas();
+    atualizarHistoricoDiversas();
   }
   
   // ============================================
-  // GESTÃO DE PESSOAS VIP (CRUD)
+  // GESTÃO DE PESSOAS DIVERSAS (CRUD)
   // ============================================
   
   // Toggle de limite ilimitado
-  function toggleLimiteVIP(tipo) {
+  function toggleLimiteDiversas(tipo) {
     const checkbox = document.getElementById(tipo + '-vip-sem-limite');
     const inputLimite = document.getElementById(tipo + '-vip-limite');
     
@@ -11402,12 +11722,12 @@
     const gestaoVIPs = document.getElementById('gestao-vips');
     if (gestaoVIPs && (loginUser === 'master' || temPermissao('gerenciar_usuarios'))) {
       gestaoVIPs.style.display = 'block';
-      listarVIPs();
+      listarDiversas();
     }
   }
   
   // Listar todas as pessoas VIP
-  async function listarVIPs() {
+  async function listarDiversas() {
     const tbody = document.getElementById('vips-body');
     if (!tbody) return;
     
@@ -11416,7 +11736,7 @@
     const snapshot = await db.ref('pessoas_vip').once('value');
     
     if (!snapshot.exists()) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">⭐ NENHUMA PESSOA VIP CADASTRADA</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">⭐ NENHUMA PESSOA DIVERSAS CADASTRADA</td></tr>';
       return;
     }
     
@@ -11864,7 +12184,7 @@
       const vipId = vip.id;
       
       // Calcular gasto do mês
-      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(vipId).once('value');
+      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(vipId).once('value');
       let gastoMes = 0;
       
       if (gastosSnapshot.exists()) {
@@ -11900,10 +12220,10 @@
           <td><strong style="color:${corSaldo};">R$ ${gastoMes.toFixed(2)}</strong></td>
           <td><strong style="color:var(--success);">${saldoTexto}</strong></td>
           <td class="no-print">
-            <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarVIP('${vipId}')">
+            <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarDiversas('${vipId}')">
               ✏️
             </button>
-            <button class="btn-action btn-deletar" onclick="deletarVIP('${vipId}', '${vip.nome}')">
+            <button class="btn-action btn-deletar" onclick="deletarDiversas('${vipId}', '${vip.nome}')">
               🗑️
             </button>
           </td>
@@ -11913,20 +12233,29 @@
   }
   
   // Adicionar nova pessoa VIP
-  function adicionarVIP() {
+  function adicionarDiversas() {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA GERENCIAR VIPs!", "error");
       return;
     }
     
-    const nome = document.getElementById('novo-vip-nome').value.trim().toUpperCase();
-    const cargo = document.getElementById('novo-vip-cargo').value;
-    const categoria = document.getElementById('novo-vip-categoria').value;
-    const semLimite = document.getElementById('novo-vip-sem-limite').checked;
-    const limite = semLimite ? null : parseFloat(document.getElementById('novo-vip-limite').value);
+    const nome = document.getElementById('novo-diversas-nome').value.trim().toUpperCase();
+    const cpf = document.getElementById('novo-diversas-cpf').value.trim();
+    const cargo = document.getElementById('novo-diversas-cargo').value;
+    const categoria = document.getElementById('novo-diversas-categoria').value;
+    const semLimite = document.getElementById('novo-diversas-sem-limite').checked;
+    const limite = semLimite ? null : parseFloat(document.getElementById('novo-diversas-limite').value);
     
     if (!nome) {
       mostrarNotificacao("❌ INFORME O NOME!", "error");
+      return;
+    }
+    if (!cpf || cpf === "") {
+      mostrarNotificacao("❌ INFORME O CPF!", "error");
+      return;
+    }
+    if (!validarCPF(cpf)) {
+      mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error");
       return;
     }
     if (!cargo) {
@@ -11944,6 +12273,7 @@
     const novaVIP = {
       id: vipId,
       nome: nome,
+      cpf: cpf,
       cargo: cargo,
       categoria: categoria,
       limite: limite,
@@ -11954,22 +12284,23 @@
     
     db.ref('pessoas_vip/' + vipId).set(novaVIP)
       .then(() => {
-        registrarAuditoria('VIP_ADICIONADO', { nome: nome, limite: semLimite ? 'ILIMITADO' : limite });
-        mostrarNotificacao("✅ PESSOA VIP CADASTRADA COM SUCESSO!", "success");
+        registrarAuditoria('DIVERSAS_ADICIONADO', { nome: nome, limite: semLimite ? 'ILIMITADO' : limite });
+        mostrarNotificacao("✅ PESSOA DIVERSAS CADASTRADA COM SUCESSO!", "success");
         
         // Limpar formulário
-        document.getElementById('novo-vip-nome').value = '';
-        document.getElementById('novo-vip-cargo').value = '';
-        document.getElementById('novo-vip-categoria').value = 'executivo';
-        document.getElementById('novo-vip-limite').value = '';
-        document.getElementById('novo-vip-sem-limite').checked = false;
-        toggleLimiteVIP('novo'); // Reset do campo
+        document.getElementById('novo-diversas-nome').value = '';
+        document.getElementById('novo-diversas-cpf').value = '';
+        document.getElementById('novo-diversas-cargo').value = '';
+        document.getElementById('novo-diversas-categoria').value = 'executivo';
+        document.getElementById('novo-diversas-limite').value = '';
+        document.getElementById('novo-diversas-sem-limite').checked = false;
+        toggleLimiteDiversas('novo'); // Reset do campo
         
         // Atualizar lista
-        listarVIPs();
+        listarDiversas();
         
         // Atualizar dropdowns VIP
-        atualizarDropdownsVIP();
+        atualizarDropdownsDiversas();
       })
       .catch(error => {
         mostrarNotificacao("❌ ERRO AO CADASTRAR: " + error.message, "error");
@@ -11977,7 +12308,7 @@
   }
   
   // Editar pessoa VIP
-  function editarVIP(vipId) {
+  function editarDiversas(vipId) {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR VIPs!", "error");
       return;
@@ -11991,36 +12322,46 @@
       
       const vip = snap.val();
       
-      document.getElementById('edit-vip-id').value = vipId;
-      document.getElementById('edit-vip-nome').value = vip.nome;
-      document.getElementById('edit-vip-cargo').value = vip.cargo;
-      document.getElementById('edit-vip-categoria').value = vip.categoria;
-      document.getElementById('edit-vip-limite').value = vip.limite || '';
-      document.getElementById('edit-vip-sem-limite').checked = vip.semLimite || false;
+      document.getElementById('edit-diversas-id').value = vipId;
+      document.getElementById('edit-diversas-nome').value = vip.nome;
+      document.getElementById('edit-diversas-cpf').value = vip.cpf || '';
+      document.getElementById('edit-diversas-cargo').value = vip.cargo;
+      document.getElementById('edit-diversas-categoria').value = vip.categoria;
+      document.getElementById('edit-diversas-limite').value = vip.limite || '';
+      document.getElementById('edit-diversas-sem-limite').checked = vip.semLimite || false;
       
       // Aplicar estado do checkbox
-      toggleLimiteVIP('edit');
+      toggleLimiteDiversas('edit');
       
       document.getElementById('modal-edit-vip').style.display = 'flex';
     });
   }
   
   // Salvar edição de VIP
-  function salvarEdicaoVIP() {
+  function salvarEdicaoDiversas() {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR VIPs!", "error");
       return;
     }
     
-    const vipId = document.getElementById('edit-vip-id').value;
-    const nome = document.getElementById('edit-vip-nome').value.trim().toUpperCase();
-    const cargo = document.getElementById('edit-vip-cargo').value;
-    const categoria = document.getElementById('edit-vip-categoria').value;
-    const semLimite = document.getElementById('edit-vip-sem-limite').checked;
-    const limite = semLimite ? null : parseFloat(document.getElementById('edit-vip-limite').value);
+    const vipId = document.getElementById('edit-diversas-id').value;
+    const nome = document.getElementById('edit-diversas-nome').value.trim().toUpperCase();
+    const cpf = document.getElementById('edit-diversas-cpf').value.trim();
+    const cargo = document.getElementById('edit-diversas-cargo').value;
+    const categoria = document.getElementById('edit-diversas-categoria').value;
+    const semLimite = document.getElementById('edit-diversas-sem-limite').checked;
+    const limite = semLimite ? null : parseFloat(document.getElementById('edit-diversas-limite').value);
     
     if (!nome) {
       mostrarNotificacao("❌ INFORME O NOME!", "error");
+      return;
+    }
+    if (!cpf || cpf === "") {
+      mostrarNotificacao("❌ INFORME O CPF!", "error");
+      return;
+    }
+    if (!validarCPF(cpf)) {
+      mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error");
       return;
     }
     if (!cargo) {
@@ -12034,6 +12375,7 @@
     
     db.ref('pessoas_vip/' + vipId).update({
       nome: nome,
+      cpf: cpf,
       cargo: cargo,
       categoria: categoria,
       limite: limite,
@@ -12042,11 +12384,11 @@
       atualizadoPor: loginUser.toUpperCase()
     })
       .then(() => {
-        registrarAuditoria('VIP_EDITADO', { id: vipId, nome: nome, limite: semLimite ? 'ILIMITADO' : limite });
-        mostrarNotificacao("✅ PESSOA VIP ATUALIZADA!", "success");
-        fecharModalEditVIP();
-        listarVIPs();
-        atualizarDropdownsVIP();
+        registrarAuditoria('DIVERSAS_EDITADO', { id: vipId, nome: nome, limite: semLimite ? 'ILIMITADO' : limite });
+        mostrarNotificacao("✅ PESSOA DIVERSAS ATUALIZADA!", "success");
+        fecharModalEditDiversas();
+        listarDiversas();
+        atualizarDropdownsDiversas();
       })
       .catch(error => {
         mostrarNotificacao("❌ ERRO AO ATUALIZAR: " + error.message, "error");
@@ -12054,7 +12396,7 @@
   }
   
   // Deletar pessoa VIP
-  function deletarVIP(vipId, nome) {
+  function deletarDiversas(vipId, nome) {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA DELETAR VIPs!", "error");
       return;
@@ -12066,10 +12408,10 @@
     
     db.ref('pessoas_vip/' + vipId).remove()
       .then(() => {
-        registrarAuditoria('VIP_DELETADO', { id: vipId, nome: nome });
-        mostrarNotificacao("🗑️ PESSOA VIP EXCLUÍDA!", "success");
-        listarVIPs();
-        atualizarDropdownsVIP();
+        registrarAuditoria('DIVERSAS_DELETADO', { id: vipId, nome: nome });
+        mostrarNotificacao("🗑️ PESSOA DIVERSAS EXCLUÍDA!", "success");
+        listarDiversas();
+        atualizarDropdownsDiversas();
       })
       .catch(error => {
         mostrarNotificacao("❌ ERRO AO EXCLUIR: " + error.message, "error");
@@ -12077,7 +12419,7 @@
   }
   
   // Fechar modal de edição de VIP
-  function fecharModalEditVIP() {
+  function fecharModalEditDiversas() {
     document.getElementById('modal-edit-vip').style.display = 'none';
   }
   
@@ -12218,8 +12560,8 @@
   }
   
   // Atualizar dropdowns de VIP em todo o sistema
-  async function atualizarDropdownsVIP() {
-    const selectVIP = document.getElementById('vip-pessoa');
+  async function atualizarDropdownsDiversas() {
+    const selectVIP = document.getElementById('diversas-pessoa');
     if (!selectVIP) return;
     
     selectVIP.innerHTML = '<option value="">SELECIONE...</option>';
@@ -12236,7 +12578,7 @@
   }
   
   // ============================================
-  // MODAL DE HISTÓRICO DO VEÍCULO (VIP/AVULSO)
+  // MODAL DE HISTÓRICO DO VEÍCULO (DIVERSAS/AVULSO)
   // ============================================
   
   let callbackConfirmarHistorico = null;
@@ -13689,7 +14031,7 @@
       'ABASTECIMENTO_DELETADO': '🗑️',
       'VEICULO_ADICIONADO': '🚗',
       'USUARIO_CRIADO': '👤',
-      'VIP_ADICIONADO': '⭐',
+      'DIVERSAS_ADICIONADO': '⭐',
       'EXPORTACAO_EXCEL': '📥',
       'BACKUP_MANUAL': '💾',
       'BACKUP_AUTOMATICO': '🔄'
@@ -13708,13 +14050,13 @@
     switch (acao) {
       case 'ABASTECIMENTO_REGISTRADO':
         return `Placa: ${dados.placa || 'N/A'} | Valor: R$ ${(dados.valor || 0).toFixed(2)}`;
-      case 'ABASTECIMENTO_VIP_LANCADO':
-        return `VIP: ${dados.pessoaVIP || 'N/A'} | Placa: ${dados.placa || 'N/A'} | Valor: R$ ${(dados.valor || 0).toFixed(2)}`;
+      case 'ABASTECIMENTO_DIVERSAS_LANCADO':
+        return `VIP: ${dados.pessoaDiversas || 'N/A'} | Placa: ${dados.placa || 'N/A'} | Valor: R$ ${(dados.valor || 0).toFixed(2)}`;
       case 'VEICULO_ADICIONADO':
         return `Placa: ${dados.placa || 'N/A'} | Modelo: ${dados.modelo || 'N/A'}`;
       case 'USUARIO_CRIADO':
         return `Usuário: ${dados.usuario || 'N/A'} | Perfil: ${dados.role || 'N/A'}`;
-      case 'VIP_ADICIONADO':
+      case 'DIVERSAS_ADICIONADO':
         return `Nome: ${dados.nome || 'N/A'} | Limite: ${dados.limite === 'ILIMITADO' ? 'ILIMITADO' : 'R$ ' + (dados.limite || 0)}`;
       case 'EXPORTACAO_EXCEL':
         return `Registros exportados: ${dados.registros || 0}`;
