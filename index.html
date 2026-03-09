@@ -3140,7 +3140,7 @@
       </div>
     </div>
     
-    <!-- Formulário de Abastecimento VIP -->
+    <!-- Formulário de Abastecimento DIVERSAS -->
     <div class="card">
       <h3>⛽ NOVO ABASTECIMENTO DIVERSAS</h3>
       <div class="grid-form">
@@ -3243,7 +3243,7 @@
       </button>
     </div>
     
-    <!-- Histórico de Abastecimentos VIP -->
+    <!-- Histórico de Abastecimentos DIVERSAS -->
     <div class="card">
       <h3>📋 HISTÓRICO DE ABASTECIMENTOS DIVERSAS</h3>
       <div class="table-wrapper">
@@ -3525,7 +3525,7 @@
         Configure as pessoas autorizadas a receber abastecimentos diretos (Prefeita, Vereadores, etc)
       </p>
       
-      <!-- Formulário de Novo VIP -->
+      <!-- Formulário de Nova Pessoa DIVERSAS -->
       <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
         <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ ADICIONAR NOVA PESSOA DIVERSAS</h4>
         <div class="grid-form">
@@ -3577,7 +3577,7 @@
         </button>
       </div>
       
-      <!-- Lista de VIPs Cadastrados -->
+      <!-- Lista de Pessoas DIVERSAS Cadastradas -->
       <div style="margin-top: 25px;">
         <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
         <div class="table-wrapper">
@@ -3722,6 +3722,19 @@
         <div>
           <label>MOTORISTA PADRÃO (OPCIONAL)</label>
           <input type="text" id="vei-motorista" placeholder="NOME DO MOTORISTA">
+        </div>
+        <div>
+          <label>CPF DO MOTORISTA (OPCIONAL)</label>
+          <input 
+            type="text" 
+            id="vei-cpf" 
+            placeholder="000.000.000-00" 
+            maxlength="14"
+            oninput="formatarCPF(this)"
+          >
+          <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
+            💡 CPF do motorista padrão deste veículo
+          </div>
         </div>
         <div>
           <label>TIPO DE COMBUSTÍVEL</label>
@@ -3926,6 +3939,7 @@
               <th>MODELO</th>
               <th>SECRETARIA</th>
               <th>MOTORISTA PADRÃO</th>
+              <th>CPF MOTORISTA</th>
               <th>COMBUSTÍVEL</th>
               <th>ANO</th>
               <th class="no-print">AÇÕES</th>
@@ -4025,7 +4039,7 @@
           <option value="ABASTECIMENTO_DELETADO">Abastecimento Deletado</option>
           <option value="VEICULO_ADICIONADO">Veículo Adicionado</option>
           <option value="USUARIO_CRIADO">Usuário Criado</option>
-          <option value="DIVERSAS_ADICIONADO">VIP Adicionado</option>
+          <option value="DIVERSAS_ADICIONADO">Pessoa DIVERSAS Adicionada</option>
           <option value="EXPORTACAO_EXCEL">Exportação Excel</option>
         </select>
       </div>
@@ -4095,7 +4109,7 @@
   };
   
   // PESSOAS DIVERSAS - DIVERSAS FINALIDADES
-  const PESSOAS_VIP = {
+  const PESSOAS_DIVERSAS = {
     'PREFEITA': {
       nome: 'PREFEITA',
       cargo: 'Prefeita Municipal',
@@ -4193,7 +4207,7 @@
     'usar_filtros_relatorio': { nome: 'Usar Filtros de Relatório', descricao: 'Aplicar filtros nos relatórios', categoria: 'visualizacao' },
     'registrar_abastecimento': { nome: 'Registrar Abastecimento', descricao: 'Criar novos registros', categoria: 'operacoes' },
     'registrar_abastecimento_diversas': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
-    'abastecer_diversas': { nome: 'Abastecer VIPs', descricao: 'Registrar abastecimentos de VIPs', categoria: 'operacoes' },
+    'abastecer_diversas': { nome: 'Abastecer DIVERSAS', descricao: 'Registrar abastecimentos DIVERSAS', categoria: 'operacoes' },
     'autorizar_abastecimento': { nome: 'Autorizar Abastecimento', descricao: 'Aprovar/rejeitar solicitações', categoria: 'operacoes' },
     'deletar_abastecimento': { nome: 'Deletar Abastecimento', descricao: 'Excluir registros', categoria: 'operacoes' },
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
@@ -4626,7 +4640,7 @@
       return;
     }
     
-    // Buscar abastecimentos VIP deste CPF
+    // Buscar abastecimentos DIVERSAS deste CPF
     const historico = cache
       .filter(x => x.cpfBeneficiado && x.cpfBeneficiado.replace(/\D/g, '') === cpf && (x.secretaria === 'DIVERSAS' || x.secretaria === 'VIP' || x.tipoAbastecimento === 'DIVERSAS' || x.tipoAbastecimento === 'VIP'))
       .sort((a, b) => b.timestamp - a.timestamp)
@@ -7132,7 +7146,7 @@
     console.log('5. User posto vinculado:', userPostoVinculado);
     console.log('6. User postos vinculados:', userPostosVinculados);
     
-    // Separar abastecimentos VIP e normais
+    // Separar abastecimentos DIVERSAS e normais
     const abastVIPs = cacheAtual.filter(x => x.tipoAbastecimento === "DIVERSAS");
     const abastNormais = cacheAtual.filter(x => !x.tipoAbastecimento || x.tipoAbastecimento !== "DIVERSAS");
     
@@ -7145,9 +7159,9 @@
     
     console.log('11. Secretarias únicas encontradas:', listaSecs);
     
-    // Adicionar "VIPs" como uma categoria se houver abastecimentos VIP
+    // Adicionar "DIVERSAS" como uma categoria se houver abastecimentos DIVERSAS
     if (abastVIPs.length > 0) {
-      listaSecs.push('🌟 VIPs');
+      listaSecs.push('🌟 DIVERSAS');
     }
     
     console.log('12. Lista final (com VIPs):', listaSecs);
@@ -7169,12 +7183,12 @@
     const isFrentista = (userRole === 'frentista');
     
     listaSecs.forEach(sec => {
-      if (!podeVerRelatorio(sec) && sec !== '🌟 VIPs') return;
+      if (!podeVerRelatorio(sec) && sec !== '🌟 DIVERSAS') return;
       
       console.log(`Processando seção: ${sec}`);
       
-      // Se for VIPs, pegar abastecimentos VIP; senão, filtrar por secretaria
-      const itens = (sec === '🌟 VIPs') 
+      // Se for DIVERSAS, pegar abastecimentos VIP; senão, filtrar por secretaria
+      const itens = (sec === '🌟 DIVERSAS') 
         ? abastVIPs.filter(x => x.status !== STATUS.REJEITADO).sort((a, b) => b.timestamp - a.timestamp)
         : abastNormais.filter(x => x.secretaria === sec && x.status !== STATUS.REJEITADO).sort((a, b) => b.timestamp - a.timestamp);
       
@@ -7205,7 +7219,7 @@
             }
           </td>
           <td><b>${d.placa}</b> ${d.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
-          ${sec === '🌟 VIPs' ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaDiversas || "DIVERSAS"}</span></td>` : ''}
+          ${sec === '🌟 DIVERSAS' ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaDiversas || "DIVERSAS"}</span></td>` : ''}
           <td>${d.posto || '---'}</td>
           <td>${d.motorista}</td>
           <td>${d.destino || '---'}</td>
@@ -7256,8 +7270,8 @@
         : `${sec} | 💰 R$ ${totalSec.toFixed(2)} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`;
       
       // Estilo especial para VIPs
-      const isVIP = sec === '🌟 VIPs';
-      const headerStyle = isVIP 
+      const isDiversas = sec === '🌟 DIVERSAS';
+      const headerStyle = isDiversas 
         ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-weight: bold;' 
         : '';
       
@@ -7274,7 +7288,7 @@
                   <th>DATA</th>
                   <th>HORÁRIO</th>
                   <th>PLACA</th>
-                  ${isVIP ? '<th>PESSOA DIVERSAS</th>' : ''}
+                  ${isDiversas ? '<th>PESSOA DIVERSAS</th>' : ''}
                   <th>POSTO</th>
                   <th>MOTORISTA</th>
                   <th>DESTINO</th>
@@ -10080,11 +10094,18 @@
       document.getElementById('f-mot').value = veiculo.motorista || '';
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
       
+      // Preencher CPF se existir
+      const cpfField = document.getElementById('f-cpf');
+      if (cpfField && veiculo.cpfMotorista) {
+        cpfField.value = veiculo.cpfMotorista;
+      }
+      
       // Mostrar notificação de sucesso
       mostrarAutoCompleteNotif(`
         ✅ <strong>VEÍCULO ENCONTRADO!</strong><br>
         🚗 <strong>${veiculo.modelo || 'Modelo não cadastrado'}</strong><br>
         👤 Motorista: ${veiculo.motorista || '---'}<br>
+        ${veiculo.cpfMotorista ? '🆔 CPF: ' + veiculo.cpfMotorista + '<br>' : ''}
         ⛽ Combustível: ${veiculo.combustivel || '---'}<br>
         📅 Ano: ${veiculo.ano || '---'}
       `, 'success');
@@ -11013,12 +11034,21 @@
     const modelo = document.getElementById('vei-modelo').value.toUpperCase().trim();
     const secretaria = document.getElementById('vei-sec').value;
     const motorista = document.getElementById('vei-motorista').value.toUpperCase().trim();
+    const cpfMotorista = document.getElementById('vei-cpf').value.trim();
     const combustivel = document.getElementById('vei-combustivel').value;
     const ano = document.getElementById('vei-ano').value;
     
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ PLACA INVÁLIDA!", "error");
       return;
+    }
+    
+    // Validar CPF se foi preenchido
+    if (cpfMotorista && cpfMotorista !== "") {
+      if (!validarCPF(cpfMotorista)) {
+        mostrarNotificacao("❌ CPF DO MOTORISTA INVÁLIDO! Verifique os números.", "error");
+        return;
+      }
     }
     
     const veiculoRef = db.ref('veiculos').push();
@@ -11029,6 +11059,7 @@
       // REMOVIDO: secretaria (veículo não tem secretaria fixa)
       // A secretaria é definida em cada abastecimento
       motorista: motorista,
+      cpfMotorista: cpfMotorista,
       combustivel: combustivel,
       ano: ano,
       cadastradoEm: Date.now()
@@ -11042,6 +11073,7 @@
       document.getElementById('vei-modelo').value = '';
       document.getElementById('vei-sec').value = '';
       document.getElementById('vei-motorista').value = '';
+      document.getElementById('vei-cpf').value = '';
       document.getElementById('vei-combustivel').value = 'GASOLINA';
       document.getElementById('vei-ano').value = '';
       listVeiculos();
@@ -11331,7 +11363,7 @@
       const tbody = document.getElementById('veiculos-body');
       tbody.innerHTML = "";
       if (!snap.exists()) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO CADASTRADO</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO CADASTRADO</td></tr>';
         return;
       }
       snap.forEach(c => {
@@ -11342,6 +11374,7 @@
             <td>${v.modelo || '---'}</td>
             <td>${v.secretaria || 'COMPARTILHADO'}</td>
             <td>${v.motorista || 'VÁRIOS'}</td>
+            <td style="font-size: 11px;">${v.cpfMotorista || '---'}</td>
             <td><span class="badge ${v.combustivel === 'GASOLINA' ? 'badge-danger' : v.combustivel === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${v.combustivel || '---'}</span></td>
             <td>${v.ano || '---'}</td>
             <td class="no-print">
