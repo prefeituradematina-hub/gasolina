@@ -2253,6 +2253,33 @@
           transform: translateX(100px);
       }
   }
+  
+  /* Animações para alertas colapsáveis */
+  @keyframes slideDown {
+      from {
+          opacity: 0;
+          max-height: 0;
+          transform: translateY(-10px);
+      }
+      to {
+          opacity: 1;
+          max-height: 1000px;
+          transform: translateY(0);
+      }
+  }
+  
+  @keyframes slideUp {
+      from {
+          opacity: 1;
+          max-height: 1000px;
+          transform: translateY(0);
+      }
+      to {
+          opacity: 0;
+          max-height: 0;
+          transform: translateY(-10px);
+      }
+  }
 </style>
 
 <!-- Modal para Edição de Usuários -->
@@ -3087,6 +3114,24 @@
       </p>
     </div>
     
+    <!-- BUSCA RÁPIDA DE VEÍCULO (PARA DIVERSAS) -->
+    <div class="card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
+      <label style="font-weight: bold; color: #92400e; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+        🔍 BUSCA RÁPIDA DE VEÍCULO
+      </label>
+      <input 
+        type="text" 
+        id="busca-veiculo-diversas" 
+        placeholder="Digite MODELO, MOTORISTA ou PLACA do veículo..." 
+        style="width: 100%; padding: 12px; border: 2px solid #f59e0b; border-radius: 8px; font-size: 14px; text-transform: uppercase;"
+        oninput="buscarVeiculoDiversas(this.value)"
+      >
+      <div id="resultados-busca-diversas" style="margin-top: 10px; display: none;"></div>
+      <div style="font-size: 11px; color: #92400e; margin-top: 8px;">
+        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+      </div>
+    </div>
+    
     <!-- Dashboard de Limites DIVERSAS -->
     <div class="card" id="dashboard-diversas">
       <h3>💰 LIMITES MENSAIS - PESSOAS DIVERSAS</h3>
@@ -3230,6 +3275,24 @@
   </div>
   
   <div id="tab-pendentes" style="display:none;">
+    <!-- BUSCA RÁPIDA DE VEÍCULO (PARA AUTORIZADORES) -->
+    <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; margin-bottom: 20px;">
+      <label style="font-weight: bold; color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+        🔍 BUSCA RÁPIDA DE VEÍCULO
+      </label>
+      <input 
+        type="text" 
+        id="busca-veiculo-autorizador" 
+        placeholder="Digite MODELO, MOTORISTA ou PLACA do veículo..." 
+        style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px; text-transform: uppercase;"
+        oninput="buscarVeiculoAutorizador(this.value)"
+      >
+      <div id="resultados-busca-autorizador" style="margin-top: 10px; display: none;"></div>
+      <div style="font-size: 11px; color: #64748b; margin-top: 8px;">
+        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+      </div>
+    </div>
+    
     <!-- Dashboard do Autorizador -->
     <div id="dashboard-autorizador" style="display:none;">
       <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
@@ -4972,7 +5035,20 @@
       (temPermissao('autorizar_abastecimento')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-diversas').style.display = 
-      (temPermissao('registrar_abastecimento_diversas') || temPermissao('abastecer_diversas')) ? 'block' : 'none';
+      (userRole === 'autorizador' || 
+       userRole === 'admin' || 
+       loginUser === 'master' ||
+       temPermissao('registrar_abastecimento_diversas') || 
+       temPermissao('abastecer_diversas')) ? 'block' : 'none';
+    
+    console.log('🔍 DEBUG DIVERSAS:', {
+      role: userRole,
+      loginUser: loginUser,
+      temRegistrarDiversas: temPermissao('registrar_abastecimento_diversas'),
+      temAbastecerDiversas: temPermissao('abastecer_diversas'),
+      permissoes: userPermissions,
+      displayDiversas: document.getElementById('btn-tab-diversas').style.display
+    });
     
     document.getElementById('btn-tab-executivo').style.display = 
       (temPermissao('ver_dashboard')) ? 'block' : 'none';
@@ -6355,8 +6431,31 @@
     });
     
     if (alertasMediaBaixa.length > 0) {
+      const alertaId = 'alerta-eficiencia-' + Date.now();
       alertasHtml += '<div class="alert-box danger">';
-      alertasHtml += '<h4 style="margin:0 0 10px 0; font-size:14px;">🚨 ALERTAS DE EFICIÊNCIA BAIXA</h4>';
+      alertasHtml += `
+        <div 
+          style="
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 6px;
+            transition: background 0.2s;
+          " 
+          onclick="toggleAlerta('${alertaId}')"
+          onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+          onmouseout="this.style.background='transparent'"
+        >
+          <h4 style="margin:0; font-size:14px;">
+            🚨 ALERTAS DE EFICIÊNCIA BAIXA (${alertasMediaBaixa.length})
+            <span style="font-size:11px; color:#fee2e2; margin-left:8px;">clique para expandir/recolher</span>
+          </h4>
+          <span id="${alertaId}-icon" style="font-size: 20px; transition: transform 0.3s; user-select: none;">▶</span>
+        </div>
+      `;
+      alertasHtml += `<div id="${alertaId}" style="margin-top: 10px; display: none;">`;
       alertasMediaBaixa.forEach(alerta => {
         alertasHtml += `
           <div style="margin-bottom:8px; padding:10px; background:white; border-radius:6px; border-left:4px solid var(--danger);">
@@ -6368,7 +6467,8 @@
           </div>
         `;
       });
-      alertasHtml += '</div>';
+      alertasHtml += '</div>'; // Fecha div do conteúdo
+      alertasHtml += '</div>'; // Fecha alert-box
     }
     
     // Alerta de limite de secretaria
@@ -6399,6 +6499,33 @@
     }
     
     alertasContainer.innerHTML = alertasHtml;
+  }
+  
+  function toggleAlerta(alertaId) {
+    const conteudo = document.getElementById(alertaId);
+    const icone = document.getElementById(alertaId + '-icon');
+    
+    if (!conteudo) return;
+    
+    if (conteudo.style.display === 'none') {
+      // Expandir
+      conteudo.style.display = 'block';
+      icone.textContent = '▼';
+      icone.style.transform = 'rotate(0deg)';
+      
+      // Animação de entrada
+      conteudo.style.animation = 'slideDown 0.3s ease-out';
+    } else {
+      // Recolher
+      conteudo.style.animation = 'slideUp 0.3s ease-out';
+      
+      setTimeout(() => {
+        conteudo.style.display = 'none';
+      }, 250);
+      
+      icone.textContent = '▶';
+      icone.style.transform = 'rotate(0deg)';
+    }
   }
   
   function analisarVeiculo(placa) {
@@ -10190,7 +10317,374 @@
     document.getElementById('f-placa').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
   
+  // ==================== BUSCA DE VEÍCULO PARA AUTORIZADORES ====================
+  
+  function buscarVeiculoAutorizador(termo) {
+    const resultadosDiv = document.getElementById('resultados-busca-autorizador');
+    
+    if (!termo || termo.trim().length < 2) {
+      resultadosDiv.style.display = 'none';
+      return;
+    }
+    
+    const termoUpper = termo.toUpperCase().trim();
+    const resultados = [];
+    
+    // 1. Buscar em veículos cadastrados
+    veiculos.forEach(v => {
+      const motoristaMatch = (v.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (v.placa || '').toUpperCase().includes(termoUpper);
+      const modeloMatch = (v.modelo || '').toUpperCase().includes(termoUpper);
+      
+      if (motoristaMatch || placaMatch || modeloMatch) {
+        resultados.push({
+          tipo: 'veiculo',
+          placa: v.placa,
+          motorista: v.motorista || 'SEM MOTORISTA',
+          modelo: v.modelo || 'SEM MODELO',
+          combustivel: v.combustivel || '---',
+          ano: v.ano || '---',
+          origem: 'Cadastro'
+        });
+      }
+    });
+    
+    // 2. Buscar em histórico de abastecimentos (últimos 100)
+    const historicoRecente = cache
+      .filter(x => x.status === STATUS.AUTORIZADO)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 100);
+    
+    // Agrupar por placa para pegar o mais recente de cada
+    const porPlaca = {};
+    historicoRecente.forEach(h => {
+      const motoristaMatch = (h.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (h.placa || '').toUpperCase().includes(termoUpper);
+      
+      if ((motoristaMatch || placaMatch) && !porPlaca[h.placa]) {
+        // Verificar se já não está nos veículos cadastrados
+        const jaTemCadastrado = resultados.find(r => r.placa === h.placa);
+        if (!jaTemCadastrado) {
+          porPlaca[h.placa] = {
+            tipo: 'historico',
+            placa: h.placa,
+            motorista: h.motorista || 'SEM MOTORISTA',
+            modelo: '---',
+            combustivel: h.tipo || '---',
+            ano: '---',
+            origem: 'Histórico',
+            data: new Date(h.timestamp).toLocaleDateString('pt-BR')
+          };
+        }
+      }
+    });
+    
+    // Adicionar resultados do histórico
+    Object.values(porPlaca).forEach(r => resultados.push(r));
+    
+    // Limitar a 10 resultados
+    const resultadosLimitados = resultados.slice(0, 10);
+    
+    // Mostrar resultados
+    if (resultadosLimitados.length === 0) {
+      resultadosDiv.innerHTML = `
+        <div style="padding: 10px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-size: 12px;">
+          ❌ Nenhum resultado encontrado para "<strong>${termo}</strong>"
+        </div>
+      `;
+      resultadosDiv.style.display = 'block';
+      return;
+    }
+    
+    let html = `
+      <div style="background: white; border: 2px solid #3b82f6; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+        <div style="padding: 10px; background: #3b82f6; color: white; font-weight: bold; font-size: 12px; position: sticky; top: 0;">
+          ✅ ${resultadosLimitados.length} resultado(s) encontrado(s)
+        </div>
+    `;
+    
+    resultadosLimitados.forEach((r, i) => {
+      const origem = r.tipo === 'veiculo' 
+        ? '<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📋 CADASTRADO</span>'
+        : `<span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📊 HISTÓRICO (${r.data})</span>`;
+      
+      html += `
+        <div 
+          style="
+            padding: 12px; 
+            border-bottom: 1px solid #e5e7eb; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            gap: 10px;
+            align-items: center;
+          "
+          onmouseover="this.style.background='#f0f9ff'"
+          onmouseout="this.style.background='white'"
+          onclick="mostrarInfoVeiculo('${r.placa}')"
+        >
+          <div style="font-weight: bold; color: #1e40af; font-size: 14px;">
+            🚗 ${r.placa}
+          </div>
+          <div style="font-size: 12px;">
+            <div style="font-weight: bold; color: #374151;">👤 ${r.motorista}</div>
+            <div style="color: #6b7280; margin-top: 2px;">
+              ${r.modelo !== '---' && r.modelo !== 'SEM MODELO' ? '🚘 <strong>' + r.modelo + '</strong>' : ''} 
+              ${r.ano !== '---' ? '(' + r.ano + ')' : ''}
+              ${r.combustivel !== '---' ? ' • ⛽ ' + r.combustivel : ''}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            ${origem}
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+    
+    resultadosDiv.innerHTML = html;
+    resultadosDiv.style.display = 'block';
+  }
+  
+  function mostrarInfoVeiculo(placa) {
+    // Limpar busca
+    document.getElementById('busca-veiculo-autorizador').value = '';
+    document.getElementById('resultados-busca-autorizador').style.display = 'none';
+    
+    // Buscar dados do veículo
+    const veiculo = veiculos.find(v => v.placa === placa);
+    const ultimoAbast = cache
+      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    
+    let info = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                  background: white; padding: 25px; border-radius: 12px; 
+                  box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; max-width: 500px; width: 90%;">
+        <h3 style="margin: 0 0 20px 0; color: #1e40af; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">
+          🚗 INFORMAÇÕES DO VEÍCULO
+        </h3>
+        <div style="font-size: 14px; line-height: 1.8;">
+          <div style="margin-bottom: 15px;">
+            <strong style="color: #1e40af;">📋 PLACA:</strong> <span style="font-size: 18px; font-weight: bold;">${placa}</span>
+          </div>
+    `;
+    
+    if (veiculo) {
+      info += `
+        <div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #10b981;">
+          <div style="font-weight: bold; color: #065f46; margin-bottom: 8px;">📋 CADASTRADO NO SISTEMA</div>
+          <div><strong>🚘 Modelo:</strong> ${veiculo.modelo || '---'}</div>
+          <div><strong>👤 Motorista:</strong> ${veiculo.motorista || '---'}</div>
+          <div><strong>⛽ Combustível:</strong> ${veiculo.combustivel || '---'}</div>
+          <div><strong>📅 Ano:</strong> ${veiculo.ano || '---'}</div>
+        </div>
+      `;
+    }
+    
+    if (ultimoAbast) {
+      const dataUltimo = new Date(ultimoAbast.timestamp).toLocaleDateString('pt-BR');
+      const kmUltimo = ultimoAbast.km ? ultimoAbast.km.toLocaleString('pt-BR') : '---';
+      
+      info += `
+        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+          <div style="font-weight: bold; color: #92400e; margin-bottom: 8px;">📊 ÚLTIMO ABASTECIMENTO</div>
+          <div><strong>📅 Data:</strong> ${dataUltimo}</div>
+          <div><strong>👤 Motorista:</strong> ${ultimoAbast.motorista}</div>
+          <div><strong>🏪 Posto:</strong> ${ultimoAbast.posto}</div>
+          <div><strong>⛽ Combustível:</strong> ${ultimoAbast.tipo}</div>
+          <div><strong>🛣️ KM:</strong> ${kmUltimo}</div>
+          <div><strong>💰 Valor:</strong> R$ ${ultimoAbast.valor.toFixed(2)}</div>
+        </div>
+      `;
+    }
+    
+    info += `
+        </div>
+        <button 
+          onclick="document.getElementById('modal-info-veiculo').remove()" 
+          style="width: 100%; margin-top: 20px; padding: 12px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+                 color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;"
+        >
+          ✅ FECHAR
+        </button>
+      </div>
+      <div onclick="document.getElementById('modal-info-veiculo').remove()" 
+           style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                  background: rgba(0,0,0,0.5); z-index: 9999;">
+      </div>
+    `;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-info-veiculo';
+    modal.innerHTML = info;
+    document.body.appendChild(modal);
+  }
+  
   // ==================== FIM BUSCA POR NOME ====================
+  
+  // ==================== BUSCA DE VEÍCULO PARA DIVERSAS ====================
+  
+  function buscarVeiculoDiversas(termo) {
+    const resultadosDiv = document.getElementById('resultados-busca-diversas');
+    
+    if (!termo || termo.trim().length < 2) {
+      resultadosDiv.style.display = 'none';
+      return;
+    }
+    
+    const termoUpper = termo.toUpperCase().trim();
+    const resultados = [];
+    
+    // Buscar em veículos cadastrados
+    veiculos.forEach(v => {
+      const motoristaMatch = (v.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (v.placa || '').toUpperCase().includes(termoUpper);
+      const modeloMatch = (v.modelo || '').toUpperCase().includes(termoUpper);
+      
+      if (motoristaMatch || placaMatch || modeloMatch) {
+        resultados.push({
+          tipo: 'veiculo',
+          placa: v.placa,
+          motorista: v.motorista || 'SEM MOTORISTA',
+          modelo: v.modelo || 'SEM MODELO',
+          combustivel: v.combustivel || '---',
+          ano: v.ano || '---'
+        });
+      }
+    });
+    
+    // Buscar em histórico recente
+    const historicoRecente = cache
+      .filter(x => x.status === STATUS.AUTORIZADO)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 100);
+    
+    const porPlaca = {};
+    historicoRecente.forEach(h => {
+      const motoristaMatch = (h.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (h.placa || '').toUpperCase().includes(termoUpper);
+      
+      if ((motoristaMatch || placaMatch) && !porPlaca[h.placa]) {
+        const jaTemCadastrado = resultados.find(r => r.placa === h.placa);
+        if (!jaTemCadastrado) {
+          porPlaca[h.placa] = {
+            tipo: 'historico',
+            placa: h.placa,
+            motorista: h.motorista || 'SEM MOTORISTA',
+            modelo: '---',
+            combustivel: h.tipo || '---',
+            ano: '---',
+            data: new Date(h.timestamp).toLocaleDateString('pt-BR')
+          };
+        }
+      }
+    });
+    
+    Object.values(porPlaca).forEach(r => resultados.push(r));
+    const resultadosLimitados = resultados.slice(0, 10);
+    
+    if (resultadosLimitados.length === 0) {
+      resultadosDiv.innerHTML = `
+        <div style="padding: 10px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-size: 12px;">
+          ❌ Nenhum resultado encontrado para "<strong>${termo}</strong>"
+        </div>
+      `;
+      resultadosDiv.style.display = 'block';
+      return;
+    }
+    
+    let html = `
+      <div style="background: white; border: 2px solid #f59e0b; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+        <div style="padding: 10px; background: #f59e0b; color: white; font-weight: bold; font-size: 12px; position: sticky; top: 0;">
+          ✅ ${resultadosLimitados.length} resultado(s) encontrado(s)
+        </div>
+    `;
+    
+    resultadosLimitados.forEach((r, i) => {
+      const origem = r.tipo === 'veiculo' 
+        ? '<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📋 CADASTRADO</span>'
+        : `<span style="background:#3b82f6;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📊 HISTÓRICO (${r.data})</span>`;
+      
+      html += `
+        <div 
+          style="
+            padding: 12px; 
+            border-bottom: 1px solid #e5e7eb; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            gap: 10px;
+            align-items: center;
+          "
+          onmouseover="this.style.background='#fef3c7'"
+          onmouseout="this.style.background='white'"
+          onclick="preencherPlacaDiversas('${r.placa}')"
+        >
+          <div style="font-weight: bold; color: #92400e; font-size: 14px;">
+            🚗 ${r.placa}
+          </div>
+          <div style="font-size: 12px;">
+            <div style="font-weight: bold; color: #374151;">👤 ${r.motorista}</div>
+            <div style="color: #6b7280; margin-top: 2px;">
+              ${r.modelo !== '---' && r.modelo !== 'SEM MODELO' ? '🚘 <strong>' + r.modelo + '</strong>' : ''} 
+              ${r.ano !== '---' ? '(' + r.ano + ')' : ''}
+              ${r.combustivel !== '---' ? ' • ⛽ ' + r.combustivel : ''}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            ${origem}
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+    
+    resultadosDiv.innerHTML = html;
+    resultadosDiv.style.display = 'block';
+  }
+  
+  function preencherPlacaDiversas(placa) {
+    // Preencher campo de placa DIVERSAS
+    document.getElementById('diversas-placa').value = placa;
+    
+    // Limpar busca
+    document.getElementById('busca-veiculo-diversas').value = '';
+    document.getElementById('resultados-busca-diversas').style.display = 'none';
+    
+    // Buscar dados do veículo para preencher motorista
+    const veiculo = veiculos.find(v => v.placa === placa);
+    if (veiculo) {
+      document.getElementById('diversas-motorista').value = veiculo.motorista || '';
+      document.getElementById('diversas-combustivel').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
+      
+      // Mostrar notificação
+      mostrarNotificacao(`✅ Veículo ${veiculo.modelo || placa} selecionado!`, "success");
+    } else {
+      // Buscar do histórico
+      const ultimoAbast = cache
+        .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
+        .sort((a, b) => b.timestamp - a.timestamp)[0];
+      
+      if (ultimoAbast) {
+        document.getElementById('diversas-motorista').value = ultimoAbast.motorista || '';
+        document.getElementById('diversas-combustivel').value = ultimoAbast.tipo || '';
+        mostrarNotificacao(`📋 Dados do último abastecimento carregados!`, "info");
+      }
+    }
+    
+    // Calcular valor se já tiver combustível e litros
+    calcularValorDiversas();
+    
+    // Scroll até o formulário
+    document.getElementById('diversas-placa').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  
+  // ==================== FIM BUSCA DIVERSAS ====================
   
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
