@@ -9965,95 +9965,121 @@
     
     if (!termo || termo.length < 2) {
       resultadoDiv.style.display = 'none';
-      // Mostrar todos os relatórios
-      document.querySelectorAll('.relatorio-section').forEach(section => {
-        section.style.display = 'block';
-      });
-      document.querySelectorAll('.abastecimento-linha').forEach(linha => {
-        linha.style.display = '';
-      });
       return;
     }
     
     // Normalizar termo (remover pontos, traços)
     const termoLimpo = termo.replace(/[.\-\/\s]/g, '');
     
-    let encontrados = 0;
-    let secoesMostradas = new Set();
-    
-    // Buscar em todas as linhas de abastecimento
-    document.querySelectorAll('.abastecimento-linha').forEach(linha => {
-      const placa = (linha.dataset.placa || '').toUpperCase();
-      const motorista = (linha.dataset.motorista || '').toUpperCase();
-      const cpf = (linha.dataset.cpf || '').replace(/[.\-\/\s]/g, '');
-      const posto = (linha.dataset.posto || '').toUpperCase();
-      const vipNome = (linha.dataset.vipnome || '').toUpperCase();
-      const secretaria = (linha.dataset.secretaria || '').toUpperCase();
+    // Buscar no cache direto
+    const resultados = cache.filter(x => {
+      if (x.status === STATUS.REJEITADO) return false;
       
-      // Busca parcial em todos os campos
-      const match = 
-        placa.includes(termo) ||
-        motorista.includes(termo) ||
-        cpf.includes(termoLimpo) ||
-        posto.includes(termo) ||
-        vipNome.includes(termo) ||
-        secretaria.includes(termo);
+      const placa = (x.placa || '').toUpperCase();
+      const motorista = (x.motorista || '').toUpperCase();
+      const cpf = (x.cpf || x.cpfBeneficiado || '').replace(/[.\-\/\s]/g, '');
+      const posto = (x.posto || '').toUpperCase();
+      const vipNome = (x.nomeVIP || x.pessoaDiversas || '').toUpperCase();
+      const secretaria = (x.secretaria || '').toUpperCase();
       
-      if (match) {
-        linha.style.display = '';
-        linha.style.background = '#fff7ed'; // Destacar resultado
-        linha.style.borderLeft = '4px solid #f59e0b';
-        encontrados++;
-        
-        // Marcar seção como visível
-        const section = linha.closest('.relatorio-section');
-        if (section) {
-          secoesMostradas.add(section);
-        }
-      } else {
-        linha.style.display = 'none';
-      }
-    });
-    
-    // Mostrar/ocultar seções baseado nos resultados
-    document.querySelectorAll('.relatorio-section').forEach(section => {
-      if (secoesMostradas.has(section)) {
-        section.style.display = 'block';
-      } else {
-        section.style.display = 'none';
-      }
-    });
+      return placa.includes(termo) ||
+             motorista.includes(termo) ||
+             cpf.includes(termoLimpo) ||
+             posto.includes(termo) ||
+             vipNome.includes(termo) ||
+             secretaria.includes(termo);
+    }).sort((a, b) => b.timestamp - a.timestamp); // Mais recentes primeiro
     
     // Mostrar resultado
     resultadoDiv.style.display = 'block';
-    if (encontrados > 0) {
+    
+    if (resultados.length === 0) {
       resultadoTexto.innerHTML = `
-        ✅ <strong>${encontrados}</strong> abastecimento(s) encontrado(s) para <strong>"${termo}"</strong>
+        <div style="text-align:center; padding:20px; color:#dc2626;">
+          ❌ Nenhum resultado encontrado para <strong>"${termo}"</strong>
+        </div>
       `;
-      resultadoTexto.style.color = '#15803d';
-    } else {
-      resultadoTexto.innerHTML = `
-        ❌ Nenhum resultado encontrado para <strong>"${termo}"</strong>
-      `;
-      resultadoTexto.style.color = '#dc2626';
+      return;
     }
+    
+    // Construir tabela de resultados
+    let html = `
+      <div style="margin-bottom: 15px; padding: 10px; background: #d1fae5; border-radius: 6px; border-left: 4px solid #10b981;">
+        <strong style="color: #065f46;">✅ ${resultados.length} abastecimento(s) encontrado(s) para "${termo}"</strong>
+      </div>
+      <div style="max-height: 500px; overflow-y: auto; border: 2px solid #e5e7eb; border-radius: 8px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 10;">
+            <tr style="border-bottom: 2px solid #d1d5db;">
+              <th style="padding: 10px; text-align: left;">DATA</th>
+              <th style="padding: 10px; text-align: left;">PLACA</th>
+              <th style="padding: 10px; text-align: left;">MOTORISTA</th>
+              <th style="padding: 10px; text-align: left;">SECRETARIA</th>
+              <th style="padding: 10px; text-align: left;">POSTO</th>
+              <th style="padding: 10px; text-align: left;">COMBUSTÍVEL</th>
+              <th style="padding: 10px; text-align: right;">LITROS</th>
+              <th style="padding: 10px; text-align: right;">VALOR</th>
+              <th style="padding: 10px; text-align: center;">STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    resultados.forEach((r, index) => {
+      const dataFormatada = r.data ? r.data.split('-').reverse().join('/') : '---';
+      const valorFormatado = r.valor ? 'R$ ' + r.valor.toFixed(2) : '---';
+      const litrosFormatado = r.litro ? r.litro.toFixed(2) + 'L' : '---';
+      
+      // Cor de fundo alternada
+      const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+      
+      // Badge de status
+      let statusBadge = '';
+      if (r.status === STATUS.AUTORIZADO) {
+        statusBadge = '<span style="background:#10b981;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">✅ AUTORIZADO</span>';
+      } else if (r.status === STATUS.AGUARDANDO) {
+        statusBadge = '<span style="background:#f59e0b;color:white;padding:3px 8px;border-radius:4px;font-size:10px;">⏳ PENDENTE</span>';
+      }
+      
+      // Destacar campo que deu match
+      const destacarCampo = (valor, campo) => {
+        const valorUpper = (valor || '').toUpperCase();
+        if (valorUpper.includes(termo)) {
+          return `<strong style="background:#fef3c7; padding:2px 4px; border-radius:3px;">${valor}</strong>`;
+        }
+        return valor || '---';
+      };
+      
+      html += `
+        <tr style="background:${bgColor}; border-bottom:1px solid #e5e7eb;">
+          <td style="padding: 8px;">${dataFormatada}</td>
+          <td style="padding: 8px;">${destacarCampo(r.placa, 'placa')}</td>
+          <td style="padding: 8px;">${destacarCampo(r.motorista, 'motorista')}</td>
+          <td style="padding: 8px; font-size:11px;">${destacarCampo(r.secretaria, 'secretaria')}</td>
+          <td style="padding: 8px;">${destacarCampo(r.posto, 'posto')}</td>
+          <td style="padding: 8px;">${r.tipo || '---'}</td>
+          <td style="padding: 8px; text-align:right; font-weight:bold;">${litrosFormatado}</td>
+          <td style="padding: 8px; text-align:right; font-weight:bold; color:#1e40af;">${valorFormatado}</td>
+          <td style="padding: 8px; text-align:center;">${statusBadge}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top: 10px; padding: 10px; background: #f0f9ff; border-radius: 6px; font-size: 11px; color: #1e40af;">
+        💡 <strong>Dica:</strong> Clique em "🔄 LIMPAR BUSCA" para voltar a ver todos os abastecimentos
+      </div>
+    `;
+    
+    resultadoTexto.innerHTML = html;
   }
   
   function limparBuscaGeral() {
     document.getElementById('busca-geral').value = '';
     document.getElementById('busca-resultado').style.display = 'none';
-    
-    // Remover destaque e mostrar tudo
-    document.querySelectorAll('.abastecimento-linha').forEach(linha => {
-      linha.style.display = '';
-      linha.style.background = '';
-      linha.style.borderLeft = '';
-    });
-    
-    document.querySelectorAll('.relatorio-section').forEach(section => {
-      section.style.display = 'block';
-    });
-    
     mostrarNotificacao("🔄 BUSCA LIMPA!", "info");
   }
   
