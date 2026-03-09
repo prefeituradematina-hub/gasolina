@@ -2804,36 +2804,43 @@
   </div>
   
   <div id="tab-geral">
-    <div id="status-financeiro" class="mini-card">
-      <div class="loading"></div> CARREGANDO...
+    <!-- ========== SEÇÃO 1: BUSCA GERAL (TOPO) ========== -->
+    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6;">
+      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e40af;">
+            🔍 BUSCA GERAL
+          </label>
+          <input 
+            type="text" 
+            id="busca-geral" 
+            placeholder="Digite: NOME, PLACA, CPF, MOTORISTA..." 
+            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px;"
+            oninput="aplicarBuscaGeral()"
+          >
+          <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
+            💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
+          </div>
+        </div>
+        <div>
+          <button 
+            class="btn-save" 
+            onclick="limparBuscaGeral()" 
+            style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top: 20px;"
+          >
+            🔄 LIMPAR BUSCA
+          </button>
+        </div>
+      </div>
+      <div id="busca-resultado" style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; display: none;">
+        <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">📊 RESULTADOS:</div>
+        <div id="busca-resultado-texto" style="font-size: 13px; color: #64748b;"></div>
+      </div>
     </div>
     
-    <!-- Estatísticas Rápidas Melhoradas -->
-    <div class="stats-grid no-print" id="stats-container"></div>
+    <!-- ========== SEÇÃO 2: NOVO ABASTECIMENTO (LOGO ABAIXO) ========== -->
     
-    <!-- Alertas e Notificações -->
-    <div id="alertas-container"></div>
-    
-    <div class="charts-row no-print">
-      <div class="card">
-        <h3>💰 GASTOS POR SECRETARIA</h3>
-        <div style="height:280px;"><canvas id="chartSec"></canvas></div>
-      </div>
-      <div class="card">
-        <h3>🚛 TOP 5 VEÍCULOS</h3>
-        <div style="height:280px;"><canvas id="chartVec"></canvas></div>
-      </div>
-    </div>
-    
-    <!-- NOVO: Widget de Eficiência da Frota -->
-    <div class="card no-print" id="widget-eficiencia-frota">
-      <h3>⚡ EFICIÊNCIA DA FROTA — RESUMO</h3>
-      <div id="widget-eficiencia-content">
-        <div style="text-align:center; padding:20px; color:#64748b;">⏳ Carregando...</div>
-      </div>
-    </div>
-    
-    <!-- Novo Abastecimento -->
+    <!-- ========== SEÇÃO 2: NOVO ABASTECIMENTO (LOGO ABAIXO) ========== -->
     <div class="card no-print" id="card-novo-abastecimento">
       <h3>⛽ NOVO ABASTECIMENTO</h3>
       
@@ -2974,6 +2981,37 @@
       <button class="btn-save" id="btn-registrar" onclick="processar()">✔️ REGISTRAR ABASTECIMENTO</button>
     </div>
     
+    <!-- ========== SEÇÃO 3: DASHBOARD E GRÁFICOS ========== -->
+    <div id="status-financeiro" class="mini-card">
+      <div class="loading"></div> CARREGANDO...
+    </div>
+    
+    <!-- Estatísticas Rápidas Melhoradas -->
+    <div class="stats-grid no-print" id="stats-container"></div>
+    
+    <!-- Alertas e Notificações -->
+    <div id="alertas-container"></div>
+    
+    <div class="charts-row no-print">
+      <div class="card">
+        <h3>💰 GASTOS POR SECRETARIA</h3>
+        <div style="height:280px;"><canvas id="chartSec"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>🚛 TOP 5 VEÍCULOS</h3>
+        <div style="height:280px;"><canvas id="chartVec"></canvas></div>
+      </div>
+    </div>
+    
+    <!-- NOVO: Widget de Eficiência da Frota -->
+    <div class="card no-print" id="widget-eficiencia-frota">
+      <h3>⚡ EFICIÊNCIA DA FROTA — RESUMO</h3>
+      <div id="widget-eficiencia-content">
+        <div style="text-align:center; padding:20px; color:#64748b;">⏳ Carregando...</div>
+      </div>
+    </div>
+    
+    <!-- ========== SEÇÃO 4: FILTROS DE RELATÓRIO ========== -->
     <!-- Filtro de Relatório -->
     <div class="card no-print" id="card-filtros-relatorio">
       <h3>🔍 FILTROS DE RELATÓRIO</h3>
@@ -3035,40 +3073,7 @@
       <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top:5px;" onclick="window.print()">🖨️ IMPRIMIR</button>
     </div>
     
-    <!-- BUSCA GERAL -->
-    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6;">
-      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 300px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e40af;">
-            🔍 BUSCA GERAL
-          </label>
-          <input 
-            type="text" 
-            id="busca-geral" 
-            placeholder="Digite: NOME, PLACA, CPF, MOTORISTA..." 
-            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px;"
-            oninput="aplicarBuscaGeral()"
-          >
-          <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
-            💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
-          </div>
-        </div>
-        <div>
-          <button 
-            class="btn-save" 
-            onclick="limparBuscaGeral()" 
-            style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top: 20px;"
-          >
-            🔄 LIMPAR BUSCA
-          </button>
-        </div>
-      </div>
-      <div id="busca-resultado" style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; display: none;">
-        <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">📊 RESULTADOS:</div>
-        <div id="busca-resultado-texto" style="font-size: 13px; color: #64748b;"></div>
-      </div>
-    </div>
-    
+    <!-- ========== SEÇÃO 5: RELATÓRIOS ========== -->
     <!-- Relatórios -->
     <div id="relatorio-container"></div>
   </div>
