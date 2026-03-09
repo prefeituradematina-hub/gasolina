@@ -2230,6 +2230,29 @@
           transform: translateY(0);
       }
   }
+  
+  /* Animações para notificação de autocomplete */
+  @keyframes slideIn {
+      from {
+          opacity: 0;
+          transform: translateX(100px);
+      }
+      to {
+          opacity: 1;
+          transform: translateX(0);
+      }
+  }
+  
+  @keyframes slideOut {
+      from {
+          opacity: 1;
+          transform: translateX(0);
+      }
+      to {
+          opacity: 0;
+          transform: translateX(100px);
+      }
+  }
 </style>
 
 <!-- Modal para Edição de Usuários -->
@@ -2831,6 +2854,24 @@
       </div>
       
       <div class="grid-form">
+        <!-- BUSCA POR NOME -->
+        <div style="grid-column: 1/-1; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 15px;">
+          <label style="font-weight: bold; color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            🔍 BUSCA RÁPIDA DE VEÍCULO
+          </label>
+          <input 
+            type="text" 
+            id="busca-motorista" 
+            placeholder="Digite MODELO, MOTORISTA ou PLACA do veículo..." 
+            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px; text-transform: uppercase;"
+            oninput="buscarPorNomeOuPlaca(this.value)"
+          >
+          <div id="resultados-busca" style="margin-top: 10px; display: none;"></div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 8px;">
+            💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+          </div>
+        </div>
+        
         <div>
           <label>PLACA *</label>
           <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
@@ -9895,26 +9936,256 @@
   function sugerir(valor) {
     const placa = valor.toUpperCase().trim();
     
+    // Limpar notificação anterior
+    const notifContainer = document.getElementById('autocomplete-notif');
+    if (notifContainer) notifContainer.remove();
+    
+    if (placa.length < 7) return; // Esperar placa completa
+    
     const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
+      // Preencher dados do veículo cadastrado
       document.getElementById('f-mot').value = veiculo.motorista || '';
-      // Removido: preenchimento automático de secretaria
-      // Mantém a secretaria padrão do usuário logado
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
+      
+      // Mostrar notificação de sucesso
+      mostrarAutoCompleteNotif(`
+        ✅ <strong>VEÍCULO ENCONTRADO!</strong><br>
+        🚗 <strong>${veiculo.modelo || 'Modelo não cadastrado'}</strong><br>
+        👤 Motorista: ${veiculo.motorista || '---'}<br>
+        ⛽ Combustível: ${veiculo.combustivel || '---'}<br>
+        📅 Ano: ${veiculo.ano || '---'}
+      `, 'success');
+      
       calc();
       return;
     }
     
+    // Se não encontrou no cadastro, buscar último abastecimento
     const ultimoAbast = cache.filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     if (ultimoAbast) {
       document.getElementById('f-mot').value = ultimoAbast.motorista;
-      // Removido: preenchimento automático de secretaria
-      // Mantém a secretaria padrão do usuário logado
       document.getElementById('f-tipo').value = ultimoAbast.tipo;
+      
+      // Mostrar notificação de último abastecimento
+      const dataUltimo = new Date(ultimoAbast.timestamp).toLocaleDateString('pt-BR');
+      const kmUltimo = ultimoAbast.km ? ultimoAbast.km.toLocaleString('pt-BR') : '---';
+      
+      mostrarAutoCompleteNotif(`
+        📋 <strong>DADOS DO ÚLTIMO ABASTECIMENTO</strong><br>
+        📅 Data: ${dataUltimo}<br>
+        👤 Motorista: ${ultimoAbast.motorista}<br>
+        ⛽ Combustível: ${ultimoAbast.tipo}<br>
+        🛣️ KM: ${kmUltimo}<br>
+        <span style="font-size:11px; color:#f59e0b;">⚠️ Veículo não cadastrado - usando dados do histórico</span>
+      `, 'warning');
+      
       calc();
+    } else {
+      // Placa não encontrada
+      mostrarAutoCompleteNotif(`
+        ⚠️ <strong>PLACA NÃO ENCONTRADA</strong><br>
+        A placa <strong>${placa}</strong> não está cadastrada e não tem histórico.<br>
+        <span style="font-size:11px;">Preencha os dados manualmente ou cadastre o veículo.</span>
+      `, 'error');
     }
   }
+  
+  function mostrarAutoCompleteNotif(mensagem, tipo) {
+    // Remover notificação anterior
+    const old = document.getElementById('autocomplete-notif');
+    if (old) old.remove();
+    
+    // Cores por tipo
+    const cores = {
+      success: { bg: '#d1fae5', border: '#10b981', text: '#065f46' },
+      warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+      error: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' }
+    };
+    
+    const cor = cores[tipo] || cores.success;
+    
+    // Criar notificação
+    const notif = document.createElement('div');
+    notif.id = 'autocomplete-notif';
+    notif.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: ${cor.bg};
+      border: 2px solid ${cor.border};
+      border-left: 6px solid ${cor.border};
+      color: ${cor.text};
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      max-width: 350px;
+      font-size: 13px;
+      line-height: 1.6;
+      animation: slideIn 0.3s ease-out;
+    `;
+    notif.innerHTML = mensagem;
+    
+    document.body.appendChild(notif);
+    
+    // Auto remover após 5 segundos
+    setTimeout(() => {
+      if (notif.parentNode) {
+        notif.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notif.remove(), 300);
+      }
+    }, 5000);
+  }
+  
+  // ==================== BUSCA POR NOME OU PLACA ====================
+  
+  function buscarPorNomeOuPlaca(termo) {
+    const resultadosDiv = document.getElementById('resultados-busca');
+    
+    if (!termo || termo.trim().length < 2) {
+      resultadosDiv.style.display = 'none';
+      return;
+    }
+    
+    const termoUpper = termo.toUpperCase().trim();
+    const resultados = [];
+    
+    // 1. Buscar em veículos cadastrados
+    veiculos.forEach(v => {
+      const motoristaMatch = (v.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (v.placa || '').toUpperCase().includes(termoUpper);
+      const modeloMatch = (v.modelo || '').toUpperCase().includes(termoUpper);
+      
+      if (motoristaMatch || placaMatch || modeloMatch) {
+        resultados.push({
+          tipo: 'veiculo',
+          placa: v.placa,
+          motorista: v.motorista || 'SEM MOTORISTA',
+          modelo: v.modelo || 'SEM MODELO',
+          combustivel: v.combustivel || '---',
+          ano: v.ano || '---',
+          origem: 'Cadastro'
+        });
+      }
+    });
+    
+    // 2. Buscar em histórico de abastecimentos (últimos 100)
+    const historicoRecente = cache
+      .filter(x => x.status === STATUS.AUTORIZADO)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 100);
+    
+    // Agrupar por placa para pegar o mais recente de cada
+    const porPlaca = {};
+    historicoRecente.forEach(h => {
+      const motoristaMatch = (h.motorista || '').toUpperCase().includes(termoUpper);
+      const placaMatch = (h.placa || '').toUpperCase().includes(termoUpper);
+      
+      if ((motoristaMatch || placaMatch) && !porPlaca[h.placa]) {
+        // Verificar se já não está nos veículos cadastrados
+        const jaTemCadastrado = resultados.find(r => r.placa === h.placa);
+        if (!jaTemCadastrado) {
+          porPlaca[h.placa] = {
+            tipo: 'historico',
+            placa: h.placa,
+            motorista: h.motorista || 'SEM MOTORISTA',
+            modelo: '---',
+            combustivel: h.tipo || '---',
+            ano: '---',
+            origem: 'Histórico',
+            data: new Date(h.timestamp).toLocaleDateString('pt-BR')
+          };
+        }
+      }
+    });
+    
+    // Adicionar resultados do histórico
+    Object.values(porPlaca).forEach(r => resultados.push(r));
+    
+    // Limitar a 10 resultados
+    const resultadosLimitados = resultados.slice(0, 10);
+    
+    // Mostrar resultados
+    if (resultadosLimitados.length === 0) {
+      resultadosDiv.innerHTML = `
+        <div style="padding: 10px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-size: 12px;">
+          ❌ Nenhum resultado encontrado para "<strong>${termo}</strong>"
+        </div>
+      `;
+      resultadosDiv.style.display = 'block';
+      return;
+    }
+    
+    let html = `
+      <div style="background: white; border: 2px solid #3b82f6; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+        <div style="padding: 10px; background: #3b82f6; color: white; font-weight: bold; font-size: 12px; position: sticky; top: 0;">
+          ✅ ${resultadosLimitados.length} resultado(s) encontrado(s)
+        </div>
+    `;
+    
+    resultadosLimitados.forEach((r, i) => {
+      const origem = r.tipo === 'veiculo' 
+        ? '<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📋 CADASTRADO</span>'
+        : `<span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">📊 HISTÓRICO (${r.data})</span>`;
+      
+      html += `
+        <div 
+          style="
+            padding: 12px; 
+            border-bottom: 1px solid #e5e7eb; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            gap: 10px;
+            align-items: center;
+          "
+          onmouseover="this.style.background='#f0f9ff'"
+          onmouseout="this.style.background='white'"
+          onclick="selecionarVeiculo('${r.placa}')"
+        >
+          <div style="font-weight: bold; color: #1e40af; font-size: 14px;">
+            🚗 ${r.placa}
+          </div>
+          <div style="font-size: 12px;">
+            <div style="font-weight: bold; color: #374151;">👤 ${r.motorista}</div>
+            <div style="color: #6b7280; margin-top: 2px;">
+              ${r.modelo !== '---' && r.modelo !== 'SEM MODELO' ? '🚘 <strong>' + r.modelo + '</strong>' : ''} 
+              ${r.ano !== '---' ? '(' + r.ano + ')' : ''}
+              ${r.combustivel !== '---' ? ' • ⛽ ' + r.combustivel : ''}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            ${origem}
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+    
+    resultadosDiv.innerHTML = html;
+    resultadosDiv.style.display = 'block';
+  }
+  
+  function selecionarVeiculo(placa) {
+    // Preencher campo de placa
+    document.getElementById('f-placa').value = placa;
+    
+    // Limpar busca
+    document.getElementById('busca-motorista').value = '';
+    document.getElementById('resultados-busca').style.display = 'none';
+    
+    // Acionar autocomplete
+    sugerir(placa);
+    
+    // Scroll suave até o campo de placa
+    document.getElementById('f-placa').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  
+  // ==================== FIM BUSCA POR NOME ====================
   
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
