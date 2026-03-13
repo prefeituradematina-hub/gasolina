@@ -3055,6 +3055,7 @@
           <label>SECRETARIA</label>
           <select id="rel-secretaria">
             <option value="">TODAS</option>
+            <option value="DIVERSAS">🌟 DIVERSAS</option>
             <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
             <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
             <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
@@ -3392,6 +3393,53 @@
         </table>
       </div>
     </div>
+    
+    <!-- TABELA DE TODOS OS ABASTECIMENTOS (AUTORIZADOS E REJEITADOS) -->
+    <div class="card">
+      <h3>📋 HISTÓRICO DE ABASTECIMENTOS</h3>
+      <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button 
+          class="btn-save" 
+          onclick="filtrarHistoricoPendentes('todos')"
+          style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); flex: 1; min-width: 150px;">
+          📋 TODOS
+        </button>
+        <button 
+          class="btn-save" 
+          onclick="filtrarHistoricoPendentes('autorizados')"
+          style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; min-width: 150px;">
+          ✅ AUTORIZADOS
+        </button>
+        <button 
+          class="btn-save" 
+          onclick="filtrarHistoricoPendentes('rejeitados')"
+          style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); flex: 1; min-width: 150px;">
+          ❌ REJEITADOS
+        </button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>DATA</th>
+              <th>HORÁRIO</th>
+              <th>PLACA</th>
+              <th>POSTO</th>
+              <th>SECRETARIA</th>
+              <th>MOTORISTA</th>
+              <th>CPF</th>
+              <th>DESTINO</th>
+              <th>COMBUSTÍVEL</th>
+              <th>LITROS</th>
+              <th>VALOR</th>
+              <th>SOLICITANTE</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="historico-pendentes-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
   
   <div id="tab-executivo" style="display:none;">
@@ -3534,7 +3582,7 @@
             <input type="text" id="novo-diversas-nome" placeholder="Ex: Maria da Silva">
           </div>
           <div>
-            <label>CPF *</label>
+            <label>CPF (OPCIONAL)</label>
             <input 
               type="text" 
               id="novo-diversas-cpf" 
@@ -3542,6 +3590,9 @@
               maxlength="14"
               oninput="formatarCPF(this)"
             >
+            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
+              💡 CPF será obrigatório no momento do abastecimento
+            </div>
           </div>
           <div>
             <label>CARGO *</label>
@@ -4176,6 +4227,7 @@
     'ver_dashboard': { nome: 'Ver Dashboard', descricao: 'Visualizar painel principal', categoria: 'visualizacao' },
     'ver_relatorio_geral': { nome: 'Ver Relatórios Gerais', descricao: 'Acessar todos os relatórios', categoria: 'visualizacao' },
     'ver_relatorio_secretaria': { nome: 'Ver Relatório Secretaria', descricao: 'Ver apenas sua secretaria', categoria: 'visualizacao' },
+    'ver_pendentes': { nome: 'Ver Pendentes', descricao: 'Visualizar abastecimentos pendentes (sem autorizar)', categoria: 'visualizacao' },
     'usar_filtros_relatorio': { nome: 'Usar Filtros de Relatório', descricao: 'Aplicar filtros nos relatórios', categoria: 'visualizacao' },
     'registrar_abastecimento': { nome: 'Registrar Abastecimento', descricao: 'Criar novos registros', categoria: 'operacoes' },
     'registrar_abastecimento_diversas': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
@@ -4192,7 +4244,7 @@
     master: Object.keys(PERMISSOES_DISPONIVEIS),
     admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
-    frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio'],
+    frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio', 'ver_pendentes'],
   autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_diversas', 'abastecer_diversas']
 };
   
@@ -5018,7 +5070,7 @@
       (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-pendentes').style.display = 
-      (temPermissao('autorizar_abastecimento')) ? 'block' : 'none';
+      (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-diversas').style.display = 
       (userRole === 'autorizador' || 
@@ -5073,6 +5125,15 @@
     
     mostrarNotificacao(`✅ BEM-VINDO, ${u.toUpperCase()}!`, "success");
     
+    // Definir aba inicial baseada no perfil do usuário
+    let abaInicial = 'geral'; // Padrão: Dashboard
+    
+    if (role === 'frentista') {
+      abaInicial = 'pendentes'; // Frentistas veem PENDENTES primeiro
+    } else if (role === 'autorizador') {
+      abaInicial = 'pendentes'; // Autorizadores também veem pendentes primeiro
+    }
+    
     // CORREÇÃO: Listener para atualizar limites em tempo real quando admin edita
     if (role === 'secretarios' || role === 'autorizador') {
       db.ref('usuarios/' + u).on('value', snap => {
@@ -5116,6 +5177,9 @@
     setTimeout(() => {
       renderizar();
       calcularDadosMesAnterior();
+      
+      // Abrir aba inicial baseada no perfil
+      switchTab(abaInicial);
     }, 100);
   }
   
@@ -7118,13 +7182,32 @@
     console.log('5. User posto vinculado:', userPostoVinculado);
     console.log('6. User postos vinculados:', userPostosVinculados);
     
-    // Separar abastecimentos DIVERSAS e normais
-    const abastVIPs = cacheAtual.filter(x => x.tipoAbastecimento === "DIVERSAS");
-    const abastNormais = cacheAtual.filter(x => !x.tipoAbastecimento || x.tipoAbastecimento !== "DIVERSAS");
+    // VERIFICAR ABASTECIMENTOS SEM SECRETARIA
+    const semSecretaria = cacheAtual.filter(x => !x.secretaria || x.secretaria.trim() === "");
+    if (semSecretaria.length > 0) {
+      console.warn('⚠️ ATENÇÃO! Encontrados', semSecretaria.length, 'abastecimentos SEM SECRETARIA:');
+      semSecretaria.forEach(x => {
+        console.warn('  • ID:', x.id, '| Placa:', x.placa, '| Data:', x.data, '| Secretaria:', x.secretaria);
+      });
+    }
     
-    console.log('7. VIPs encontrados:', abastVIPs.length);
+    // Separar abastecimentos DIVERSAS e normais
+    // COMPATIBILIDADE: Incluir tanto novos (DIVERSAS) quanto antigos (VIP)
+    const abastVIPs = cacheAtual.filter(x => 
+      x.tipoAbastecimento === "DIVERSAS" || 
+      x.tipoAbastecimento === "VIP" ||
+      x.secretaria === "DIVERSAS" ||
+      x.secretaria === "VIP"
+    );
+    const abastNormais = cacheAtual.filter(x => 
+      !x.tipoAbastecimento || 
+      (x.tipoAbastecimento !== "DIVERSAS" && x.tipoAbastecimento !== "VIP") &&
+      (!x.secretaria || (x.secretaria !== "DIVERSAS" && x.secretaria !== "VIP"))
+    );
+    
+    console.log('7. DIVERSAS encontrados (inclui VIP antigos):', abastVIPs.length);
     console.log('8. Normais encontrados:', abastNormais.length);
-    console.log('9. Exemplo VIP:', abastVIPs.length > 0 ? abastVIPs[0] : 'nenhum');
+    console.log('9. Exemplo DIVERSAS:', abastVIPs.length > 0 ? abastVIPs[0] : 'nenhum');
     console.log('10. Exemplo Normal:', abastNormais.length > 0 ? abastNormais[0] : 'nenhum');
     
     let listaSecs = [...new Set(abastNormais.map(x => x.secretaria))].sort();
@@ -7653,19 +7736,94 @@
         <td>${d.posto || '---'}</td>
         <td>${d.secretaria}</td>
         <td>${d.motorista}</td>
+        <td>${d.cpf || d.cpfBeneficiado || '---'}</td>
         <td>${d.destino || '---'}</td>
         <td>${d.tipo}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : (d.litro.toFixed(2) + ' L')}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : ('R$ ' + d.valor.toFixed(2))}</td>
         <td>${d.solicitadoPor}</td>
         <td class="no-print">
-          <button class="btn-action btn-aprovar" onclick="aprovar('${d.id}')">
-            ${d.tanqueCheio ? '⛽ APROVAR' : '✅ APROVAR'}
-          </button>
-          <button class="btn-action btn-rejeitar" onclick="rejeitar('${d.id}')">❌ REJEITAR</button>
+          ${temPermissao('autorizar_abastecimento') ? `
+            <button class="btn-action btn-aprovar" onclick="aprovar('${d.id}')">
+              ${d.tanqueCheio ? '⛽ APROVAR' : '✅ APROVAR'}
+            </button>
+            <button class="btn-action btn-rejeitar" onclick="rejeitar('${d.id}')">❌ REJEITAR</button>
+          ` : `
+            <span style="color: #64748b; font-size: 11px; font-style: italic;">👁️ Visualização</span>
+          `}
         </td>
       </tr>
     `).join('');
+    
+    // Atualizar também o histórico de abastecimentos
+    atualizarHistoricoPendentes();
+  }
+  
+  // Filtro global para histórico de pendentes
+  let filtroHistoricoPendentes = 'todos';
+  
+  function filtrarHistoricoPendentes(filtro) {
+    filtroHistoricoPendentes = filtro;
+    atualizarHistoricoPendentes();
+  }
+  
+  function atualizarHistoricoPendentes() {
+    let todosAbastecimentos = filtrarCachePorPosto(cache.filter(x => 
+      x.status === STATUS.AUTORIZADO || x.status === STATUS.REJEITADO
+    ));
+    
+    // Aplicar filtro
+    if (filtroHistoricoPendentes === 'autorizados') {
+      todosAbastecimentos = todosAbastecimentos.filter(x => x.status === STATUS.AUTORIZADO);
+    } else if (filtroHistoricoPendentes === 'rejeitados') {
+      todosAbastecimentos = todosAbastecimentos.filter(x => x.status === STATUS.REJEITADO);
+    }
+    
+    // Ordenar por mais recente
+    todosAbastecimentos.sort((a, b) => b.timestamp - a.timestamp);
+    
+    // Limitar aos últimos 100 para performance
+    todosAbastecimentos = todosAbastecimentos.slice(0, 100);
+    
+    const tbody = document.getElementById('historico-pendentes-body');
+    
+    if (todosAbastecimentos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO ENCONTRADO</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = todosAbastecimentos.map(d => {
+      // Badge de status
+      let statusBadge = '';
+      if (d.status === STATUS.AUTORIZADO) {
+        statusBadge = '<span style="background:#10b981;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">✅ AUTORIZADO</span>';
+      } else if (d.status === STATUS.REJEITADO) {
+        statusBadge = '<span style="background:#ef4444;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">❌ REJEITADO</span>';
+      }
+      
+      return `
+        <tr style="background: ${d.status === STATUS.REJEITADO ? '#fee2e2' : 'white'};">
+          <td>${d.data.split('-').reverse().join('/')}</td>
+          <td>
+            ${d.horario 
+              ? `<span style="font-size: 11px;">🕐 ${d.horario}</span>` 
+              : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
+            }
+          </td>
+          <td><b>${d.placa}</b></td>
+          <td>${d.posto || '---'}</td>
+          <td style="font-size: 11px;">${d.secretaria}</td>
+          <td>${d.motorista}</td>
+          <td style="font-size: 11px;">${d.cpf || d.cpfBeneficiado || '---'}</td>
+          <td style="font-size: 11px;">${d.destino || '---'}</td>
+          <td>${d.tipo}</td>
+          <td style="font-weight: bold;">${d.litro ? d.litro.toFixed(2) + ' L' : '---'}</td>
+          <td style="font-weight: bold; color: #1e40af;">R$ ${d.valor ? d.valor.toFixed(2) : '0.00'}</td>
+          <td style="font-size: 11px;">${d.solicitadoPor || '---'}</td>
+          <td>${statusBadge}</td>
+        </tr>
+      `;
+    }).join('');
   }
   
   function atualizarGraficos() {
@@ -10851,8 +11009,22 @@
     
     if (secretaria) {
       const antes = registros.length;
-      registros = registros.filter(r => r.secretaria === secretaria);
-      console.log(`  ✂️ Filtro Secretaria (${secretaria}): ${antes} → ${registros.length}`);
+      
+      // Se filtrar por DIVERSAS, incluir tanto registros com secretaria='DIVERSAS' 
+      // quanto os antigos com secretaria='VIP' ou tipoAbastecimento='DIVERSAS'/'VIP'
+      if (secretaria === 'DIVERSAS') {
+        registros = registros.filter(r => 
+          r.secretaria === 'DIVERSAS' || 
+          r.secretaria === 'VIP' || 
+          r.tipoAbastecimento === 'DIVERSAS' || 
+          r.tipoAbastecimento === 'VIP'
+        );
+        console.log(`  ✂️ Filtro DIVERSAS (inclui VIP antigos): ${antes} → ${registros.length}`);
+      } else {
+        // Para outras secretarias, filtro normal
+        registros = registros.filter(r => r.secretaria === secretaria);
+        console.log(`  ✂️ Filtro Secretaria (${secretaria}): ${antes} → ${registros.length}`);
+      }
     }
     if (posto) {
       const antes = registros.length;
@@ -11030,6 +11202,15 @@
     snap.forEach(item => {
       let v = item.val();
       v.id = item.key;
+      
+      // NORMALIZAR VIP → DIVERSAS (compatibilidade com dados antigos)
+      if (v.secretaria === 'VIP') {
+        v.secretaria = 'DIVERSAS';
+      }
+      if (v.tipoAbastecimento === 'VIP') {
+        v.tipoAbastecimento = 'DIVERSAS';
+      }
+      
       cache.push(v);
     });
     console.log(`✅ ${cache.length} ABASTECIMENTOS CARREGADOS`);
@@ -13213,14 +13394,15 @@
       mostrarNotificacao("❌ INFORME O NOME!", "error");
       return;
     }
-    if (!cpf || cpf === "") {
-      mostrarNotificacao("❌ INFORME O CPF!", "error");
-      return;
+    
+    // CPF OPCIONAL no cadastro, mas se preenchido deve ser válido
+    if (cpf && cpf.trim() !== "") {
+      if (!validarCPF(cpf)) {
+        mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error");
+        return;
+      }
     }
-    if (!validarCPF(cpf)) {
-      mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error");
-      return;
-    }
+    
     if (!cargo) {
       mostrarNotificacao("❌ SELECIONE O CARGO!", "error");
       return;
@@ -13474,6 +13656,12 @@
       return;
     }
     
+    // VALIDAR SECRETARIA - NUNCA PODE SER VAZIA!
+    if (!secretaria || secretaria.trim() === "") {
+      mostrarNotificacao("❌ SECRETARIA É OBRIGATÓRIA! Selecione uma secretaria.", "error");
+      return;
+    }
+    
     // CALCULAR VALOR AUTOMATICAMENTE - NÃO ACEITA VALOR MANUAL
     const postoData = postos.find(p => p.nome === posto);
     if (!postoData || !postoData.precos || !postoData.precos[tipo]) {
@@ -13484,13 +13672,21 @@
     const precoPorLitro = postoData.precos[tipo];
     const valor = litros * precoPorLitro;
     
+    console.log('💾 SALVANDO EDIÇÃO:', {
+      id,
+      secretaria,
+      data,
+      placa,
+      motorista
+    });
+    
     const dadosAtualizados = {
       placa,
       motorista,
       destino,
       posto,
       tipo,
-      secretaria,
+      secretaria,  // GARANTIR que secretaria está sendo salva
       data,
       horario,
       km,
@@ -13503,17 +13699,21 @@
     };
     
     db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
+      console.log('✅ Abastecimento atualizado:', id);
+      console.log('✅ Secretaria salva:', secretaria);
+      
       registrarAuditoria('ABASTECIMENTO_EDITADO', { 
         id, 
         placa, 
         valor: valor.toFixed(2),
+        secretaria,  // Incluir na auditoria
         editadoPor: loginUser 
       });
       mostrarNotificacao("✅ ABASTECIMENTO ATUALIZADO COM SUCESSO!", "success");
       fecharModalEditAbastecimento();
       renderizar();
     }).catch(err => {
-      console.error('ERRO AO SALVAR:', err);
+      console.error('❌ ERRO AO SALVAR:', err);
       mostrarNotificacao("❌ ERRO AO SALVAR: " + err.message, "error");
     });
   }
