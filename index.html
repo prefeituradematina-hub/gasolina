@@ -3417,28 +3417,7 @@
           ❌ REJEITADOS
         </button>
       </div>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>DATA</th>
-              <th>HORÁRIO</th>
-              <th>PLACA</th>
-              <th>POSTO</th>
-              <th>SECRETARIA</th>
-              <th>MOTORISTA</th>
-              <th>CPF</th>
-              <th>DESTINO</th>
-              <th>COMBUSTÍVEL</th>
-              <th>LITROS</th>
-              <th>VALOR</th>
-              <th>SOLICITANTE</th>
-              <th>STATUS</th>
-            </tr>
-          </thead>
-          <tbody id="historico-pendentes-body"></tbody>
-        </table>
-      </div>
+      <div id="historico-pendentes-container"></div>
     </div>
   </div>
   
@@ -4256,8 +4235,16 @@
   
   // Função para verificar se pode ver relatório de uma secretaria
   function podeVerRelatorio(secretaria) {
+    // Master/Admin podem ver tudo
     if (temPermissao('ver_relatorio_geral')) return true;
+    
+    // Secretários só podem ver sua própria secretaria
     if (temPermissao('ver_relatorio_secretaria') && secretaria === userSecretaria) return true;
+    
+    // Frentistas e autorizadores podem ver todas as secretarias
+    // (mas já estão filtrados por posto na função filtrarCachePorPosto)
+    if (userRole === 'frentista' || userRole === 'autorizador') return true;
+    
     return false;
   }
   
@@ -7785,45 +7772,111 @@
     // Limitar aos últimos 100 para performance
     todosAbastecimentos = todosAbastecimentos.slice(0, 100);
     
-    const tbody = document.getElementById('historico-pendentes-body');
+    const container = document.getElementById('historico-pendentes-container');
     
     if (todosAbastecimentos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO ENCONTRADO</td></tr>';
+      container.innerHTML = `
+        <div style="text-align:center; padding:40px;">
+          📭 NENHUM ABASTECIMENTO ENCONTRADO
+        </div>
+      `;
       return;
     }
     
-    tbody.innerHTML = todosAbastecimentos.map(d => {
-      // Badge de status
-      let statusBadge = '';
-      if (d.status === STATUS.AUTORIZADO) {
-        statusBadge = '<span style="background:#10b981;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">✅ AUTORIZADO</span>';
-      } else if (d.status === STATUS.REJEITADO) {
-        statusBadge = '<span style="background:#ef4444;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">❌ REJEITADO</span>';
+    // AGRUPAR POR SECRETARIA
+    const porSecretaria = {};
+    todosAbastecimentos.forEach(r => {
+      const sec = r.secretaria || 'SEM SECRETARIA';
+      if (!porSecretaria[sec]) {
+        porSecretaria[sec] = [];
       }
+      porSecretaria[sec].push(r);
+    });
+    
+    // Ordenar secretarias alfabeticamente
+    const secretarias = Object.keys(porSecretaria).sort();
+    
+    let html = '';
+    
+    // CRIAR UMA SEÇÃO PARA CADA SECRETARIA
+    secretarias.forEach(sec => {
+      const itens = porSecretaria[sec];
+      const totalSec = itens.reduce((acc, r) => acc + r.valor, 0);
+      const litrosSec = itens.reduce((acc, r) => acc + r.litro, 0);
       
-      return `
-        <tr style="background: ${d.status === STATUS.REJEITADO ? '#fee2e2' : 'white'};">
-          <td>${d.data.split('-').reverse().join('/')}</td>
-          <td>
-            ${d.horario 
-              ? `<span style="font-size: 11px;">🕐 ${d.horario}</span>` 
-              : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
-            }
-          </td>
-          <td><b>${d.placa}</b></td>
-          <td>${d.posto || '---'}</td>
-          <td style="font-size: 11px;">${d.secretaria}</td>
-          <td>${d.motorista}</td>
-          <td style="font-size: 11px;">${d.cpf || d.cpfBeneficiado || '---'}</td>
-          <td style="font-size: 11px;">${d.destino || '---'}</td>
-          <td>${d.tipo}</td>
-          <td style="font-weight: bold;">${d.litro ? d.litro.toFixed(2) + ' L' : '---'}</td>
-          <td style="font-weight: bold; color: #1e40af;">R$ ${d.valor ? d.valor.toFixed(2) : '0.00'}</td>
-          <td style="font-size: 11px;">${d.solicitadoPor || '---'}</td>
-          <td>${statusBadge}</td>
-        </tr>
-      `;
-    }).join('');
+      // Estilo especial para DIVERSAS
+      const isDiversas = sec === 'DIVERSAS' || sec === 'VIP';
+      const headerStyle = isDiversas 
+        ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;'
+        : 'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;';
+      
+      html += `
+      <div class="card" style="margin-bottom: 15px;">
+        <h4 style="${headerStyle} padding: 12px; margin: -20px -20px 15px -20px; border-radius: 8px 8px 0 0; font-size: 14px;">
+          ${isDiversas ? '🌟' : '📋'} ${sec.toUpperCase()}
+          <span style="float: right; font-size: 12px; opacity: 0.9;">
+            ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${totalSec.toFixed(2)}
+          </span>
+        </h4>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>DATA</th>
+                <th>HORÁRIO</th>
+                <th>PLACA</th>
+                <th>POSTO</th>
+                ${isDiversas ? '<th>PESSOA DIVERSAS</th>' : ''}
+                <th>MOTORISTA</th>
+                <th>CPF</th>
+                <th>DESTINO</th>
+                <th>COMBUSTÍVEL</th>
+                <th>LITROS</th>
+                <th>VALOR</th>
+                <th>SOLICITANTE</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody>`;
+      
+      // Adicionar linhas
+      itens.forEach(d => {
+        // Badge de status
+        let statusBadge = '';
+        if (d.status === STATUS.AUTORIZADO) {
+          statusBadge = '<span style="background:#10b981;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">✅ AUTORIZADO</span>';
+        } else if (d.status === STATUS.REJEITADO) {
+          statusBadge = '<span style="background:#ef4444;color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;">❌ REJEITADO</span>';
+        }
+        
+        html += `
+          <tr style="background: ${d.status === STATUS.REJEITADO ? '#fee2e2' : 'white'};">
+            <td>${d.data.split('-').reverse().join('/')}</td>
+            <td>
+              ${d.horario 
+                ? `<span style="font-size: 11px;">🕐 ${d.horario}</span>` 
+                : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
+              }
+            </td>
+            <td><b>${d.placa}</b></td>
+            <td>${d.posto || '---'}</td>
+            ${isDiversas ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${d.nomeVIP || d.pessoaDiversas || d.vipNome || "DIVERSAS"}</span></td>` : ''}
+            <td>${d.motorista}</td>
+            <td style="font-size: 11px;">${d.cpf || d.cpfBeneficiado || '---'}</td>
+            <td style="font-size: 11px;">${d.destino || '---'}</td>
+            <td>${d.tipo}</td>
+            <td style="font-weight: bold;">${d.litro ? d.litro.toFixed(2) + ' L' : '---'}</td>
+            <td style="font-weight: bold; color: #1e40af;">R$ ${d.valor ? d.valor.toFixed(2) : '0.00'}</td>
+            <td style="font-size: 11px;">${d.solicitadoPor || '---'}</td>
+            <td>${statusBadge}</td>
+          </tr>
+        `;
+      });
+      
+      html += `</tbody></table></div></div>`;
+    });
+    
+    container.innerHTML = html;
   }
   
   function atualizarGraficos() {
@@ -11073,6 +11126,19 @@
     const totalGeral = registros.reduce((acc, r) => acc + r.valor, 0);
     const totalLitros = registros.reduce((acc, r) => acc + r.litro, 0);
     
+    // AGRUPAR POR SECRETARIA
+    const porSecretaria = {};
+    registros.forEach(r => {
+      const sec = r.secretaria || 'SEM SECRETARIA';
+      if (!porSecretaria[sec]) {
+        porSecretaria[sec] = [];
+      }
+      porSecretaria[sec].push(r);
+    });
+    
+    // Ordenar secretarias alfabeticamente
+    const secretarias = Object.keys(porSecretaria).sort();
+    
     let html = `
       <div class="card">
         <h3>📊 RESUMO DO RELATÓRIO FILTRADO</h3>
@@ -11100,9 +11166,28 @@
             <div class="stat-value">${[...new Set(registros.map(r => r.placa))].length}</div>
           </div>
         </div>
-      </div>
-      <div class="card">
-        <h3>📄 DETALHAMENTO</h3>
+      </div>`;
+    
+    // CRIAR UMA SEÇÃO PARA CADA SECRETARIA
+    secretarias.forEach(sec => {
+      const itens = porSecretaria[sec];
+      const totalSec = itens.reduce((acc, r) => acc + r.valor, 0);
+      const litrosSec = itens.reduce((acc, r) => acc + r.litro, 0);
+      
+      // Estilo especial para DIVERSAS
+      const isDiversas = sec === 'DIVERSAS' || sec === 'VIP' || sec === '🌟 DIVERSAS';
+      const headerStyle = isDiversas 
+        ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;'
+        : 'background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%); color: white;';
+      
+      html += `
+      <div class="card relatorio-section">
+        <h3 style="${headerStyle} padding: 15px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0;">
+          ${isDiversas ? '🌟' : '📋'} ${sec.toUpperCase()}
+          <span style="float: right; font-size: 14px; opacity: 0.9;">
+            ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L ${!isFrentista ? '• R$ ' + totalSec.toFixed(2) : ''}
+          </span>
+        </h3>
         <div class="table-wrapper">
           <table>
             <thead>
@@ -11110,7 +11195,7 @@
                 <th>DATA</th>
                 <th>PLACA</th>
                 <th>POSTO</th>
-                <th>SECRETARIA</th>
+                ${isDiversas ? '<th>PESSOA DIVERSAS</th>' : ''}
                 <th>MOTORISTA</th>
                 <th>CPF</th>
                 <th>COMBUSTÍVEL</th>
@@ -11121,37 +11206,46 @@
               </tr>
             </thead>
             <tbody>`;
-    
-    registros.sort((a, b) => b.timestamp - a.timestamp).forEach(r => {
-      const media = calcularMedia(r);
-      // NOVO: Usar limites de alerta específicos
-      const limiteAlerta = LIMITES_ALERTA[r.tipo];
-      const classeAlerta = (media > 0 && media < limiteAlerta) ? 'alerta-media' : '';
       
-      html += `<tr class="${classeAlerta}">
-        <td>${r.data.split('-').reverse().join('/')}</td>
-        <td><b>${r.placa}</b> ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
-        <td>${r.posto || '---'}</td>
-        <td>${r.secretaria}</td>
-        <td>${r.motorista}</td>
-        <td>${r.cpf || '---'}</td>
-        <td><span class="badge ${r.tipo === 'GASOLINA' ? 'badge-danger' : r.tipo === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${r.tipo}</span></td>
-        <td>${r.km.toLocaleString('pt-BR')}</td>
-        <td>${r.litro.toFixed(2)} L</td>
-        ${!isFrentista ? `
-        <td ${classeAlerta ? 'style="font-weight:bold;"' : ''}>${media > 0 ? media.toFixed(2) + ' km/l' + (classeAlerta ? ' 🚨' : '') : '---'}</td>
-        <td><b>R$ ${r.valor.toFixed(2)}</b></td>
-        ` : ''}
-        ${(loginUser === 'master' || temPermissao('deletar_abastecimento')) ? `
-        <td class="no-print">
-          <button class="btn-action" style="background:#3b82f6;color:white;" onclick="editarAbastecimento('${r.id}')">✏️</button>
-          <button class="btn-action btn-rejeitar" onclick="deletar('${r.id}')">🗑️</button>
-        </td>
-        ` : ''}
-      </tr>`;
+      // Ordenar por data (mais recente primeiro)
+      itens.sort((a, b) => b.timestamp - a.timestamp).forEach(r => {
+        const media = calcularMedia(r);
+        const limiteAlerta = LIMITES_ALERTA[r.tipo];
+        const classeAlerta = (media > 0 && media < limiteAlerta) ? 'alerta-media' : '';
+        
+        html += `<tr class="${classeAlerta} abastecimento-linha"
+          data-placa="${r.placa}"
+          data-motorista="${r.motorista}"
+          data-cpf="${r.cpf || r.cpfBeneficiado || ''}"
+          data-posto="${r.posto}"
+          data-vipnome="${r.nomeVIP || r.pessoaDiversas || ''}"
+          data-secretaria="${r.secretaria}"
+        >
+          <td>${r.data.split('-').reverse().join('/')}</td>
+          <td><b>${r.placa}</b> ${r.tanqueCheio ? '<span class="tanque-cheio-badge">⛽ TANQUE CHEIO</span>' : ''}</td>
+          <td>${r.posto || '---'}</td>
+          ${isDiversas ? `<td><span style="color: #f59e0b; font-weight: bold;">⭐ ${r.nomeVIP || r.pessoaDiversas || r.vipNome || "DIVERSAS"}</span></td>` : ''}
+          <td>${r.motorista}</td>
+          <td>${r.cpf || r.cpfBeneficiado || '---'}</td>
+          <td><span class="badge ${r.tipo === 'GASOLINA' ? 'badge-danger' : r.tipo === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${r.tipo}</span></td>
+          <td>${r.km.toLocaleString('pt-BR')}</td>
+          <td>${r.litro.toFixed(2)} L</td>
+          ${!isFrentista ? `
+          <td ${classeAlerta ? 'style="font-weight:bold;"' : ''}>${media > 0 ? media.toFixed(2) + ' km/l' + (classeAlerta ? ' 🚨' : '') : '---'}</td>
+          <td><b>R$ ${r.valor.toFixed(2)}</b></td>
+          ` : ''}
+          ${(loginUser === 'master' || temPermissao('deletar_abastecimento')) ? `
+          <td class="no-print">
+            <button class="btn-action" style="background:#3b82f6;color:white;" onclick="editarAbastecimento('${r.id}')">✏️</button>
+            <button class="btn-action btn-rejeitar" onclick="deletar('${r.id}')">🗑️</button>
+          </td>
+          ` : ''}
+        </tr>`;
+      });
+      
+      html += `</tbody></table></div></div>`;
     });
     
-    html += `</tbody></table></div></div>`;
     container.innerHTML = html;
   }
   
