@@ -2937,7 +2937,7 @@
           <label>MOTORISTA *</label>
           <input type="text" id="f-mot" placeholder="NOME DO MOTORISTA">
         </div>
-        <div id="campo-cpf-container" style="display:none;">
+        <div id="campo-cpf-container">
           <label id="label-cpf">CPF <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
           <input 
             type="text" 
@@ -3247,30 +3247,10 @@
     <!-- Histórico de Abastecimentos DIVERSAS -->
     <div class="card">
       <h3>📋 HISTÓRICO DE ABASTECIMENTOS DIVERSAS</h3>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>DATA</th>
-              <th>HORÁRIO</th>
-              <th>PESSOA</th>
-              <th>PLACA</th>
-              <th>POSTO</th>
-              <th>COMBUSTÍVEL</th>
-              <th>LITROS</th>
-              <th>VALOR</th>
-              <th>LANÇADO POR</th>
-              <th class="no-print">AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody id="historico-vip-body">
-            <tr>
-              <td colspan="10" style="text-align:center; padding:40px;">
-                ⏳ CARREGANDO HISTÓRICO...
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div id="historico-diversas-container">
+        <div style="text-align:center; padding:40px;">
+          ⏳ CARREGANDO HISTÓRICO...
+        </div>
       </div>
     </div>
   </div>
@@ -4558,18 +4538,19 @@
     
     const isDiversas = secretaria === 'DIVERSAS';
     
+    // Campo CPF sempre visível, mas obrigatório apenas para DIVERSAS
+    campoCPF.style.display = 'block';
+    
     if (isDiversas) {
-      campoCPF.style.display = 'block';
       labelCPF.innerHTML = 'CPF <span style="color:#ef4444;">*</span> <span style="font-size:9px; color:#ef4444;">(Obrigatório)</span>';
       inputCPF.style.borderColor = '#fecaca';
-      console.log('✅ Campo CPF ativado para DIVERSAS');
+      inputCPF.placeholder = '000.000.000-00 (OBRIGATÓRIO)';
+      console.log('✅ CPF obrigatório para DIVERSAS');
     } else {
-      campoCPF.style.display = 'none';
       labelCPF.innerHTML = 'CPF <span style="font-size:9px; color:#64748b;">(Opcional)</span>';
       inputCPF.style.borderColor = '';
-      inputCPF.value = '';
-      document.getElementById('historico-cpf').style.display = 'none';
-      console.log('❌ Campo CPF desativado');
+      inputCPF.placeholder = '000.000.000-00';
+      console.log('✅ CPF opcional');
     }
   }
   
@@ -10314,14 +10295,29 @@
     
     const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
+      console.log('🚗 VEÍCULO ENCONTRADO:', veiculo);
+      console.log('📋 CPF do veículo:', veiculo.cpfMotorista);
+      
       // Preencher dados do veículo cadastrado
       document.getElementById('f-mot').value = veiculo.motorista || '';
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
       
       // Preencher CPF se existir
       const cpfField = document.getElementById('f-cpf');
-      if (cpfField && veiculo.cpfMotorista) {
-        cpfField.value = veiculo.cpfMotorista;
+      console.log('🔍 Campo CPF encontrado:', cpfField);
+      console.log('🔍 Campo CPF visível:', cpfField ? cpfField.offsetParent !== null : false);
+      console.log('🔍 CPF do veículo:', veiculo.cpfMotorista);
+      
+      if (cpfField) {
+        if (veiculo.cpfMotorista) {
+          cpfField.value = veiculo.cpfMotorista;
+          console.log('✅ CPF PREENCHIDO:', cpfField.value);
+        } else {
+          cpfField.value = '';
+          console.log('⚠️ Veículo sem CPF cadastrado');
+        }
+      } else {
+        console.error('❌ Campo CPF não encontrado no DOM!');
       }
       
       // Mostrar notificação de sucesso
@@ -10443,6 +10439,7 @@
           modelo: v.modelo || 'SEM MODELO',
           combustivel: v.combustivel || '---',
           ano: v.ano || '---',
+          cpf: v.cpfMotorista || null,  // CPF adicionado
           origem: 'Cadastro'
         });
       }
@@ -10471,6 +10468,7 @@
             modelo: '---',
             combustivel: h.tipo || '---',
             ano: '---',
+            cpf: h.cpf || null,  // CPF do histórico
             origem: 'Histórico',
             data: new Date(h.timestamp).toLocaleDateString('pt-BR')
           };
@@ -10528,6 +10526,7 @@
           </div>
           <div style="font-size: 12px;">
             <div style="font-weight: bold; color: #374151;">👤 ${r.motorista}</div>
+            ${r.cpf ? `<div style="color: #6b7280; margin-top: 2px; font-size: 11px;">🆔 CPF: ${r.cpf}</div>` : ''}
             <div style="color: #6b7280; margin-top: 2px;">
               ${r.modelo !== '---' && r.modelo !== 'SEM MODELO' ? '🚘 <strong>' + r.modelo + '</strong>' : ''} 
               ${r.ano !== '---' ? '(' + r.ano + ')' : ''}
@@ -10548,6 +10547,8 @@
   }
   
   function selecionarVeiculo(placa) {
+    console.log('🎯 SELECIONANDO VEÍCULO:', placa);
+    
     // Preencher campo de placa
     document.getElementById('f-placa').value = placa;
     
@@ -10556,6 +10557,7 @@
     document.getElementById('resultados-busca').style.display = 'none';
     
     // Acionar autocomplete
+    console.log('🔄 Chamando função sugerir()...');
     sugerir(placa);
     
     // Scroll suave até o campo de placa
@@ -12857,17 +12859,15 @@
   
   // Atualizar histórico VIP
   function atualizarHistoricoDiversas() {
-    const tbody = document.getElementById('historico-vip-body');
-    if (!tbody) return;
+    const container = document.getElementById('historico-diversas-container');
+    if (!container) return;
     
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">⏳ CARREGANDO...</td></tr>';
+    container.innerHTML = '<div style="text-align:center; padding:20px;">⏳ CARREGANDO...</div>';
     
     // Buscar TODOS os abastecimentos e filtrar VIP/DIVERSAS manualmente
     db.ref('abastecimentos').once('value', snap => {
-      tbody.innerHTML = '';
-      
       if (!snap.exists()) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO DIVERSAS REGISTRADO</td></tr>';
+        container.innerHTML = '<div style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO DIVERSAS REGISTRADO</div>';
         return;
       }
       
@@ -12875,7 +12875,10 @@
       snap.forEach(c => {
         const abast = c.val();
         // Filtrar VIP ou DIVERSAS (compatibilidade com dados antigos)
-        if (abast.tipoAbastecimento === "VIP" || abast.tipoAbastecimento === "DIVERSAS") {
+        if (abast.tipoAbastecimento === "VIP" || 
+            abast.tipoAbastecimento === "DIVERSAS" ||
+            abast.secretaria === "VIP" ||
+            abast.secretaria === "DIVERSAS") {
           abast.id = c.key;
           registros.push(abast);
         }
@@ -12884,38 +12887,97 @@
       // Filtrar por posto usando função central
       registros = filtrarCachePorPosto(registros);
       
+      if (registros.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px;">📭 NENHUM ABASTECIMENTO DIVERSAS REGISTRADO</div>';
+        return;
+      }
+      
       // Ordenar por data decrescente
       registros.sort((a, b) => b.timestamp - a.timestamp);
       
-      registros.forEach(abast => {
-        const dataFormatada = new Date(abast.data).toLocaleDateString('pt-BR');
-        
-        tbody.innerHTML += `
-          <tr>
-            <td>${dataFormatada}</td>
-            <td>
-              ${abast.horario 
-                ? `<span style="font-size: 11px;">🕐 ${abast.horario}</span>` 
-                : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
-              }
-            </td>
-            <td><strong>${abast.nomePessoaDiversas || abast.nomePessoaVIP || abast.vipNome || 'N/A'}</strong><br><small>${abast.cargoPessoaDiversas || abast.cargoPessoaVIP || ''}</small></td>
-            <td>${abast.placa}</td>
-            <td>${abast.posto}</td>
-            <td>${abast.tipo}</td>
-            <td>${abast.litro.toFixed(2)}L</td>
-            <td><strong>R$ ${abast.valor.toFixed(2)}</strong></td>
-            <td>${abast.aprovadoPor}</td>
-            <td class="no-print">
-              ${temPermissao('deletar_abastecimento') ? `
-                <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR ESTE ABASTECIMENTO DIVERSAS?')) { db.ref('abastecimentos/${abast.id}').remove().then(() => { mostrarNotificacao('🗑️ EXCLUÍDO!', 'success'); atualizarHistoricoDiversas(); atualizarDashboardDiversas(); }); }">
-                  🗑️
-                </button>
-              ` : '-'}
-            </td>
-          </tr>
-        `;
+      // AGRUPAR POR SECRETARIA
+      const porSecretaria = {};
+      registros.forEach(r => {
+        // Abastecimentos DIVERSAS podem ter secretaria ou não
+        const sec = r.secretaria || 'DIVERSAS';
+        if (!porSecretaria[sec]) {
+          porSecretaria[sec] = [];
+        }
+        porSecretaria[sec].push(r);
       });
+      
+      // Ordenar secretarias alfabeticamente
+      const secretarias = Object.keys(porSecretaria).sort();
+      
+      let html = '';
+      
+      // CRIAR UMA SEÇÃO PARA CADA SECRETARIA
+      secretarias.forEach(sec => {
+        const itens = porSecretaria[sec];
+        const totalSec = itens.reduce((acc, r) => acc + r.valor, 0);
+        const litrosSec = itens.reduce((acc, r) => acc + r.litro, 0);
+        
+        html += `
+        <div class="card" style="margin-bottom: 15px;">
+          <h4 style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px; margin: -20px -20px 15px -20px; border-radius: 8px 8px 0 0; font-size: 14px;">
+            🌟 ${sec.toUpperCase()}
+            <span style="float: right; font-size: 12px; opacity: 0.9;">
+              ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${totalSec.toFixed(2)}
+            </span>
+          </h4>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>DATA</th>
+                  <th>HORÁRIO</th>
+                  <th>PESSOA</th>
+                  <th>PLACA</th>
+                  <th>POSTO</th>
+                  <th>COMBUSTÍVEL</th>
+                  <th>LITROS</th>
+                  <th>VALOR</th>
+                  <th>LANÇADO POR</th>
+                  <th class="no-print">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody>`;
+        
+        // Adicionar linhas
+        itens.forEach(abast => {
+          const dataFormatada = new Date(abast.data).toLocaleDateString('pt-BR');
+          
+          html += `
+            <tr>
+              <td>${dataFormatada}</td>
+              <td>
+                ${abast.horario 
+                  ? `<span style="font-size: 11px;">🕐 ${abast.horario}</span>` 
+                  : `<span style="font-size: 9px; opacity: 0.5;">--:--</span>`
+                }
+              </td>
+              <td><strong>${abast.nomePessoaDiversas || abast.nomePessoaVIP || abast.vipNome || abast.nomeVIP || abast.pessoaDiversas || 'N/A'}</strong><br><small>${abast.cargoPessoaDiversas || abast.cargoPessoaVIP || ''}</small></td>
+              <td>${abast.placa}</td>
+              <td>${abast.posto}</td>
+              <td>${abast.tipo}</td>
+              <td>${abast.litro.toFixed(2)}L</td>
+              <td><strong>R$ ${abast.valor.toFixed(2)}</strong></td>
+              <td>${abast.aprovadoPor || abast.solicitadoPor || '---'}</td>
+              <td class="no-print">
+                ${temPermissao('deletar_abastecimento') ? `
+                  <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR ESTE ABASTECIMENTO DIVERSAS?')) { db.ref('abastecimentos/${abast.id}').remove().then(() => { mostrarNotificacao('🗑️ EXCLUÍDO!', 'success'); atualizarHistoricoDiversas(); atualizarDashboardDiversas(); }); }">
+                    🗑️
+                  </button>
+                ` : '-'}
+              </td>
+            </tr>
+          `;
+        });
+        
+        html += `</tbody></table></div></div>`;
+      });
+      
+      container.innerHTML = html;
     });
   }
   
