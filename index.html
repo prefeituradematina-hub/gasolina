@@ -2848,6 +2848,9 @@
           <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
             💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
           </div>
+          <div id="aviso-busca-secretaria" style="display: none; font-size: 11px; color: #f59e0b; margin-top: 5px; font-weight: bold;">
+            ⚠️ Busca restrita aos abastecimentos da sua secretaria
+          </div>
         </div>
         <div>
           <button 
@@ -3164,8 +3167,20 @@
         </div>
         
         <div>
+          <label>HORÁRIO *</label>
+          <input type="time" id="diversas-horario" style="font-weight:600; font-size:14px;">
+        </div>
+        
+        <div>
           <label>PLACA DO VEÍCULO *</label>
-          <input type="text" id="diversas-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+          <input 
+            type="text" 
+            id="diversas-placa" 
+            placeholder="ABC-1234" 
+            maxlength="8" 
+            style="text-transform:uppercase;"
+            onkeyup="sugerirDiversas(this.value)"
+          >
         </div>
         
         <div>
@@ -4595,7 +4610,7 @@
         </div>
         <div>
           <div style="font-size:9px; color:#64748b;">TOTAL GASTO</div>
-          <div style="font-size:14px; font-weight:bold; color:#1e40af;">R$ ${totalGasto.toFixed(2)}</div>
+          <div style="font-size:14px; font-weight:bold; color:#1e40af;">R$ ${formatarMoeda(totalGasto)}</div>
         </div>
         <div>
           <div style="font-size:9px; color:#64748b;">TOTAL LITROS</div>
@@ -4610,7 +4625,7 @@
       html += `
         <div style="font-size:10px; padding:6px; background:white; border-radius:4px; margin-bottom:4px; display:flex; justify-content:space-between;">
           <span>${dataFormatada} • ${h.posto}</span>
-          <span style="font-weight:bold; color:#1e40af;">${h.litro.toFixed(1)}L • R$ ${h.valor.toFixed(2)}</span>
+          <span style="font-weight:bold; color:#1e40af;">${h.litro.toFixed(1)}L • R$ ${formatarMoeda(h.valor)}</span>
         </div>
       `;
     });
@@ -4661,7 +4676,7 @@
         </div>
         <div>
           <div style="font-size:9px; color:#92400e;">TOTAL GASTO</div>
-          <div style="font-size:14px; font-weight:bold; color:#92400e;">R$ ${totalGasto.toFixed(2)}</div>
+          <div style="font-size:14px; font-weight:bold; color:#92400e;">R$ ${formatarMoeda(totalGasto)}</div>
         </div>
         <div>
           <div style="font-size:9px; color:#92400e;">TOTAL LITROS</div>
@@ -4676,7 +4691,7 @@
       html += `
         <div style="font-size:10px; padding:6px; background:white; border-radius:4px; margin-bottom:4px; display:flex; justify-content:space-between;">
           <span>${dataFormatada} • ${h.posto} • ${h.vipNome || "DIVERSAS"}</span>
-          <span style="font-weight:bold; color:#92400e;">${h.litro.toFixed(1)}L • R$ ${h.valor.toFixed(2)}</span>
+          <span style="font-weight:bold; color:#92400e;">${h.litro.toFixed(1)}L • R$ ${formatarMoeda(h.valor)}</span>
         </div>
       `;
     });
@@ -4878,10 +4893,10 @@
         alerta.style.fontSize = '11px';
         alerta.innerHTML = `
           <strong>❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!</strong><br>
-          Seu limite no ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'posto'}: R$ ${limitePosto.toFixed(2)}<br>
-          Já gastou neste posto: R$ ${gastoAtualPosto.toFixed(2)}<br>
-          Saldo disponível: R$ ${(limitePosto - gastoAtualPosto).toFixed(2)}<br>
-          Valor deste abastecimento: R$ ${valorAbastecimento.toFixed(2)}
+          Seu limite no ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'posto'}: R$ ${formatarMoeda(limitePosto)}<br>
+          Já gastou neste posto: R$ ${formatarMoeda(gastoAtualPosto)}<br>
+          Saldo disponível: R$ ${formatarMoeda(limitePosto - gastoAtualPosto)}<br>
+          Valor deste abastecimento: R$ ${formatarMoeda(valorAbastecimento)}
         `;
         
         const form = document.querySelector('.grid-form');
@@ -4918,7 +4933,7 @@
           info.style.fontSize = '10px';
           info.innerHTML = `
             <strong>⚠️ ATENÇÃO AO LIMITE DO ${isVictor ? 'POSTO VICTOR' : isMatina ? 'POSTO MATINA' : 'POSTO'}</strong><br>
-            Saldo restante neste posto: <strong>R$ ${saldoRestante.toFixed(2)}</strong>
+            Saldo restante neste posto: <strong>R$ ${formatarMoeda(saldoRestante)}</strong>
           `;
           
           const form = document.querySelector('.grid-form');
@@ -5128,7 +5143,7 @@
           // Recalcular validação de limite em tempo real
           verificarLimiteEmTempoReal();
           
-          mostrarNotificacao(`🔄 Seu limite foi atualizado para R$ ${novoLimiteTotal.toFixed(2)}`, "info");
+          mostrarNotificacao(`🔄 Seu limite foi atualizado para R$ ${formatarMoeda(novoLimiteTotal)}`, "info");
         }
       });
     }
@@ -5225,7 +5240,7 @@
     const precoLitro = postoData.precos[tipo] || 0;
     const valorTotal = litros * precoLitro;
     
-    document.getElementById('f-val').value = "R$ " + valorTotal.toFixed(2);
+    document.getElementById('f-val').value = "R$ " + formatarMoeda(valorTotal);
     
     // Atualizar previsão de consumo
     atualizarPrevisaoConsumo();
@@ -5638,10 +5653,10 @@
           mostrarNotificacao(
             `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
             `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
-            `Seu limite neste posto: R$ ${limitePosto.toFixed(2)}\n` +
-            `Já gastou (após reset): R$ ${gastoAtualPosto.toFixed(2)}\n` +
-            `Saldo disponível: R$ ${saldoRestante.toFixed(2)}\n` +
-            `Valor deste abastecimento: R$ ${dados.valor.toFixed(2)}`,
+            `Seu limite neste posto: R$ ${formatarMoeda(limitePosto)}\n` +
+            `Já gastou (após reset): R$ ${formatarMoeda(gastoAtualPosto)}\n` +
+            `Saldo disponível: R$ ${formatarMoeda(saldoRestante)}\n` +
+            `Valor deste abastecimento: R$ ${formatarMoeda(dados.valor)}`,
             "error"
           );
           btnRegistrar.disabled = false;
@@ -5791,11 +5806,11 @@
     
     // Atualizar exibição
     document.getElementById('limite-mensal').textContent = 
-      `R$ ${limiteMensal.toFixed(2)}`;
+      `R$ ${formatarMoeda(limiteMensal)}`;
     document.getElementById('gasto-atual').textContent = 
-      `R$ ${gastoAtual.toFixed(2)}`;
+      `R$ ${formatarMoeda(gastoAtual)}`;
     document.getElementById('saldo-restante').textContent = 
-      `R$ ${saldoRestante.toFixed(2)}`;
+      `R$ ${formatarMoeda(saldoRestante)}`;
     
     // Atualizar barra de progresso
     const progresso = document.getElementById('progresso-limite');
@@ -5873,9 +5888,9 @@
           </div>
         </div>
         <div style="font-size: 11px; color: #78350f; line-height: 1.6;">
-          <p style="margin: 5px 0;"><strong>Valor do abastecimento:</strong> R$ ${valorTotal.toFixed(2)}</p>
-          <p style="margin: 5px 0;"><strong>Saldo disponível:</strong> R$ ${saldoRestante.toFixed(2)}</p>
-          <p style="margin: 5px 0;"><strong>Excedente:</strong> <span style="color: var(--danger); font-weight: bold;">R$ ${excedente.toFixed(2)}</span></p>
+          <p style="margin: 5px 0;"><strong>Valor do abastecimento:</strong> R$ ${formatarMoeda(valorTotal)}</p>
+          <p style="margin: 5px 0;"><strong>Saldo disponível:</strong> R$ ${formatarMoeda(saldoRestante)}</p>
+          <p style="margin: 5px 0;"><strong>Excedente:</strong> <span style="color: var(--danger); font-weight: bold;">R$ ${formatarMoeda(excedente)}</span></p>
           <p style="margin: 10px 0 0 0; padding-top: 10px; border-top: 1px solid #fbbf24;">
             <em>Você pode aprovar, mas o secretário será notificado do estouro de orçamento.</em>
           </p>
@@ -5948,7 +5963,7 @@
     // Calcular valor automaticamente se tiver preço e litros
     if (precoPadrao > 0 && litrosSugeridos) {
       const valorTotal = parseFloat(litrosSugeridos) * precoPadrao;
-      document.getElementById('tanque-valor').value = "R$ " + valorTotal.toFixed(2);
+      document.getElementById('tanque-valor').value = "R$ " + formatarMoeda(valorTotal);
     } else {
       document.getElementById('tanque-valor').value = '';
     }
@@ -5974,7 +5989,7 @@
     const litros = parseFloat(document.getElementById('tanque-litros').value) || 0;
     const preco = parseFloat(document.getElementById('tanque-preco').value) || 0;
     const valorTotal = litros * preco;
-    document.getElementById('tanque-valor').value = "R$ " + valorTotal.toFixed(2);
+    document.getElementById('tanque-valor').value = "R$ " + formatarMoeda(valorTotal);
     
     // Verificar limite em tempo real
     verificarLimiteSecretario();
@@ -6009,9 +6024,9 @@
       const confirmarExcedente = confirm(
         `⚠️ ATENÇÃO: VALOR EXCEDE O LIMITE DISPONÍVEL!\n\n` +
         `Secretaria: ${abastecimentoTanqueCheioAtual.secretaria}\n` +
-        `Valor do abastecimento: R$ ${valor.toFixed(2)}\n` +
-        `Saldo disponível: R$ ${saldoRestante.toFixed(2)}\n` +
-        `Excedente: R$ ${(valor - saldoRestante).toFixed(2)}\n\n` +
+        `Valor do abastecimento: R$ ${formatarMoeda(valor)}\n` +
+        `Saldo disponível: R$ ${formatarMoeda(saldoRestante)}\n` +
+        `Excedente: R$ ${formatarMoeda(valor - saldoRestante)}\n\n` +
         `O secretário será notificado do estouro de orçamento.\n\n` +
         `Deseja aprovar mesmo assim?`
       );
@@ -6019,7 +6034,7 @@
       if (!confirmarExcedente) return;
     }
     
-    if (!confirm(`Confirmar abastecimento de ${litros}L por R$ ${valor.toFixed(2)}?`)) return;
+    if (!confirm(`Confirmar abastecimento de ${litros}L por R$ ${formatarMoeda(valor)}?`)) return;
     
     const dadosAtualizados = {
       litro: litros,
@@ -6259,6 +6274,16 @@
       labelDestino.innerHTML = 'DESTINO <span style="font-size:9px; color:#64748b;">(Opcional)</span>';
       inputDestino.placeholder = 'LOCAL DE DESTINO';
       inputDestino.style.borderColor = '';
+    }
+    
+    // Mostrar aviso de busca restrita para secretários
+    const avisoBuscaSecretaria = document.getElementById('aviso-busca-secretaria');
+    if (avisoBuscaSecretaria) {
+      if (userRole === 'secretarios' && userSecretaria) {
+        avisoBuscaSecretaria.style.display = 'block';
+      } else {
+        avisoBuscaSecretaria.style.display = 'none';
+      }
     }
     
     // Configurar filtro de secretaria para secretários
@@ -6506,7 +6531,7 @@
             <h4 style="margin:0 0 10px 0; font-size:14px;">⚠️ ATENÇÃO AO LIMITE ORÇAMENTÁRIO</h4>
             <p style="margin:0;">
               Você já utilizou <strong>${percentualGasto.toFixed(1)}%</strong> do limite mensal.
-              <br>Saldo restante: <strong>R$ ${(userLimit - gastoComprometido).toFixed(2)}</strong>
+              <br>Saldo restante: <strong>R$ ${formatarMoeda(userLimit - gastoComprometido)}</strong>
             </p>
             <div class="progress-bar" style="margin-top:10px;">
               <div class="progress-fill ${percentualGasto >= 95 ? 'danger' : 'warning'}" style="width:${percentualGasto}%"></div>
@@ -6591,11 +6616,11 @@
           </div>
           <div class="stat-card">
             <h4>TOTAL GASTO</h4>
-            <div class="stat-value">R$ ${totalGasto.toFixed(2)}</div>
+            <div class="stat-value">R$ ${formatarMoeda(totalGasto)}</div>
           </div>
           <div class="stat-card">
             <h4>TOTAL LITROS</h4>
-            <div class="stat-value">${totalLitros.toFixed(1)} L</div>
+            <div class="stat-value">${formatarLitros(totalLitros)} L</div>
           </div>
         </div>
       </div>
@@ -6623,7 +6648,7 @@
           <td>${m.km.toLocaleString('pt-BR')}</td>
           <td>${m.litros.toFixed(1)}L</td>
           <td style="font-weight:bold; color:${corMedia};">${m.media.toFixed(2)} km/l</td>
-          <td>R$ ${m.valor.toFixed(2)}</td>
+          <td>R$ ${formatarMoeda(m.valor)}</td>
         </tr>
       `;
     });
@@ -6708,7 +6733,7 @@
               </div>
               <div style="text-align:center;">
                 <div style="font-size:10px; color:#64748b;">VALOR</div>
-                <div style="font-size:13px; font-weight:bold;">R$ ${abast.valor.toFixed(2)}</div>
+                <div style="font-size:13px; font-weight:bold;">R$ ${formatarMoeda(abast.valor)}</div>
               </div>
             </div>
           </div>
@@ -6730,14 +6755,97 @@
     }
   }
   
+  // ==================== FUNÇÃO DE SANITIZAÇÃO DE DADOS ====================
+  
+  function sanitizarValor(valor) {
+    // Converter para número e garantir que é válido
+    const num = parseFloat(valor);
+    
+    // Se não for número válido, retornar 0
+    if (isNaN(num) || !isFinite(num)) {
+      return 0;
+    }
+    
+    // Se for negativo, retornar 0
+    if (num < 0) {
+      return 0;
+    }
+    
+    // Se for absurdamente alto (mais de R$ 10.000 ou 1000L), considerar inválido
+    // Um abastecimento normal não ultrapassa esses valores
+    if (num > 100000) {
+      console.warn('⚠️ Valor absurdo detectado e ignorado:', num);
+      return 0;
+    }
+    
+    return num;
+  }
+  
+  function sanitizarAbastecimento(abast) {
+    return {
+      ...abast,
+      valor: sanitizarValor(abast.valor),
+      litro: sanitizarValor(abast.litro),
+      km: sanitizarValor(abast.km)
+    };
+  }
+  
+  // Funções helper para soma segura
+  function somarValores(array) {
+    return array.reduce((acc, item) => acc + sanitizarValor(item.valor), 0);
+  }
+  
+  function somarLitros(array) {
+    return array.reduce((acc, item) => acc + sanitizarValor(item.litro), 0);
+  }
+  
+  // Função de formatação brasileira
+  function formatarMoeda(valor) {
+    return valor.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  
+  function formatarLitros(litros) {
+    return litros.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  
+  function formatarNumero(numero) {
+    return numero.toLocaleString('pt-BR');
+  }
+  
+  // ==================== FIM FUNÇÃO DE SANITIZAÇÃO ====================
+  
   function atualizarEstatisticas() {
     const container = document.getElementById('stats-container');
     
-    // Filtrar por posto usando função central
-    const dadosAutorizados = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    // SANITIZAR DADOS: Garantir que todos os valores são números válidos
+    const cacheSanitizado = cache.map(sanitizarAbastecimento);
     
-    const totalGasto = dadosAutorizados.reduce((acc, item) => acc + item.valor, 0);
-    const totalLitros = dadosAutorizados.reduce((acc, item) => acc + item.litro, 0);
+    // Filtrar por posto usando função central
+    const dadosAutorizados = filtrarCachePorPosto(cacheSanitizado.filter(x => x.status === STATUS.AUTORIZADO));
+    
+    // LOG: Verificar se houve valores sanitizados
+    const valoresInvalidos = cache.filter((x, i) => {
+      const original = x.valor;
+      const sanitizado = cacheSanitizado[i].valor;
+      return original !== sanitizado && original > 0;
+    });
+    
+    if (valoresInvalidos.length > 0) {
+      console.error('🚨 VALORES INVÁLIDOS DETECTADOS E CORRIGIDOS:');
+      valoresInvalidos.forEach(x => {
+        console.error(`  • ID: ${x.id} | Placa: ${x.placa} | Valor original: ${x.valor} | Valor corrigido: ${sanitizarValor(x.valor)}`);
+      });
+      console.error(`  Total de valores corrigidos: ${valoresInvalidos.length}`);
+    }
+    
+    const totalGasto = somarValores(dadosAutorizados);
+    const totalLitros = somarLitros(dadosAutorizados);
     const totalAbastecimentos = dadosAutorizados.length;
     const veiculosUnicos = [...new Set(dadosAutorizados.map(x => x.placa))].length;
     
@@ -6793,18 +6901,98 @@
         return passa;
       } else {
         // Outros: mês atual
-        const anoMes = x.data.split('T')[0].substring(0, 7);
-        return anoMes === anoMesAtual;
+        // IMPORTANTE: Garantir que a data está no formato correto
+        const dataCompleta = x.data || '';
+        const dataSemHora = dataCompleta.split('T')[0]; // YYYY-MM-DD
+        const anoMes = dataSemHora.substring(0, 7); // YYYY-MM
+        
+        const passa = anoMes === anoMesAtual;
+        
+        // Log detalhado para debug
+        if (dadosAutorizados.indexOf(x) < 3) { // Primeiros 3 para debug
+          console.log(`  Debug item ${dadosAutorizados.indexOf(x)}:`, {
+            dataCompleta,
+            dataSemHora,
+            anoMes,
+            anoMesAtual,
+            passa
+          });
+        }
+        
+        return passa;
       }
     });
     
     console.log('✂️ FILTRO APLICADO:');
     console.log('  • Tipo:', userRole === 'secretarios' ? 'APÓS RESET' : 'MÊS ATUAL');
-    console.log('  • Registros encontrados:', dadosMes.length);
+    console.log('  • Total de autorizados:', dadosAutorizados.length);
+    console.log('  • Filtrados para o mês:', dadosMes.length);
+    console.log('  • Ano/Mês procurado:', anoMesAtual);
     console.log('');
     
-    const gastoMes = dadosMes.reduce((acc, x) => acc + x.valor, 0);
-    const litrosMes = dadosMes.reduce((acc, x) => acc + x.litro, 0);
+    const gastoMes = dadosMes.reduce((acc, x) => {
+      const valorAtual = sanitizarValor(x.valor);
+      const novoAcc = acc + valorAtual;
+      
+      // Detectar overflow ou valores absurdos durante a soma
+      if (!isFinite(novoAcc) || novoAcc > 100000000) { // 100 milhões
+        console.error('🚨 OVERFLOW DETECTADO NA SOMA!');
+        console.error('  • Acumulador antes:', acc);
+        console.error('  • Valor adicionado:', valorAtual);
+        console.error('  • Item:', x.id, x.placa, x.data);
+        return acc; // Não adiciona esse valor
+      }
+      
+      return novoAcc;
+    }, 0);
+    
+    const litrosMes = dadosMes.reduce((acc, x) => {
+      const litroAtual = sanitizarValor(x.litro);
+      return acc + litroAtual;
+    }, 0);
+    
+    // DETECTAR VALORES ABSURDOS
+    const valoresAbsurdos = dadosMes.filter(x => x.valor > 10000 || x.litro > 1000);
+    if (valoresAbsurdos.length > 0) {
+      console.error('🚨 VALORES ABSURDOS DETECTADOS:');
+      valoresAbsurdos.forEach((x, i) => {
+        console.error(`  ${i+1}. ID: ${x.id} | Placa: ${x.placa} | Valor: R$ ${formatarMoeda(x.valor)} | Litros: ${x.litro.toFixed(2)} | Data: ${x.data}`);
+      });
+      console.error('⚠️ Total de abastecimentos com valores absurdos:', valoresAbsurdos.length);
+    }
+    
+    // LOG DETALHADO DOS 10 PRIMEIROS PARA DEBUG
+    console.log('📋 PRIMEIROS 10 ABASTECIMENTOS DO MÊS:');
+    dadosMes.slice(0, 10).forEach((x, i) => {
+      console.log(`  ${i+1}. ${x.data} | ${x.placa} | R$ ${formatarMoeda(x.valor)} | ${x.litro.toFixed(2)}L | Status: ${x.status}`);
+    });
+    
+    // VERIFICAR SE HÁ DUPLICAÇÃO DE IDs
+    const ids = dadosMes.map(x => x.id);
+    const idsUnicos = [...new Set(ids)];
+    if (ids.length !== idsUnicos.length) {
+      console.error('🚨 DUPLICAÇÃO DE IDs DETECTADA!');
+      console.error('  • Total de registros:', ids.length);
+      console.error('  • IDs únicos:', idsUnicos.length);
+      console.error('  • Duplicados:', ids.length - idsUnicos.length);
+      
+      // Encontrar quais IDs estão duplicados
+      const duplicados = ids.filter((id, index) => ids.indexOf(id) !== index);
+      console.error('  • IDs duplicados:', [...new Set(duplicados)]);
+    }
+    
+    // ANÁLISE DETALHADA DA SOMA
+    console.log('🧮 ANÁLISE DA SOMA:');
+    console.log('  • Quantidade de registros:', dadosMes.length);
+    console.log('  • Soma manual dos 5 primeiros valores:');
+    let somaParcial = 0;
+    dadosMes.slice(0, 5).forEach((x, i) => {
+      somaParcial += x.valor;
+      console.log(`    ${i+1}. R$ ${formatarMoeda(x.valor)} (acumulado: R$ ${somaParcial.toFixed(2)})`);
+    });
+    console.log('  • Média por abastecimento:', dadosMes.length > 0 ? (gastoMes / dadosMes.length).toFixed(2) : 0);
+    console.log('  • Maior valor:', Math.max(...dadosMes.map(x => x.valor)).toFixed(2));
+    console.log('  • Menor valor:', Math.min(...dadosMes.map(x => x.valor)).toFixed(2));
     
     const nomeLabel = userRole === 'secretarios' 
       ? (ultimoReset > 0 ? `DESDE ${new Date(ultimoReset).toLocaleDateString('pt-BR')}` : 'TOTAL GERAL')
@@ -6817,12 +7005,81 @@
     console.log('═══════════════════════════════════════════════════════════');
     console.log('');
     
-    const gastoVictor = dadosMes
-      .filter(x => (x.posto || '').toUpperCase().includes('VICTOR'))
-      .reduce((acc, x) => acc + x.valor, 0);
-    const gastoMatina = dadosMes
-      .filter(x => (x.posto || '').toUpperCase().includes('MATINA'))
-      .reduce((acc, x) => acc + x.valor, 0);
+    // DEBUG ESPECÍFICO PARA POSTO MATINA
+    const abastMatina = dadosMes.filter(x => (x.posto || '').toUpperCase().includes('MATINA'));
+    const abastVictor = dadosMes.filter(x => (x.posto || '').toUpperCase().includes('VICTOR'));
+    
+    console.log('🏪 DEBUG POSTOS:');
+    console.log('  • Total MATINA:', abastMatina.length, 'abastecimentos');
+    console.log('  • Total VICTOR:', abastVictor.length, 'abastecimentos');
+    
+    if (abastMatina.length > 0) {
+      console.log('');
+      console.log('📊 ANÁLISE ITEM POR ITEM - POSTO MATINA:');
+      
+      let somaManualMatina = 0;
+      let litrosManualMatina = 0;
+      
+      abastMatina.forEach((x, i) => {
+        const valorSanitizado = sanitizarValor(x.valor);
+        const litroSanitizado = sanitizarValor(x.litro);
+        
+        somaManualMatina += valorSanitizado;
+        litrosManualMatina += litroSanitizado;
+        
+        // Log dos primeiros 20
+        if (i < 20) {
+          console.log(`  ${i+1}. ID: ${x.id}`);
+          console.log(`     Placa: ${x.placa} | Data: ${x.data}`);
+          console.log(`     Valor ORIGINAL: ${x.valor} | Valor SANITIZADO: ${valorSanitizado}`);
+          console.log(`     Litro ORIGINAL: ${x.litro} | Litro SANITIZADO: ${litroSanitizado}`);
+          console.log(`     Acumulado: R$ ${somaManualMatina.toFixed(2)}`);
+          console.log('');
+        }
+      });
+      
+      console.log('  📊 SOMA MANUAL MATINA (item por item):');
+      console.log('    • Total: R$', somaManualMatina.toFixed(2));
+      console.log('    • Litros:', litrosManualMatina.toFixed(2), 'L');
+      
+      // Comparar com reduce()
+      const gastoMatinaReduce = abastMatina.reduce((acc, x) => acc + sanitizarValor(x.valor), 0);
+      console.log('');
+      console.log('  🔄 SOMA COM REDUCE:');
+      console.log('    • Total: R$', gastoMatinaReduce.toFixed(2));
+      console.log('    • Diferença:', Math.abs(somaManualMatina - gastoMatinaReduce).toFixed(2));
+      
+      const valoresMatina = abastMatina.map(x => sanitizarValor(x.valor));
+      const maiorMatina = Math.max(...valoresMatina);
+      const menorMatina = Math.min(...valoresMatina);
+      const mediaMatina = somaManualMatina / abastMatina.length;
+      
+      console.log('');
+      console.log('  📈 ESTATÍSTICAS MATINA:');
+      console.log('    • Maior valor: R$', maiorMatina.toFixed(2));
+      console.log('    • Menor valor: R$', menorMatina.toFixed(2));
+      console.log('    • Média: R$', mediaMatina.toFixed(2));
+      
+      // Detectar valores suspeitos (acima de R$ 1000)
+      const suspeitosMatina = abastMatina.filter(x => x.valor > 1000);
+      if (suspeitosMatina.length > 0) {
+        console.error('');
+        console.error('  🚨 VALORES SUSPEITOS NO MATINA (> R$ 1000):');
+        suspeitosMatina.forEach((x, i) => {
+          console.error(`    ${i+1}. ID: ${x.id} | ${x.data} | ${x.placa}`);
+          console.error(`       Valor: R$ ${x.valor} | Litros: ${x.litro}`);
+        });
+      }
+    }
+    
+    const gastoVictor = abastVictor.reduce((acc, x) => acc + sanitizarValor(x.valor), 0);
+    const gastoMatina = abastMatina.reduce((acc, x) => acc + sanitizarValor(x.valor), 0);
+    
+    console.log('');
+    console.log('💰 TOTAIS POR POSTO:');
+    console.log('  • VICTOR: R$', formatarMoeda(gastoVictor));
+    console.log('  • MATINA: R$', formatarMoeda(gastoMatina));
+    console.log('');
     
     // Cards de posto só aparecem se houver dados
     const cardsPostos = (gastoVictor > 0 || gastoMatina > 0) ? `
@@ -6830,14 +7087,14 @@
       <div class="stat-card" style="border-left: 4px solid #3b82f6;">
         <div class="stat-icon">🅥</div>
         <h4>GASTOS VICTOR</h4>
-        <div class="stat-value" style="font-size:16px;">R$ ${gastoVictor.toFixed(2)}</div>
+        <div class="stat-value" style="font-size:16px;">R$ ${formatarMoeda(gastoVictor)}</div>
         <div style="font-size:10px; color:#64748b; margin-top:4px;">Mês atual</div>
       </div>` : ''}
       ${gastoMatina > 0 ? `
       <div class="stat-card" style="border-left: 4px solid #10b981;">
         <div class="stat-icon">🅼</div>
         <h4>GASTOS MATINA</h4>
-        <div class="stat-value" style="font-size:16px;">R$ ${gastoMatina.toFixed(2)}</div>
+        <div class="stat-value" style="font-size:16px;">R$ ${formatarMoeda(gastoMatina)}</div>
         <div style="font-size:10px; color:#64748b; margin-top:4px;">Mês atual</div>
       </div>` : ''}
     ` : '';
@@ -6852,8 +7109,8 @@
       const d = x.data.split('T')[0];
       return d >= semanaInicio && d <= semanaFim;
     });
-    const gastoSemana = dadosSemana.reduce((acc, x) => acc + x.valor, 0);
-    const litrosSemana = dadosSemana.reduce((acc, x) => acc + x.litro, 0);
+    const gastoSemana = somarValores(dadosSemana);
+    const litrosSemana = somarLitros(dadosSemana);
 
     const ticketMedio = dadosMes.length > 0 ? gastoMes / dadosMes.length : 0;
 
@@ -6887,7 +7144,7 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">📅 ${userRole === 'secretarios' ? 'APÓS RESET' : 'MÊS ATUAL'}</div>
-            <div style="font-size:22px; font-weight:bold; color:#6366f1; margin:4px 0;">R$ ${gastoMes.toFixed(2)}</div>
+            <div style="font-size:22px; font-weight:bold; color:#6366f1; margin:4px 0;">R$ ${formatarMoeda(gastoMes)}</div>
             <div style="font-size:10px; color:#94a3b8;">${nomeLabel} · ${dadosMes.length} abastec. · ${litrosMes.toFixed(0)}L</div>
           </div>
           <div style="font-size:28px; opacity:0.3;">📅</div>
@@ -6898,7 +7155,7 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">🗓️ ESTA SEMANA</div>
-            <div style="font-size:22px; font-weight:bold; color:#f59e0b; margin:4px 0;">R$ ${gastoSemana.toFixed(2)}</div>
+            <div style="font-size:22px; font-weight:bold; color:#f59e0b; margin:4px 0;">R$ ${formatarMoeda(gastoSemana)}</div>
             <div style="font-size:10px; color:#94a3b8;">Últimos 7 dias · ${dadosSemana.length} abastec. · ${litrosSemana.toFixed(0)}L</div>
           </div>
           <div style="font-size:28px; opacity:0.3;">🗓️</div>
@@ -6912,7 +7169,7 @@
           <div>
             <div style="font-size:10px; color:#64748b; font-weight:600; letter-spacing:1px;">⛽ LITROS NO MÊS</div>
             <div style="font-size:22px; font-weight:bold; color:#10b981; margin:4px 0;">${litrosMes.toFixed(1)} L</div>
-            <div style="font-size:10px; color:#94a3b8;">Ticket médio: R$ ${ticketMedio.toFixed(2)}</div>
+            <div style="font-size:10px; color:#94a3b8;">Ticket médio: R$ ${formatarMoeda(ticketMedio)}</div>
           </div>
           <div style="font-size:28px; opacity:0.3;">⛽</div>
         </div>
@@ -7097,7 +7354,7 @@
           <div style="font-weight:bold; margin-bottom:5px;">📊 TOTAL (VICTOR + MATINA)</div>
           <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:5px;">
             <span>💰 R$ ${limiteTotal.toFixed(2)}</span>
-            <span>📉 R$ ${gastoTotal.toFixed(2)} (${percentual}%)</span>
+            <span>📉 R$ ${formatarMoeda(gastoTotal)} (${percentual}%)</span>
             <span>✅ R$ ${saldoTotal.toFixed(2)}</span>
           </div>
           <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill ${saldoTotal < limiteTotal*0.2 ? 'danger' : saldoTotal < limiteTotal*0.5 ? 'warning' : ''}" style="width:${Math.min(percentual,100)}%"></div></div>
@@ -7121,7 +7378,7 @@
       statusDiv.innerHTML = `
         👤 OPERADOR: ${loginUser.toUpperCase()} 
         <span class="badge badge-success">${userRole.toUpperCase()}</span><br>
-        💰 TOTAL APROVADO: R$ ${totalGasto.toFixed(2)} | 
+        💰 TOTAL APROVADO: R$ ${formatarMoeda(totalGasto)} | 
         ⏳ PENDENTE: R$ ${totalPendente.toFixed(2)} (${pendentesQtd})
       `;
     }
@@ -7218,8 +7475,23 @@
       console.log(`Itens encontrados para ${sec}:`, itens.length);
       
       if (itens.length === 0) return;
+      
+      // PAGINAÇÃO: Controlar quantos itens mostrar por vez
+      const ITENS_POR_PAGINA = 20;
+      const secId = sec.replace(/[^a-zA-Z0-9]/g, '_'); // ID único para cada secretaria
+      
+      // Verificar se já existe estado de paginação para esta secretaria
+      if (!window.paginacaoSecretarias) window.paginacaoSecretarias = {};
+      if (!window.paginacaoSecretarias[secId]) {
+        window.paginacaoSecretarias[secId] = { itensMostrados: ITENS_POR_PAGINA };
+      }
+      
+      const itensMostrados = window.paginacaoSecretarias[secId].itensMostrados;
+      const itensVisiveis = itens.slice(0, itensMostrados);
+      const temMais = itens.length > itensMostrados;
+      
       let linhas = "";
-      itens.forEach(d => {
+      itensVisiveis.forEach(d => {
         const media = calcularMedia(d);
         // NOVO: Usar os limites de alerta específicos
         const limiteAlerta = LIMITES_ALERTA[d.tipo];
@@ -7248,13 +7520,13 @@
           <td>${d.destino || '---'}</td>
           <td>${d.tipo}</td>
           <td><span class="status-tag status-${d.status.toLowerCase()}">${d.status}</span></td>
-          <td>${d.km.toLocaleString('pt-BR')}</td>
-          <td>${d.litro.toFixed(2)} L</td>
+          <td>${formatarNumero(d.km)}</td>
+          <td>${formatarLitros(d.litro)} L</td>
           ${!isFrentista ? `
           <td ${classeAlerta ? `style="font-weight:bold;"` : ''}>
             ${media > 0 ? media.toFixed(2) + ' km/l' + (classeAlerta ? ' 🚨' : '') : '---'}
           </td>
-          <td>R$ ${d.valor.toFixed(2)}</td>
+          <td>R$ ${formatarMoeda(d.valor)}</td>
           ` : ''}
           <td class="no-print">
             ${(d.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento'))
@@ -7289,14 +7561,41 @@
       
       // Frentista não vê valores financeiros
       const headerInfo = isFrentista 
-        ? `${sec} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`
-        : `${sec} | 💰 R$ ${totalSec.toFixed(2)} | ⛽ ${totalLitros.toFixed(2)} L | 📊 ${itens.length} abastecimentos`;
+        ? `${sec} | ⛽ ${formatarLitros(totalLitros)} L | 📊 ${itens.length} abastecimentos`
+        : `${sec} | 💰 R$ ${formatarMoeda(totalSec)} | ⛽ ${formatarLitros(totalLitros)} L | 📊 ${itens.length} abastecimentos`;
       
       // Estilo especial para VIPs
       const isDiversas = sec === '🌟 DIVERSAS';
       const headerStyle = isDiversas 
         ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; font-weight: bold;' 
         : '';
+      
+      // Botão "Mostrar mais" se houver mais itens
+      const botaoMostrarMais = temMais ? `
+        <div style="text-align: center; padding: 20px; background: #f8fafc; border-top: 2px solid #e5e7eb;">
+          <p style="margin: 0 0 10px 0; color: #64748b; font-size: 13px;">
+            Mostrando ${itensMostrados} de ${itens.length} abastecimentos
+          </p>
+          <button 
+            class="btn-save" 
+            onclick="mostrarMaisAbastecimentos('${secId}')"
+            style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 10px 30px; min-width: 200px;">
+            📄 MOSTRAR MAIS 20 REGISTROS
+          </button>
+          <button 
+            class="btn-save" 
+            onclick="mostrarTodosAbastecimentos('${secId}')"
+            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 10px 30px; min-width: 200px; margin-left: 10px;">
+            📋 MOSTRAR TODOS (${itens.length})
+          </button>
+        </div>
+      ` : `
+        <div style="text-align: center; padding: 15px; background: #f0f9ff; border-top: 2px solid #3b82f6;">
+          <p style="margin: 0; color: #1e40af; font-size: 13px; font-weight: bold;">
+            ✅ Mostrando todos os ${itens.length} abastecimentos
+          </p>
+        </div>
+      `;
       
       container.innerHTML += `
         <div class="relatorio-section">
@@ -7326,11 +7625,51 @@
               <tbody>${linhas}</tbody>
             </table>
           </div>
+          ${botaoMostrarMais}
         </div>
         </div>
       `;
     });
   }
+  
+  // ==================== FUNÇÕES DE PAGINAÇÃO ====================
+  
+  function mostrarMaisAbastecimentos(secId) {
+    if (!window.paginacaoSecretarias) window.paginacaoSecretarias = {};
+    if (!window.paginacaoSecretarias[secId]) {
+      window.paginacaoSecretarias[secId] = { itensMostrados: 20 };
+    }
+    
+    // Aumentar em 20
+    window.paginacaoSecretarias[secId].itensMostrados += 20;
+    
+    // Re-renderizar
+    renderizar();
+    
+    // Scroll suave para a seção
+    setTimeout(() => {
+      const sections = document.querySelectorAll('.relatorio-section');
+      sections.forEach(section => {
+        if (section.querySelector('.section-header')?.textContent.includes(secId.replace(/_/g, ' '))) {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }, 100);
+  }
+  
+  function mostrarTodosAbastecimentos(secId) {
+    if (!window.paginacaoSecretarias) window.paginacaoSecretarias = {};
+    
+    // Definir como número muito grande para mostrar todos
+    window.paginacaoSecretarias[secId] = { itensMostrados: 999999 };
+    
+    // Re-renderizar
+    renderizar();
+    
+    mostrarNotificacao('✅ Mostrando todos os abastecimentos!', 'success');
+  }
+  
+  // ==================== FIM FUNÇÕES DE PAGINAÇÃO ====================
   
   let chartAutorizadorTempo = null;
   
@@ -7796,7 +8135,7 @@
         <h4 style="${headerStyle} padding: 12px; margin: -20px -20px 15px -20px; border-radius: 8px 8px 0 0; font-size: 14px;">
           ${isDiversas ? '🌟' : '📋'} ${sec.toUpperCase()}
           <span style="float: right; font-size: 12px; opacity: 0.9;">
-            ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${totalSec.toFixed(2)}
+            ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${formatarMoeda(totalSec)}
           </span>
         </h4>
         <div class="table-wrapper">
@@ -8190,7 +8529,7 @@
             <span style="font-weight:bold; color:${efRecente.cor};">${item.mediaRecente.toFixed(2)}</span>${tendenciaHTML}
             <div style="margin-top:3px;">${sparkline}</div>
           </td>
-          <td>R$ ${item.totalGasto.toFixed(2)}</td>
+          <td>R$ ${formatarMoeda(item.totalGasto)}</td>
           <td>${item.qtdAbast}</td>
           <td>
             <span style="background:${ef.cor}; color:white; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold; white-space:nowrap;">
@@ -10163,9 +10502,21 @@
     // Normalizar termo (remover pontos, traços)
     const termoLimpo = termo.replace(/[.\-\/\s]/g, '');
     
+    console.log('🔍 BUSCA GERAL');
+    console.log('  • Termo:', termo);
+    console.log('  • Role:', userRole);
+    console.log('  • Secretaria:', userSecretaria);
+    
     // Buscar no cache direto
-    const resultados = cache.filter(x => {
+    let resultados = cache.filter(x => {
       if (x.status === STATUS.REJEITADO) return false;
+      
+      // ⚠️ FILTRO POR SECRETARIA PARA SECRETÁRIOS
+      if (userRole === 'secretarios' && userSecretaria) {
+        if (x.secretaria !== userSecretaria) {
+          return false; // Ignora abastecimentos de outras secretarias
+        }
+      }
       
       const placa = (x.placa || '').toUpperCase();
       const motorista = (x.motorista || '').toUpperCase();
@@ -10181,6 +10532,8 @@
              vipNome.includes(termo) ||
              secretaria.includes(termo);
     }).sort((a, b) => b.timestamp - a.timestamp); // Mais recentes primeiro
+    
+    console.log('  • Resultados encontrados:', resultados.length);
     
     // Mostrar resultado
     resultadoDiv.style.display = 'block';
@@ -10287,38 +10640,130 @@
   function sugerir(valor) {
     const placa = valor.toUpperCase().trim();
     
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 SUGERIR CHAMADO');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Placa:', placa);
+    
     // Limpar notificação anterior
     const notifContainer = document.getElementById('autocomplete-notif');
     if (notifContainer) notifContainer.remove();
     
-    if (placa.length < 7) return; // Esperar placa completa
+    if (placa.length < 7) {
+      console.log('⚠️ Placa muito curta, aguardando...');
+      return;
+    }
+    
+    console.log('🔎 Buscando veículo em veiculos[]...');
+    console.log('Total de veículos cadastrados:', veiculos.length);
     
     const veiculo = veiculos.find(v => v.placa === placa);
+    
     if (veiculo) {
-      console.log('🚗 VEÍCULO ENCONTRADO:', veiculo);
-      console.log('📋 CPF do veículo:', veiculo.cpfMotorista);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('Dados completos do veículo:', veiculo);
+      console.log('');
+      console.log('Detalhes:');
+      console.log('  • Placa:', veiculo.placa);
+      console.log('  • Modelo:', veiculo.modelo);
+      console.log('  • Motorista:', veiculo.motorista);
+      console.log('  • CPF:', veiculo.cpfMotorista);
+      console.log('  • Tipo CPF:', typeof veiculo.cpfMotorista);
+      console.log('  • CPF vazio?', !veiculo.cpfMotorista);
+      console.log('  • Combustível:', veiculo.combustivel);
+      console.log('');
       
       // Preencher dados do veículo cadastrado
+      console.log('📝 Preenchendo campos básicos...');
       document.getElementById('f-mot').value = veiculo.motorista || '';
       document.getElementById('f-tipo').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
+      console.log('✅ Motorista e combustível preenchidos');
       
-      // Preencher CPF se existir
-      const cpfField = document.getElementById('f-cpf');
-      console.log('🔍 Campo CPF encontrado:', cpfField);
-      console.log('🔍 Campo CPF visível:', cpfField ? cpfField.offsetParent !== null : false);
-      console.log('🔍 CPF do veículo:', veiculo.cpfMotorista);
+      // Preencher CPF se existir - com pequeno delay para garantir que campo existe
+      console.log('');
+      console.log('🆔 INICIANDO PREENCHIMENTO DE CPF...');
+      console.log('Aguardando 100ms para garantir que campo existe...');
       
-      if (cpfField) {
-        if (veiculo.cpfMotorista) {
-          cpfField.value = veiculo.cpfMotorista;
-          console.log('✅ CPF PREENCHIDO:', cpfField.value);
+      setTimeout(() => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('⏱️ TIMEOUT EXECUTADO - PREENCHENDO CPF');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        const cpfField = document.getElementById('f-cpf');
+        
+        console.log('1. Buscando campo CPF no DOM...');
+        console.log('   Campo encontrado?', !!cpfField);
+        
+        if (cpfField) {
+          console.log('2. Campo CPF existe!');
+          console.log('   ID:', cpfField.id);
+          console.log('   Tag:', cpfField.tagName);
+          console.log('   Type:', cpfField.type);
+          console.log('   Valor atual:', cpfField.value);
+          console.log('   Display:', window.getComputedStyle(cpfField).display);
+          console.log('   Visibility:', window.getComputedStyle(cpfField).visibility);
+          console.log('   Disabled?', cpfField.disabled);
+          console.log('   ReadOnly?', cpfField.readOnly);
+          
+          console.log('');
+          console.log('3. Verificando container pai...');
+          const container = document.getElementById('campo-cpf-container');
+          if (container) {
+            console.log('   Container encontrado!');
+            console.log('   Display:', window.getComputedStyle(container).display);
+            console.log('   Visibility:', window.getComputedStyle(container).visibility);
+          } else {
+            console.log('   ⚠️ Container não encontrado!');
+          }
+          
+          console.log('');
+          console.log('4. Dados do CPF do veículo:');
+          console.log('   CPF do veículo:', veiculo.cpfMotorista);
+          console.log('   Tipo:', typeof veiculo.cpfMotorista);
+          console.log('   Tem valor?', !!veiculo.cpfMotorista);
+          console.log('   Não é vazio?', veiculo.cpfMotorista !== '');
+          
+          if (veiculo.cpfMotorista) {
+            console.log('');
+            console.log('5. ✅ CPF EXISTE! Preenchendo campo...');
+            console.log('   Valor antes:', cpfField.value);
+            
+            cpfField.value = veiculo.cpfMotorista;
+            
+            console.log('   Valor depois:', cpfField.value);
+            console.log('   Valores são iguais?', cpfField.value === veiculo.cpfMotorista);
+            
+            console.log('');
+            console.log('6. Disparando evento input...');
+            cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+            console.log('   ✅ Evento disparado!');
+            
+            console.log('');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('✅ CPF PREENCHIDO COM SUCESSO!');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('CPF final no campo:', cpfField.value);
+          } else {
+            console.log('');
+            console.log('⚠️ VEÍCULO SEM CPF CADASTRADO');
+            console.log('Limpando campo...');
+            cpfField.value = '';
+          }
         } else {
-          cpfField.value = '';
-          console.log('⚠️ Veículo sem CPF cadastrado');
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('❌ CAMPO CPF NÃO ENCONTRADO NO DOM!');
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('Verificando se existe algum campo com "cpf" no id:');
+          const allInputs = document.querySelectorAll('input');
+          allInputs.forEach(input => {
+            if (input.id && input.id.toLowerCase().includes('cpf')) {
+              console.error('  Encontrado:', input.id, input);
+            }
+          });
         }
-      } else {
-        console.error('❌ Campo CPF não encontrado no DOM!');
-      }
+      }, 100);
       
       // Mostrar notificação de sucesso
       mostrarAutoCompleteNotif(`
@@ -10341,6 +10786,16 @@
       document.getElementById('f-mot').value = ultimoAbast.motorista;
       document.getElementById('f-tipo').value = ultimoAbast.tipo;
       
+      // Preencher CPF do histórico se existir - com delay
+      setTimeout(() => {
+        const cpfField = document.getElementById('f-cpf');
+        if (cpfField && ultimoAbast.cpf) {
+          cpfField.value = ultimoAbast.cpf;
+          cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log('✅ CPF preenchido do histórico:', ultimoAbast.cpf);
+        }
+      }, 100);
+      
       // Mostrar notificação de último abastecimento
       const dataUltimo = new Date(ultimoAbast.timestamp).toLocaleDateString('pt-BR');
       const kmUltimo = ultimoAbast.km ? ultimoAbast.km.toLocaleString('pt-BR') : '---';
@@ -10349,6 +10804,7 @@
         📋 <strong>DADOS DO ÚLTIMO ABASTECIMENTO</strong><br>
         📅 Data: ${dataUltimo}<br>
         👤 Motorista: ${ultimoAbast.motorista}<br>
+        ${ultimoAbast.cpf ? '🆔 CPF: ' + ultimoAbast.cpf + '<br>' : ''}
         ⛽ Combustível: ${ultimoAbast.tipo}<br>
         🛣️ KM: ${kmUltimo}<br>
         <span style="font-size:11px; color:#f59e0b;">⚠️ Veículo não cadastrado - usando dados do histórico</span>
@@ -10364,6 +10820,107 @@
       `, 'error');
     }
   }
+  
+  // ==================== AUTOCOMPLETE PARA ABA DIVERSAS ====================
+  
+  function sugerirDiversas(valor) {
+    const placa = valor.toUpperCase().trim();
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🌟 SUGERIR DIVERSAS CHAMADO');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Placa:', placa);
+    
+    if (placa.length < 7) {
+      console.log('⚠️ Placa muito curta, aguardando...');
+      return;
+    }
+    
+    console.log('🔎 Buscando veículo...');
+    
+    // Primeiro tentar no cadastro de veículos
+    const veiculo = veiculos.find(v => v.placa === placa);
+    
+    if (veiculo) {
+      console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
+      console.log('Dados:', veiculo);
+      
+      // Preencher motorista
+      document.getElementById('diversas-motorista').value = veiculo.motorista || '';
+      console.log('✅ Motorista preenchido:', veiculo.motorista);
+      
+      // Preencher CPF com delay
+      setTimeout(() => {
+        const cpfField = document.getElementById('diversas-cpf');
+        console.log('Campo CPF DIVERSAS encontrado?', !!cpfField);
+        
+        if (cpfField && veiculo.cpfMotorista) {
+          cpfField.value = veiculo.cpfMotorista;
+          cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log('✅ CPF PREENCHIDO (DIVERSAS):', veiculo.cpfMotorista);
+        } else if (!veiculo.cpfMotorista) {
+          console.log('⚠️ Veículo sem CPF cadastrado');
+        }
+      }, 100);
+      
+      // Mostrar notificação
+      mostrarAutoCompleteNotif(`
+        ✅ <strong>VEÍCULO ENCONTRADO!</strong><br>
+        🚗 <strong>${veiculo.modelo || 'Modelo não cadastrado'}</strong><br>
+        👤 Motorista: ${veiculo.motorista || '---'}<br>
+        ${veiculo.cpfMotorista ? '🆔 CPF: ' + veiculo.cpfMotorista + '<br>' : ''}
+        ⛽ Combustível: ${veiculo.combustivel || '---'}
+      `, 'success');
+      
+      return;
+    }
+    
+    // Se não encontrou no cadastro, buscar no histórico de DIVERSAS
+    const ultimoDiversas = cache.filter(x => 
+      x.placa === placa && 
+      x.status === STATUS.AUTORIZADO &&
+      (x.tipoAbastecimento === 'DIVERSAS' || x.secretaria === 'DIVERSAS')
+    ).sort((a, b) => b.timestamp - a.timestamp)[0];
+    
+    if (ultimoDiversas) {
+      console.log('📋 Encontrado no histórico DIVERSAS');
+      
+      document.getElementById('diversas-motorista').value = ultimoDiversas.motorista || '';
+      
+      // Preencher CPF do histórico
+      setTimeout(() => {
+        const cpfField = document.getElementById('diversas-cpf');
+        if (cpfField && (ultimoDiversas.cpf || ultimoDiversas.cpfBeneficiado)) {
+          const cpf = ultimoDiversas.cpf || ultimoDiversas.cpfBeneficiado;
+          cpfField.value = cpf;
+          cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log('✅ CPF preenchido do histórico DIVERSAS:', cpf);
+        }
+      }, 100);
+      
+      const dataUltimo = new Date(ultimoDiversas.timestamp).toLocaleDateString('pt-BR');
+      
+      mostrarAutoCompleteNotif(`
+        📋 <strong>DADOS DO ÚLTIMO ABAST. DIVERSAS</strong><br>
+        📅 Data: ${dataUltimo}<br>
+        👤 Motorista: ${ultimoDiversas.motorista}<br>
+        ${ultimoDiversas.cpf || ultimoDiversas.cpfBeneficiado ? '🆔 CPF: ' + (ultimoDiversas.cpf || ultimoDiversas.cpfBeneficiado) + '<br>' : ''}
+        <span style="font-size:11px; color:#f59e0b;">⚠️ Dados do histórico DIVERSAS</span>
+      `, 'warning');
+      
+      return;
+    }
+    
+    // Nada encontrado
+    console.log('⚠️ Placa não encontrada');
+    mostrarAutoCompleteNotif(`
+      ⚠️ <strong>PLACA NÃO ENCONTRADA</strong><br>
+      A placa <strong>${placa}</strong> não tem histórico.<br>
+      <span style="font-size:11px;">Preencha os dados manualmente.</span>
+    `, 'error');
+  }
+  
+  // ==================== FIM AUTOCOMPLETE DIVERSAS ====================
   
   function mostrarAutoCompleteNotif(mensagem, tipo) {
     // Remover notificação anterior
@@ -10743,7 +11300,7 @@
           <div><strong>🏪 Posto:</strong> ${ultimoAbast.posto}</div>
           <div><strong>⛽ Combustível:</strong> ${ultimoAbast.tipo}</div>
           <div><strong>🛣️ KM:</strong> ${kmUltimo}</div>
-          <div><strong>💰 Valor:</strong> R$ ${ultimoAbast.valor.toFixed(2)}</div>
+          <div><strong>💰 Valor:</strong> R$ ${formatarMoeda(ultimoAbast.valor)}</div>
         </div>
       `;
     }
@@ -10796,6 +11353,7 @@
           tipo: 'veiculo',
           placa: v.placa,
           motorista: v.motorista || 'SEM MOTORISTA',
+          cpf: v.cpfMotorista || null,
           modelo: v.modelo || 'SEM MODELO',
           combustivel: v.combustivel || '---',
           ano: v.ano || '---'
@@ -10821,6 +11379,7 @@
             tipo: 'historico',
             placa: h.placa,
             motorista: h.motorista || 'SEM MOTORISTA',
+            cpf: h.cpf || null,
             modelo: '---',
             combustivel: h.tipo || '---',
             ano: '---',
@@ -10876,6 +11435,7 @@
           </div>
           <div style="font-size: 12px;">
             <div style="font-weight: bold; color: #374151;">👤 ${r.motorista}</div>
+            ${r.cpf ? `<div style="font-size: 11px; color: #f59e0b; margin-top: 2px;">🆔 CPF: ${r.cpf}</div>` : ''}
             <div style="color: #6b7280; margin-top: 2px;">
               ${r.modelo !== '---' && r.modelo !== 'SEM MODELO' ? '🚘 <strong>' + r.modelo + '</strong>' : ''} 
               ${r.ano !== '---' ? '(' + r.ano + ')' : ''}
@@ -10896,6 +11456,11 @@
   }
   
   function preencherPlacaDiversas(placa) {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🌟 PREENCHENDO DADOS DIVERSAS');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Placa:', placa);
+    
     // Preencher campo de placa DIVERSAS
     document.getElementById('diversas-placa').value = placa;
     
@@ -10906,21 +11471,59 @@
     // Buscar dados do veículo para preencher motorista
     const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
+      console.log('✅ Veículo encontrado no cadastro:', veiculo);
+      console.log('  • Motorista:', veiculo.motorista);
+      console.log('  • CPF:', veiculo.cpfMotorista);
+      
       document.getElementById('diversas-motorista').value = veiculo.motorista || '';
       document.getElementById('diversas-combustivel').value = veiculo.combustivel === 'FLEX' ? 'GASOLINA' : veiculo.combustivel;
       
+      // ✅ PREENCHER CPF DO VEÍCULO CADASTRADO
+      setTimeout(() => {
+        const cpfField = document.getElementById('diversas-cpf');
+        console.log('🆔 Preenchendo CPF DIVERSAS...');
+        console.log('  • Campo encontrado:', !!cpfField);
+        console.log('  • CPF do veículo:', veiculo.cpfMotorista);
+        
+        if (cpfField && veiculo.cpfMotorista) {
+          cpfField.value = veiculo.cpfMotorista;
+          cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log('  ✅ CPF preenchido:', cpfField.value);
+        } else if (cpfField) {
+          cpfField.value = '';
+          console.log('  ⚠️ Veículo sem CPF cadastrado');
+        }
+      }, 100);
+      
       // Mostrar notificação
-      mostrarNotificacao(`✅ Veículo ${veiculo.modelo || placa} selecionado!`, "success");
+      mostrarNotificacao(`✅ Veículo ${veiculo.modelo || placa} selecionado!${veiculo.cpfMotorista ? ' CPF preenchido!' : ''}`, "success");
     } else {
+      console.log('📋 Veículo não cadastrado, buscando no histórico...');
+      
       // Buscar do histórico
       const ultimoAbast = cache
         .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
       
       if (ultimoAbast) {
+        console.log('✅ Último abastecimento encontrado');
+        console.log('  • Motorista:', ultimoAbast.motorista);
+        console.log('  • CPF:', ultimoAbast.cpf);
+        
         document.getElementById('diversas-motorista').value = ultimoAbast.motorista || '';
         document.getElementById('diversas-combustivel').value = ultimoAbast.tipo || '';
-        mostrarNotificacao(`📋 Dados do último abastecimento carregados!`, "info");
+        
+        // ✅ PREENCHER CPF DO HISTÓRICO
+        setTimeout(() => {
+          const cpfField = document.getElementById('diversas-cpf');
+          if (cpfField && ultimoAbast.cpf) {
+            cpfField.value = ultimoAbast.cpf;
+            cpfField.dispatchEvent(new Event('input', { bubbles: true }));
+            console.log('  ✅ CPF do histórico preenchido:', cpfField.value);
+          }
+        }, 100);
+        
+        mostrarNotificacao(`📋 Dados do último abastecimento carregados!${ultimoAbast.cpf ? ' CPF preenchido!' : ''}`, "info");
       }
     }
     
@@ -11102,7 +11705,7 @@
     if (registros.length > 0) {
       console.log('  Primeiros 10:');
       registros.slice(0, 10).forEach((r, i) => {
-        console.log(`    ${i+1}. ${r.data.split('T')[0]} - ${r.secretaria} - R$ ${r.valor.toFixed(2)}`);
+        console.log(`    ${i+1}. ${r.data.split('T')[0]} - ${r.secretaria} - R$ ${formatarMoeda(r.valor)}`);
       });
     }
     console.log('═══════════════════════════════════════════════════════════');
@@ -11125,8 +11728,8 @@
       return;
     }
     
-    const totalGeral = registros.reduce((acc, r) => acc + r.valor, 0);
-    const totalLitros = registros.reduce((acc, r) => acc + r.litro, 0);
+    const totalGeral = registros.reduce((acc, r) => acc + (parseFloat(r.valor) || 0), 0);
+    const totalLitros = registros.reduce((acc, r) => acc + (parseFloat(r.litro) || 0), 0);
     
     // AGRUPAR POR SECRETARIA
     const porSecretaria = {};
@@ -11153,13 +11756,13 @@
           <div class="stat-card">
             <div class="stat-icon">⛽</div>
             <h4>TOTAL EM LITROS</h4>
-            <div class="stat-value">${totalLitros.toFixed(2)} L</div>
+            <div class="stat-value">${formatarLitros(totalLitros)} L</div>
           </div>
           ${!isFrentista ? `
           <div class="stat-card">
             <div class="stat-icon">💰</div>
             <h4>TOTAL EM VALOR</h4>
-            <div class="stat-value">R$ ${totalGeral.toFixed(2)}</div>
+            <div class="stat-value">R$ ${formatarMoeda(totalGeral)}</div>
           </div>
           ` : ''}
           <div class="stat-card">
@@ -11230,11 +11833,11 @@
           <td>${r.motorista}</td>
           <td>${r.cpf || r.cpfBeneficiado || '---'}</td>
           <td><span class="badge ${r.tipo === 'GASOLINA' ? 'badge-danger' : r.tipo === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${r.tipo}</span></td>
-          <td>${r.km.toLocaleString('pt-BR')}</td>
-          <td>${r.litro.toFixed(2)} L</td>
+          <td>${formatarNumero(r.km)}</td>
+          <td>${formatarLitros(r.litro)} L</td>
           ${!isFrentista ? `
           <td ${classeAlerta ? 'style="font-weight:bold;"' : ''}>${media > 0 ? media.toFixed(2) + ' km/l' + (classeAlerta ? ' 🚨' : '') : '---'}</td>
-          <td><b>R$ ${r.valor.toFixed(2)}</b></td>
+          <td><b>R$ ${formatarMoeda(r.valor)}</b></td>
           ` : ''}
           ${(loginUser === 'master' || temPermissao('deletar_abastecimento')) ? `
           <td class="no-print">
@@ -11295,6 +11898,9 @@
   db.ref('abastecimentos').on('value', snap => {
     console.log("🔄 CARREGANDO ABASTECIMENTOS DO FIREBASE...");
     cache = [];
+    let corrigidos = 0;
+    let invalidos = 0;
+    
     snap.forEach(item => {
       let v = item.val();
       v.id = item.key;
@@ -11307,9 +11913,103 @@
         v.tipoAbastecimento = 'DIVERSAS';
       }
       
+      // ============================================
+      // SANITIZAÇÃO CRÍTICA: CONVERTER E VALIDAR TIPOS
+      // ============================================
+      
+      const valorOriginal = v.valor;
+      const litroOriginal = v.litro;
+      const kmOriginal = v.km;
+      
+      // Converter para número garantindo tipo correto
+      v.valor = parseFloat(v.valor) || 0;
+      v.litro = parseFloat(v.litro) || 0;
+      v.km = parseFloat(v.km) || 0;
+      
+      // Validar se são números finitos
+      if (!isFinite(v.valor)) v.valor = 0;
+      if (!isFinite(v.litro)) v.litro = 0;
+      if (!isFinite(v.km)) v.km = 0;
+      
+      // Validar se são positivos
+      if (v.valor < 0) v.valor = 0;
+      if (v.litro < 0) v.litro = 0;
+      if (v.km < 0) v.km = 0;
+      
+      // DETECTAR E CORRIGIR VALORES ABSURDOS
+      const LIMITE_VALOR_MAX = 10000; // R$ 10.000 por abastecimento é o máximo razoável
+      const LIMITE_LITRO_MAX = 1000;  // 1000 litros é o máximo razoável
+      
+      let foiCorrigido = false;
+      
+      if (v.valor > LIMITE_VALOR_MAX) {
+        console.error(`🚨 VALOR ABSURDO DETECTADO:`, {
+          id: v.id,
+          placa: v.placa,
+          data: v.data,
+          valorOriginal: valorOriginal,
+          valorConvertido: v.valor,
+          posto: v.posto
+        });
+        
+        // Tentar corrigir se parece ser erro de vírgula (ex: 30000 deveria ser 300.00)
+        if (v.valor > LIMITE_VALOR_MAX && v.valor < 1000000) {
+          v.valor = v.valor / 100; // Divide por 100
+          console.warn(`  ⚠️ CORREÇÃO AUTOMÁTICA: ${valorOriginal} → ${v.valor.toFixed(2)}`);
+          foiCorrigido = true;
+        } else {
+          // Se for muito absurdo, zerar
+          v.valor = 0;
+          console.error(`  ❌ VALOR ZERADO (muito absurdo)`);
+          invalidos++;
+        }
+      }
+      
+      if (v.litro > LIMITE_LITRO_MAX) {
+        console.error(`🚨 LITROS ABSURDOS DETECTADOS:`, {
+          id: v.id,
+          placa: v.placa,
+          litroOriginal: litroOriginal,
+          litroConvertido: v.litro
+        });
+        
+        // Tentar corrigir
+        if (v.litro > LIMITE_LITRO_MAX && v.litro < 100000) {
+          v.litro = v.litro / 100;
+          console.warn(`  ⚠️ CORREÇÃO AUTOMÁTICA: ${litroOriginal} → ${v.litro.toFixed(2)}`);
+          foiCorrigido = true;
+        } else {
+          v.litro = 0;
+          console.error(`  ❌ LITROS ZERADOS (muito absurdo)`);
+          invalidos++;
+        }
+      }
+      
+      if (foiCorrigido) corrigidos++;
+      
+      // Garantir que timestamp existe
+      if (!v.timestamp) {
+        // Tentar extrair da data
+        if (v.data) {
+          v.timestamp = new Date(v.data).getTime();
+        } else {
+          v.timestamp = 0;
+        }
+      }
+      
       cache.push(v);
     });
+    
     console.log(`✅ ${cache.length} ABASTECIMENTOS CARREGADOS`);
+    
+    if (corrigidos > 0) {
+      console.warn(`⚠️ ${corrigidos} VALORES CORRIGIDOS AUTOMATICAMENTE`);
+    }
+    
+    if (invalidos > 0) {
+      console.error(`❌ ${invalidos} VALORES INVÁLIDOS ZERADOS`);
+    }
+    
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
     renderizar();
   });
@@ -11758,7 +12458,7 @@
       if (abast.status === STATUS.AUTORIZADO && abast.solicitadoPor.toLowerCase() === loginUser) {
         criarNotificacao({
           titulo: '✅ Abastecimento Aprovado',
-          texto: `Veículo ${abast.placa} - R$ ${abast.valor.toFixed(2)}${abast.tanqueCheio ? ' (Tanque Cheio)' : ''}`,
+          texto: `Veículo ${abast.placa} - R$ ${formatarMoeda(abast.valor)}${abast.tanqueCheio ? ' (Tanque Cheio)' : ''}`,
           tipo: 'success',
           destinatario: loginUser
         });
@@ -12553,10 +13253,10 @@
       alerta.style.display = 'block';
       detalhes.innerHTML = `
         Limite: <strong>R$ ${limite.toFixed(2)}</strong><br>
-        Gasto no mês: <strong>R$ ${gastoMes.toFixed(2)}</strong><br>
-        Saldo restante: <strong>R$ ${saldoRestante.toFixed(2)}</strong><br>
-        Este abastecimento: <strong>R$ ${valorTotal.toFixed(2)}</strong><br>
-        <span style="color:var(--danger); font-weight:bold;">Excedente: R$ ${excedente.toFixed(2)}</span>
+        Gasto no mês: <strong>R$ ${formatarMoeda(gastoMes)}</strong><br>
+        Saldo restante: <strong>R$ ${formatarMoeda(saldoRestante)}</strong><br>
+        Este abastecimento: <strong>R$ ${formatarMoeda(valorTotal)}</strong><br>
+        <span style="color:var(--danger); font-weight:bold;">Excedente: R$ ${formatarMoeda(excedente)}</span>
       `;
     } else {
       alerta.style.display = 'none';
@@ -12719,6 +13419,7 @@
     
     const pessoaId = document.getElementById('diversas-pessoa').value;
     const data = document.getElementById('diversas-data').value;
+    const horario = document.getElementById('diversas-horario').value;
     const placa = document.getElementById('diversas-placa').value.toUpperCase().trim();
     const motorista = document.getElementById('diversas-motorista').value.toUpperCase().trim();
     const cpfBeneficiado = document.getElementById('diversas-cpf').value.trim();
@@ -12736,6 +13437,10 @@
     }
     if (!data) {
       mostrarNotificacao("❌ INFORME A DATA!", "error");
+      return;
+    }
+    if (!horario) {
+      mostrarNotificacao("❌ INFORME O HORÁRIO!", "error");
       return;
     }
     if (!placa || placa.length < 7) {
@@ -12789,7 +13494,7 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO DIVERSAS?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${valor.toFixed(2)}`)) {
+    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO DIVERSAS?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${formatarMoeda(valor)}`)) {
       return;
     }
     
@@ -12803,6 +13508,7 @@
       cargoPessoaDiversas: pessoa.cargo,  // Campo novo
       cpfBeneficiado: cpfBeneficiado,
       data: data,
+      horario: horario,
       placa: placa,
       posto: nomePosto,
       tipo: combustivel,
@@ -12835,6 +13541,7 @@
         // Limpar formulário
         document.getElementById('diversas-pessoa').value = '';
         document.getElementById('diversas-data').value = new Date().toISOString().split('T')[0];
+        document.getElementById('diversas-horario').value = '';
         document.getElementById('diversas-placa').value = '';
         document.getElementById('diversas-motorista').value = '';
         document.getElementById('diversas-cpf').value = '';
@@ -12922,7 +13629,7 @@
           <h4 style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px; margin: -20px -20px 15px -20px; border-radius: 8px 8px 0 0; font-size: 14px;">
             🌟 ${sec.toUpperCase()}
             <span style="float: right; font-size: 12px; opacity: 0.9;">
-              ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${totalSec.toFixed(2)}
+              ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L • R$ ${formatarMoeda(totalSec)}
             </span>
           </h4>
           <div class="table-wrapper">
@@ -12961,7 +13668,7 @@
               <td>${abast.posto}</td>
               <td>${abast.tipo}</td>
               <td>${abast.litro.toFixed(2)}L</td>
-              <td><strong>R$ ${abast.valor.toFixed(2)}</strong></td>
+              <td><strong>R$ ${formatarMoeda(abast.valor)}</strong></td>
               <td>${abast.aprovadoPor || abast.solicitadoPor || '---'}</td>
               <td class="no-print">
                 ${temPermissao('deletar_abastecimento') ? `
@@ -12984,7 +13691,11 @@
   // Inicializar tab VIP quando acessada
   function inicializarTabDiversas() {
     const hoje = new Date().toISOString().split('T')[0];
+    const agora = new Date();
+    const horarioAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+    
     document.getElementById('diversas-data').value = hoje;
+    document.getElementById('diversas-horario').value = horarioAtual;
     
     carregarPostosVIP();
     atualizarDropdownsDiversas();
@@ -13244,7 +13955,7 @@
           <div class="historico-item">
             <div class="historico-item-header">
               <div class="historico-item-data">📅 ${dataFormatada} ${horaFormatada}</div>
-              <div class="historico-item-valor">💰 R$ ${abast.valor.toFixed(2)}</div>
+              <div class="historico-item-valor">💰 R$ ${formatarMoeda(abast.valor)}</div>
             </div>
             <div class="historico-item-detalhes">
               <div class="historico-item-detalhe">
@@ -13509,7 +14220,7 @@
       const icone = vip.categoria === 'executivo' ? '👑' : (vip.categoria === 'legislativo' ? '🏛️' : '👤');
       
       const limiteTexto = vip.semLimite ? '<span style="color:#f59e0b; font-weight:bold;">ILIMITADO ⭐</span>' : `R$ ${vip.limite.toFixed(2)}`;
-      const saldoTexto = vip.semLimite ? '<span style="color:#22c55e; font-weight:bold;">ILIMITADO ⭐</span>' : `R$ ${saldoRestante.toFixed(2)}`;
+      const saldoTexto = vip.semLimite ? '<span style="color:#22c55e; font-weight:bold;">ILIMITADO ⭐</span>' : `R$ ${formatarMoeda(saldoRestante)}`;
       
       tbody.innerHTML += `
         <tr>
@@ -13517,7 +14228,7 @@
           <td>${vip.cargo}</td>
           <td><span class="badge">${vip.categoria}</span></td>
           <td><strong style="color:var(--accent);">${limiteTexto}</strong></td>
-          <td><strong style="color:${corSaldo};">R$ ${gastoMes.toFixed(2)}</strong></td>
+          <td><strong style="color:${corSaldo};">R$ ${formatarMoeda(gastoMes)}</strong></td>
           <td><strong style="color:var(--success);">${saldoTexto}</strong></td>
           <td class="no-print">
             <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarDiversas('${vipId}')">
@@ -13976,7 +14687,7 @@
               <td><strong>${abast.litro.toFixed(2)} L</strong></td>
               <td>${abast.km > 0 ? abast.km.toLocaleString('pt-BR') : '---'}</td>
               <td>${media > 0 ? media.toFixed(2) + ' km/l' : '---'}</td>
-              <td><strong>R$ ${abast.valor.toFixed(2)}</strong></td>
+              <td><strong>R$ ${formatarMoeda(abast.valor)}</strong></td>
             </tr>
           `;
         });
@@ -13999,7 +14710,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px; padding:15px; background:#f8fafc; border-radius:8px;">
             <div style="text-align:center;">
               <div style="font-size:10px; color:#64748b;">TOTAL LITROS</div>
-              <div style="font-size:18px; font-weight:bold; color:var(--accent);">${totalLitros.toFixed(2)} L</div>
+              <div style="font-size:18px; font-weight:bold; color:var(--accent);">${formatarLitros(totalLitros)} L</div>
             </div>
             <div style="text-align:center;">
               <div style="font-size:10px; color:#64748b;">MÉDIA GERAL</div>
@@ -14845,7 +15556,7 @@
           results.push({
             type: '⛽ ABASTECIMENTO',
             title: `${abast.placa} - ${data}`,
-            desc: `R$ ${abast.valor.toFixed(2)} | ${abast.litros.toFixed(2)}L`,
+            desc: `R$ ${formatarMoeda(abast.valor)} | ${abast.litros.toFixed(2)}L`,
             action: () => trocarAba('abastecimento')
           });
           count++;
@@ -15611,7 +16322,7 @@
         
         mostrarNotificacaoTempoReal(
           `${icone} ABASTECIMENTO ${texto}`,
-          `${abast.placa} - R$ ${abast.valor.toFixed(2)}`,
+          `${abast.placa} - R$ ${formatarMoeda(abast.valor)}`,
           tipo
         );
       }
