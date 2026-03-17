@@ -2695,7 +2695,7 @@
           <option value="INFRAESTRUTURA">INFRAESTRUTURA</option>
           <option value="MEIO AMBIENTE">MEIO AMBIENTE</option>
           <option value="SAÚDE">SAÚDE</option>
-          <option value="AGRICULTURA">AGRICULTURA</option>
+          <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
           <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
         </select>
       </div>
@@ -11913,6 +11913,11 @@
         v.tipoAbastecimento = 'DIVERSAS';
       }
       
+      // NORMALIZAR AGRICULTURA → AGRICULTURA E MEIO AMBIENTE (unificação)
+      if (v.secretaria === 'AGRICULTURA') {
+        v.secretaria = 'AGRICULTURA E MEIO AMBIENTE';
+      }
+      
       // ============================================
       // SANITIZAÇÃO CRÍTICA: CONVERTER E VALIDAR TIPOS
       // ============================================
@@ -12013,6 +12018,87 @@
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
     renderizar();
   });
+  
+  // ==================== FUNÇÃO DE MIGRAÇÃO ====================
+  
+  // Função para unificar AGRICULTURA → AGRICULTURA E MEIO AMBIENTE no Firebase
+  window.unificarAgriculturaNoFirebase = async function() {
+    if (loginUser !== 'master') {
+      console.error('❌ Apenas MASTER pode executar migrações!');
+      return;
+    }
+    
+    const confirmar = confirm(
+      '⚠️ MIGRAÇÃO DE DADOS\n\n' +
+      'Esta operação vai:\n' +
+      '1. Buscar todos os abastecimentos com secretaria "AGRICULTURA"\n' +
+      '2. Alterar para "AGRICULTURA E MEIO AMBIENTE"\n' +
+      '3. Salvar permanentemente no Firebase\n\n' +
+      'Deseja continuar?'
+    );
+    
+    if (!confirmar) return;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 INICIANDO MIGRAÇÃO DE AGRICULTURA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    try {
+      const snapshot = await db.ref('abastecimentos').once('value');
+      let encontrados = 0;
+      let atualizados = 0;
+      let erros = 0;
+      
+      const promises = [];
+      
+      snapshot.forEach(child => {
+        const abast = child.val();
+        const id = child.key;
+        
+        if (abast.secretaria === 'AGRICULTURA') {
+          encontrados++;
+          console.log(`📝 Encontrado: ${id} | ${abast.placa} | ${abast.data}`);
+          
+          // Atualizar no Firebase
+          const promise = db.ref(`abastecimentos/${id}`).update({
+            secretaria: 'AGRICULTURA E MEIO AMBIENTE'
+          }).then(() => {
+            atualizados++;
+            console.log(`  ✅ Atualizado: ${id}`);
+          }).catch(err => {
+            erros++;
+            console.error(`  ❌ Erro ao atualizar ${id}:`, err);
+          });
+          
+          promises.push(promise);
+        }
+      });
+      
+      console.log(`\n📊 Encontrados: ${encontrados} abastecimentos com "AGRICULTURA"`);
+      console.log('⏳ Atualizando no Firebase...\n');
+      
+      await Promise.all(promises);
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ MIGRAÇÃO CONCLUÍDA!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📊 Estatísticas:`);
+      console.log(`  • Encontrados: ${encontrados}`);
+      console.log(`  • Atualizados: ${atualizados}`);
+      console.log(`  • Erros: ${erros}`);
+      
+      alert(`✅ MIGRAÇÃO CONCLUÍDA!\n\n${atualizados} abastecimentos atualizados\n${erros} erros`);
+      
+      // Recarregar página para ver mudanças
+      location.reload();
+      
+    } catch (err) {
+      console.error('❌ ERRO NA MIGRAÇÃO:', err);
+      alert('❌ ERRO NA MIGRAÇÃO: ' + err.message);
+    }
+  };
+  
+  // ==================== FIM FUNÇÃO DE MIGRAÇÃO ====================
   
   function salvarVeiculo() {
     if (!temPermissao('gerenciar_veiculos')) {
@@ -14460,6 +14546,11 @@
   }
   
   function editarAbastecimento(id) {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✏️ ABRINDO EDIÇÃO DE ABASTECIMENTO');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('ID:', id);
+    
     if (loginUser !== 'master' && !temPermissao('deletar_abastecimento')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR ABASTECIMENTOS!", "error");
       return;
@@ -14474,6 +14565,17 @@
       
       const abast = snap.val();
       
+      console.log('📋 DADOS CARREGADOS DO FIREBASE:');
+      console.log('  • Secretaria:', abast.secretaria);
+      console.log('  • Data:', abast.data);
+      console.log('  • Horário:', abast.horario);
+      console.log('  • Placa:', abast.placa);
+      console.log('  • Motorista:', abast.motorista);
+      console.log('  • Posto:', abast.posto);
+      console.log('  • Combustível:', abast.tipo);
+      console.log('  • Litros:', abast.litro);
+      console.log('  • Status:', abast.status);
+      
       // Preencher campos
       document.getElementById('edit-abast-id').value = id;
       document.getElementById('edit-abast-placa').value = abast.placa || '';
@@ -14486,6 +14588,8 @@
       document.getElementById('edit-abast-km').value = abast.km || '';
       document.getElementById('edit-abast-litros').value = abast.litro || '';
       document.getElementById('edit-abast-status').value = abast.status || 'AGUARDANDO';
+      
+      console.log('✅ Campos do modal preenchidos');
       
       // Carregar postos no select
       const selectPosto = document.getElementById('edit-abast-posto');
@@ -14500,6 +14604,8 @@
       
       // Abrir modal
       document.getElementById('modal-edit-abastecimento').style.display = 'flex';
+      
+      console.log('✅ Modal de edição aberto');
     });
   }
   
@@ -14547,6 +14653,18 @@
       motorista
     });
     
+    console.log('📝 DADOS COMPLETOS A SEREM SALVOS:');
+    console.log('  • Secretaria:', secretaria);
+    console.log('  • Data:', data);
+    console.log('  • Horário:', horario);
+    console.log('  • Placa:', placa);
+    console.log('  • Motorista:', motorista);
+    console.log('  • Posto:', posto);
+    console.log('  • Combustível:', tipo);
+    console.log('  • Litros:', litros);
+    console.log('  • Valor:', valor);
+    console.log('  • Status:', status);
+    
     const dadosAtualizados = {
       placa,
       motorista,
@@ -14565,22 +14683,57 @@
       editadoEm: Date.now()
     };
     
+    console.log('🔥 OBJETO COMPLETO PARA UPDATE:', dadosAtualizados);
+    
     db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
-      console.log('✅ Abastecimento atualizado:', id);
-      console.log('✅ Secretaria salva:', secretaria);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ ABASTECIMENTO ATUALIZADO NO FIREBASE');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('ID:', id);
+      console.log('Secretaria salva:', secretaria);
+      console.log('Data salva:', data);
+      console.log('Horário salvo:', horario);
+      
+      // ATUALIZAR CACHE LOCAL IMEDIATAMENTE
+      const itemCache = cache.find(x => x.id === id);
+      if (itemCache) {
+        console.log('📦 Atualizando item no cache local...');
+        console.log('  • Secretaria ANTES:', itemCache.secretaria);
+        
+        Object.assign(itemCache, dadosAtualizados);
+        itemCache.id = id; // Garantir que ID não é perdido
+        
+        console.log('  • Secretaria DEPOIS:', itemCache.secretaria);
+        console.log('  • Data DEPOIS:', itemCache.data);
+        console.log('✅ Cache local atualizado!');
+      } else {
+        console.warn('⚠️ Item não encontrado no cache para atualizar');
+      }
       
       registrarAuditoria('ABASTECIMENTO_EDITADO', { 
         id, 
         placa, 
         valor: valor.toFixed(2),
         secretaria,  // Incluir na auditoria
+        data,
         editadoPor: loginUser 
       });
+      
       mostrarNotificacao("✅ ABASTECIMENTO ATUALIZADO COM SUCESSO!", "success");
       fecharModalEditAbastecimento();
-      renderizar();
+      
+      // FORÇAR RENDERIZAÇÃO APÓS PEQUENO DELAY
+      setTimeout(() => {
+        console.log('🔄 Forçando renderização...');
+        renderizar();
+      }, 100);
+      
     }).catch(err => {
-      console.error('❌ ERRO AO SALVAR:', err);
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('❌ ERRO AO SALVAR NO FIREBASE');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('Erro:', err);
+      console.error('Mensagem:', err.message);
       mostrarNotificacao("❌ ERRO AO SALVAR: " + err.message, "error");
     });
   }
