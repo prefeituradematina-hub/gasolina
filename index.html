@@ -5787,19 +5787,37 @@
       limiteMensal = (secretarioEncontrado.limiteVictor || 0) + (secretarioEncontrado.limiteMatina || 0) || secretarioEncontrado.limite || 0;
     }
     
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💰 CALCULANDO GASTO DA SECRETARIA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Secretaria:', secretaria);
+    console.log('Posto do abastecimento:', postodoAbast);
+    console.log('Limite mensal:', limiteMensal);
+    
     // Gasto no posto específico do abastecimento
-    const gastoAtual = cache
-      .filter(x => 
-        x.status === STATUS.AUTORIZADO &&
-        x.secretaria === secretaria &&
-        (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA')
-          ? (x.posto || '').toUpperCase().includes(
-              postodoAbast.includes('VICTOR') ? 'VICTOR' : 'MATINA'
-            )
-          : true) &&
-        !x.tanqueCheio
-      )
-      .reduce((acc, item) => acc + (item.valor || 0), 0);
+    const todosAutorizados = cache.filter(x => 
+      x.status === STATUS.AUTORIZADO &&
+      x.secretaria === secretaria
+    );
+    
+    console.log('Total de autorizados na secretaria:', todosAutorizados.length);
+    
+    const filtrados = todosAutorizados.filter(x => 
+      (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA')
+        ? (x.posto || '').toUpperCase().includes(
+            postodoAbast.includes('VICTOR') ? 'VICTOR' : 'MATINA'
+          )
+        : true) &&
+      !x.tanqueCheio
+    );
+    
+    console.log('Após filtro de posto e tanqueCheio:', filtrados.length);
+    
+    const gastoAtual = filtrados.reduce((acc, item) => acc + (item.valor || 0), 0);
+    
+    console.log('Gasto calculado:', gastoAtual);
+    console.log('Saldo restante:', (limiteMensal - gastoAtual));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const saldoRestante = Math.max(0, limiteMensal - gastoAtual);
     const percentualGasto = limiteMensal > 0 ? (gastoAtual / limiteMensal * 100) : 0;
