@@ -5793,30 +5793,52 @@
     console.log('Secretaria:', secretaria);
     console.log('Posto do abastecimento:', postodoAbast);
     console.log('Limite mensal:', limiteMensal);
+    console.log('Usuário secretário:', secretarioEncontrado);
     
-    // Gasto no posto específico do abastecimento
-    const todosAutorizados = cache.filter(x => 
-      x.status === STATUS.AUTORIZADO &&
-      x.secretaria === secretaria
-    );
+    // ⚠️ CORREÇÃO CRÍTICA: Buscar data do último reset
+    const ultimoReset = secretarioEncontrado.ultimoResetLimite || 0;
+    console.log('Último reset de limite:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca resetado');
+    console.log('Timestamp do último reset:', ultimoReset);
     
-    console.log('Total de autorizados na secretaria:', todosAutorizados.length);
+    // Gasto no posto específico do abastecimento APÓS O ÚLTIMO RESET
+    const todosAutorizados = cache.filter(x => {
+      const passaStatus = x.status === STATUS.AUTORIZADO;
+      const passaSecretaria = x.secretaria === secretaria;
+      const passaReset = ultimoReset > 0 ? (x.timestamp || 0) > ultimoReset : true;
+      
+      return passaStatus && passaSecretaria && passaReset;
+    });
     
-    const filtrados = todosAutorizados.filter(x => 
-      (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA')
+    console.log('Total de autorizados (após filtros básicos):', todosAutorizados.length);
+    
+    const filtrados = todosAutorizados.filter(x => {
+      // Filtro de posto
+      const passaPosto = (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA'))
         ? (x.posto || '').toUpperCase().includes(
             postodoAbast.includes('VICTOR') ? 'VICTOR' : 'MATINA'
           )
-        : true) &&
-      !x.tanqueCheio
-    );
+        : true;
+      
+      // Excluir tanque cheio
+      const naoETanqueCheio = !x.tanqueCheio;
+      
+      return passaPosto && naoETanqueCheio;
+    });
     
     console.log('Após filtro de posto e tanqueCheio:', filtrados.length);
+    console.log('Listagem dos 5 primeiros abastecimentos contabilizados:');
+    filtrados.slice(0, 5).forEach((x, i) => {
+      console.log(`  ${i+1}. ${x.placa} | ${x.data} | R$ ${formatarMoeda(x.valor)} | ${x.posto}`);
+    });
     
     const gastoAtual = filtrados.reduce((acc, item) => acc + (item.valor || 0), 0);
     
-    console.log('Gasto calculado:', gastoAtual);
-    console.log('Saldo restante:', (limiteMensal - gastoAtual));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 RESULTADO DO CÁLCULO:');
+    console.log('  • Limite mensal: R$', formatarMoeda(limiteMensal));
+    console.log('  • Gasto calculado: R$', formatarMoeda(gastoAtual));
+    console.log('  • Saldo restante: R$', formatarMoeda(limiteMensal - gastoAtual));
+    console.log('  • Percentual: ', ((gastoAtual / limiteMensal) * 100).toFixed(1), '%');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const saldoRestante = Math.max(0, limiteMensal - gastoAtual);
@@ -8064,8 +8086,8 @@
         <td>${d.cpf || d.cpfBeneficiado || '---'}</td>
         <td>${d.destino || '---'}</td>
         <td>${d.tipo}</td>
-        <td>${d.tanqueCheio ? '<em>Pendente</em>' : (d.litro.toFixed(2) + ' L')}</td>
-        <td>${d.tanqueCheio ? '<em>Pendente</em>' : ('R$ ' + d.valor.toFixed(2))}</td>
+        <td>${d.tanqueCheio ? '<em>Pendente</em>' : (formatarLitros(d.litro))}</td>
+        <td>${d.tanqueCheio ? '<em>Pendente</em>' : ('R$ ' + formatarMoeda(d.valor))}</td>
         <td>${d.solicitadoPor}</td>
         <td class="no-print">
           ${temPermissao('autorizar_abastecimento') ? `
@@ -14712,12 +14734,14 @@
       console.log('Data salva:', data);
       console.log('Horário salvo:', horario);
       
-      // ATUALIZAR CACHE LOCAL IMEDIATAMENTE
+      // ATUALIZAR CACHE LOCAL IMEDIATAMENTE E FORÇAR RE-RENDER
       const itemCache = cache.find(x => x.id === id);
       if (itemCache) {
         console.log('📦 Atualizando item no cache local...');
         console.log('  • Secretaria ANTES:', itemCache.secretaria);
+        console.log('  • Data ANTES:', itemCache.data);
         
+        // Atualizar todos os campos editados
         Object.assign(itemCache, dadosAtualizados);
         itemCache.id = id; // Garantir que ID não é perdido
         
@@ -14726,6 +14750,9 @@
         console.log('✅ Cache local atualizado!');
       } else {
         console.warn('⚠️ Item não encontrado no cache para atualizar');
+        console.warn('  • ID procurado:', id);
+        console.warn('  • Total de itens no cache:', cache.length);
+        console.warn('  • Primeiros 3 IDs do cache:', cache.slice(0, 3).map(x => x.id));
       }
       
       registrarAuditoria('ABASTECIMENTO_EDITADO', { 
