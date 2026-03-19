@@ -5909,61 +5909,167 @@
     }
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('💰 CALCULANDO GASTO DA SECRETARIA');
+    console.log('💰 CALCULANDO GASTO DA SECRETARIA - VERSÃO CORRIGIDA');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Secretaria:', secretaria);
     console.log('Posto do abastecimento:', postodoAbast);
     console.log('Limite mensal:', limiteMensal);
-    console.log('Usuário secretário:', secretarioEncontrado);
+    console.log('Usuário secretário:', secretarioEncontrado.id);
     
     // ⚠️ CORREÇÃO CRÍTICA: Buscar data do último reset
     const ultimoReset = secretarioEncontrado.ultimoResetLimite || 0;
-    console.log('Último reset de limite:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca resetado');
-    console.log('Timestamp do último reset:', ultimoReset);
+    console.log('Último reset:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca');
+    console.log('Timestamp reset:', ultimoReset);
+    console.log('');
     
-    // Gasto no posto específico do abastecimento APÓS O ÚLTIMO RESET
-    const todosAutorizados = cache.filter(x => {
-      const passaStatus = x.status === STATUS.AUTORIZADO;
-      const passaSecretaria = x.secretaria === secretaria;
-      const passaReset = ultimoReset > 0 ? (x.timestamp || 0) > ultimoReset : true;
-      
-      return passaStatus && passaSecretaria && passaReset;
+    // PASSO 1: Filtrar todos da secretaria com status autorizado
+    console.log('🔍 PASSO 1: Filtrar por secretaria e status');
+    const todosSecretaria = cache.filter(x => {
+      return x.status === STATUS.AUTORIZADO && x.secretaria === secretaria;
     });
+    console.log('  Total autorizados na secretaria:', todosSecretaria.length);
     
-    console.log('Total de autorizados (após filtros básicos):', todosAutorizados.length);
-    
-    const filtrados = todosAutorizados.filter(x => {
-      // Filtro de posto
-      const passaPosto = (postodoAbast.includes('VICTOR') || postodoAbast.includes('MATINA'))
-        ? (x.posto || '').toUpperCase().includes(
-            postodoAbast.includes('VICTOR') ? 'VICTOR' : 'MATINA'
-          )
-        : true;
-      
-      // Excluir tanque cheio
-      const naoETanqueCheio = !x.tanqueCheio;
-      
-      return passaPosto && naoETanqueCheio;
+    // PASSO 2: Filtrar por timestamp (após último reset)
+    console.log('');
+    console.log('🔍 PASSO 2: Filtrar por data (após reset)');
+    const aposReset = todosSecretaria.filter(x => {
+      if (ultimoReset === 0) return true; // Se nunca resetou, conta todos
+      return (x.timestamp || 0) > ultimoReset;
     });
+    console.log('  Após último reset:', aposReset.length);
     
-    console.log('Após filtro de posto e tanqueCheio:', filtrados.length);
-    console.log('Listagem dos 5 primeiros abastecimentos contabilizados:');
-    filtrados.slice(0, 5).forEach((x, i) => {
-      console.log(`  ${i+1}. ${x.placa} | ${x.data} | R$ ${formatarMoeda(x.valor)} | ${x.posto}`);
+    // Mostrar os que foram excluídos
+    const antesReset = todosSecretaria.filter(x => {
+      if (ultimoReset === 0) return false;
+      return (x.timestamp || 0) <= ultimoReset;
     });
+    if (antesReset.length > 0) {
+      console.log('  ⚠️ Excluídos (antes do reset):', antesReset.length);
+      console.log('    Primeiros 3:');
+      antesReset.slice(0, 3).forEach(x => {
+        const data = x.timestamp ? new Date(x.timestamp).toLocaleString('pt-BR') : 'sem data';
+        console.log(`      ${x.placa} | ${data} | R$ ${x.valor}`);
+      });
+    }
     
-    const gastoAtual = filtrados.reduce((acc, item) => acc + (item.valor || 0), 0);
+    // PASSO 3: Filtrar por posto
+    console.log('');
+    console.log('🔍 PASSO 3: Filtrar por posto');
+    const doPosto = aposReset.filter(x => {
+      // Se não especificou Victor ou Matina, conta todos
+      if (!postodoAbast.includes('VICTOR') && !postodoAbast.includes('MATINA')) {
+        return true;
+      }
+      
+      const postoAbast = (x.posto || '').toUpperCase();
+      
+      if (postodoAbast.includes('VICTOR')) {
+        return postoAbast.includes('VICTOR');
+      }
+      
+      if (postodoAbast.includes('MATINA')) {
+        return postoAbast.includes('MATINA');
+      }
+      
+      return false;
+    });
+    console.log('  Do posto específico:', doPosto.length);
     
+    // Mostrar os que foram excluídos por posto
+    const outrosPosto = aposReset.filter(x => !doPosto.includes(x));
+    if (outrosPosto.length > 0) {
+      console.log('  ⚠️ Excluídos (outro posto):', outrosPosto.length);
+      console.log('    Primeiros 3:');
+      outrosPosto.slice(0, 3).forEach(x => {
+        console.log(`      ${x.placa} | ${x.posto} | R$ ${x.valor}`);
+      });
+    }
+    
+    // PASSO 4: Excluir tanques cheios
+    console.log('');
+    console.log('🔍 PASSO 4: Excluir tanques cheios');
+    const semTanqueCheio = doPosto.filter(x => !x.tanqueCheio);
+    console.log('  Sem tanque cheio:', semTanqueCheio.length);
+    
+    // Mostrar tanques cheios excluídos
+    const tanquesCheios = doPosto.filter(x => x.tanqueCheio);
+    if (tanquesCheios.length > 0) {
+      console.log('  ⚠️ Excluídos (tanque cheio):', tanquesCheios.length);
+      console.log('    Primeiros 3:');
+      tanquesCheios.slice(0, 3).forEach(x => {
+        console.log(`      ${x.placa} | Tanque Cheio | R$ ${x.valor || 0}`);
+      });
+    }
+    
+    // PASSO 5: Calcular gasto total
+    console.log('');
+    console.log('🔍 PASSO 5: Calcular gasto total');
+    console.log('  Abastecimentos que serão contados:', semTanqueCheio.length);
+    console.log('  Listagem completa (primeiros 10):');
+    semTanqueCheio.slice(0, 10).forEach((x, i) => {
+      const data = x.data || 'sem data';
+      const valor = x.valor || 0;
+      console.log(`    ${i+1}. ${x.placa} | ${data} | R$ ${formatarMoeda(valor)} | ${x.posto}`);
+    });
+    if (semTanqueCheio.length > 10) {
+      console.log(`    ... e mais ${semTanqueCheio.length - 10} abastecimentos`);
+    }
+    
+    const gastoAtual = semTanqueCheio.reduce((acc, item) => {
+      const valor = parseFloat(item.valor) || 0;
+      return acc + valor;
+    }, 0);
+    
+    console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 RESULTADO DO CÁLCULO:');
-    console.log('  • Limite mensal: R$', formatarMoeda(limiteMensal));
-    console.log('  • Gasto calculado: R$', formatarMoeda(gastoAtual));
-    console.log('  • Saldo restante: R$', formatarMoeda(limiteMensal - gastoAtual));
-    console.log('  • Percentual: ', ((gastoAtual / limiteMensal) * 100).toFixed(1), '%');
+    console.log('📊 RESULTADO FINAL DO CÁLCULO:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  • Limite mensal:', 'R$', formatarMoeda(limiteMensal));
+    console.log('  • Gasto calculado:', 'R$', formatarMoeda(gastoAtual));
+    console.log('  • Saldo restante:', 'R$', formatarMoeda(limiteMensal - gastoAtual));
+    console.log('  • Percentual gasto:', ((gastoAtual / limiteMensal) * 100).toFixed(2) + '%');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const saldoRestante = Math.max(0, limiteMensal - gastoAtual);
-    const percentualGasto = limiteMensal > 0 ? (gastoAtual / limiteMensal * 100) : 0;
+    
+    // ⚠️ VALIDAÇÃO CRÍTICA: Verificar valores antes de calcular percentual
+    console.log('');
+    console.log('⚠️ VALIDAÇÃO DE VALORES:');
+    console.log('  • limiteMensal é número?', typeof limiteMensal === 'number', '| Valor:', limiteMensal);
+    console.log('  • gastoAtual é número?', typeof gastoAtual === 'number', '| Valor:', gastoAtual);
+    console.log('  • limiteMensal > 0?', limiteMensal > 0);
+    console.log('  • gastoAtual >= 0?', gastoAtual >= 0);
+    
+    // Garantir que valores são válidos
+    const limiteSafe = parseFloat(limiteMensal) || 0;
+    const gastoSafe = parseFloat(gastoAtual) || 0;
+    
+    console.log('  • limiteSafe:', limiteSafe);
+    console.log('  • gastoSafe:', gastoSafe);
+    
+    let percentualGasto = 0;
+    if (limiteSafe > 0) {
+      percentualGasto = (gastoSafe / limiteSafe) * 100;
+    } else {
+      console.error('  ❌ ERRO: Limite é zero ou inválido!');
+      percentualGasto = 0;
+    }
+    
+    // Garantir que percentual é válido
+    if (isNaN(percentualGasto) || !isFinite(percentualGasto)) {
+      console.error('  ❌ ERRO: Percentual calculado é inválido:', percentualGasto);
+      percentualGasto = 0;
+    }
+    
+    console.log('  • Percentual final:', percentualGasto.toFixed(2) + '%');
+    console.log('');
+    
+    console.log('');
+    console.log('🎨 DEFININDO COR DA BARRA:');
+    console.log('  • Percentual calculado:', percentualGasto.toFixed(2), '%');
+    console.log('  • É >= 90%?', percentualGasto >= 90, '→', percentualGasto >= 90 ? 'VERMELHO (danger)' : 'não');
+    console.log('  • É >= 70%?', percentualGasto >= 70, '→', percentualGasto >= 70 ? 'AMARELO (warning)' : 'não');
+    console.log('  • É < 70%?', percentualGasto < 70, '→', percentualGasto < 70 ? 'VERDE (normal)' : 'não');
     
     // Atualizar exibição
     document.getElementById('limite-mensal').textContent = 
@@ -5977,14 +6083,24 @@
     const progresso = document.getElementById('progresso-limite');
     progresso.style.width = `${Math.min(100, percentualGasto)}%`;
     
+    console.log('  • Largura da barra:', Math.min(100, percentualGasto).toFixed(2), '%');
+    
     // Definir cor baseada no percentual
+    let corEscolhida = '';
     if (percentualGasto >= 90) {
       progresso.className = 'progress-fill danger';
+      corEscolhida = 'VERMELHO (danger) - >= 90%';
     } else if (percentualGasto >= 70) {
       progresso.className = 'progress-fill warning';
+      corEscolhida = 'AMARELO (warning) - >= 70%';
     } else {
       progresso.className = 'progress-fill';
+      corEscolhida = 'VERDE (normal) - < 70%';
     }
+    
+    console.log('  • COR FINAL:', corEscolhida);
+    console.log('  • Classe CSS aplicada:', progresso.className);
+    console.log('');
     
     // Informações adicionais
     const infoDiv = document.getElementById('info-limite');
