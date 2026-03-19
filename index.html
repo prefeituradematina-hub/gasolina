@@ -5605,9 +5605,8 @@
         dados.valor = dados.litro * dados.precoPorLitro;
       }
 
-      // 🔴 NOVA VALIDAÇÃO: Verificar limite do secretário
-      // 🔴 VALIDAÇÃO DE LIMITE POR POSTO (SEPARADO)
-      if (userRole === 'secretarios' && !dados.tanqueCheio) {
+      // 🔴 VALIDAÇÃO DE LIMITE POR POSTO (SEPARADO) - INCLUINDO TANQUE CHEIO
+      if (userRole === 'secretarios') {
         // Identificar qual posto
         const postoNome = dados.posto.toUpperCase();
         const isVictor = postoNome.includes('VICTOR');
@@ -5621,8 +5620,19 @@
           limitePosto = usuarioData.limiteMatina || 0;
         }
         
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔒 VALIDAÇÃO DE LIMITE (INCLUINDO TANQUE CHEIO)');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Posto:', postoNome);
+        console.log('É Victor?', isVictor);
+        console.log('É Matina?', isMatina);
+        console.log('Limite deste posto:', limitePosto);
+        console.log('É tanque cheio?', dados.tanqueCheio);
+        console.log('Valor do abastecimento:', dados.valor);
+        
         // Se não tiver limite neste posto, bloquear
         if (limitePosto === 0) {
+          console.error('❌ SEM LIMITE NESTE POSTO!');
           mostrarNotificacao(
             `❌ SEM LIMITE NESTE POSTO!\n\n` +
             `Você não tem orçamento configurado para ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'este posto'}.\n` +
@@ -5637,31 +5647,72 @@
         // Calcular gasto após último reset
         const ultimoReset = usuarioData.ultimoResetLimite || 0;
         
+        console.log('Último reset:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca');
+        
         const gastoAtualPosto = cache
           .filter(x => {
-            if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
-            if (x.secretaria !== userSecretaria) return false;
-            if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
-            return (x.timestamp || 0) > ultimoReset;
+            const passaStatus = (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO);
+            const passaSecretaria = x.secretaria === userSecretaria;
+            const passaPosto = (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '');
+            const passaReset = (x.timestamp || 0) > ultimoReset;
+            const naoETanqueCheio = !x.tanqueCheio; // NÃO CONTAR TANQUES CHEIOS NO GASTO
+            
+            return passaStatus && passaSecretaria && passaPosto && passaReset && naoETanqueCheio;
           })
           .reduce((acc, item) => acc + (item.valor || 0), 0);
         
-        const gastoProjetado = gastoAtualPosto + dados.valor;
+        console.log('Gasto atual no posto (após reset, sem tanques cheios):', gastoAtualPosto);
+        console.log('Saldo disponível:', (limitePosto - gastoAtualPosto));
         
-        if (gastoProjetado > limitePosto) {
-          const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
-          mostrarNotificacao(
-            `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
-            `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
-            `Seu limite neste posto: R$ ${formatarMoeda(limitePosto)}\n` +
-            `Já gastou (após reset): R$ ${formatarMoeda(gastoAtualPosto)}\n` +
-            `Saldo disponível: R$ ${formatarMoeda(saldoRestante)}\n` +
-            `Valor deste abastecimento: R$ ${formatarMoeda(dados.valor)}`,
-            "error"
-          );
-          btnRegistrar.disabled = false;
-          btnRegistrar.innerHTML = textoOriginal;
-          return;
+        // Para tanque cheio, verificar se há saldo, mas não bloquear por valor
+        if (dados.tanqueCheio) {
+          console.log('⛽ É TANQUE CHEIO: Verificando se há saldo disponível');
+          
+          if (gastoAtualPosto >= limitePosto) {
+            console.error('❌ LIMITE JÁ TOTALMENTE UTILIZADO!');
+            mostrarNotificacao(
+              `❌ LIMITE JÁ TOTALMENTE UTILIZADO!\n\n` +
+              `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
+              `Seu limite neste posto: R$ ${formatarMoeda(limitePosto)}\n` +
+              `Já gastou (após reset): R$ ${formatarMoeda(gastoAtualPosto)}\n` +
+              `Saldo disponível: R$ ${formatarMoeda(limitePosto - gastoAtualPosto)}\n\n` +
+              `Não é possível fazer tanque cheio pois o limite já foi totalmente utilizado.`,
+              "error"
+            );
+            btnRegistrar.disabled = false;
+            btnRegistrar.innerHTML = textoOriginal;
+            return;
+          }
+          
+          console.log('✅ Há saldo disponível, tanque cheio permitido');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+        } else {
+          // Para abastecimento normal, verificar se valor excede limite
+          const gastoProjetado = gastoAtualPosto + dados.valor;
+          
+          console.log('Gasto projetado (atual + novo):', gastoProjetado);
+          console.log('Excederá limite?', gastoProjetado > limitePosto);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+          if (gastoProjetado > limitePosto) {
+            const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
+            console.error('❌ LIMITE EXCEDIDO!');
+            mostrarNotificacao(
+              `❌ VOCÊ NÃO PODE FAZER ESTE ABASTECIMENTO, EXCEDERÁ SEU LIMITE!\n\n` +
+              `Posto: ${isVictor ? '⛽ VICTOR' : isMatina ? '⛽ MATINA' : dados.posto}\n` +
+              `Seu limite neste posto: R$ ${formatarMoeda(limitePosto)}\n` +
+              `Já gastou (após reset): R$ ${formatarMoeda(gastoAtualPosto)}\n` +
+              `Saldo disponível: R$ ${formatarMoeda(saldoRestante)}\n` +
+              `Valor deste abastecimento: R$ ${formatarMoeda(dados.valor)}`,
+              "error"
+            );
+            btnRegistrar.disabled = false;
+            btnRegistrar.innerHTML = textoOriginal;
+            return;
+          }
+          
+          console.log('✅ Limite OK, pode prosseguir');
         }
       }
   
