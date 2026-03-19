@@ -5607,42 +5607,112 @@
 
       // 🔴 VALIDAÇÃO DE LIMITE POR POSTO (SEPARADO) - INCLUINDO TANQUE CHEIO
       if (userRole === 'secretarios') {
+        console.log('');
+        console.log('═════════════════════════════════════════════════════════════════');
+        console.log('🔒 INICIANDO VALIDAÇÃO DE LIMITE - DEBUG COMPLETO');
+        console.log('═════════════════════════════════════════════════════════════════');
+        console.log('');
+        console.log('👤 INFORMAÇÕES DO USUÁRIO:');
+        console.log('  • Login:', loginUser);
+        console.log('  • Role:', userRole);
+        console.log('  • Secretaria:', userSecretaria);
+        console.log('  • userLimit (global):', userLimit);
+        console.log('');
+        console.log('📦 OBJETO usuarioData COMPLETO:');
+        console.log(JSON.stringify(usuarioData, null, 2));
+        console.log('');
+        console.log('💰 LIMITES EXTRAÍDOS:');
+        console.log('  • usuarioData.limiteVictor:', usuarioData.limiteVictor);
+        console.log('  • usuarioData.limiteMatina:', usuarioData.limiteMatina);
+        console.log('  • usuarioData.limite:', usuarioData.limite);
+        console.log('  • usuarioData.ultimoResetLimite:', usuarioData.ultimoResetLimite);
+        console.log('');
+        
         // Identificar qual posto
         const postoNome = dados.posto.toUpperCase();
         const isVictor = postoNome.includes('VICTOR');
         const isMatina = postoNome.includes('MATINA');
         
+        console.log('🏪 POSTO DO ABASTECIMENTO:');
+        console.log('  • Nome completo:', dados.posto);
+        console.log('  • Nome uppercase:', postoNome);
+        console.log('  • Contém "VICTOR"?', isVictor);
+        console.log('  • Contém "MATINA"?', isMatina);
+        console.log('');
+        
         // Pegar limite específico do posto
         let limitePosto = 0;
         if (isVictor) {
           limitePosto = usuarioData.limiteVictor || 0;
+          console.log('🎯 POSTO É VICTOR');
+          console.log('  • Limite Victor:', limitePosto);
         } else if (isMatina) {
           limitePosto = usuarioData.limiteMatina || 0;
+          console.log('🎯 POSTO É MATINA');
+          console.log('  • Limite Matina:', limitePosto);
+        } else {
+          console.log('⚠️ POSTO NÃO É VICTOR NEM MATINA');
+          console.log('  • Posto recebido:', postoNome);
         }
         
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔒 VALIDAÇÃO DE LIMITE (INCLUINDO TANQUE CHEIO)');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Posto:', postoNome);
-        console.log('É Victor?', isVictor);
-        console.log('É Matina?', isMatina);
-        console.log('Limite deste posto:', limitePosto);
-        console.log('É tanque cheio?', dados.tanqueCheio);
-        console.log('Valor do abastecimento:', dados.valor);
+        console.log('');
+        console.log('💵 LIMITE SELECIONADO:', limitePosto);
+        console.log('');
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 VERIFICAÇÃO DE LIMITE ZERADO');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Limite do posto:', limitePosto);
+        console.log('É zero?', limitePosto === 0);
+        console.log('É undefined?', limitePosto === undefined);
+        console.log('É null?', limitePosto === null);
+        console.log('É NaN?', isNaN(limitePosto));
+        console.log('');
         
         // Se não tiver limite neste posto, bloquear
         if (limitePosto === 0) {
-          console.error('❌ SEM LIMITE NESTE POSTO!');
+          console.error('❌❌❌ BLOQUEANDO: LIMITE ZERADO ❌❌❌');
+          console.error('  • limitePosto:', limitePosto);
+          console.error('  • isVictor:', isVictor);
+          console.error('  • isMatina:', isMatina);
+          console.error('  • usuarioData.limiteVictor:', usuarioData.limiteVictor);
+          console.error('  • usuarioData.limiteMatina:', usuarioData.limiteMatina);
+          console.error('');
+          console.error('🔍 DIAGNÓSTICO:');
+          
+          if (!isVictor && !isMatina) {
+            console.error('  ➜ PROBLEMA: Posto não foi identificado como Victor nem Matina');
+            console.error('  ➜ Nome do posto:', dados.posto);
+            console.error('  ➜ Verifique se o nome do posto está correto no cadastro');
+          } else if (isVictor && !usuarioData.limiteVictor) {
+            console.error('  ➜ PROBLEMA: É posto Victor mas usuarioData.limiteVictor está vazio');
+            console.error('  ➜ Valor:', usuarioData.limiteVictor);
+            console.error('  ➜ Verifique se o limite Victor foi configurado no Firebase');
+          } else if (isMatina && !usuarioData.limiteMatina) {
+            console.error('  ➜ PROBLEMA: É posto Matina mas usuarioData.limiteMatina está vazio');
+            console.error('  ➜ Valor:', usuarioData.limiteMatina);
+            console.error('  ➜ Verifique se o limite Matina foi configurado no Firebase');
+          }
+          
+          console.log('═════════════════════════════════════════════════════════════════');
+          
           mostrarNotificacao(
             `❌ SEM LIMITE NESTE POSTO!\n\n` +
             `Você não tem orçamento configurado para ${isVictor ? 'Posto Victor' : isMatina ? 'Posto Matina' : 'este posto'}.\n` +
-            `Os limites são separados por posto.`,
+            `Os limites são separados por posto.\n\n` +
+            `DEBUG:\n` +
+            `Posto: ${dados.posto}\n` +
+            `Limite Victor: R$ ${formatarMoeda(usuarioData.limiteVictor || 0)}\n` +
+            `Limite Matina: R$ ${formatarMoeda(usuarioData.limiteMatina || 0)}`,
             "error"
           );
           btnRegistrar.disabled = false;
           btnRegistrar.innerHTML = textoOriginal;
           return;
         }
+        
+        console.log('✅ LIMITE OK, PROSSEGUINDO...');
+        console.log('');
         
         // Calcular gasto após último reset
         const ultimoReset = usuarioData.ultimoResetLimite || 0;
