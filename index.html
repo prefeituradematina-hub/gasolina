@@ -2692,7 +2692,7 @@
           <option value="EDUCAÇÃO">EDUCAÇÃO</option>
           <option value="ESPORTE">ESPORTE</option>
           <option value="GABINETE">GABINETE</option>
-          <option value="INFRAESTRUTURA">INFRAESTRUTURA</option>
+          <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
           <option value="MEIO AMBIENTE">MEIO AMBIENTE</option>
           <option value="SAÚDE">SAÚDE</option>
           <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
@@ -11864,6 +11864,12 @@
   }
   
   function gerarRelatorio() {
+    console.log('');
+    console.log('═════════════════════════════════════════════════════════════════');
+    console.log('📊 BOTÃO GERAR RELATÓRIO CLICADO');
+    console.log('═════════════════════════════════════════════════════════════════');
+    
+    // Capturar valores dos campos
     const dataInicial = document.getElementById('rel-data-inicial').value;
     const dataFinal = document.getElementById('rel-data-final').value;
     const secretaria = document.getElementById('rel-secretaria').value;
@@ -11871,82 +11877,85 @@
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('📊 GERANDO RELATÓRIO FILTRADO');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('🔍 FILTROS APLICADOS:');
-    console.log('  • Data Inicial:', dataInicial || 'Não filtrado');
-    console.log('  • Data Final:', dataFinal || 'Não filtrado');
-    console.log('  • Secretaria:', secretaria || 'Todas');
-    console.log('  • Posto:', posto || 'Todos');
-    console.log('  • Combustível:', combustivel || 'Todos');
-    console.log('  • Placa:', placa || 'Todas');
+    console.log('🔍 VALORES DOS CAMPOS DE FILTRO:');
+    console.log('  • Data Inicial:', dataInicial || '(vazio)');
+    console.log('  • Data Final:', dataFinal || '(vazio)');
+    console.log('  • Secretaria:', secretaria || '(vazio - TODAS)');
+    console.log('  • Posto:', posto || '(vazio - TODOS)');
+    console.log('  • Combustível:', combustivel || '(vazio - TODOS)');
+    console.log('  • Placa:', placa || '(vazio - TODAS)');
     console.log('');
     
+    // Validar se pelo menos um filtro foi aplicado
+    const algumFiltroAplicado = dataInicial || dataFinal || secretaria || posto || combustivel || placa;
+    
+    if (!algumFiltroAplicado) {
+      console.warn('⚠️ NENHUM FILTRO FOI APLICADO!');
+      console.warn('  Mostrando todos os registros...');
+      console.log('');
+    } else {
+      console.log('✅ Filtros aplicados, processando...');
+      console.log('');
+    }
+    
+    // Começar com todos os autorizados
     let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    
+    console.log('📦 TOTAL DE REGISTROS AUTORIZADOS:', registros.length);
+    console.log('');
     
     // FILTRO AUTOMÁTICO: Secretários só veem dados da própria secretaria
     if (userRole === 'secretarios') {
+      const antesFiltro = registros.length;
       registros = registros.filter(r => r.secretaria === userSecretaria);
-      console.log('🔒 FILTRO AUTOMÁTICO APLICADO:');
+      console.log('🔒 FILTRO AUTOMÁTICO DE SECRETÁRIA APLICADO:');
       console.log('  • Perfil: Secretário');
-      console.log('  • Secretaria:', userSecretaria);
-      console.log('  • Registros filtrados:', registros.length);
-      console.log('  ℹ️ Você só pode ver dados da sua própria secretaria');
+      console.log('  • Secretaria permitida:', userSecretaria);
+      console.log('  • Registros ANTES:', antesFiltro);
+      console.log('  • Registros DEPOIS:', registros.length);
+      console.log('  • Registros REMOVIDOS:', antesFiltro - registros.length);
       console.log('');
     }
     
-    console.log('📦 ANTES DOS FILTROS MANUAIS:', registros.length, 'registros');
-    console.log('  Primeiros 5 (verificando formato de data):');
-    registros.slice(0, 5).forEach((r, i) => {
-      const dataCompleta = r.data;
-      const dataSemHora = r.data.split('T')[0];
-      console.log(`    ${i+1}. Data completa: "${dataCompleta}" | Sem hora: "${dataSemHora}" | Formato: ${/^\d{4}-\d{2}-\d{2}/.test(dataSemHora) ? 'YYYY-MM-DD ✅' : 'OUTRO ❌'}`);
-    });
+    // Aplicar filtros manualmente
+    console.log('🔍 APLICANDO FILTROS MANUAIS:');
+    console.log('─────────────────────────────────────────────────────────────────');
     
+    // 1. FILTRO DE DATA INICIAL
     if (dataInicial) {
       const antes = registros.length;
-      console.log('');
-      console.log('🔍 APLICANDO FILTRO DATA INICIAL >= ' + dataInicial);
-      console.log('  Tipo de dataInicial:', typeof dataInicial, '| Valor:', JSON.stringify(dataInicial));
-      
-      registros.slice(0, 5).forEach((r, i) => {
-        const dataSemHora = r.data.split('T')[0];
-        const passa = dataSemHora >= dataInicial;
-        console.log(`  ${i+1}. "${dataSemHora}" >= "${dataInicial}"? ${passa ? '✅' : '❌'} (${dataSemHora.length} chars vs ${dataInicial.length} chars)`);
-      });
+      console.log(`1️⃣ FILTRO: Data >= ${dataInicial}`);
       
       registros = registros.filter(r => {
-        const dataSemHora = r.data.split('T')[0];
+        const dataSemHora = (r.data || '').split('T')[0];
         return dataSemHora >= dataInicial;
       });
-      console.log(`  ✂️ Resultado: ${antes} → ${registros.length}`);
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`1️⃣ FILTRO: Data Inicial - NÃO APLICADO (campo vazio)`);
     }
     
+    // 2. FILTRO DE DATA FINAL
     if (dataFinal) {
       const antes = registros.length;
-      console.log('');
-      console.log('🔍 APLICANDO FILTRO DATA FINAL <= ' + dataFinal);
-      console.log('  Tipo de dataFinal:', typeof dataFinal, '| Valor:', JSON.stringify(dataFinal));
-      
-      registros.slice(0, 5).forEach((r, i) => {
-        const dataSemHora = r.data.split('T')[0];
-        const passa = dataSemHora <= dataFinal;
-        console.log(`  ${i+1}. "${dataSemHora}" <= "${dataFinal}"? ${passa ? '✅' : '❌'} (${dataSemHora.length} chars vs ${dataFinal.length} chars)`);
-      });
+      console.log(`2️⃣ FILTRO: Data <= ${dataFinal}`);
       
       registros = registros.filter(r => {
-        const dataSemHora = r.data.split('T')[0];
+        const dataSemHora = (r.data || '').split('T')[0];
         return dataSemHora <= dataFinal;
       });
-      console.log(`  ✂️ Resultado: ${antes} → ${registros.length}`);
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`2️⃣ FILTRO: Data Final - NÃO APLICADO (campo vazio)`);
     }
     
+    // 3. FILTRO DE SECRETARIA
     if (secretaria) {
       const antes = registros.length;
+      console.log(`3️⃣ FILTRO: Secretaria = ${secretaria}`);
       
-      // Se filtrar por DIVERSAS, incluir tanto registros com secretaria='DIVERSAS' 
-      // quanto os antigos com secretaria='VIP' ou tipoAbastecimento='DIVERSAS'/'VIP'
       if (secretaria === 'DIVERSAS') {
         registros = registros.filter(r => 
           r.secretaria === 'DIVERSAS' || 
@@ -11954,39 +11963,77 @@
           r.tipoAbastecimento === 'DIVERSAS' || 
           r.tipoAbastecimento === 'VIP'
         );
-        console.log(`  ✂️ Filtro DIVERSAS (inclui VIP antigos): ${antes} → ${registros.length}`);
+        console.log(`   ℹ️ Incluindo registros DIVERSAS e VIP antigos`);
       } else {
-        // Para outras secretarias, filtro normal
         registros = registros.filter(r => r.secretaria === secretaria);
-        console.log(`  ✂️ Filtro Secretaria (${secretaria}): ${antes} → ${registros.length}`);
       }
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`3️⃣ FILTRO: Secretaria - NÃO APLICADO (TODAS)`);
     }
+    
+    // 4. FILTRO DE POSTO
     if (posto) {
       const antes = registros.length;
+      console.log(`4️⃣ FILTRO: Posto = ${posto}`);
+      
       registros = registros.filter(r => r.posto === posto);
-      console.log(`  ✂️ Filtro Posto (${posto}): ${antes} → ${registros.length}`);
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`4️⃣ FILTRO: Posto - NÃO APLICADO (TODOS)`);
     }
+    
+    // 5. FILTRO DE COMBUSTÍVEL
     if (combustivel) {
       const antes = registros.length;
+      console.log(`5️⃣ FILTRO: Combustível = ${combustivel}`);
+      
       registros = registros.filter(r => r.tipo === combustivel);
-      console.log(`  ✂️ Filtro Combustível (${combustivel}): ${antes} → ${registros.length}`);
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`5️⃣ FILTRO: Combustível - NÃO APLICADO (TODOS)`);
     }
+    
+    // 6. FILTRO DE PLACA
     if (placa) {
       const antes = registros.length;
-      registros = registros.filter(r => r.placa.includes(placa));
-      console.log(`  ✂️ Filtro Placa (${placa}): ${antes} → ${registros.length}`);
+      console.log(`6️⃣ FILTRO: Placa contém "${placa}"`);
+      
+      registros = registros.filter(r => (r.placa || '').includes(placa));
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`6️⃣ FILTRO: Placa - NÃO APLICADO (TODAS)`);
     }
     
+    console.log('─────────────────────────────────────────────────────────────────');
     console.log('');
-    console.log('📋 APÓS TODOS OS FILTROS:', registros.length, 'registros');
-    if (registros.length > 0) {
-      console.log('  Primeiros 10:');
-      registros.slice(0, 10).forEach((r, i) => {
-        console.log(`    ${i+1}. ${r.data.split('T')[0]} - ${r.secretaria} - R$ ${formatarMoeda(r.valor)}`);
-      });
-    }
-    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📋 RESULTADO FINAL:');
+    console.log(`  • Total de registros: ${registros.length}`);
     
+    if (registros.length > 0) {
+      const totalValor = registros.reduce((acc, r) => acc + (parseFloat(r.valor) || 0), 0);
+      const totalLitros = registros.reduce((acc, r) => acc + (parseFloat(r.litro) || 0), 0);
+      
+      console.log(`  • Valor total: R$ ${formatarMoeda(totalValor)}`);
+      console.log(`  • Litros total: ${formatarLitros(totalLitros)}`);
+      console.log('');
+      console.log('  📄 Primeiros 10 registros:');
+      registros.slice(0, 10).forEach((r, i) => {
+        const data = (r.data || '').split('T')[0];
+        console.log(`    ${i+1}. ${data} | ${r.secretaria || 'SEM SEC'} | ${r.placa} | R$ ${formatarMoeda(r.valor)}`);
+      });
+    } else {
+      console.log('  ⚠️ Nenhum registro encontrado com os filtros aplicados');
+    }
+    
+    console.log('═════════════════════════════════════════════════════════════════');
+    console.log('');
+    
+    // Exibir relatório
     exibirRelatorioFiltrado(registros);
   }
   
@@ -12195,6 +12242,11 @@
         v.secretaria = 'AGRICULTURA E MEIO AMBIENTE';
       }
       
+      // NORMALIZAR INFRAESTRUTURA → INFRAESTRUTURA E SERVIÇOS (unificação)
+      if (v.secretaria === 'INFRAESTRUTURA') {
+        v.secretaria = 'INFRAESTRUTURA E SERVIÇOS';
+      }
+      
       // ============================================
       // SANITIZAÇÃO CRÍTICA: CONVERTER E VALIDAR TIPOS
       // ============================================
@@ -12352,6 +12404,84 @@
       });
       
       console.log(`\n📊 Encontrados: ${encontrados} abastecimentos com "AGRICULTURA"`);
+      console.log('⏳ Atualizando no Firebase...\n');
+      
+      await Promise.all(promises);
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ MIGRAÇÃO CONCLUÍDA!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📊 Estatísticas:`);
+      console.log(`  • Encontrados: ${encontrados}`);
+      console.log(`  • Atualizados: ${atualizados}`);
+      console.log(`  • Erros: ${erros}`);
+      
+      alert(`✅ MIGRAÇÃO CONCLUÍDA!\n\n${atualizados} abastecimentos atualizados\n${erros} erros`);
+      
+      // Recarregar página para ver mudanças
+      location.reload();
+      
+    } catch (err) {
+      console.error('❌ ERRO NA MIGRAÇÃO:', err);
+      alert('❌ ERRO NA MIGRAÇÃO: ' + err.message);
+    }
+  };
+  
+  // ==================== MIGRAÇÃO PERMANENTE: INFRAESTRUTURA ====================
+  window.unificarInfraestrutuaNoFirebase = async function() {
+    if (loginUser !== 'master') {
+      console.error('❌ Apenas MASTER pode executar migrações!');
+      return;
+    }
+    
+    const confirmar = confirm(
+      '⚠️ MIGRAÇÃO DE DADOS\n\n' +
+      'Esta operação vai:\n' +
+      '1. Buscar todos os abastecimentos com secretaria "INFRAESTRUTURA"\n' +
+      '2. Alterar para "INFRAESTRUTURA E SERVIÇOS"\n' +
+      '3. Salvar permanentemente no Firebase\n\n' +
+      'IMPORTANTE: Faça backup antes!\n\n' +
+      'Deseja continuar?'
+    );
+    
+    if (!confirmar) return;
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 INICIANDO MIGRAÇÃO DE INFRAESTRUTURA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    try {
+      const snapshot = await db.ref('abastecimentos').once('value');
+      let encontrados = 0;
+      let atualizados = 0;
+      let erros = 0;
+      
+      const promises = [];
+      
+      snapshot.forEach(child => {
+        const abast = child.val();
+        const id = child.key;
+        
+        if (abast.secretaria === 'INFRAESTRUTURA') {
+          encontrados++;
+          console.log(`📝 Encontrado: ${id} | ${abast.placa} | ${abast.data}`);
+          
+          // Atualizar no Firebase
+          const promise = db.ref(`abastecimentos/${id}`).update({
+            secretaria: 'INFRAESTRUTURA E SERVIÇOS'
+          }).then(() => {
+            atualizados++;
+            console.log(`  ✅ Atualizado: ${id}`);
+          }).catch(err => {
+            erros++;
+            console.error(`  ❌ Erro ao atualizar ${id}:`, err);
+          });
+          
+          promises.push(promise);
+        }
+      });
+      
+      console.log(`\n📊 Encontrados: ${encontrados} abastecimentos com "INFRAESTRUTURA"`);
       console.log('⏳ Atualizando no Firebase...\n');
       
       await Promise.all(promises);
