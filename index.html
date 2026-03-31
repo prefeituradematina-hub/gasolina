@@ -3045,6 +3045,12 @@
     <!-- Filtro de Relatório -->
     <div class="card no-print" id="card-filtros-relatorio">
       <h3>🔍 FILTROS DE RELATÓRIO</h3>
+      
+      <!-- Aviso para frentistas -->
+      <div id="aviso-filtro-posto-frentista" style="display:none; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
+        <strong>ℹ️ Atenção:</strong> Você está visualizando apenas os abastecimentos do(s) seu(s) posto(s) vinculado(s).
+      </div>
+      
       <div class="grid-form">
         <div>
           <label>DATA INICIAL</label>
@@ -4444,6 +4450,38 @@
     const selectPosto = document.getElementById('f-posto');
     const selectTipo = document.getElementById('f-tipo');
 
+    console.log('');
+    console.log('🔍 APLICANDO RESTRIÇÕES DE SECRETARIA');
+    console.log('  • Usuário:', loginUser);
+    console.log('  • Role:', userRole);
+    console.log('  • Secretaria selecionada:', secretariaSelecionada);
+
+    // ⚠️ CORREÇÃO: MASTER e ADMIN não têm restrições de posto/combustível
+    if (userRole === 'master' || userRole === 'admin') {
+      console.log('✅ Master/Admin detectado - SEM restrições de posto/combustível');
+      console.log('  • Restaurando TODOS os postos...');
+      console.log('  • Restaurando TODOS os combustíveis...');
+      
+      // Restaurar TODOS os postos
+      Array.from(selectPosto.options).forEach(opt => {
+        opt.style.display = '';
+        opt.disabled = false;
+      });
+      
+      // Restaurar TODOS os combustíveis
+      Array.from(selectTipo.options).forEach(opt => {
+        opt.style.display = '';
+        opt.disabled = false;
+      });
+      
+      console.log('✅ Postos visíveis:', Array.from(selectPosto.options).filter(o => o.value).length);
+      console.log('✅ Combustíveis visíveis:', Array.from(selectTipo.options).filter(o => o.value).length);
+      console.log('');
+      return;
+    }
+
+    console.log('  • Perfil com restrições - Buscando configurações...');
+
     // Buscar secretário correspondente
     db.ref('usuarios').once('value', snap => {
       let secretario = null;
@@ -4456,15 +4494,22 @@
 
       // Sem restrições se não encontrar secretário configurado
       if (!secretario || !secretario.postosPermitidos || secretario.postosPermitidos.length === 0) {
+        console.log('  ℹ️ Secretário não encontrado ou sem restrições configuradas');
+        console.log('  • Restaurando todos os postos e combustíveis...');
+        
         // Restaurar todos os postos
         Array.from(selectPosto.options).forEach(opt => opt.style.display = '');
         // Restaurar todos os combustíveis
         Array.from(selectTipo.options).forEach(opt => opt.style.display = '');
+        console.log('');
         return;
       }
 
       const postosPermitidos = secretario.postosPermitidos || [];
       const combustiveisPermitidos = secretario.combustiveisPermitidos || [];
+
+      console.log('  • Postos permitidos:', postosPermitidos);
+      console.log('  • Combustíveis permitidos:', combustiveisPermitidos);
 
       // Filtrar opções de posto
       let algumPostoVisivel = false;
@@ -4495,6 +4540,9 @@
       if (!combustiveisPermitidos.includes(tipoAtual) && combustiveisPermitidos.length > 0) {
         selectTipo.value = combustiveisPermitidos[0];
       }
+      
+      console.log('  ✅ Restrições aplicadas');
+      console.log('');
     });
   }
 
@@ -5091,6 +5139,16 @@
     if (cardFiltros) {
       if (temPermissao('usar_filtros_relatorio')) {
         cardFiltros.style.display = 'block';
+        
+        // Mostrar aviso para frentistas
+        const avisoFrentista = document.getElementById('aviso-filtro-posto-frentista');
+        if (avisoFrentista) {
+          if (role === 'frentista') {
+            avisoFrentista.style.display = 'block';
+          } else {
+            avisoFrentista.style.display = 'none';
+          }
+        }
       } else {
         cardFiltros.style.display = 'none';
       }
@@ -6603,6 +6661,28 @@
     
     // Configurar campo CPF ao carregar (chamar uma vez)
     controlarVisibilidadeCPF();
+    
+    // ✅ GARANTIR que Master/Admin sempre vejam todos os combustíveis e postos
+    if (userRole === 'master' || userRole === 'admin') {
+      const selectPosto = document.getElementById('f-posto');
+      const selectTipo = document.getElementById('f-tipo');
+      
+      if (selectPosto) {
+        Array.from(selectPosto.options).forEach(opt => {
+          opt.style.display = '';
+          opt.disabled = false;
+        });
+      }
+      
+      if (selectTipo) {
+        Array.from(selectTipo.options).forEach(opt => {
+          opt.style.display = '';
+          opt.disabled = false;
+        });
+        console.log('✅ Combustíveis restaurados para Master/Admin:', 
+          Array.from(selectTipo.options).filter(o => o.value).length, 'disponíveis');
+      }
+    }
     
     if (temPermissao('autorizar_abastecimento')) {
       atualizarPendentes();
@@ -11915,6 +11995,45 @@
       console.log('  • Registros DEPOIS:', registros.length);
       console.log('  • Registros REMOVIDOS:', antesFiltro - registros.length);
       console.log('');
+    }
+    
+    // FILTRO AUTOMÁTICO: Frentistas só veem dados do próprio posto
+    if (userRole === 'frentista') {
+      const antesFiltro = registros.length;
+      
+      // Verificar se frentista tem posto vinculado
+      if (userPostoVinculado) {
+        registros = registros.filter(r => {
+          const postoAbast = (r.posto || '').toUpperCase();
+          return postoAbast.includes(userPostoVinculado.toUpperCase());
+        });
+        
+        console.log('🔒 FILTRO AUTOMÁTICO DE POSTO APLICADO:');
+        console.log('  • Perfil: Frentista');
+        console.log('  • Posto permitido:', userPostoVinculado);
+        console.log('  • Registros ANTES:', antesFiltro);
+        console.log('  • Registros DEPOIS:', registros.length);
+        console.log('  • Registros REMOVIDOS:', antesFiltro - registros.length);
+        console.log('');
+      } else if (userPostosVinculados && userPostosVinculados.length > 0) {
+        // Frentista com múltiplos postos
+        registros = registros.filter(r => {
+          const postoAbast = (r.posto || '').toUpperCase();
+          return userPostosVinculados.some(p => postoAbast.includes(p.toUpperCase()));
+        });
+        
+        console.log('🔒 FILTRO AUTOMÁTICO DE POSTOS APLICADO:');
+        console.log('  • Perfil: Frentista');
+        console.log('  • Postos permitidos:', userPostosVinculados);
+        console.log('  • Registros ANTES:', antesFiltro);
+        console.log('  • Registros DEPOIS:', registros.length);
+        console.log('  • Registros REMOVIDOS:', antesFiltro - registros.length);
+        console.log('');
+      } else {
+        console.warn('⚠️ FRENTISTA SEM POSTO VINCULADO!');
+        console.warn('  Não há filtro de posto para aplicar');
+        console.log('');
+      }
     }
     
     // Aplicar filtros manualmente
