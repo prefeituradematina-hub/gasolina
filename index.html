@@ -3062,21 +3062,9 @@
         </div>
         <div id="filtro-secretaria-container">
           <label>SECRETARIA</label>
-          <select id="rel-secretaria">
+          <select id="rel-secretaria" onchange="controlarVisibilidadePessoaDiversas()">
             <option value="">TODAS</option>
-            <option value="DIVERSAS">🌟 DIVERSAS</option>
-            <option value="AVULSOS / GERAL">AVULSOS / GERAL</option>
-            <option value="ADMINISTRAÇÃO E FINANÇAS">ADMINISTRAÇÃO E FINANÇAS</option>
-            <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
-            <option value="ASSISTÊNCIA SOCIAL">ASSISTÊNCIA SOCIAL</option>
-            <option value="COMUNICAÇÃO">COMUNICAÇÃO</option>
-            <option value="CULTURA">CULTURA</option>
-            <option value="EDUCAÇÃO">EDUCAÇÃO</option>
-            <option value="ESPORTES">ESPORTES</option>
-            <option value="GOVERNO">GOVERNO</option>
-            <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
-            <option value="PLANEJAMENTO">PLANEJAMENTO</option>
-            <option value="SAÚDE">SAÚDE</option>
+            <!-- Será preenchido dinamicamente -->
           </select>
         </div>
         <div>
@@ -3100,6 +3088,13 @@
         <div>
           <label>PLACA</label>
           <input type="text" id="rel-placa" placeholder="ABC-1234">
+        </div>
+        <div id="container-pessoa-diversas" style="display:none;">
+          <label>PESSOA (DIVERSAS) 🌟</label>
+          <select id="rel-pessoa">
+            <option value="">TODAS</option>
+            <!-- Será preenchido dinamicamente -->
+          </select>
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px;">
@@ -6594,6 +6589,10 @@
     }
     
     atualizarRelatorio();
+    
+    // Popular dropdowns de filtros
+    popularDropdownSecretariaComPessoas();
+    popularDropdownPessoasDiversas();
     
     // Configurar campo DESTINO como obrigatório para secretários
     const labelDestino = document.getElementById('label-destino');
@@ -10383,9 +10382,20 @@
             }
           }
           
+          // Determinar se usuário está ativo
+          const estaAtivo = u.ativo !== false; // Se não tem campo, assume ativo
+          const statusBadge = estaAtivo 
+            ? '<span class="badge badge-success" style="font-size:10px;">✅ ATIVO</span>'
+            : '<span class="badge badge-danger" style="font-size:10px;">❌ INATIVO</span>';
+          const acaoBotao = estaAtivo
+            ? `desativarUsuario('${c.key}')`
+            : `ativarUsuario('${c.key}')`;
+          const textoBotao = estaAtivo ? '🔒 DESATIVAR' : '✅ ATIVAR';
+          const corBotao = estaAtivo ? '#dc2626' : '#16a34a';
+          
           tbody.innerHTML += `
-            <tr>
-              <td><b>${c.key.toUpperCase()}</b></td>
+            <tr style="${!estaAtivo ? 'opacity: 0.5; background: #f1f5f9;' : ''}">
+              <td><b>${c.key.toUpperCase()}</b> ${statusBadge}</td>
               <td><span class="badge ${badgeClass}">${perfilTexto}</span></td>
               <td style="font-size:11px;">${combustiveisInfo}</td>
               <td>${u.secretariaVinculada || 'TODAS'}</td>
@@ -10406,6 +10416,9 @@
               </td>
               <td class="no-print">
                 ${temPermissao('gerenciar_usuarios') || loginUser === 'master' ? `
+                  <button class="btn-action" style="background:${corBotao};color:white;" onclick="${acaoBotao}">
+                    ${textoBotao}
+                  </button>
                   <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="abrirPermissoes('${c.key}')">
                     🔐 PERMISSÕES
                   </button>
@@ -10423,6 +10436,92 @@
       });
     });
   }
+  
+  // ==================== ATIVAR/DESATIVAR USUÁRIOS ====================
+  
+  async function desativarUsuario(userId) {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA DESATIVAR USUÁRIOS!", "error");
+      return;
+    }
+    
+    // Não permitir desativar o próprio usuário
+    if (userId === loginUser) {
+      mostrarNotificacao("❌ VOCÊ NÃO PODE DESATIVAR SEU PRÓPRIO USUÁRIO!", "error");
+      return;
+    }
+    
+    const confirmacao = confirm(
+      `🔒 DESATIVAR USUÁRIO\n\n` +
+      `Usuário: ${userId.toUpperCase()}\n\n` +
+      `⚠️ Este usuário NÃO poderá fazer login enquanto estiver inativo.\n\n` +
+      `Deseja continuar?`
+    );
+    
+    if (!confirmacao) return;
+    
+    try {
+      await db.ref(`usuarios/${userId}`).update({
+        ativo: false
+      });
+      
+      await registrarAuditoria('USUARIO_DESATIVADO', {
+        usuario: userId,
+        desativadoPor: loginUser
+      });
+      
+      mostrarNotificacao(
+        `🔒 USUÁRIO DESATIVADO!\n\n${userId.toUpperCase()} não poderá mais fazer login.`,
+        "success"
+      );
+      
+      listUsuarios();
+      
+    } catch (error) {
+      console.error('Erro ao desativar usuário:', error);
+      mostrarNotificacao("❌ Erro ao desativar usuário!", "error");
+    }
+  }
+  
+  async function ativarUsuario(userId) {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA ATIVAR USUÁRIOS!", "error");
+      return;
+    }
+    
+    const confirmacao = confirm(
+      `✅ ATIVAR USUÁRIO\n\n` +
+      `Usuário: ${userId.toUpperCase()}\n\n` +
+      `Este usuário poderá fazer login novamente.\n\n` +
+      `Deseja continuar?`
+    );
+    
+    if (!confirmacao) return;
+    
+    try {
+      await db.ref(`usuarios/${userId}`).update({
+        ativo: true
+      });
+      
+      await registrarAuditoria('USUARIO_ATIVADO', {
+        usuario: userId,
+        ativadoPor: loginUser
+      });
+      
+      mostrarNotificacao(
+        `✅ USUÁRIO ATIVADO!\n\n${userId.toUpperCase()} pode fazer login novamente.`,
+        "success"
+      );
+      
+      listUsuarios();
+      
+    } catch (error) {
+      console.error('Erro ao ativar usuário:', error);
+      mostrarNotificacao("❌ Erro ao ativar usuário!", "error");
+    }
+  }
+  
+  // ==================== FIM ATIVAR/DESATIVAR ====================
   
   function editarUsuario(id) {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
@@ -10840,6 +10939,7 @@
     document.getElementById('rel-posto').value = '';
     document.getElementById('rel-combustivel').value = '';
     document.getElementById('rel-placa').value = '';
+    document.getElementById('rel-pessoa').value = '';
     atualizarRelatorio();
     mostrarNotificacao("🔄 FILTROS LIMPOS!", "info");
   }
@@ -11943,6 +12043,131 @@
     }
   }
   
+  // ==================== CONTROLAR VISIBILIDADE DO CAMPO PESSOA DIVERSAS ====================
+  
+  function controlarVisibilidadePessoaDiversas() {
+    const selectSecretaria = document.getElementById('rel-secretaria');
+    const containerPessoa = document.getElementById('container-pessoa-diversas');
+    const selectPessoa = document.getElementById('rel-pessoa');
+    
+    if (!selectSecretaria || !containerPessoa) return;
+    
+    const secretariaSelecionada = selectSecretaria.value;
+    
+    console.log('🔄 Verificando visibilidade do campo PESSOA DIVERSAS...');
+    console.log('  • Secretaria selecionada:', secretariaSelecionada || '(TODAS)');
+    
+    if (secretariaSelecionada === 'DIVERSAS') {
+      // Mostrar campo de pessoa
+      containerPessoa.style.display = '';
+      console.log('  ✅ Mostrando campo PESSOA (secretaria = DIVERSAS)');
+      
+      // Popular dropdown de pessoas se estiver vazio
+      if (selectPessoa && selectPessoa.options.length <= 1) {
+        popularDropdownPessoasDiversas();
+      }
+    } else {
+      // Esconder campo de pessoa
+      containerPessoa.style.display = 'none';
+      console.log('  ❌ Ocultando campo PESSOA (secretaria ≠ DIVERSAS)');
+      
+      // Limpar seleção de pessoa
+      if (selectPessoa) {
+        selectPessoa.value = '';
+      }
+    }
+  }
+  
+  // ==================== POPULAR DROPDOWN DE PESSOAS DIVERSAS ====================
+  
+  function popularDropdownPessoasDiversas() {
+    const select = document.getElementById('rel-pessoa');
+    if (!select) return;
+    
+    console.log('📋 Populando dropdown de pessoas DIVERSAS...');
+    
+    // Buscar todos os abastecimentos DIVERSAS
+    const diversas = cache.filter(x => 
+      x.secretaria === 'DIVERSAS' || 
+      x.secretaria === 'VIP' || 
+      x.tipoAbastecimento === 'DIVERSAS' || 
+      x.tipoAbastecimento === 'VIP'
+    );
+    
+    console.log('  • Total de abastecimentos DIVERSAS:', diversas.length);
+    
+    // Extrair nomes únicos
+    const pessoasSet = new Set();
+    
+    diversas.forEach(abast => {
+      const pessoa = abast.pessoaDiversas || abast.motorista;
+      if (pessoa && pessoa.trim() !== '') {
+        pessoasSet.add(pessoa.trim().toUpperCase());
+      }
+    });
+    
+    // Converter para array e ordenar alfabeticamente
+    const pessoasArray = Array.from(pessoasSet).sort();
+    
+    console.log('  • Pessoas únicas encontradas:', pessoasArray.length);
+    console.log('  • Lista:', pessoasArray.slice(0, 5), pessoasArray.length > 5 ? '...' : '');
+    
+    // Limpar select (manter apenas opção "TODAS")
+    select.innerHTML = '<option value="">TODAS</option>';
+    
+    // Adicionar cada pessoa
+    pessoasArray.forEach(pessoa => {
+      const option = document.createElement('option');
+      option.value = pessoa;
+      option.textContent = pessoa;
+      select.appendChild(option);
+    });
+    
+    console.log('✅ Dropdown de pessoas populado com', pessoasArray.length, 'pessoas');
+  }
+  
+  // ==================== POPULAR DROPDOWN DE SECRETARIA ====================
+  
+  function popularDropdownSecretariaComPessoas() {
+    const select = document.getElementById('rel-secretaria');
+    if (!select) return;
+    
+    console.log('📋 Populando dropdown de secretaria...');
+    
+    // Lista de secretarias padrão
+    const secretarias = [
+      'DIVERSAS',
+      'AVULSOS / GERAL',
+      'ADMINISTRAÇÃO E FINANÇAS',
+      'AGRICULTURA E MEIO AMBIENTE',
+      'ASSISTÊNCIA SOCIAL',
+      'COMUNICAÇÃO',
+      'CULTURA',
+      'EDUCAÇÃO',
+      'ESPORTES',
+      'GOVERNO',
+      'INFRAESTRUTURA E SERVIÇOS',
+      'PLANEJAMENTO',
+      'SAÚDE'
+    ];
+    
+    // Limpar e popular select
+    select.innerHTML = '<option value="">TODAS</option>';
+    
+    secretarias.forEach(sec => {
+      const option = document.createElement('option');
+      option.value = sec;
+      option.textContent = sec === 'DIVERSAS' ? '🌟 DIVERSAS' : sec;
+      select.appendChild(option);
+    });
+    
+    console.log('✅ Dropdown de secretaria populado com', secretarias.length, 'opções');
+  }
+  
+  // ==================== FIM DROPDOWN SECRETARIA ====================
+  
+  // ==================== FIM DROPDOWN PESSOAS ====================
+  
   function gerarRelatorio() {
     console.log('');
     console.log('═════════════════════════════════════════════════════════════════');
@@ -11956,6 +12181,7 @@
     const posto = document.getElementById('rel-posto').value;
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
+    const pessoa = document.getElementById('rel-pessoa').value; // Dropdown já vem padronizado
     
     console.log('🔍 VALORES DOS CAMPOS DE FILTRO:');
     console.log('  • Data Inicial:', dataInicial || '(vazio)');
@@ -11964,10 +12190,11 @@
     console.log('  • Posto:', posto || '(vazio - TODOS)');
     console.log('  • Combustível:', combustivel || '(vazio - TODOS)');
     console.log('  • Placa:', placa || '(vazio - TODAS)');
+    console.log('  • Pessoa (DIVERSAS):', pessoa || '(vazio - TODAS)');
     console.log('');
     
     // Validar se pelo menos um filtro foi aplicado
-    const algumFiltroAplicado = dataInicial || dataFinal || secretaria || posto || combustivel || placa;
+    const algumFiltroAplicado = dataInicial || dataFinal || secretaria || posto || combustivel || placa || pessoa;
     
     if (!algumFiltroAplicado) {
       console.warn('⚠️ NENHUM FILTRO FOI APLICADO!');
@@ -12076,6 +12303,7 @@
       console.log(`3️⃣ FILTRO: Secretaria = ${secretaria}`);
       
       if (secretaria === 'DIVERSAS') {
+        // DIVERSAS - incluir VIP antigos
         registros = registros.filter(r => 
           r.secretaria === 'DIVERSAS' || 
           r.secretaria === 'VIP' || 
@@ -12084,6 +12312,7 @@
         );
         console.log(`   ℹ️ Incluindo registros DIVERSAS e VIP antigos`);
       } else {
+        // Secretaria normal
         registros = registros.filter(r => r.secretaria === secretaria);
       }
       
@@ -12126,6 +12355,22 @@
       console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
     } else {
       console.log(`6️⃣ FILTRO: Placa - NÃO APLICADO (TODAS)`);
+    }
+    
+    // 7. FILTRO DE PESSOA (DIVERSAS)
+    if (pessoa) {
+      const antes = registros.length;
+      console.log(`7️⃣ FILTRO: Pessoa (DIVERSAS) = "${pessoa}"`);
+      
+      registros = registros.filter(r => {
+        // Buscar no campo pessoaDiversas ou motorista (busca exata)
+        const nomePessoa = (r.pessoaDiversas || r.motorista || '').trim().toUpperCase();
+        return nomePessoa === pessoa;
+      });
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`7️⃣ FILTRO: Pessoa (DIVERSAS) - NÃO APLICADO (TODAS)`);
     }
     
     console.log('─────────────────────────────────────────────────────────────────');
