@@ -3605,7 +3605,14 @@
       
       <!-- Lista de Pessoas DIVERSAS Cadastradas -->
       <div style="margin-top: 25px;">
-        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h4 style="margin: 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
+          <button class="btn-save" onclick="resetarTodosDiversas()" 
+            style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 8px 16px; font-size: 12px;"
+            title="Resetar limite de TODAS as pessoas DIVERSAS de uma vez">
+            🔄 RESETAR TODOS
+          </button>
+        </div>
         <div class="table-wrapper">
           <table>
             <thead>
@@ -14085,6 +14092,14 @@
     
     const limite = vipData.limite;
     
+    // Pegar timestamp do último reset (se existir)
+    const timestampReset = vipData.ultimoResetLimite || 0;
+    
+    console.log('🔍 Verificando limite VIP:');
+    console.log('  • Pessoa:', vipData.nome);
+    console.log('  • Limite:', limite);
+    console.log('  • Último reset:', timestampReset ? new Date(timestampReset).toLocaleString('pt-BR') : 'NUNCA');
+    
     // Calcular gasto atual do mês
     const hoje = new Date();
     const mesAtual = hoje.getMonth();
@@ -14097,11 +14112,25 @@
       gastosSnapshot.forEach(snap => {
         const abast = snap.val();
         const dataAbast = new Date(abast.data);
-        if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+        const timestampAbast = dataAbast.getTime();
+        
+        // Só conta se:
+        // 1. Está no mês atual E
+        // 2. É AUTORIZADO E
+        // 3. Foi DEPOIS do último reset
+        if (dataAbast.getMonth() === mesAtual && 
+            dataAbast.getFullYear() === anoAtual && 
+            abast.status === STATUS.AUTORIZADO &&
+            timestampAbast > timestampReset) {
           gastoMes += abast.valor;
+          console.log('  ✅ Contando:', abast.valor, 'em', dataAbast.toLocaleDateString());
+        } else if (timestampAbast <= timestampReset) {
+          console.log('  ❌ Ignorando (antes do reset):', abast.valor);
         }
       });
     }
+    
+    console.log('  💰 Gasto total no mês:', gastoMes);
     
     const saldoRestante = limite - gastoMes;
     
@@ -14157,6 +14186,9 @@
       const limite = pessoa.limite;
       const semLimite = pessoa.semLimite || false;
       
+      // Pegar timestamp do último reset (se existir)
+      const timestampReset = pessoa.ultimoResetLimite || 0;
+      
       // Calcular gasto do mês - buscar por pessoaVIP (campo antigo) e pessoaDiversas (novo)
       const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(key).once('value');
       let gastoMes = 0;
@@ -14166,7 +14198,16 @@
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
           const dataAbast = new Date(abast.data);
-          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+          const timestampAbast = dataAbast.getTime();
+          
+          // Só conta se:
+          // 1. Está no mês atual E
+          // 2. É AUTORIZADO E
+          // 3. Foi DEPOIS do último reset
+          if (dataAbast.getMonth() === mesAtual && 
+              dataAbast.getFullYear() === anoAtual && 
+              abast.status === STATUS.AUTORIZADO &&
+              timestampAbast > timestampReset) {
             gastoMes += abast.valor;
             qtdAbastecimentos++;
           }
@@ -15051,19 +15092,80 @@
       const vip = snap;
       const vipId = vip.id;
       
-      // Calcular gasto do mês
+      // Calcular gasto do mês (considerando ultimoResetLimite se existir)
       const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(vipId).once('value');
       let gastoMes = 0;
+      
+      // Pegar timestamp do último reset (se existir)
+      const timestampReset = vip.ultimoResetLimite || 0;
+      
+      console.log('');
+      console.log('═════════════════════════════════════════════════');
+      console.log(`📊 CALCULANDO GASTO DE: ${vip.nome} (ID: ${vipId})`);
+      console.log('═════════════════════════════════════════════════');
+      console.log(`  • Último reset:`, timestampReset ? new Date(timestampReset).toLocaleString('pt-BR') : '❌ NUNCA');
+      console.log(`  • Timestamp reset:`, timestampReset);
+      console.log(`  • Mês atual: ${mesAtual} (${mesAtual + 1})`);
+      console.log(`  • Ano atual: ${anoAtual}`);
+      console.log('');
+      
+      let totalAbastecimentos = 0;
+      let contados = 0;
+      let ignorados = 0;
       
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
           const dataAbast = new Date(abast.data);
-          if (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual && abast.status === STATUS.AUTORIZADO) {
+          const timestampAbast = dataAbast.getTime();
+          totalAbastecimentos++;
+          
+          const mesAbast = dataAbast.getMonth();
+          const anoAbast = dataAbast.getFullYear();
+          
+          console.log(`  🔍 Abastecimento #${totalAbastecimentos}:`);
+          console.log(`     Data: ${dataAbast.toLocaleString('pt-BR')}`);
+          console.log(`     Timestamp: ${timestampAbast}`);
+          console.log(`     Valor: R$ ${abast.valor.toFixed(2)}`);
+          console.log(`     Status: ${abast.status}`);
+          console.log(`     Mês: ${mesAbast} (${mesAbast + 1}/${anoAbast})`);
+          
+          // Verificação 1: Mês atual?
+          const noMesAtual = (mesAbast === mesAtual && anoAbast === anoAtual);
+          console.log(`     ✓ No mês atual? ${noMesAtual ? '✅ SIM' : '❌ NÃO'}`);
+          
+          // Verificação 2: Autorizado?
+          const autorizado = (abast.status === STATUS.AUTORIZADO);
+          console.log(`     ✓ Autorizado? ${autorizado ? '✅ SIM' : '❌ NÃO'}`);
+          
+          // Verificação 3: Depois do reset?
+          const depoisReset = (timestampAbast > timestampReset);
+          console.log(`     ✓ Depois do reset? ${depoisReset ? '✅ SIM' : '❌ NÃO'}`);
+          console.log(`       (${timestampAbast} > ${timestampReset})`);
+          
+          // Decisão final
+          if (noMesAtual && autorizado && depoisReset) {
             gastoMes += abast.valor;
+            contados++;
+            console.log(`     ➜ RESULTADO: ✅ CONTA (R$ ${abast.valor.toFixed(2)})`);
+          } else {
+            ignorados++;
+            console.log(`     ➜ RESULTADO: ❌ NÃO CONTA`);
           }
+          console.log('');
         });
+      } else {
+        console.log('  ℹ️ Nenhum abastecimento encontrado para esta pessoa');
       }
+      
+      console.log('─────────────────────────────────────────────────');
+      console.log(`📊 RESUMO:`);
+      console.log(`  • Total de abastecimentos: ${totalAbastecimentos}`);
+      console.log(`  • Contados: ${contados}`);
+      console.log(`  • Ignorados: ${ignorados}`);
+      console.log(`  💰 GASTO TOTAL: R$ ${gastoMes.toFixed(2)}`);
+      console.log('═════════════════════════════════════════════════');
+      console.log('');
       
       const saldoRestante = vip.semLimite ? Infinity : (vip.limite - gastoMes);
       const percentual = vip.semLimite ? 0 : ((gastoMes / vip.limite) * 100);
@@ -15079,6 +15181,15 @@
       const limiteTexto = vip.semLimite ? '<span style="color:#f59e0b; font-weight:bold;">ILIMITADO ⭐</span>' : `R$ ${vip.limite.toFixed(2)}`;
       const saldoTexto = vip.semLimite ? '<span style="color:#22c55e; font-weight:bold;">ILIMITADO ⭐</span>' : `R$ ${formatarMoeda(saldoRestante)}`;
       
+      // Botão de RESETAR LIMITE (apenas para quem tem limite)
+      const botaoReset = vip.semLimite ? '' : `
+        <button class="btn-action" style="background:#dc2626;color:white;" 
+          onclick="resetarLimiteDiversas('${vipId}', '${vip.nome}')" 
+          title="Resetar limite mensal desta pessoa">
+          🔄 RESETAR
+        </button>
+      `;
+      
       tbody.innerHTML += `
         <tr>
           <td><strong>${icone} ${vip.nome}</strong></td>
@@ -15088,6 +15199,7 @@
           <td><strong style="color:${corSaldo};">R$ ${formatarMoeda(gastoMes)}</strong></td>
           <td><strong style="color:var(--success);">${saldoTexto}</strong></td>
           <td class="no-print">
+            ${botaoReset}
             <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarDiversas('${vipId}')">
               ✏️
             </button>
@@ -15175,6 +15287,283 @@
         mostrarNotificacao("❌ ERRO AO CADASTRAR: " + error.message, "error");
       });
   }
+  
+  // ==================== RESETAR LIMITE DE PESSOA DIVERSAS ====================
+  
+  async function resetarLimiteDiversas(vipId, nome) {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
+      return;
+    }
+    
+    console.log('');
+    console.log('🔄 RESETANDO LIMITE DE PESSOA DIVERSAS');
+    console.log('  • ID:', vipId);
+    console.log('  • Nome:', nome);
+    console.log('  • Usuário:', loginUser);
+    
+    // Confirmações
+    const confirmacao1 = confirm(
+      `🔄 RESETAR LIMITE MENSAL\n\n` +
+      `Pessoa: ${nome}\n\n` +
+      `Esta ação irá:\n` +
+      `✓ Zerar o contador de gasto desta pessoa\n` +
+      `✓ Permitir que ela recomeça do zero\n` +
+      `✓ Não alterar o valor do limite configurado\n\n` +
+      `⚠️ ESTA AÇÃO NÃO PODE SER DESFEITA!\n\n` +
+      `Deseja continuar?`
+    );
+    
+    if (!confirmacao1) {
+      console.log('  ❌ Cancelado pelo usuário (confirmação 1)');
+      return;
+    }
+    
+    const confirmacao2 = confirm(
+      `🔴 CONFIRMAÇÃO FINAL\n\n` +
+      `Você tem CERTEZA que deseja resetar o limite de:\n${nome}?\n\n` +
+      `Digite OK no próximo prompt para confirmar.`
+    );
+    
+    if (!confirmacao2) {
+      console.log('  ❌ Cancelado pelo usuário (confirmação 2)');
+      return;
+    }
+    
+    const digitado = prompt("Digite OK (em letras maiúsculas) para confirmar:");
+    
+    if (digitado !== "OK") {
+      mostrarNotificacao("❌ Cancelado - você não digitou OK corretamente.", "error");
+      console.log('  ❌ Cancelado - digitou:', digitado);
+      return;
+    }
+    
+    console.log('  ✅ Confirmações OK - executando reset...');
+    mostrarNotificacao("🔄 Resetando limite...", "info");
+    
+    try {
+      // Calcular timestamp do INÍCIO DE HOJE (00:00:00.000)
+      // Assim todos os abastecimentos de HOJE em diante serão ignorados
+      const hoje = new Date();
+      const inicioDeHoje = new Date(
+        hoje.getFullYear(),
+        hoje.getMonth(),
+        hoje.getDate(),
+        0, 0, 0, 0
+      ).getTime();
+      
+      console.log('  • Timestamp do reset:', inicioDeHoje);
+      console.log('  • Data do reset:', new Date(inicioDeHoje).toLocaleString('pt-BR'));
+      console.log('  ℹ️ Abastecimentos de HOJE (00:00) em diante NÃO contarão mais');
+      
+      // Atualizar campo ultimoResetLimite
+      console.log(`  🔄 Atualizando Firebase: pessoas_vip/${vipId}/ultimoResetLimite`);
+      await db.ref(`pessoas_vip/${vipId}`).update({
+        ultimoResetLimite: inicioDeHoje
+      });
+      
+      console.log('  ✅ Update enviado para Firebase');
+      
+      // Verificar se foi salvo
+      const verificacao = await db.ref(`pessoas_vip/${vipId}`).once('value');
+      const dadosAtualizados = verificacao.val();
+      console.log('  🔍 Verificando se foi salvo...');
+      console.log('  • ultimoResetLimite salvo:', dadosAtualizados.ultimoResetLimite);
+      console.log('  • Valor esperado:', inicioDeHoje);
+      console.log('  • Salvo corretamente?', dadosAtualizados.ultimoResetLimite === inicioDeHoje ? '✅ SIM' : '❌ NÃO');
+      
+      if (dadosAtualizados.ultimoResetLimite !== inicioDeHoje) {
+        throw new Error('Firebase não salvou o valor corretamente!');
+      }
+      
+      console.log('  ✅ Campo ultimoResetLimite confirmado no Firebase');
+      
+      // Registrar em auditoria
+      await registrarAuditoria('LIMITE_DIVERSAS_RESETADO', {
+        pessoaId: vipId,
+        pessoaNome: nome,
+        realizadoPor: loginUser,
+        timestampReset: inicioDeHoje,
+        dataReset: new Date(inicioDeHoje).toLocaleDateString('pt-BR')
+      });
+      
+      console.log('  ✅ Ação registrada em auditoria');
+      
+      mostrarNotificacao(
+        `✅ LIMITE RESETADO COM SUCESSO!\n\n` +
+        `Pessoa: ${nome}\n\n` +
+        `✅ Limite voltou ao TOTAL estabelecido\n` +
+        `✅ Abastecimentos de HOJE e ANTES: limite antigo\n` +
+        `✅ Abastecimentos de AMANHÃ em diante: limite novo\n\n` +
+        `📅 Data do reset: ${new Date(inicioDeHoje).toLocaleDateString('pt-BR')}\n\n` +
+        `A tabela será recarregada em 2 segundos...`,
+        "success"
+      );
+      
+      console.log('  🔄 Aguardando 2 segundos para recarregar...');
+      
+      // Recarregar lista após 2 segundos
+      setTimeout(() => {
+        console.log('  🔄 Recarregando lista de DIVERSAS...');
+        listarDiversas();
+      }, 2000);
+      
+      console.log('  ✅ Reset concluído com sucesso!');
+      console.log('');
+      
+    } catch (error) {
+      console.error('❌ Erro ao resetar limite:', error);
+      mostrarNotificacao(
+        `❌ ERRO AO RESETAR LIMITE!\n\n${error.message}`,
+        "error"
+      );
+    }
+  }
+  
+  // ==================== RESETAR TODOS OS LIMITES DE DIVERSAS ====================
+  
+  async function resetarTodosDiversas() {
+    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA RESETAR LIMITES!", "error");
+      return;
+    }
+    
+    console.log('');
+    console.log('🔄 RESETANDO TODOS OS LIMITES DE DIVERSAS');
+    console.log('  • Usuário:', loginUser);
+    
+    // Confirmações
+    const confirmacao1 = confirm(
+      `⚠️ ATENÇÃO: RESETAR TODOS OS LIMITES DE DIVERSAS\n\n` +
+      `Esta ação irá:\n` +
+      `✓ Resetar TODAS as pessoas DIVERSAS que têm limite\n` +
+      `✓ Zerar contadores de gasto de TODAS\n` +
+      `✓ Permitir que todas recomecem do zero\n\n` +
+      `⚠️ ESTA AÇÃO NÃO PODE SER DESFEITA!\n\n` +
+      `Deseja continuar?`
+    );
+    
+    if (!confirmacao1) {
+      console.log('  ❌ Cancelado pelo usuário (confirmação 1)');
+      return;
+    }
+    
+    const confirmacao2 = confirm(
+      `🔴 CONFIRMAÇÃO FINAL\n\n` +
+      `Você tem CERTEZA ABSOLUTA que deseja resetar\n` +
+      `TODAS as pessoas DIVERSAS?\n\n` +
+      `Digite OK no próximo prompt para confirmar.`
+    );
+    
+    if (!confirmacao2) {
+      console.log('  ❌ Cancelado pelo usuário (confirmação 2)');
+      return;
+    }
+    
+    const digitado = prompt("Digite OK (em letras maiúsculas) para confirmar:");
+    
+    if (digitado !== "OK") {
+      mostrarNotificacao("❌ Cancelado - você não digitou OK corretamente.", "error");
+      console.log('  ❌ Cancelado - digitou:', digitado);
+      return;
+    }
+    
+    console.log('  ✅ Confirmações OK - executando reset...');
+    mostrarNotificacao("🔄 Resetando limites de todas as pessoas...", "info");
+    
+    try {
+      // Calcular timestamp do INÍCIO DE HOJE (00:00:00.000)
+      const hoje = new Date();
+      const inicioDeHoje = new Date(
+        hoje.getFullYear(),
+        hoje.getMonth(),
+        hoje.getDate(),
+        0, 0, 0, 0
+      ).getTime();
+      
+      console.log('  • Timestamp do reset:', inicioDeHoje);
+      console.log('  • Data do reset:', new Date(inicioDeHoje).toLocaleString('pt-BR'));
+      
+      // Buscar todas as pessoas DIVERSAS
+      const snapshot = await db.ref('pessoas_vip').once('value');
+      
+      if (!snapshot.exists()) {
+        mostrarNotificacao("ℹ️ Nenhuma pessoa DIVERSAS cadastrada.", "info");
+        return;
+      }
+      
+      const updates = {};
+      let totalResetados = 0;
+      const pessoasResetadas = [];
+      
+      snapshot.forEach(vipSnap => {
+        const vip = vipSnap.val();
+        const vipId = vipSnap.key;
+        
+        // Apenas pessoas COM limite (não ilimitadas)
+        if (!vip.semLimite) {
+          updates[`pessoas_vip/${vipId}/ultimoResetLimite`] = inicioDeHoje;
+          totalResetados++;
+          pessoasResetadas.push(vip.nome);
+          console.log(`  ✅ Resetando: ${vip.nome}`);
+        } else {
+          console.log(`  ⏭️ Pulando (ilimitado): ${vip.nome}`);
+        }
+      });
+      
+      if (totalResetados === 0) {
+        mostrarNotificacao("ℹ️ Nenhuma pessoa com limite encontrada.", "info");
+        console.log('  ℹ️ Todas as pessoas são ilimitadas');
+        return;
+      }
+      
+      console.log(`  • Total a resetar: ${totalResetados}`);
+      
+      // Aplicar atualizações
+      await db.ref().update(updates);
+      
+      console.log('  ✅ Campos ultimoResetLimite atualizados no Firebase');
+      
+      // Registrar em auditoria
+      await registrarAuditoria('LIMITE_DIVERSAS_RESETADO_TODOS', {
+        realizadoPor: loginUser,
+        timestampReset: inicioDeHoje,
+        dataReset: new Date(inicioDeHoje).toLocaleDateString('pt-BR'),
+        totalResetados: totalResetados,
+        pessoas: pessoasResetadas
+      });
+      
+      console.log('  ✅ Ação registrada em auditoria');
+      
+      // Recarregar lista
+      listarDiversas();
+      
+      mostrarNotificacao(
+        `✅ LIMITES RESETADOS COM SUCESSO!\n\n` +
+        `${totalResetados} pessoa(s) tiveram seus limites resetados.\n\n` +
+        `📋 Pessoas: ${pessoasResetadas.slice(0, 3).join(', ')}${totalResetados > 3 ? '...' : ''}\n\n` +
+        `✅ Limites voltaram ao TOTAL estabelecido\n` +
+        `✅ Abastecimentos de HOJE e ANTES: limite antigo\n` +
+        `✅ Abastecimentos de AMANHÃ em diante: limite novo\n\n` +
+        `📅 Data do reset: ${new Date(inicioDeHoje).toLocaleDateString('pt-BR')}`,
+        "success"
+      );
+      
+      console.log('  ✅ Reset de todos concluído com sucesso!');
+      console.log('');
+      
+    } catch (error) {
+      console.error('❌ Erro ao resetar limites:', error);
+      mostrarNotificacao(
+        `❌ ERRO AO RESETAR LIMITES!\n\n${error.message}`,
+        "error"
+      );
+    }
+  }
+  
+  // ==================== FIM RESETAR TODOS DIVERSAS ====================
+  
+  // ==================== FIM RESETAR LIMITE DIVERSAS ====================
   
   // Editar pessoa VIP
   function editarDiversas(vipId) {
