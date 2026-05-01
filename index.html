@@ -14111,8 +14111,9 @@
     if (gastosSnapshot.exists()) {
       gastosSnapshot.forEach(snap => {
         const abast = snap.val();
-        const dataAbast = new Date(abast.data);
-        const timestampAbast = dataAbast.getTime();
+        // CORREÇÃO: Usar timestamp salvo
+        const timestampAbast = abast.timestamp || new Date(abast.data).getTime();
+        const dataAbast = new Date(timestampAbast);
         
         // Só conta se:
         // 1. Está no mês atual E
@@ -14189,30 +14190,68 @@
       // Pegar timestamp do último reset (se existir)
       const timestampReset = pessoa.ultimoResetLimite || 0;
       
-      // Calcular gasto do mês - buscar por pessoaVIP (campo antigo) e pessoaDiversas (novo)
-      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaVIP').equalTo(key).once('value');
+      console.log('');
+      console.log('═══════════════════════════════════════════════');
+      console.log(`🔍 BUSCANDO ABASTECIMENTOS DE: ${pessoa.nome}`);
+      console.log('═══════════════════════════════════════════════');
+      console.log(`  • ID: ${key}`);
+      console.log(`  • Último reset:`, timestampReset ? new Date(timestampReset).toLocaleString('pt-BR') : 'NUNCA');
+      console.log(`  • Buscando: abastecimentos.pessoaDiversas == "${key}"`);
+      
+      // Calcular gasto do mês - buscar por pessoaDiversas (campo padrão)
+      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(key).once('value');
       let gastoMes = 0;
       let qtdAbastecimentos = 0;
       
+      console.log(`  • Abastecimentos encontrados: ${gastosSnapshot.exists() ? gastosSnapshot.numChildren() : 0}`);
+      
       if (gastosSnapshot.exists()) {
+        let contador = 0;
         gastosSnapshot.forEach(abastSnap => {
+          contador++;
           const abast = abastSnap.val();
-          const dataAbast = new Date(abast.data);
-          const timestampAbast = dataAbast.getTime();
+          
+          // CORREÇÃO: Usar o timestamp que já está salvo ao invés de calcular
+          const timestampAbast = abast.timestamp || new Date(abast.data).getTime();
+          const dataAbast = new Date(timestampAbast);
+          
+          console.log(`  📄 Abastecimento #${contador}:`);
+          console.log(`     • ID: ${abastSnap.key}`);
+          console.log(`     • Data: ${dataAbast.toLocaleString('pt-BR')}`);
+          console.log(`     • Valor: R$ ${abast.valor.toFixed(2)}`);
+          console.log(`     • Status: ${abast.status}`);
+          console.log(`     • Timestamp: ${timestampAbast}`);
+          console.log(`     • pessoaDiversas: ${abast.pessoaDiversas}`);
+          console.log(`     • pessoaVIP: ${abast.pessoaVIP}`);
           
           // Só conta se:
           // 1. Está no mês atual E
           // 2. É AUTORIZADO E
           // 3. Foi DEPOIS do último reset
-          if (dataAbast.getMonth() === mesAtual && 
-              dataAbast.getFullYear() === anoAtual && 
-              abast.status === STATUS.AUTORIZADO &&
-              timestampAbast > timestampReset) {
+          const noMesAtual = (dataAbast.getMonth() === mesAtual && dataAbast.getFullYear() === anoAtual);
+          const autorizado = (abast.status === STATUS.AUTORIZADO);
+          const depoisReset = (timestampAbast > timestampReset);
+          
+          console.log(`     ✓ Mês atual? ${noMesAtual ? '✅' : '❌'}`);
+          console.log(`     ✓ Autorizado? ${autorizado ? '✅' : '❌'}`);
+          console.log(`     ✓ Depois reset? ${depoisReset ? '✅' : '❌'}`);
+          
+          if (noMesAtual && autorizado && depoisReset) {
             gastoMes += abast.valor;
             qtdAbastecimentos++;
+            console.log(`     ➜ CONTA! ✅`);
+          } else {
+            console.log(`     ➜ NÃO CONTA ❌`);
           }
+          console.log('');
         });
+      } else {
+        console.log('  ℹ️ Nenhum abastecimento encontrado');
       }
+      
+      console.log(`  💰 RESULTADO: Gasto = R$ ${gastoMes.toFixed(2)} (${qtdAbastecimentos} abastecimentos)`);
+      console.log('═══════════════════════════════════════════════');
+      console.log('');
       
       const saldoRestante = semLimite ? Infinity : (limite - gastoMes);
       const percentual = semLimite ? 0 : ((gastoMes / limite) * 100);
@@ -14310,6 +14349,10 @@
   
   // Lançar abastecimento DIVERSAS
   async function lancarAbastecimentoDiversas() {
+    console.log('');
+    console.log('🚀 INICIANDO LANÇAMENTO DE ABASTECIMENTO DIVERSAS');
+    console.log('');
+    
     if (!temPermissao('registrar_abastecimento_diversas') && !temPermissao('abastecer_diversas')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA LANÇAR ABASTECIMENTOS DIVERSAS!", "error");
       return;
@@ -14327,6 +14370,19 @@
     const preco = parseFloat(document.getElementById('diversas-preco').value);
     const km = parseInt(document.getElementById('diversas-km').value) || 0; // Opcional para VIP
     const obs = document.getElementById('diversas-obs').value.trim();
+    
+    console.log('📋 VALORES DOS CAMPOS:');
+    console.log('  • pessoaId:', pessoaId);
+    console.log('  • data:', data, typeof data);
+    console.log('  • horario:', horario);
+    console.log('  • placa:', placa);
+    console.log('  • motorista:', motorista);
+    console.log('  • cpfBeneficiado:', cpfBeneficiado);
+    console.log('  • postoId:', postoId);
+    console.log('  • combustivel:', combustivel);
+    console.log('  • litros:', litros);
+    console.log('  • preco:', preco);
+    console.log('');
     
     // Validações
     if (!pessoaId) {
@@ -14424,6 +14480,21 @@
       timestamp: Date.now(),
       tipoAbastecimento: "DIVERSAS"
     };
+    
+    console.log('');
+    console.log('═══════════════════════════════════════════════');
+    console.log('💾 SALVANDO ABASTECIMENTO DIVERSAS');
+    console.log('═══════════════════════════════════════════════');
+    console.log('  • Pessoa:', pessoa.nome);
+    console.log('  • pessoaDiversas:', pessoaId);
+    console.log('  • Data (campo):', data);
+    console.log('  • Horário:', horario);
+    console.log('  • Timestamp:', abastecimento.timestamp);
+    console.log('  • Timestamp em data:', new Date(abastecimento.timestamp).toLocaleString('pt-BR'));
+    console.log('  • new Date(data):', new Date(data).toLocaleString('pt-BR'));
+    console.log('  • new Date(data).getTime():', new Date(data).getTime());
+    console.log('═══════════════════════════════════════════════');
+    console.log('');
     
     db.ref('abastecimentos').push(abastecimento)
       .then(() => {
@@ -15116,8 +15187,9 @@
       if (gastosSnapshot.exists()) {
         gastosSnapshot.forEach(abastSnap => {
           const abast = abastSnap.val();
-          const dataAbast = new Date(abast.data);
-          const timestampAbast = dataAbast.getTime();
+          // CORREÇÃO: Usar timestamp salvo
+          const timestampAbast = abast.timestamp || new Date(abast.data).getTime();
+          const dataAbast = new Date(timestampAbast);
           totalAbastecimentos++;
           
           const mesAbast = dataAbast.getMonth();
