@@ -6193,6 +6193,61 @@
     const btnConfirmar = document.getElementById('btn-confirmar-tanque');
     const infoDiv = document.getElementById('info-limite');
     
+    // NOVA REGRA: Verificar percentual de gasto para SECRETÁRIOS
+    const limiteElement = document.getElementById('saldo-limite');
+    if (limiteElement) {
+      const limite = parseFloat(limiteElement.textContent.replace('R$ ', '').replace(',', '.')) || 0;
+      const gastoAtual = limite - saldoRestante;
+      const percentualGasto = (gastoAtual / limite) * 100;
+      
+      // Se gastou 95% ou mais, bloquear tanque cheio
+      if (percentualGasto >= 95) {
+        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        
+        if (checkboxTanqueCheio && checkboxTanqueCheio.checked) {
+          checkboxTanqueCheio.checked = false;
+          mostrarNotificacao("🚫 TANQUE CHEIO BLOQUEADO PARA SECRETÁRIO: Limite acima de 95% (" + percentualGasto.toFixed(1) + "%)", "error");
+          console.log('🚫 Tanque cheio bloqueado para SECRETÁRIO: ' + percentualGasto.toFixed(2) + '%');
+        }
+        
+        // Desabilitar checkbox
+        checkboxTanqueCheio.disabled = true;
+        checkboxTanqueCheio.title = "Bloqueado: limite acima de 95% (" + percentualGasto.toFixed(1) + "%)";
+        
+        // Adicionar indicador visual
+        const labelTanque = document.querySelector('label[for="tanque-cheio"]');
+        if (labelTanque) {
+          labelTanque.style.opacity = '0.5';
+          labelTanque.style.cursor = 'not-allowed';
+          labelTanque.title = "Bloqueado: limite acima de 95%";
+        }
+      } else if (percentualGasto >= 80) {
+        // Aviso entre 80% e 95%
+        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        if (checkboxTanqueCheio) {
+          checkboxTanqueCheio.disabled = false;
+          const labelTanque = document.querySelector('label[for="tanque-cheio"]');
+          if (labelTanque) {
+            labelTanque.style.opacity = '1';
+            labelTanque.style.cursor = 'pointer';
+            labelTanque.title = "Atenção: limite próximo de 95% (" + percentualGasto.toFixed(1) + "%)";
+          }
+        }
+      } else {
+        // Normal
+        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        if (checkboxTanqueCheio) {
+          checkboxTanqueCheio.disabled = false;
+          const labelTanque = document.querySelector('label[for="tanque-cheio"]');
+          if (labelTanque) {
+            labelTanque.style.opacity = '1';
+            labelTanque.style.cursor = 'pointer';
+            labelTanque.title = "";
+          }
+        }
+      }
+    }
+    
     if (valorTotal > saldoRestante && saldoRestante > 0) {
       // Valor excede o saldo restante
       const excedente = valorTotal - saldoRestante;
@@ -14134,63 +14189,19 @@
     console.log('  💰 Gasto total no mês:', gastoMes);
     
     const saldoRestante = limite - gastoMes;
-    const percentualGasto = (gastoMes / limite) * 100;
-    
-    console.log('  📊 Percentual gasto:', percentualGasto.toFixed(2) + '%');
-    
-    // REGRA: Se já gastou mais de 95%, bloquear TANQUE CHEIO
-    const checkboxTanqueCheio = document.getElementById('diversas-tanque-cheio');
-    if (checkboxTanqueCheio && percentualGasto >= 95) {
-      if (checkboxTanqueCheio.checked) {
-        checkboxTanqueCheio.checked = false;
-        mostrarNotificacao("⚠️ TANQUE CHEIO BLOQUEADO: Limite acima de 95%", "warning");
-        console.log('  🚫 Tanque cheio bloqueado (95% do limite atingido)');
-      }
-      checkboxTanqueCheio.disabled = true;
-      checkboxTanqueCheio.title = "Bloqueado: limite acima de 95%";
-      
-      // Adicionar indicador visual
-      const labelTanque = document.querySelector('label[for="diversas-tanque-cheio"]');
-      if (labelTanque) {
-        labelTanque.style.opacity = '0.5';
-        labelTanque.style.cursor = 'not-allowed';
-      }
-    } else if (checkboxTanqueCheio) {
-      checkboxTanqueCheio.disabled = false;
-      checkboxTanqueCheio.title = "";
-      
-      const labelTanque = document.querySelector('label[for="diversas-tanque-cheio"]');
-      if (labelTanque) {
-        labelTanque.style.opacity = '1';
-        labelTanque.style.cursor = 'pointer';
-      }
-    }
     
     if (valorTotal > saldoRestante) {
       const excedente = valorTotal - saldoRestante;
       alerta.style.display = 'block';
       detalhes.innerHTML = `
         Limite: <strong>R$ ${limite.toFixed(2)}</strong><br>
-        Gasto no mês: <strong>R$ ${formatarMoeda(gastoMes)}</strong> <span style="color: ${percentualGasto >= 95 ? 'var(--danger)' : percentualGasto >= 80 ? 'var(--warning)' : 'var(--success)'};">(${percentualGasto.toFixed(1)}%)</span><br>
+        Gasto no mês: <strong>R$ ${formatarMoeda(gastoMes)}</strong><br>
         Saldo restante: <strong>R$ ${formatarMoeda(saldoRestante)}</strong><br>
         Este abastecimento: <strong>R$ ${formatarMoeda(valorTotal)}</strong><br>
         <span style="color:var(--danger); font-weight:bold;">Excedente: R$ ${formatarMoeda(excedente)}</span>
-        ${percentualGasto >= 95 ? '<br><br>⚠️ <strong>TANQUE CHEIO BLOQUEADO</strong> (limite > 95%)' : ''}
       `;
     } else {
-      // Mostrar alerta de aviso se estiver entre 80% e 95%
-      if (percentualGasto >= 80) {
-        alerta.style.display = 'block';
-        alerta.style.background = percentualGasto >= 95 ? 'var(--danger-light)' : 'var(--warning-light)';
-        detalhes.innerHTML = `
-          Limite: <strong>R$ ${limite.toFixed(2)}</strong><br>
-          Gasto no mês: <strong>R$ ${formatarMoeda(gastoMes)}</strong> <span style="color: ${percentualGasto >= 95 ? 'var(--danger)' : 'var(--warning)'};">(${percentualGasto.toFixed(1)}%)</span><br>
-          Saldo restante: <strong>R$ ${formatarMoeda(saldoRestante)}</strong><br>
-          ${percentualGasto >= 95 ? '⚠️ <strong>TANQUE CHEIO BLOQUEADO</strong> (limite > 95%)' : '⚠️ <strong>Atenção:</strong> Próximo dos 95%'}
-        `;
-      } else {
-        alerta.style.display = 'none';
-      }
+      alerta.style.display = 'none';
     }
   }
   
@@ -14472,55 +14483,6 @@
     // KM é opcional para abastecimentos VIP
     
     const valor = litros * preco;
-    
-    // VALIDAÇÃO: Verificar se tanque cheio está sendo usado com limite > 95%
-    const tanqueCheio = document.getElementById('diversas-tanque-cheio').checked;
-    
-    if (tanqueCheio) {
-      // Buscar dados da pessoa
-      const vipSnapshot = await db.ref('pessoas_vip/' + pessoaId).once('value');
-      if (vipSnapshot.exists()) {
-        const vipData = vipSnapshot.val();
-        
-        // Se tem limite (não é ilimitado)
-        if (!vipData.semLimite) {
-          const limite = vipData.limite;
-          const timestampReset = vipData.ultimoResetLimite || 0;
-          
-          // Calcular gasto atual
-          const hoje = new Date();
-          const mesAtual = hoje.getMonth();
-          const anoAtual = hoje.getFullYear();
-          
-          const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(pessoaId).once('value');
-          let gastoMes = 0;
-          
-          if (gastosSnapshot.exists()) {
-            gastosSnapshot.forEach(snap => {
-              const abast = snap.val();
-              const timestampAbast = abast.timestamp || new Date(abast.data).getTime();
-              const dataAbast = new Date(timestampAbast);
-              
-              if (dataAbast.getMonth() === mesAtual && 
-                  dataAbast.getFullYear() === anoAtual && 
-                  abast.status === STATUS.AUTORIZADO &&
-                  timestampAbast > timestampReset) {
-                gastoMes += abast.valor;
-              }
-            });
-          }
-          
-          const percentualGasto = (gastoMes / limite) * 100;
-          
-          // BLOQUEAR se já gastou 95% ou mais
-          if (percentualGasto >= 95) {
-            mostrarNotificacao("🚫 TANQUE CHEIO BLOQUEADO! Limite acima de 95% (" + percentualGasto.toFixed(1) + "%)", "error");
-            console.log('🚫 Tanque cheio bloqueado: percentual ' + percentualGasto.toFixed(2) + '%');
-            return;
-          }
-        }
-      }
-    }
     
     // NOVO: Mostrar histórico do veículo antes de confirmar
     const confirmarHistorico = await mostrarHistoricoVeiculo(placa, "DIVERSAS");
