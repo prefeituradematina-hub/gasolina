@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Sistemas — Matina BA</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --grad-a:#667eea; --grad-b:#764ba2;
+  --ink:#1e293b; --muted:#64748b;
+  --gas-a:#f59e0b; --gas-b:#ef4444;
+  --car-a:#3b82f6; --car-b:#667eea;
+}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  min-height:100vh;
+  background:linear-gradient(135deg,var(--grad-a) 0%,var(--grad-b) 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;color:var(--ink);
+}
+.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LOGIN ─────────────────────────────────────────────── */
+.login-container{
+  display:flex;max-width:1000px;width:100%;background:#fff;
+  border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  animation:fadeUp .5s ease;
+}
+.login-left{
+  flex:1;position:relative;color:#fff;text-align:center;
+  background:linear-gradient(135deg,rgba(102,126,234,.92),rgba(118,75,162,.92));
+  padding:60px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.login-left::before{content:'';position:absolute;inset:0;background:url('https://i.imgur.com/qtUXYi3.png') center/cover;opacity:.15}
+.login-left>*{position:relative;z-index:1}
+.login-logo{width:100%;max-width:280px;margin-bottom:28px}
+.login-left h1{font-size:28px;margin-bottom:12px;letter-spacing:.5px}
+.login-left p{font-size:15px;opacity:.9;line-height:1.6}
+.login-left .mods{display:flex;gap:14px;margin-top:26px;font-size:28px}
+.login-left .mods span{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:14px;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
+.login-box{flex:1;padding:60px 50px;display:flex;flex-direction:column;justify-content:center}
+.login-box h2{font-size:28px;text-align:center;margin-bottom:8px;color:var(--grad-a)}
+.login-box>p{color:var(--muted);font-size:14px;text-align:center;margin-bottom:28px}
+.login-box input{
+  width:100%;padding:16px;border-radius:12px;border:2px solid #e2e8f0;
+  margin-bottom:14px;text-align:center;font-size:16px;transition:all .3s;
+}
+.login-box input:focus{outline:none;border-color:var(--grad-a);box-shadow:0 0 0 3px rgba(102,126,234,.12)}
+.btn-login{
+  width:100%;padding:16px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--grad-a),var(--grad-b));
+  color:#fff;font-weight:bold;font-size:16px;transition:all .3s;
+}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(102,126,234,.4)}
+.btn-login:disabled{opacity:.6;cursor:wait;transform:none}
+.login-erro{display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:13px;text-align:center;margin-bottom:14px}
+
+/* ── HUB ───────────────────────────────────────────────── */
+.hub{display:none;max-width:860px;width:100%;animation:fadeUp .5s ease}
+.hub-card{
+  background:#fff;border-radius:24px;padding:44px 40px 48px;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.hub-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.hub-user{display:flex;align-items:center;gap:12px}
+.hub-avatar{
+  width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--grad-a),var(--grad-b));color:#fff;font-weight:bold;font-size:18px;
+}
+.hub-user small{display:block;color:var(--muted);font-size:12px;text-transform:capitalize}
+.hub-user strong{font-size:15px}
+.btn-sair{
+  background:#fff;border:2px solid #fecaca;color:#dc2626;border-radius:10px;
+  padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;
+}
+.btn-sair:hover{background:#fef2f2;transform:translateY(-1px)}
+.hub h1{font-size:26px;text-align:center;margin:26px 0 6px}
+.hub-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:36px}
+.modulos{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.modulo{
+  border:2px solid #e2e8f0;border-radius:20px;padding:38px 26px;text-align:center;
+  cursor:pointer;text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
+  transition:transform .3s,box-shadow .3s,border-color .3s;background:#fff;
+}
+.modulo::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:5px;
+  background:linear-gradient(90deg,var(--ma),var(--mb));
+  transform:scaleX(0);transform-origin:left;transition:transform .35s;
+}
+.modulo:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(0,0,0,.12);border-color:var(--ma)}
+.modulo:hover::before{transform:scaleX(1)}
+.mod-icone{
+  width:96px;height:96px;margin:0 auto 20px;border-radius:26px;font-size:46px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--ma),var(--mb));
+  box-shadow:0 10px 24px -6px var(--mb);transition:transform .35s;
+}
+.modulo:hover .mod-icone{transform:scale(1.08) rotate(-3deg)}
+.modulo h2{font-size:18px;margin-bottom:8px}
+.modulo p{font-size:13px;color:var(--muted);line-height:1.6}
+.mod-entrar{
+  display:inline-block;margin-top:18px;font-size:13px;font-weight:700;
+  color:var(--ma);letter-spacing:.3px;
+}
+.modulo.gas{--ma:var(--gas-a);--mb:var(--gas-b)}
+.modulo.frota{--ma:var(--car-a);--mb:var(--car-b)}
+.modulo.bloqueado{cursor:not-allowed;opacity:.55;filter:grayscale(.7)}
+.modulo.bloqueado:hover{transform:none;box-shadow:none;border-color:#e2e8f0}
+.modulo.bloqueado:hover::before{transform:scaleX(0)}
+.modulo.bloqueado:hover .mod-icone{transform:none}
+.modulo .mod-cadeado{display:none;margin-top:18px;font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.3px}
+.modulo.bloqueado .mod-entrar{display:none}
+.modulo.bloqueado .mod-cadeado{display:inline-block}
+.hub-rodape{text-align:center;color:rgba(255,255,255,.85);font-size:12px;margin-top:18px}
+
+@media (max-width:768px){
+  .login-container{flex-direction:column}
+  .login-left{padding:36px 20px}
+  .login-box{padding:36px 26px}
+  .modulos{grid-template-columns:1fr}
+  .hub-card{padding:30px 22px 36px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div class="login-container" id="tela-login">
+  <div class="login-left">
+    <img src="https://i.imgur.com/AKM25W1.png" alt="Logo" class="login-logo">
+    <h1>PORTAL DE SISTEMAS</h1>
+    <p>Prefeitura Municipal de Matina — BA<br>Gestão integrada de combustível e frota</p>
+    <div class="mods"><span>⛽</span><span>🚗</span></div>
+  </div>
+  <div class="login-box">
+    <h2>🔐 BEM-VINDO</h2>
+    <p>Use seu usuário e senha para acessar os sistemas</p>
+    <div class="login-erro" id="login-erro"></div>
+    <input type="text" id="user" placeholder="USUÁRIO" autocomplete="username">
+    <input type="password" id="senha" placeholder="SENHA" autocomplete="current-password" onkeypress="if(event.key==='Enter') logar()">
+    <button class="btn-login" id="btn-entrar" onclick="logar()">ENTRAR</button>
+  </div>
+</div>
+
+<!-- ── HUB ── -->
+<div class="hub" id="tela-hub">
+  <div class="hub-card">
+    <div class="hub-top">
+      <div class="hub-user">
+        <div class="hub-avatar" id="hub-avatar">?</div>
+        <div>
+          <strong id="hub-nome">—</strong>
+          <small id="hub-role">—</small>
+        </div>
+      </div>
+      <button class="btn-sair" onclick="sair()">🚪 Sair</button>
+    </div>
+    <h1>O que você quer acessar?</h1>
+    <div class="hub-sub">Escolha um dos sistemas abaixo</div>
+    <div class="modulos">
+      <a class="modulo gas" href="index.html">
+        <div class="mod-icone">⛽</div>
+        <h2>Controle de Gasolina</h2>
+        <p>Abastecimentos, autorizações, limites por secretaria e relatórios de combustível.</p>
+        <span class="mod-entrar">ACESSAR →</span>
+      </a>
+      <a class="modulo frota" id="card-frota" href="veiculos.html">
+        <div class="mod-icone">🚗</div>
+        <h2>Controle de Frota</h2>
+        <p>Entradas e saídas de veículos, agendamentos, motoristas e manutenções.</p>
+        <span class="mod-entrar">ACESSAR →</span>
+        <span class="mod-cadeado">🔒 SEM ACESSO</span>
+      </a>
+    </div>
+  </div>
+  <div class="hub-rodape">Sessão válida por 12 horas · Os dois sistemas compartilham o mesmo banco de dados</div>
+</div>
+
+<script>
+// ── FIREBASE (mesmo banco dos dois sistemas) ─────────────────
+firebase.initializeApp({
+  apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
+  authDomain: "tabela-gasolina.firebaseapp.com",
+  databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
+  projectId: "tabela-gasolina"
+});
+var db = firebase.database();
+var SESSAO_KEY = 'sessao_global';
+var SESSAO_DURACAO = 12 * 60 * 60 * 1000; // 12 horas
+
+function getSessao(){
+  try{
+    var s = JSON.parse(localStorage.getItem(SESSAO_KEY));
+    if(s && s.exp > Date.now()) return s;
+  }catch(e){}
+  return null;
+}
+function salvarSessao(u, role, limite, sec, dados){
+  var s = { u:u, role:role, limite:limite||0, sec:sec||"", dados:dados||{}, exp: Date.now()+SESSAO_DURACAO };
+  localStorage.setItem(SESSAO_KEY, JSON.stringify(s));
+  return s;
+}
+function sair(){
+  localStorage.removeItem(SESSAO_KEY);
+  document.getElementById('tela-hub').style.display = 'none';
+  document.getElementById('tela-login').style.display = 'flex';
+  document.getElementById('senha').value = '';
+}
+
+// ── LOGIN (mesma lógica do sistema de gasolina) ──────────────
+function erroLogin(msg){
+  var el = document.getElementById('login-erro');
+  el.textContent = msg; el.style.display = 'block';
+  var box = document.querySelector('.login-container');
+  box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+  travar(false);
+}
+function travar(t){
+  var b = document.getElementById('btn-entrar');
+  b.disabled = t; b.textContent = t ? 'VERIFICANDO…' : 'ENTRAR';
+}
+function logar(){
+  var u = document.getElementById('user').value.trim();
+  var s = document.getElementById('senha').value.trim();
+  document.getElementById('login-erro').style.display = 'none';
+  if(!u || !s){ erroLogin('Preencha usuário e senha.'); return; }
+  travar(true);
+
+  if(u === 'master' && s === '05048989'){
+    var sess = salvarSessao('master','admin',0,'',{
+      combustivelLiberado:'todos', senha:'05048989', role:'admin', permissoes:null
+    });
+    mostrarHub(sess); travar(false); return;
+  }
+
+  db.ref('usuarios/' + u).once('value').then(function(snap){
+    var user = snap.val();
+    if(user && user.senha === s){
+      var limiteVictor = user.limiteVictor || 0;
+      var limiteMatina = user.limiteMatina || 0;
+      var limiteTotal  = (limiteVictor + limiteMatina) || user.limite || 0;
+      var dados = {
+        combustivelLiberado: user.combustivelLiberado || 'todos',
+        senha: user.senha,
+        role: user.role,
+        limite: limiteTotal,
+        limiteVictor: limiteVictor,
+        limiteMatina: limiteMatina,
+        ultimoResetLimite: user.ultimoResetLimite || 0,
+        secretariaVinculada: user.secretariaVinculada || '',
+        postoVinculado: user.postoVinculado || '',
+        postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
+        permissoes: user.permissoes || null
+      };
+      var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
+      try{ db.ref('auditoria').push({acao:'LOGIN', usuario:u, via:'portal', em:new Date().toISOString()}); }catch(e){}
+      mostrarHub(sess); travar(false);
+    } else {
+      erroLogin('Usuário ou senha incorretos.');
+    }
+  }).catch(function(err){
+    console.error(err);
+    erroLogin('Erro ao conectar ao banco de dados. Verifique sua internet.');
+  });
+}
+
+// ── HUB ──────────────────────────────────────────────────────
+var ROLES = { admin:'Administrador', autorizador:'Autorizador', frentista:'Frentista', secretarios:'Secretário', secretario:'Secretário' };
+function mostrarHub(s){
+  document.getElementById('tela-login').style.display = 'none';
+  var hub = document.getElementById('tela-hub');
+  hub.style.display = 'block';
+  document.getElementById('hub-nome').textContent = (s.u||'').toUpperCase();
+  document.getElementById('hub-role').textContent = ROLES[s.role] || s.role || '';
+  document.getElementById('hub-avatar').textContent = (s.u||'?').charAt(0).toUpperCase();
+
+  // Frentistas não têm acesso ao Controle de Frota
+  var frota = document.getElementById('card-frota');
+  if(s.role === 'frentista'){
+    frota.classList.add('bloqueado');
+    frota.removeAttribute('href');
+    frota.title = 'Seu perfil não tem acesso a este sistema';
+    frota.onclick = function(e){
+      e.preventDefault();
+      var p = frota.querySelector('p');
+      p.textContent = 'Acesso restrito: frentistas utilizam apenas o controle de combustível.';
+      p.style.color = '#dc2626';
+    };
+  } else {
+    frota.classList.remove('bloqueado');
+    frota.setAttribute('href','veiculos.html');
+    frota.title = '';
+    frota.onclick = null;
+  }
+}
+
+// Sessão ativa? Vai direto para o hub.
+(function(){
+  var s = getSessao();
+  if(s) mostrarHub(s);
+})();
+</script>
+</body>
+</html>
