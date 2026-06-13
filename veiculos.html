@@ -385,6 +385,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn" onclick="abrirSolicitacao()" style="font-size:11px;padding:5px 10px;background:#6366F1;color:#fff;border-color:#6366F1">📋 Solicitar viagem</button>
+        <button class="btn" onclick="abrirSolicitacaoLote()" style="font-size:11px;padding:5px 10px;background:#4F46E5;color:#fff;border-color:#4F46E5">📋 Solicitar em lote</button>
         <button class="btn" id="btn-saida-lote" onclick="abrirSaidaLote()" style="font-size:11px;padding:5px 10px;background:#1D9E75;color:#fff;border-color:#1D9E75;display:none">⚡ Saída em lote</button>
         <div style="width:1px;background:var(--border,#E5E7EB);height:20px"></div>
         <button class="btn" id="btn-view-todos" onclick="setView('todos')" style="font-size:11px;padding:5px 10px">Todos</button>
@@ -476,7 +477,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section" id="aba-solicitacoes">
     <div class="section-hdr">
       <div class="section-title">Solicitações de viagem</div>
-      <button class="btn primary" onclick="abrirSolicitacao()">+ Nova solicitação</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn" onclick="abrirSolicitacaoLote()" style="background:#4F46E5;color:#fff;border-color:#4F46E5">📋 Solicitar em lote</button>
+        <button class="btn primary" onclick="abrirSolicitacao()">+ Nova solicitação</button>
+      </div>
     </div>
     <div id="sol-lote-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;margin-bottom:10px">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
@@ -3071,6 +3075,90 @@ function confirmarSolicitacao() {
   renderTudo();
 }
 
+// ── SOLICITAÇÃO EM LOTE ───────────────────────────────────────
+// Cria uma solicitação para cada veículo selecionado, com data/destino/obs comuns.
+function abrirSolicitacaoLote(){
+  if(!_sessao){ alert('Você precisa estar logado.'); return; }
+  document.getElementById('sll-data').value = '';
+  document.getElementById('sll-destino').value = '';
+  document.getElementById('sll-obs').value = '';
+  var secVal = _sessao.secretaria || '';
+  document.getElementById('sll-sec-display').textContent = isAdmin() ? '(todas)' : (secVal || '(não definida)');
+  var veics = isAdmin() ? D.veiculos : D.veiculos.filter(podeVerVeiculo);
+  var lista = document.getElementById('sll-lista');
+  var vazio = document.getElementById('sll-vazio');
+  if(!veics.length){
+    vazio.style.display='block'; lista.innerHTML='';
+    document.getElementById('sll-confirmar').style.display='none';
+    document.getElementById('sll-todos').checked=false;
+    abrir('ov-solicitacao-lote'); return;
+  }
+  vazio.style.display='none';
+  document.getElementById('sll-confirmar').style.display='';
+  var motOpts = '<option value="">— Sem motorista —</option>'+D.motoristas.map(function(m){
+    return '<option value="'+m.id+'">'+m.nome+' ('+m.categoria+')</option>';
+  }).join('');
+  lista.innerHTML = veics.map(function(v, i){
+    return '<div class="card" style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<input type="checkbox" class="sll-chk" data-vid="'+v.id+'" data-i="'+i+'" onchange="sllContador()" style="width:18px;height:18px">'+
+      '<div style="flex:1;min-width:140px">'+
+        '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+'</div>'+
+        '<div style="font-size:11px;color:#888">'+(v.secretaria||'')+'</div>'+
+      '</div>'+
+      '<select id="sll-mot-'+i+'" style="font-size:12px;padding:5px 8px;max-width:160px">'+motOpts+'</select>'+
+      '<label style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">🧍<input type="number" id="sll-pass-'+i+'" min="0" value="0" style="font-size:12px;padding:5px 6px;width:56px"></label>'+
+    '</div>';
+  }).join('');
+  document.getElementById('sll-todos').checked=false;
+  sllContador();
+  abrir('ov-solicitacao-lote');
+}
+function sllToggleTodos(marcar){
+  document.querySelectorAll('#sll-lista .sll-chk').forEach(function(chk){ chk.checked = marcar; });
+  sllContador();
+}
+function sllContador(){
+  var marcados = document.querySelectorAll('#sll-lista .sll-chk:checked').length;
+  var total = document.querySelectorAll('#sll-lista .sll-chk').length;
+  document.getElementById('sll-contador').textContent = marcados+' de '+total+' selecionados';
+  document.getElementById('sll-todos').checked = (marcados===total && total>0);
+  var btn = document.getElementById('sll-confirmar');
+  btn.disabled = marcados===0;
+  btn.textContent = marcados>0 ? 'Enviar '+marcados+' solicitaç'+(marcados>1?'ões':'ão') : 'Enviar solicitações';
+}
+function confirmarSolicitacaoLote(){
+  if(!_sessao){ alert('Você precisa estar logado.'); return; }
+  var data = document.getElementById('sll-data').value;
+  var dest = document.getElementById('sll-destino').value.trim();
+  var obs  = document.getElementById('sll-obs').value.trim();
+  var chks = document.querySelectorAll('#sll-lista .sll-chk:checked');
+  if(!data || !dest){ alert('Preencha a data e o destino da viagem.'); return; }
+  if(!chks.length){ alert('Selecione ao menos um veículo.'); return; }
+  if(!D.solicitacoes) D.solicitacoes = [];
+  var n = 0;
+  chks.forEach(function(chk){
+    var i = chk.getAttribute('data-i');
+    var vid = chk.getAttribute('data-vid');
+    var v = getV(vid);
+    var motid = document.getElementById('sll-mot-'+i).value;
+    var mot = motid ? getM(motid) : null;
+    var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
+    if(isNaN(qtd)||qtd<0) qtd=0;
+    var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
+    D.solicitacoes.push({
+      id:uid_s(), vid:vid, motorista:mot?mot.nome:'', destino:dest, data_viagem:data,
+      obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
+      qtd_passageiros:qtd, passageiros:[],
+      status:'pendente', criado_em:now().toISOString(),
+      aprovado_em:null, saida_registrada:false
+    });
+    n++;
+  });
+  salvar(); fechar('ov-solicitacao-lote');
+  toast('✅ '+n+' solicitaç'+(n>1?'ões enviadas':'ão enviada')+'! Aguarde aprovação.');
+  renderTudo();
+}
+
 function aprovarSolicitacao(id) {
   var s = getS(id);
   if(!s) return;
@@ -3358,6 +3446,33 @@ startCron();
     <div class="actions">
       <button class="btn primary" onclick="confirmarSolicitacao()">Enviar solicitação</button>
       <button class="btn" onclick="fechar('ov-solicitacao')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SOLICITAÇÃO EM LOTE -->
+<div class="overlay" id="ov-solicitacao-lote">
+  <div class="modal" style="max-width:640px">
+    <button class="modal-close" onclick="fechar('ov-solicitacao-lote')">×</button>
+    <h2>📋 Solicitar viagem em lote</h2>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">Os dados abaixo valem para todos os veículos selecionados. Você pode ajustar motorista e passageiros por veículo.</div>
+    <div class="form-row">
+      <div class="field"><label>Data da viagem *</label><input type="date" id="sll-data"></div>
+      <div class="field"><label>Secretaria</label><div id="sll-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
+    </div>
+    <div class="field"><label>Destino *</label><input type="text" id="sll-destino" placeholder="Ex: Guanambi, Salvador..."></div>
+    <div class="field"><label>Observações</label><textarea id="sll-obs" placeholder="Objetivo da viagem (vale para todos)"></textarea></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0 6px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+        <input type="checkbox" id="sll-todos" onchange="sllToggleTodos(this.checked)"> Selecionar todos
+      </label>
+      <span style="margin-left:auto;font-size:12px;color:#666" id="sll-contador">0 selecionados</span>
+    </div>
+    <div id="sll-vazio" style="display:none;text-align:center;color:#888;padding:20px">Nenhum veículo disponível para solicitar.</div>
+    <div id="sll-lista" style="max-height:42vh;overflow:auto"></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn primary" id="sll-confirmar" onclick="confirmarSolicitacaoLote()">Enviar solicitações</button>
+      <button class="btn" onclick="fechar('ov-solicitacao-lote')">Cancelar</button>
     </div>
   </div>
 </div>
