@@ -385,6 +385,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn" onclick="abrirSolicitacao()" style="font-size:11px;padding:5px 10px;background:#6366F1;color:#fff;border-color:#6366F1">📋 Solicitar viagem</button>
+        <button class="btn" id="btn-saida-lote" onclick="abrirSaidaLote()" style="font-size:11px;padding:5px 10px;background:#1D9E75;color:#fff;border-color:#1D9E75;display:none">⚡ Saída em lote</button>
         <div style="width:1px;background:var(--border,#E5E7EB);height:20px"></div>
         <button class="btn" id="btn-view-todos" onclick="setView('todos')" style="font-size:11px;padding:5px 10px">Todos</button>
         <button class="btn" id="btn-view-sec" onclick="setView('secretarias')" style="font-size:11px;padding:5px 10px">Por secretaria</button>
@@ -476,6 +477,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="section-hdr">
       <div class="section-title">Solicitações de viagem</div>
       <button class="btn primary" onclick="abrirSolicitacao()">+ Nova solicitação</button>
+    </div>
+    <div id="sol-lote-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+        <input type="checkbox" id="sol-lote-todos" onchange="solLoteToggleTodos(this.checked)"> Selecionar pendentes
+      </label>
+      <span style="font-size:12px;color:#666" id="sol-lote-contador">0 selecionadas</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn success" id="sol-lote-aprovar" onclick="aprovarLote()" style="font-size:12px;padding:5px 12px" disabled>✅ Aprovar selecionadas</button>
+        <button class="btn danger" id="sol-lote-recusar" onclick="recusarLote()" style="font-size:12px;padding:5px 12px" disabled>❌ Recusar selecionadas</button>
+      </div>
     </div>
     <div id="lista-solicitacoes"></div>
   </div>
@@ -1463,6 +1474,153 @@ function confirmarSaidaRapida() {
   salvar(); fechar('ov-saida-rapida'); toast('⚡ Saída rápida registrada!'); renderTudo();
 }
 
+// ── SAÍDA EM LOTE ─────────────────────────────────────────────
+// Reúne os veículos prontos para sair agora: guardados com escala hoje
+// (dados da escala) + liberados com viagem aprovada (dados da solicitação).
+function _ultimoMotorista(vid){
+  var movs = (D.movimentacoes||[]).filter(function(m){return m.vid===vid && m.motid;});
+  if(!movs.length) return '';
+  movs.sort(function(a,b){return new Date(b.saida)-new Date(a.saida);});
+  return movs[0].motid;
+}
+function _candidatosLote(){
+  var n = now(), lista = [];
+  D.veiculos.forEach(function(v){
+    var st = getStatus(v.id);
+    // 1) Liberado: viagem aprovada aguardando saída no portão
+    if(st === 'liberado'){
+      var sol = getSolicitacaoLiberada(v.id);
+      if(sol){
+        lista.push({
+          vid:v.id, fonte:'solicitacao', solId:sol.id,
+          destino: sol.destino || '',
+          retorno: sol.data_viagem ? null : null, // retorno definido abaixo
+          motSug: _ultimoMotorista(v.id),
+          pass: sol.qtd_passageiros || (sol.passageiros?sol.passageiros.length:0),
+          tag:'✅ Viagem aprovada'
+        });
+        return;
+      }
+    }
+    // 2) Guardado com escala hoje
+    if(st === 'guardado'){
+      var esc = getEscalaHoje(v);
+      if(esc){
+        // retorno = fim da escala hoje
+        var ret = new Date(n);
+        var fp = (esc.fim||'17:00').split(':');
+        ret.setHours(parseInt(fp[0])||17, parseInt(fp[1])||0, 0, 0);
+        if(ret <= n) ret.setDate(ret.getDate()+1);
+        lista.push({
+          vid:v.id, fonte:'escala', escNome:esc.nome,
+          destino: esc.destino || '',
+          retornoISO: new Date(ret.getTime()-ret.getTimezoneOffset()*60000).toISOString().slice(0,16),
+          motSug: _ultimoMotorista(v.id),
+          pass:0,
+          tag:'📅 '+esc.nome
+        });
+      }
+    }
+  });
+  return lista;
+}
+var _loteCands = [];
+function abrirSaidaLote(){
+  if(!isAdmin()){ toast('🚫 Apenas administradores podem registrar saídas.'); return; }
+  _loteCands = _candidatosLote();
+  var lista = document.getElementById('sl-lista');
+  var vazio = document.getElementById('sl-vazio');
+  var toolbar = document.getElementById('sl-toolbar');
+  var actions = document.getElementById('sl-actions');
+  if(!_loteCands.length){
+    vazio.style.display = 'block'; lista.innerHTML=''; toolbar.style.display='none';
+    document.getElementById('sl-confirmar').style.display='none';
+    abrir('ov-saida-lote'); return;
+  }
+  vazio.style.display='none'; toolbar.style.display='flex';
+  document.getElementById('sl-confirmar').style.display='';
+  var motOpts = '<option value="">— Sem motorista —</option>'+D.motoristas.map(function(m){
+    return '<option value="'+m.id+'">'+m.nome+' ('+m.categoria+')</option>';
+  }).join('');
+  lista.innerHTML = _loteCands.map(function(c, i){
+    var v = getV(c.vid);
+    var destHtml = c.destino
+      ? '<span style="font-size:12px;color:#444">📍 '+c.destino+'</span>'
+      : '<input type="text" id="sl-dest-'+i+'" placeholder="Destino" style="font-size:12px;padding:4px 8px;width:140px">';
+    var sug = c.motSug;
+    var motSel = motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected');
+    return '<div class="card" style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<input type="checkbox" class="sl-chk" data-i="'+i+'" checked onchange="slAtualizaContador()" style="width:18px;height:18px">'+
+      '<div style="flex:1;min-width:150px">'+
+        '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+'</div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px">'+
+          '<span style="font-size:11px;color:#1D9E75;font-weight:600">'+c.tag+'</span>'+
+          destHtml+
+          (c.pass?'<span style="font-size:12px;color:#444">🧍 '+c.pass+'</span>':'')+
+        '</div>'+
+      '</div>'+
+      '<select id="sl-mot-'+i+'" style="font-size:12px;padding:5px 8px;max-width:170px">'+motSel+'</select>'+
+      '<input type="number" id="sl-km-'+i+'" placeholder="Km" min="0" style="font-size:12px;padding:5px 8px;width:80px">'+
+    '</div>';
+  }).join('');
+  document.getElementById('sl-todos').checked = true;
+  slAtualizaContador();
+  abrir('ov-saida-lote');
+}
+function slToggleTodos(marcar){
+  document.querySelectorAll('#sl-lista .sl-chk').forEach(function(chk){ chk.checked = marcar; });
+  slAtualizaContador();
+}
+function slAtualizaContador(){
+  var marcados = document.querySelectorAll('#sl-lista .sl-chk:checked').length;
+  var total = document.querySelectorAll('#sl-lista .sl-chk').length;
+  document.getElementById('sl-contador').textContent = marcados+' de '+total+' selecionados';
+  document.getElementById('sl-todos').checked = (marcados===total && total>0);
+  var btn = document.getElementById('sl-confirmar');
+  btn.disabled = marcados===0;
+  btn.textContent = marcados>0 ? '🚗 Registrar saída de '+marcados+' veículo'+(marcados>1?'s':'') : '🚗 Registrar saída';
+}
+function confirmarSaidaLote(){
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
+  var chks = document.querySelectorAll('#sl-lista .sl-chk:checked');
+  if(!chks.length){ alert('Selecione ao menos um veículo.'); return; }
+  var saidaISO = nowLocal(), n = 0, semMot = 0;
+  chks.forEach(function(chk){
+    var i = parseInt(chk.getAttribute('data-i'),10);
+    var c = _loteCands[i];
+    var v = getV(c.vid);
+    var motid = document.getElementById('sl-mot-'+i).value;
+    var mot = motid ? getM(motid) : null;
+    if(!motid) semMot++;
+    var km = parseInt(document.getElementById('sl-km-'+i).value)||null;
+    var destEl = document.getElementById('sl-dest-'+i);
+    var destino = c.destino || (destEl?destEl.value.trim():'') || 'Saída em lote';
+    // retorno: escala usa fim da escala; solicitação usa +10h como padrão
+    var retorno = c.retornoISO;
+    if(!retorno){
+      var r = new Date(now().getTime() + 10*3600*1000);
+      retorno = new Date(r.getTime()-r.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    }
+    D.movimentacoes.push({
+      id:uid('m'), vid:c.vid, motid:motid, motorista:mot?mot.nome:'—',
+      solic:'', sec:v.secretaria||'',
+      km_saida:km, km_entrada:null,
+      pass:c.pass||0, com_pass:(c.pass||0)>0,
+      saida:saidaISO, retorno:retorno,
+      entrada_real:null, destino:destino, abast:[]
+    });
+    // marca a solicitação como saída registrada
+    if(c.fonte==='solicitacao' && c.solId){
+      var sol = getS(c.solId);
+      if(sol) sol.saida_registrada = true;
+    }
+    n++;
+  });
+  salvar(); fechar('ov-saida-lote');
+  toast('⚡ '+n+' saída'+(n>1?'s':'')+' registrada'+(n>1?'s':'')+(semMot?' ('+semMot+' sem motorista)':'')+'!');
+  renderTudo();
+}
+
 function verVeiculo(vid) {
   var v = getV(vid);
   var s = getStatus(vid);
@@ -1572,6 +1730,25 @@ function abrirSaida(vid) {
   document.getElementById('s-hint').style.display = 'none';
   _editMovId = null;
   if(vid) document.getElementById('s-vei').value = vid;
+  // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados
+  var solAp = vid ? getSolicitacaoLiberada(vid) : null;
+  if(solAp) {
+    if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
+    if(solAp.motorista){
+      var motSel = document.getElementById('s-mot');
+      var achou = false;
+      for(var i=0;i<motSel.options.length;i++){ if(motSel.options[i].text===solAp.motorista){ motSel.value=motSel.options[i].value; achou=true; break; } }
+      // se o motorista era texto livre, mantém no campo manual quando existir
+      if(!achou){ var mm=document.getElementById('s-mot-manual'); if(mm) mm.value=solAp.motorista; }
+    }
+    var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
+    if(qp > 0) {
+      document.getElementById('s-com-pass').value = '1';
+      document.getElementById('s-pass-row').style.display = 'block';
+      document.getElementById('s-pass').value = qp;
+    }
+    document.getElementById('s-solic').value = solAp.solicitante || '';
+  }
   abrir('ov-saida');
 }
 
@@ -2689,6 +2866,8 @@ function aplicarPermissoes() {
     }
   });
   // Header: badge de perfil/secretaria + logout
+  var btnLote = document.getElementById('btn-saida-lote');
+  if(btnLote) btnLote.style.display = isAdmin() ? '' : 'none';
   var hdr = document.getElementById('sessao-info');
   if(hdr && _sessao) {
     var rotulo = isAdmin() ? '👑 Admin' : '🏛 ' + (_sessao.nome||'Secretário') + (_sessao.secretaria ? ' · '+_sessao.secretaria : '');
@@ -2785,42 +2964,105 @@ function toggleTravar(id) {
 function uid_s() { return 's'+(Date.now()%99999)+Math.floor(Math.random()*999); }
 function getS(id) { return (D.solicitacoes||[]).find(function(s){return s.id===id;})||null; }
 
-function abrirSolicitacao(vid) {
-  var v = vid ? getV(vid) : null;
-  document.getElementById('sol-id').value = '';
-  document.getElementById('sol-vid').value = vid||'';
+function abrirSolicitacao(vid, editId) {
+  var s = editId ? getS(editId) : null;
+  document.getElementById('sol-id').value = editId || '';
+  document.getElementById('sol-vid').value = vid||(s?s.vid:'')||'';
   // Populate veiculo select filtered by secretaria
   var sel = document.getElementById('sol-vei');
+  var alvoVid = vid || (s?s.vid:'');
   var veics = isAdmin() ? D.veiculos : D.veiculos.filter(podeVerVeiculo);
   sel.innerHTML = veics.map(function(vv){
-    return '<option value="'+vv.id+'"'+(vv.id===vid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
+    return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
   }).join('');
-  document.getElementById('sol-mot-nome').value = '';
-  document.getElementById('sol-destino').value = '';
-  document.getElementById('sol-data').value = '';
-  document.getElementById('sol-obs').value = '';
+  document.getElementById('sol-mot-nome').value = s?(s.motorista||''):'';
+  document.getElementById('sol-destino').value = s?(s.destino||''):'';
+  document.getElementById('sol-data').value = s?(s.data_viagem||''):'';
+  document.getElementById('sol-obs').value = s?(s.obs||''):'';
+  // Passageiros
+  _solPessoas = s && Array.isArray(s.passageiros) ? s.passageiros.slice() : [];
+  document.getElementById('sol-qtd-pass').value = s && s.qtd_passageiros!=null ? s.qtd_passageiros : _solPessoas.length;
+  renderSolPessoas();
   // Preenche secretaria automaticamente
   var secEl = document.getElementById('sol-sec');
   var secDisplay = document.getElementById('sol-sec-display');
-  var secVal = _sessao ? _sessao.secretaria : '';
+  var secVal = s ? s.sec : (_sessao ? _sessao.secretaria : '');
   if(secEl) secEl.value = secVal;
   if(secDisplay) secDisplay.textContent = secVal || '(não definida)';
+  // Título e botão
+  document.querySelector('#ov-solicitacao h2').textContent = editId ? '✏️ Editar solicitação' : '📋 Solicitar viagem';
   abrir('ov-solicitacao');
 }
 
+// ── Lista dinâmica de pessoas na solicitação ──────────────────
+var _solPessoas = [];
+function renderSolPessoas() {
+  var wrap = document.getElementById('sol-pessoas-wrap');
+  var box = document.getElementById('sol-pessoas');
+  if(!_solPessoas.length) { wrap.style.display='none'; box.innerHTML=''; return; }
+  wrap.style.display = '';
+  box.innerHTML = _solPessoas.map(function(nome, i){
+    return '<div style="display:flex;gap:6px;margin-bottom:6px">'+
+      '<input type="text" value="'+(nome||'').replace(/"/g,'&quot;')+'" placeholder="Nome da pessoa" '+
+        'oninput="_solPessoas['+i+']=this.value" style="flex:1">'+
+      '<button type="button" class="btn danger" style="padding:6px 12px" onclick="solRemovePessoa('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+function solAddPessoa() {
+  _solPessoas.push('');
+  // Mantém a quantidade coerente: nunca menor que a lista de nomes
+  var qtdEl = document.getElementById('sol-qtd-pass');
+  if((parseInt(qtdEl.value,10)||0) < _solPessoas.length) qtdEl.value = _solPessoas.length;
+  renderSolPessoas();
+  // foca o último input adicionado
+  var inputs = document.querySelectorAll('#sol-pessoas input');
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+function solRemovePessoa(i) {
+  _solPessoas.splice(i,1);
+  var qtdEl = document.getElementById('sol-qtd-pass');
+  if((parseInt(qtdEl.value,10)||0) < _solPessoas.length) qtdEl.value = _solPessoas.length;
+  renderSolPessoas();
+}
+function solSyncQtd() {
+  // Se a quantidade digitada for menor que o nº de nomes, não força — apenas avisa visualmente
+  // (o usuário pode listar só alguns nomes e ter um total maior)
+}
+
 function confirmarSolicitacao() {
+  var editId = document.getElementById('sol-id').value;
   var vid  = document.getElementById('sol-vei').value;
   var mot  = document.getElementById('sol-mot-nome').value.trim();
   var dest = document.getElementById('sol-destino').value.trim();
   var data = document.getElementById('sol-data').value;
   var obs  = document.getElementById('sol-obs').value.trim();
   var sec  = document.getElementById('sol-sec') ? document.getElementById('sol-sec').value : (_sessao?_sessao.secretaria:'');
+  // Pessoas: remove nomes em branco
+  var pessoas = _solPessoas.map(function(n){return (n||'').trim();}).filter(function(n){return n;});
+  var qtd = parseInt(document.getElementById('sol-qtd-pass').value,10);
+  if(isNaN(qtd) || qtd < 0) qtd = 0;
+  if(qtd < pessoas.length) qtd = pessoas.length; // total nunca menor que nomes listados
   if(!_sessao) { alert('Você precisa estar logado.'); return; }
   if(!vid||!dest||!data) { alert('Preencha veículo, destino e data.'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
+
+  if(editId) {
+    var s = getS(editId);
+    if(!s) { alert('Solicitação não encontrada.'); return; }
+    if(s.status !== 'pendente') { alert('Só é possível editar solicitações que ainda estão aguardando aprovação.'); return; }
+    s.vid=vid; s.motorista=mot; s.destino=dest; s.data_viagem=data; s.obs=obs;
+    s.qtd_passageiros=qtd; s.passageiros=pessoas; s.editado_em=now().toISOString();
+    salvar(); fechar('ov-solicitacao');
+    toast('✏️ Solicitação atualizada!');
+    renderTudo();
+    return;
+  }
+
   D.solicitacoes.push({
     id:uid_s(), vid:vid, motorista:mot, destino:dest, data_viagem:data,
     obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
+    qtd_passageiros:qtd, passageiros:pessoas,
     status:'pendente', criado_em:now().toISOString(),
     aprovado_em:null, saida_registrada:false
   });
@@ -2862,7 +3104,10 @@ function renderSolicitacoes() {
     var cor = {pendente:'#FFFBEB',aprovada:'#F0FDF4',recusada:'#FEF2F2'}[s.status]||'#fff';
     return '<div class="card" style="background:'+cor+';border-color:'+(s.status==='pendente'?'#FDE68A':s.status==='aprovada'?'#BBF7D0':'#FECACA')+'">'+
       '<div class="card-header">'+
-        '<div class="card-title">'+(v?v.placa+' — '+v.descricao:'Veículo removido')+'</div>'+
+        '<div class="card-title" style="display:flex;align-items:center;gap:8px">'+
+          (isAdmin()&&s.status==='pendente'?'<input type="checkbox" class="sol-chk" data-id="'+s.id+'" onchange="solLoteContador()" style="width:16px;height:16px">':'')+
+          (v?v.placa+' — '+v.descricao:'Veículo removido')+
+        '</div>'+
         '<span class="badge '+(s.status==='aprovada'?'guardado':s.status==='recusada'?'irregular':'agendado')+'">'+statusLabel+'</span>'+
       '</div>'+
       '<div class="card-meta">'+
@@ -2870,9 +3115,12 @@ function renderSolicitacoes() {
         '<span>📍 '+s.destino+'</span>'+
         (s.motorista?'<span>👤 '+s.motorista+'</span>':'')+
         '<span>🏛 '+s.sec+'</span>'+
+        (s.qtd_passageiros?'<span>🧍 '+s.qtd_passageiros+' passageiro'+(s.qtd_passageiros>1?'s':'')+'</span>':'')+
+        (s.passageiros&&s.passageiros.length?'<span>📝 '+s.passageiros.join(', ')+'</span>':'')+
         (s.obs?'<span>💬 '+s.obs+'</span>':'')+
       '</div>'+
       (isAdmin() && s.status==='pendente' ? '<div class="actions"><button class="btn success btn-aprov" data-id="'+s.id+'">✅ Aprovar</button><button class="btn danger btn-recus" data-id="'+s.id+'">❌ Recusar</button></div>' : '')+
+      (!isAdmin() && s.status==='pendente' ? '<div class="actions"><button class="btn btn-edit-sol" data-id="'+s.id+'" data-vid="'+s.vid+'">✏️ Editar</button></div>' : '')+
       (s.status==='recusada'&&s.motivo_recusa?'<div style="font-size:11px;color:#DC2626;margin-top:6px">Motivo: '+s.motivo_recusa+'</div>':'')+
     '</div>';
   }).join('');
@@ -2883,6 +3131,62 @@ function renderSolicitacoes() {
   el.querySelectorAll('.btn-recus').forEach(function(btn){
     btn.addEventListener('click', function(){ recusarSolicitacao(this.getAttribute('data-id')); });
   });
+  el.querySelectorAll('.btn-edit-sol').forEach(function(btn){
+    btn.addEventListener('click', function(){ abrirSolicitacao(this.getAttribute('data-vid'), this.getAttribute('data-id')); });
+  });
+  // Barra de aprovação em lote (só admin, só se houver pendentes)
+  var bar = document.getElementById('sol-lote-bar');
+  if(bar){
+    var temPendentes = isAdmin() && sols.some(function(s){return s.status==='pendente';});
+    bar.style.display = temPendentes ? 'flex' : 'none';
+    if(temPendentes){ var t=document.getElementById('sol-lote-todos'); if(t) t.checked=false; solLoteContador(); }
+  }
+}
+
+// ── APROVAÇÃO / RECUSA EM LOTE ────────────────────────────────
+function solLoteToggleTodos(marcar){
+  document.querySelectorAll('.sol-chk').forEach(function(chk){ chk.checked = marcar; });
+  solLoteContador();
+}
+function solLoteContador(){
+  var marcadas = document.querySelectorAll('.sol-chk:checked').length;
+  var total = document.querySelectorAll('.sol-chk').length;
+  document.getElementById('sol-lote-contador').textContent = marcadas+' de '+total+' selecionadas';
+  var t = document.getElementById('sol-lote-todos'); if(t) t.checked = (marcadas===total && total>0);
+  document.getElementById('sol-lote-aprovar').disabled = marcadas===0;
+  document.getElementById('sol-lote-recusar').disabled = marcadas===0;
+}
+function _solSelecionadas(){
+  return Array.prototype.map.call(document.querySelectorAll('.sol-chk:checked'), function(chk){
+    return chk.getAttribute('data-id');
+  });
+}
+function aprovarLote(){
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
+  var ids = _solSelecionadas();
+  if(!ids.length){ alert('Selecione ao menos uma solicitação.'); return; }
+  if(!confirm('Aprovar '+ids.length+' solicitação'+(ids.length>1?'ões':'')+'?')) return;
+  var n=0;
+  ids.forEach(function(id){
+    var s = getS(id);
+    if(s && s.status==='pendente'){ s.status='aprovada'; s.aprovado_em=now().toISOString(); n++; }
+  });
+  salvar(); renderTudo();
+  toast('✅ '+n+' viagem'+(n>1?'ns':'')+' aprovada'+(n>1?'s':'')+'!');
+}
+function recusarLote(){
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
+  var ids = _solSelecionadas();
+  if(!ids.length){ alert('Selecione ao menos uma solicitação.'); return; }
+  var motivo = prompt('Motivo da recusa (aplicado a todas as '+ids.length+' selecionadas, opcional):');
+  if(motivo===null) return; // cancelou
+  var n=0;
+  ids.forEach(function(id){
+    var s = getS(id);
+    if(s && s.status==='pendente'){ s.status='recusada'; s.motivo_recusa=motivo||''; n++; }
+  });
+  salvar(); renderTudo();
+  toast('❌ '+n+' solicitação'+(n>1?'ões':'')+' recusada'+(n>1?'s':'')+'.');
 }
 
 // ── abrirSaida para veículo liberado (admin no portão) ────────
@@ -2909,6 +3213,27 @@ setInterval(updateClock, 30000);
 iniciarSessaoPortal();
 startCron();
 </script>
+
+<!-- MODAL SAÍDA EM LOTE -->
+<div class="overlay" id="ov-saida-lote">
+  <div class="modal" style="max-width:720px">
+    <button class="modal-close" onclick="fechar('ov-saida-lote')">×</button>
+    <h2>⚡ Saída em lote</h2>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">Veículos prontos para sair agora. Confira o motorista de cada um e registre todas as saídas de uma vez.</div>
+    <div id="sl-vazio" style="display:none;text-align:center;color:#888;padding:24px">Nenhum veículo pronto para saída em lote no momento.<br><span style="font-size:12px">(veículos guardados com escala de hoje ou viagens já aprovadas)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" id="sl-toolbar">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+        <input type="checkbox" id="sl-todos" onchange="slToggleTodos(this.checked)"> Selecionar todos
+      </label>
+      <span style="margin-left:auto;font-size:12px;color:#666" id="sl-contador">0 selecionados</span>
+    </div>
+    <div id="sl-lista" style="max-height:50vh;overflow:auto"></div>
+    <div class="actions" id="sl-actions" style="margin-top:12px">
+      <button class="btn primary" id="sl-confirmar" onclick="confirmarSaidaLote()">🚗 Registrar saída dos selecionados</button>
+      <button class="btn" onclick="fechar('ov-saida-lote')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL SAÍDA RÁPIDA -->
 <div class="overlay" id="ov-saida-rapida">
@@ -3021,7 +3346,15 @@ startCron();
       <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
     </div>
     <div class="field"><label>Destino *</label><input type="text" id="sol-destino" placeholder="Ex: Guanambi, Salvador..."></div>
-    <div class="field"><label>Observações</label><textarea id="sol-obs" placeholder="Informe o objetivo da viagem, passageiros, etc."></textarea></div>
+    <div class="form-row">
+      <div class="field"><label>Qtd. de passageiros</label><input type="number" id="sol-qtd-pass" min="0" step="1" value="0" oninput="solSyncQtd()"></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button type="button" class="btn" style="width:100%" onclick="solAddPessoa()">＋ Adicionar pessoa</button></div>
+    </div>
+    <div class="field" id="sol-pessoas-wrap" style="display:none">
+      <label>Pessoas na viagem</label>
+      <div id="sol-pessoas"></div>
+    </div>
+    <div class="field"><label>Observações</label><textarea id="sol-obs" placeholder="Informe o objetivo da viagem, etc."></textarea></div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarSolicitacao()">Enviar solicitação</button>
       <button class="btn" onclick="fechar('ov-solicitacao')">Cancelar</button>
