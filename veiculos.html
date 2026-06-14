@@ -1498,7 +1498,6 @@ function _candidatosLote(){
         lista.push({
           vid:v.id, fonte:'solicitacao', solId:sol.id,
           destino: sol.destino || '',
-          retorno: sol.data_viagem ? null : null, // retorno definido abaixo
           motSug: _ultimoMotorista(v.id),
           pass: sol.qtd_passageiros || (sol.passageiros?sol.passageiros.length:0),
           tag:'✅ Viagem aprovada'
@@ -1506,24 +1505,25 @@ function _candidatosLote(){
         return;
       }
     }
-    // 2) Guardado com escala hoje
-    if(st === 'guardado'){
+    // 2) Parado e disponível para sair: guardado OU fora do horário de escala.
+    //    (não entram: em viagem, ausente/não está no local)
+    if(st === 'guardado' || st === 'fora_horario'){
       var esc = getEscalaHoje(v);
+      var item = {
+        vid:v.id, fonte: esc?'escala':'livre',
+        destino: esc ? (esc.destino||'') : '',
+        motSug: _ultimoMotorista(v.id),
+        pass:0,
+        tag: esc ? ('📅 '+(esc.nome||'Escala')) : '🅿️ Disponível'
+      };
       if(esc){
-        // retorno = fim da escala hoje
         var ret = new Date(n);
         var fp = (esc.fim||'17:00').split(':');
         ret.setHours(parseInt(fp[0])||17, parseInt(fp[1])||0, 0, 0);
         if(ret <= n) ret.setDate(ret.getDate()+1);
-        lista.push({
-          vid:v.id, fonte:'escala', escNome:esc.nome,
-          destino: esc.destino || '',
-          retornoISO: new Date(ret.getTime()-ret.getTimezoneOffset()*60000).toISOString().slice(0,16),
-          motSug: _ultimoMotorista(v.id),
-          pass:0,
-          tag:'📅 '+esc.nome
-        });
+        item.retornoISO = new Date(ret.getTime()-ret.getTimezoneOffset()*60000).toISOString().slice(0,16);
       }
+      lista.push(item);
     }
   });
   return lista;
@@ -1548,31 +1548,46 @@ function abrirSaidaLote(){
   }).join('');
   lista.innerHTML = _loteCands.map(function(c, i){
     var v = getV(c.vid);
-    var destHtml = c.destino
-      ? '<span style="font-size:12px;color:#444">📍 '+c.destino+'</span>'
-      : '<input type="text" id="sl-dest-'+i+'" placeholder="Destino" style="font-size:12px;padding:4px 8px;width:140px">';
     var sug = c.motSug;
-    var motSel = motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected');
-    return '<div class="card" style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-      '<input type="checkbox" class="sl-chk" data-i="'+i+'" checked onchange="slAtualizaContador()" style="width:18px;height:18px">'+
-      '<div style="flex:1;min-width:150px">'+
-        '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+'</div>'+
+    var motSel = sug ? motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected') : motOpts;
+    var preMarcado = (c.fonte === 'escala' || c.fonte === 'solicitacao'); // o que se espera sair na manhã
+    var destTxt = c.destino ? ('📍 '+c.destino) : '';
+    return '<div class="sl-card'+(preMarcado?' sel':'')+'" data-i="'+i+'" onclick="slToggleCard(event,'+i+')" '+
+      'style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid '+(preMarcado?'#1D9E75':'#E5E7EB')+';border-radius:10px;cursor:pointer;background:'+(preMarcado?'#F0FAF6':'#fff')+';transition:all .15s">'+
+      '<input type="checkbox" class="sl-chk" data-i="'+i+'"'+(preMarcado?' checked':'')+' onclick="event.stopPropagation()" onchange="slCardSync('+i+');slAtualizaContador()" style="width:20px;height:20px;flex-shrink:0;pointer-events:auto">'+
+      '<div style="flex:1;min-width:140px">'+
+        '<div style="font-weight:700;font-size:14px">'+v.placa+' — '+v.descricao+'</div>'+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px">'+
           '<span style="font-size:11px;color:#1D9E75;font-weight:600">'+c.tag+'</span>'+
-          destHtml+
-          (c.pass?'<span style="font-size:12px;color:#444">🧍 '+c.pass+'</span>':'')+
+          (destTxt?'<span style="font-size:12px;color:#666">'+destTxt+'</span>':'')+
+          (c.pass?'<span style="font-size:12px;color:#666">🧍 '+c.pass+'</span>':'')+
         '</div>'+
       '</div>'+
-      '<select id="sl-mot-'+i+'" style="font-size:12px;padding:5px 8px;max-width:170px">'+motSel+'</select>'+
-      '<input type="number" id="sl-km-'+i+'" placeholder="Km" min="0" style="font-size:12px;padding:5px 8px;width:80px">'+
+      '<select id="sl-mot-'+i+'" onclick="event.stopPropagation()" style="font-size:13px;padding:7px 10px;min-width:180px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
     '</div>';
   }).join('');
-  document.getElementById('sl-todos').checked = true;
   slAtualizaContador();
   abrir('ov-saida-lote');
 }
+function slToggleCard(ev, i){
+  // clique no card alterna a seleção (exceto se clicou no select/checkbox, que já têm stopPropagation)
+  var chk = document.querySelector('#sl-lista .sl-chk[data-i="'+i+'"]');
+  if(!chk) return;
+  chk.checked = !chk.checked;
+  slCardSync(i);
+  slAtualizaContador();
+}
+function slCardSync(i){
+  var chk = document.querySelector('#sl-lista .sl-chk[data-i="'+i+'"]');
+  var card = document.querySelector('#sl-lista .sl-card[data-i="'+i+'"]');
+  if(!chk||!card) return;
+  if(chk.checked){ card.classList.add('sel'); card.style.borderColor='#1D9E75'; card.style.background='#F0FAF6'; }
+  else { card.classList.remove('sel'); card.style.borderColor='#E5E7EB'; card.style.background='#fff'; }
+}
 function slToggleTodos(marcar){
-  document.querySelectorAll('#sl-lista .sl-chk').forEach(function(chk){ chk.checked = marcar; });
+  document.querySelectorAll('#sl-lista .sl-chk').forEach(function(chk){
+    chk.checked = marcar; slCardSync(parseInt(chk.getAttribute('data-i'),10));
+  });
   slAtualizaContador();
 }
 function slAtualizaContador(){
@@ -1596,10 +1611,8 @@ function confirmarSaidaLote(){
     var motid = document.getElementById('sl-mot-'+i).value;
     var mot = motid ? getM(motid) : null;
     if(!motid) semMot++;
-    var km = parseInt(document.getElementById('sl-km-'+i).value)||null;
-    var destEl = document.getElementById('sl-dest-'+i);
-    var destino = c.destino || (destEl?destEl.value.trim():'') || 'Saída em lote';
-    // retorno: escala usa fim da escala; solicitação usa +10h como padrão
+    var destino = c.destino || 'Saída em lote';
+    // retorno: escala usa fim da escala; solicitação/livre usa +10h como padrão
     var retorno = c.retornoISO;
     if(!retorno){
       var r = new Date(now().getTime() + 10*3600*1000);
@@ -1608,7 +1621,7 @@ function confirmarSaidaLote(){
     D.movimentacoes.push({
       id:uid('m'), vid:c.vid, motid:motid, motorista:mot?mot.nome:'—',
       solic:'', sec:v.secretaria||'',
-      km_saida:km, km_entrada:null,
+      km_saida:null, km_entrada:null,
       pass:c.pass||0, com_pass:(c.pass||0)>0,
       saida:saidaISO, retorno:retorno,
       entrada_real:null, destino:destino, abast:[]
@@ -3307,7 +3320,7 @@ startCron();
   <div class="modal" style="max-width:720px">
     <button class="modal-close" onclick="fechar('ov-saida-lote')">×</button>
     <h2>⚡ Saída em lote</h2>
-    <div style="font-size:12px;color:#666;margin-bottom:10px">Veículos prontos para sair agora. Confira o motorista de cada um e registre todas as saídas de uma vez.</div>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">Clique nos cards para selecionar os veículos e escolha o motorista de cada um. Um clique registra todas as saídas.</div>
     <div id="sl-vazio" style="display:none;text-align:center;color:#888;padding:24px">Nenhum veículo pronto para saída em lote no momento.<br><span style="font-size:12px">(veículos guardados com escala de hoje ou viagens já aprovadas)</span></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" id="sl-toolbar">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
