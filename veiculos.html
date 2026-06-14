@@ -341,6 +341,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="topbar" style="position:relative">
     <h1>🚗 Controle de <span>Veículos</span> — Matina BA</h1>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span id="fb-status" title="Status de sincronização com o banco compartilhado" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;cursor:default">⏳ Conectando…</span>
       <span id="clock"></span>
       <button class="btn" onclick="location.href='porta.html'" style="font-size:11px;padding:4px 10px" title="Voltar ao painel inicial">🏠 Início</button>
       <span id="sessao-info"></span>
@@ -864,13 +865,47 @@ const DEF = {
 
 // ── ESTADO ──────────────────────────────────────────────────
 
+// ── INDICADOR DE STATUS DE SINCRONIZAÇÃO ──────────────────────
+var _fbConectado = false, _fbPrimeiraLeitura = false;
+function setFbStatus(estado, msgErro){
+  var el = document.getElementById('fb-status');
+  if(!el) return;
+  var mapa = {
+    conectando: ['⏳ Conectando…',   '#F1F5F9', '#64748B'],
+    sincronizado:['☁️ Sincronizado',  '#ECFDF5', '#059669'],
+    salvando:   ['🔄 Salvando…',      '#EFF6FF', '#2563EB'],
+    offline:    ['⚠️ Sem conexão',    '#FEF3C7', '#B45309'],
+    permissao:  ['🚫 Sem permissão',  '#FEF2F2', '#DC2626'],
+    erro:       ['❌ Erro ao salvar', '#FEF2F2', '#DC2626']
+  };
+  var m = mapa[estado] || mapa.conectando;
+  el.textContent = m[0];
+  el.style.background = m[1];
+  el.style.color = m[2];
+  if(msgErro) el.title = msgErro; else el.title = 'Status de sincronização com o banco compartilhado';
+}
+function _ehErroPermissao(e){
+  var s = ((e&&e.message)||String(e)||'').toLowerCase();
+  return s.indexOf('permission')>-1 || s.indexOf('denied')>-1 || (e&&e.code==='PERMISSION_DENIED');
+}
+
 function salvar() {
   D._salvo_em = new Date().toISOString();
   localStorage.setItem('frota_v3', JSON.stringify(D));   // cache local (fallback offline)
   if(fbDB){
     _fbUltimoPush = Date.now();
+    if(_fbConectado) setFbStatus('salvando');
     fbDB.ref('frota/dados').set(JSON.parse(JSON.stringify(D)))
-      .catch(function(e){ console.error('⚠️ Erro ao salvar no Firebase (dados mantidos no cache local):', e); });
+      .then(function(){ if(_fbConectado) setFbStatus('sincronizado'); })
+      .catch(function(e){
+        console.error('⚠️ Erro ao salvar no Firebase (dados mantidos no cache local):', e);
+        if(_ehErroPermissao(e)){
+          setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar o nó "frota".');
+          if(typeof toast==='function') toast('🚫 Sem permissão de escrita no banco. É preciso ajustar as regras do Firebase (nó "frota").');
+        } else {
+          setFbStatus('erro', (e&&e.message)||'Erro desconhecido');
+        }
+      });
   }
 }
 function carregar() {
@@ -928,27 +963,49 @@ function normalizarFB(d){
 }
 
 if(fbDB){
+  // Monitor de conexão em tempo real
+  firebase.database().ref('.info/connected').on('value', function(s){
+    _fbConectado = s.val() === true;
+    if(_fbConectado){ if(_fbPrimeiraLeitura) setFbStatus('sincronizado'); }
+    else setFbStatus('offline', 'Sem conexão com o banco — usando dados locais. As mudanças sincronizam quando a conexão voltar.');
+  });
+
   fbDB.ref('frota/dados').on('value', function(snap){
+    _fbPrimeiraLeitura = true;
     var val = snap.val();
     if(!val){
       // Primeiro acesso: migra automaticamente os dados locais para o banco compartilhado
       if(!_fbInicializado){
         _fbInicializado = true;
         _fbUltimoPush = Date.now();
+        setFbStatus('salvando');
         fbDB.ref('frota/dados').set(JSON.parse(JSON.stringify(D)))
-          .then(function(){ console.log('✅ Dados locais migrados para o banco compartilhado.'); if(typeof toast==='function') toast('☁️ Dados migrados para o banco compartilhado!'); })
-          .catch(function(e){ console.error('Erro na migração inicial:', e); });
+          .then(function(){ console.log('✅ Dados locais migrados para o banco compartilhado.'); setFbStatus('sincronizado'); if(typeof toast==='function') toast('☁️ Dados migrados para o banco compartilhado!'); })
+          .catch(function(e){
+            console.error('Erro na migração inicial:', e);
+            if(_ehErroPermissao(e)){ setFbStatus('permissao','Permissão negada: ajuste as regras do Firebase para liberar o nó "frota".'); if(typeof toast==='function') toast('🚫 Sem permissão no banco. Ajuste as regras do Firebase (nó "frota").'); }
+            else setFbStatus('erro',(e&&e.message)||'Erro');
+          });
       }
       return;
     }
     _fbInicializado = true;
+    setFbStatus('sincronizado');
     if(Date.now() - _fbUltimoPush < 1500) return; // ignora o eco da própria gravação
     D = normalizarFB(val);
     localStorage.setItem('frota_v3', JSON.stringify(D));
     if(_sessao && typeof renderTudo === 'function') renderTudo();
   }, function(err){
     console.error('Erro de leitura do Firebase — usando cache local:', err);
+    if(_ehErroPermissao(err)){
+      setFbStatus('permissao', 'Permissão negada na leitura: ajuste as regras do Firebase para liberar o nó "frota".');
+      if(typeof toast==='function') toast('🚫 Sem permissão de leitura no banco. Ajuste as regras do Firebase (nó "frota").');
+    } else {
+      setFbStatus('erro', (err&&err.message)||'Erro de leitura');
+    }
   });
+} else {
+  setFbStatus('offline', 'Firebase não disponível — operando somente com cache local.');
 }
 // Migração: garantir campo cor em todos os veículos
 D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; });
