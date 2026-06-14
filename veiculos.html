@@ -1660,19 +1660,21 @@ function abrirSaidaLote(){
     var sug = c.motSug;
     var motSel = sug ? motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected') : motOpts;
     var preMarcado = (c.fonte === 'escala' || c.fonte === 'solicitacao'); // o que se espera sair na manhã
-    var destTxt = c.destino ? ('📍 '+c.destino) : '';
+    var destVal = (c.destino||'').replace(/"/g,'&quot;');
     return '<div class="sl-card'+(preMarcado?' sel':'')+'" data-i="'+i+'" onclick="slToggleCard(event,'+i+')" '+
       'style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid '+(preMarcado?'#1D9E75':'#E5E7EB')+';border-radius:10px;cursor:pointer;background:'+(preMarcado?'#F0FAF6':'#fff')+';transition:all .15s">'+
       '<input type="checkbox" class="sl-chk" data-i="'+i+'"'+(preMarcado?' checked':'')+' onclick="event.stopPropagation()" onchange="slCardSync('+i+');slAtualizaContador()" style="width:20px;height:20px;flex-shrink:0;pointer-events:auto">'+
-      '<div style="flex:1;min-width:140px">'+
+      '<div style="flex:1;min-width:130px">'+
         '<div style="font-weight:700;font-size:14px">'+v.placa+' — '+v.descricao+'</div>'+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px">'+
           '<span style="font-size:11px;color:#1D9E75;font-weight:600">'+c.tag+'</span>'+
-          (destTxt?'<span style="font-size:12px;color:#666">'+destTxt+'</span>':'')+
           (c.pass?'<span style="font-size:12px;color:#666">🧍 '+c.pass+'</span>':'')+
         '</div>'+
       '</div>'+
-      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:180px">'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:150px">'+
+        '<input type="text" id="sl-dest-'+i+'" value="'+destVal+'" placeholder="Destino" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+
+      '</div>'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:170px">'+
         '<select id="sl-mot-'+i+'" onchange="slMotManual('+i+')" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
         '<input type="text" id="sl-mot-txt-'+i+'" placeholder="Nome do motorista" style="display:none;font-size:13px;padding:7px 10px;border:1.5px solid #93C5FD;border-radius:8px">'+
       '</div>'+
@@ -1739,7 +1741,8 @@ function confirmarSaidaLote(){
     } else {
       semMot++;
     }
-    var destino = c.destino || 'Saída em lote';
+    var destEl = document.getElementById('sl-dest-'+i);
+    var destino = (destEl ? destEl.value.trim() : '') || c.destino || 'Saída em lote';
     // retorno: escala usa fim da escala; solicitação/livre usa +10h como padrão
     var retorno = c.retornoISO;
     if(!retorno){
