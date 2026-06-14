@@ -523,6 +523,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <p>Exporta todas as movimentações em formato planilha.</p>
         <button class="btn" onclick="exportCSV()">Exportar CSV</button>
       </div>
+      <div class="backup-card" style="border-color:#C7D2FE;background:#F5F7FF">
+        <h3>🔌 Banco de dados (nuvem)</h3>
+        <p>Verifica se os dados estão sincronizando com o banco compartilhado entre os computadores.</p>
+        <button class="btn primary" onclick="testarConexaoBanco()">Testar conexão</button>
+      </div>
     </div>
     <div id="bk-status"></div>
   </div>
@@ -907,6 +912,53 @@ function salvar() {
         }
       });
   }
+}
+
+// ── TESTE DE CONEXÃO COM O BANCO (diagnóstico) ────────────────
+var REGRAS_SUGERIDAS = '{\n  "rules": {\n    "usuarios":      { ".read": true, ".write": true },\n    "abastecimentos":{ ".read": true, ".write": true },\n    "postos":        { ".read": true, ".write": true },\n    "pessoas_vip":   { ".read": true, ".write": true },\n    "auditoria":     { ".read": true, ".write": true },\n    "veiculos":      { ".read": true, ".write": true },\n    "frota":         { ".read": true, ".write": true }\n  }\n}';
+function testarConexaoBanco(){
+  var box = document.getElementById('bk-status');
+  function mostra(html){ if(box) box.innerHTML = html; }
+  if(typeof firebase === 'undefined'){
+    mostra('<div style="background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:10px;padding:14px;margin-top:8px"><b>❌ Biblioteca do Firebase não carregou.</b><br>Verifique sua conexão com a internet e recarregue a página. Se estiver abrindo o arquivo offline, conecte-se à internet ao menos uma vez.</div>');
+    return;
+  }
+  if(!fbDB){
+    mostra('<div style="background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:10px;padding:14px;margin-top:8px"><b>❌ Banco não inicializado.</b><br>O Firebase não foi iniciado corretamente. Recarregue a página.</div>');
+    return;
+  }
+  mostra('<div style="background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;border-radius:10px;padding:14px;margin-top:8px">⏳ Testando gravação e leitura no banco…</div>');
+  var marca = 'teste_' + Date.now();
+  fbDB.ref('frota/_teste_conexao').set({ quando: new Date().toISOString(), marca: marca })
+    .then(function(){ return fbDB.ref('frota/_teste_conexao').once('value'); })
+    .then(function(snap){
+      var v = snap.val();
+      if(v && v.marca === marca){
+        fbDB.ref('frota/_teste_conexao').remove();
+        var qtd = (D.veiculos||[]).length;
+        mostra('<div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;border-radius:10px;padding:14px;margin-top:8px"><b>✅ Conexão com o banco funcionando!</b><br>Gravação e leitura OK. Os dados deste sistema ('+qtd+' veículos) estão sendo salvos na nuvem e sincronizam entre os computadores.<br><span style="font-size:12px;opacity:.8">Se ainda não aparecem em outro PC, recarregue a página lá (F5).</span></div>');
+        setFbStatus('sincronizado');
+      } else {
+        mostra('<div style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;border-radius:10px;padding:14px;margin-top:8px"><b>⚠️ Gravou mas não leu de volta.</b><br>Algo incomum nas regras de leitura. Tente aplicar as regras sugeridas abaixo.<br><pre style="background:#fff;border:1px solid #eee;border-radius:6px;padding:10px;overflow:auto;font-size:11px;margin-top:8px">'+REGRAS_SUGERIDAS.replace(/</g,'&lt;')+'</pre></div>');
+      }
+    })
+    .catch(function(e){
+      console.error('Teste de conexão falhou:', e);
+      if(_ehErroPermissao(e)){
+        setFbStatus('permissao');
+        mostra('<div style="background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:10px;padding:14px;margin-top:8px">'+
+          '<b>🚫 Permissão negada pelo banco (PERMISSION_DENIED).</b><br>'+
+          'Esta é a causa de os dados salvarem só localmente: as regras do Firebase não liberam o nó <code>frota</code>.<br><br>'+
+          '<b>Como corrigir (2 min):</b><br>'+
+          '1. Abra <a href="https://console.firebase.google.com/" target="_blank">console.firebase.google.com</a> → projeto <b>tabela-gasolina</b><br>'+
+          '2. Menu <b>Realtime Database</b> → aba <b>Regras (Rules)</b><br>'+
+          '3. Substitua pelo conteúdo abaixo (mantém a gasolina e libera o frota) e clique em <b>Publicar</b>:'+
+          '<pre style="background:#fff;border:1px solid #eee;border-radius:6px;padding:10px;overflow:auto;font-size:11px;margin-top:8px">'+REGRAS_SUGERIDAS.replace(/</g,'&lt;')+'</pre>'+
+          '<span style="font-size:12px;opacity:.85">Depois de publicar, volte aqui e clique em "Testar conexão" de novo.</span></div>');
+      } else {
+        mostra('<div style="background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:10px;padding:14px;margin-top:8px"><b>❌ Erro ao acessar o banco:</b><br><code>'+((e&&e.message)||String(e))+'</code><br><span style="font-size:12px;opacity:.8">Verifique a conexão com a internet e recarregue.</span></div>');
+      }
+    });
 }
 function carregar() {
   try {
@@ -1600,7 +1652,7 @@ function abrirSaidaLote(){
   }
   vazio.style.display='none'; toolbar.style.display='flex';
   document.getElementById('sl-confirmar').style.display='';
-  var motOpts = '<option value="">— Sem motorista —</option>'+D.motoristas.map(function(m){
+  var motOpts = '<option value="">— Sem motorista —</option><option value="__manual__">✏️ Digitar nome...</option>'+D.motoristas.map(function(m){
     return '<option value="'+m.id+'">'+m.nome+' ('+m.categoria+')</option>';
   }).join('');
   lista.innerHTML = _loteCands.map(function(c, i){
@@ -1620,11 +1672,21 @@ function abrirSaidaLote(){
           (c.pass?'<span style="font-size:12px;color:#666">🧍 '+c.pass+'</span>':'')+
         '</div>'+
       '</div>'+
-      '<select id="sl-mot-'+i+'" onclick="event.stopPropagation()" style="font-size:13px;padding:7px 10px;min-width:180px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:180px">'+
+        '<select id="sl-mot-'+i+'" onchange="slMotManual('+i+')" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
+        '<input type="text" id="sl-mot-txt-'+i+'" placeholder="Nome do motorista" style="display:none;font-size:13px;padding:7px 10px;border:1.5px solid #93C5FD;border-radius:8px">'+
+      '</div>'+
     '</div>';
   }).join('');
   slAtualizaContador();
   abrir('ov-saida-lote');
+}
+function slMotManual(i){
+  var sel = document.getElementById('sl-mot-'+i);
+  var txt = document.getElementById('sl-mot-txt-'+i);
+  if(!sel||!txt) return;
+  if(sel.value === '__manual__'){ txt.style.display=''; txt.focus(); }
+  else { txt.style.display='none'; }
 }
 function slToggleCard(ev, i){
   // clique no card alterna a seleção (exceto se clicou no select/checkbox, que já têm stopPropagation)
@@ -1665,9 +1727,18 @@ function confirmarSaidaLote(){
     var i = parseInt(chk.getAttribute('data-i'),10);
     var c = _loteCands[i];
     var v = getV(c.vid);
-    var motid = document.getElementById('sl-mot-'+i).value;
-    var mot = motid ? getM(motid) : null;
-    if(!motid) semMot++;
+    var motVal = document.getElementById('sl-mot-'+i).value;
+    var motid = '', motNome = '—';
+    if(motVal === '__manual__'){
+      var txt = document.getElementById('sl-mot-txt-'+i);
+      var nomeManual = txt ? txt.value.trim() : '';
+      if(nomeManual){ motNome = nomeManual; } else { semMot++; }
+    } else if(motVal){
+      var mot = getM(motVal);
+      motid = motVal; motNome = mot ? mot.nome : '—';
+    } else {
+      semMot++;
+    }
     var destino = c.destino || 'Saída em lote';
     // retorno: escala usa fim da escala; solicitação/livre usa +10h como padrão
     var retorno = c.retornoISO;
@@ -1676,7 +1747,7 @@ function confirmarSaidaLote(){
       retorno = new Date(r.getTime()-r.getTimezoneOffset()*60000).toISOString().slice(0,16);
     }
     D.movimentacoes.push({
-      id:uid('m'), vid:c.vid, motid:motid, motorista:mot?mot.nome:'—',
+      id:uid('m'), vid:c.vid, motid:motid, motorista:motNome,
       solic:'', sec:v.secretaria||'',
       km_saida:null, km_entrada:null,
       pass:c.pass||0, com_pass:(c.pass||0)>0,
