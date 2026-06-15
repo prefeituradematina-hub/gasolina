@@ -3289,6 +3289,10 @@
   </div>
   
   <div id="tab-pendentes" style="display:none;">
+    <div id="banner-posto-frentista" style="display:none; background:linear-gradient(135deg,#0ea5e9,#0284c7); color:white; padding:14px 18px; border-radius:10px; margin-bottom:18px; font-size:14px; box-shadow:0 2px 10px rgba(2,132,199,.3);">
+      ⛽ <strong>Posto:</strong> <span id="banner-posto-nome">—</span><br>
+      <span style="font-size:12px; opacity:.92;">Você está vendo os abastecimentos <b>aprovados e pendentes</b> apenas deste posto.</span>
+    </div>
     <!-- BUSCA RÁPIDA DE VEÍCULO (PARA AUTORIZADORES) -->
     <div class="card" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; margin-bottom: 20px;">
       <label style="font-weight: bold; color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
@@ -3815,6 +3819,12 @@
       </div>
     </div>
     
+    <div class="card" style="border:1.5px solid #FCA5A5;background:#FEF6F6">
+      <h3>🔧 MANUTENÇÃO DE DADOS</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Reinicia a contagem de quilometragem de <b>todos os veículos</b>. Útil quando foram registrados KM inconsistentes. Os valores, litros, datas e CPFs dos abastecimentos são <b>preservados</b> — apenas o KM é zerado, e a eficiência (km/l) recomeça a ser calculada a partir dos próximos abastecimentos. Um backup é baixado automaticamente antes.</p>
+      <button class="btn-save" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="zerarTodosKm()">🔄 ZERAR KM DE TODOS OS VEÍCULOS</button>
+    </div>
+    
     <div class="card">
       <h3>👥 GESTÃO DE USUÁRIOS</h3>
       <div class="grid-form">
@@ -4281,12 +4291,17 @@
   // Função centralizada de filtro por posto
   function filtrarCachePorPosto(dados) {
     if (userRole === 'frentista' && userPostoVinculado) {
-      const posto = postos.find(p => p.id === userPostoVinculado);
-      if (posto) return dados.filter(x => x.posto === posto.nome);
+      // Aceita postoVinculado como ID (padrão) OU como nome (dados legados)
+      const posto = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
+      const nomePosto = posto ? posto.nome : userPostoVinculado; // fallback: usa o valor como nome
+      return dados.filter(x => x.posto === nomePosto);
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomes = postos.filter(p => userPostosVinculados.includes(p.id)).map(p => p.nome);
-      if (nomes.length > 0) return dados.filter(x => nomes.includes(x.posto));
+      const nomes = postos
+        .filter(p => userPostosVinculados.includes(p.id) || userPostosVinculados.includes(p.nome))
+        .map(p => p.nome);
+      const alvos = nomes.length > 0 ? nomes : userPostosVinculados; // fallback: usa os valores como nomes
+      return dados.filter(x => alvos.includes(x.posto));
     }
     return dados;
   }
@@ -4361,6 +4376,7 @@
         v.placa === abastecimento.placa && 
         v.tipo === abastecimento.tipo &&
         v.status === STATUS.AUTORIZADO &&
+        v.km > 0 &&
         v.timestamp < abastecimento.timestamp
       )
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -4385,7 +4401,8 @@
       .filter(x => 
         x.placa === dados.placa && 
         x.tipo === dados.tipo &&
-        x.status === STATUS.AUTORIZADO
+        x.status === STATUS.AUTORIZADO &&
+        x.km > 0
       )
       .sort((a, b) => b.timestamp - a.timestamp)[0];
 
@@ -4410,6 +4427,61 @@
       ultimoKm: ultimoAbast.km,
       kmRodados: kmRodados
     };
+  }
+  
+  // 🔄 ZERAR KM DE TODOS OS VEÍCULOS — reinicia a contagem de quilometragem
+  async function zerarTodosKm() {
+    if (!(loginUser === 'master' || temPermissao('gerenciar_veiculos'))) {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA ESTA AÇÃO!', 'error');
+      return;
+    }
+    const totalRegistros = Array.isArray(cache) ? cache.length : 0;
+    const comKm = (cache || []).filter(x => (x.km || 0) > 0).length;
+    if (comKm === 0) {
+      mostrarNotificacao('ℹ️ Não há KM registrado para zerar.', 'info');
+      return;
+    }
+    if (!confirm(
+      `🔄 ZERAR KM DE TODOS OS VEÍCULOS\n\n` +
+      `Isto vai zerar o KM de ${comKm} abastecimento(s) (de um total de ${totalRegistros}), reiniciando a contagem do zero.\n\n` +
+      `✅ Preservados: valores, litros, datas, CPF, motorista, posto.\n` +
+      `🔄 Zerado: apenas o KM.\n` +
+      `📊 A eficiência (km/l) volta a ser calculada a partir dos próximos abastecimentos.\n\n` +
+      `Um backup será baixado automaticamente antes. Deseja continuar?`
+    )) return;
+
+    // 1) Backup de segurança
+    try {
+      const backup = JSON.stringify(cache, null, 2);
+      const blob = new Blob([backup], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_abastecimentos_antes_de_zerar_km_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {
+      console.error('Falha ao gerar backup:', e);
+      if (!confirm('⚠️ Não foi possível baixar o backup automático. Deseja continuar mesmo assim?')) return;
+    }
+
+    // 2) Confirmação final
+    if (!confirm('⚠️ CONFIRMAÇÃO FINAL\n\nZerar o KM de TODOS os abastecimentos agora? Esta ação só pode ser desfeita restaurando o backup.')) return;
+
+    // 3) Aplicar no Firebase em lote (multi-path update)
+    try {
+      const snap = await db.ref('abastecimentos').once('value');
+      const updates = {};
+      let qtd = 0;
+      snap.forEach(ch => {
+        const v = ch.val();
+        if (v && (v.km || 0) !== 0) { updates[ch.key + '/km'] = 0; qtd++; }
+      });
+      if (qtd === 0) { mostrarNotificacao('ℹ️ Nada para zerar.', 'info'); return; }
+      await db.ref('abastecimentos').update(updates);
+      mostrarNotificacao(`✅ KM ZERADO EM ${qtd} ABASTECIMENTO(S)! Contagem reiniciada.`, 'success');
+    } catch (e) {
+      console.error('Erro ao zerar KM:', e);
+      mostrarNotificacao('❌ ERRO AO ZERAR KM: ' + (e.message || e), 'error');
+    }
   }
   
   // NOVO: Função para verificar média em tempo real no formulário
@@ -5196,6 +5268,17 @@
     // Frentista só tem a gasolina → some o botão de voltar ao portal (não há outro sistema p/ ele)
     var _btnInicio = document.getElementById('btn-inicio-portal');
     if (_btnInicio) _btnInicio.style.display = (role === 'frentista') ? 'none' : '';
+    // Banner do posto do frentista na aba de pendentes (aprovados + pendentes do posto)
+    var _bannerPosto = document.getElementById('banner-posto-frentista');
+    if (_bannerPosto) {
+      if (role === 'frentista' && userPostoVinculado) {
+        var _pf = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
+        document.getElementById('banner-posto-nome').textContent = _pf ? _pf.nome : userPostoVinculado;
+        _bannerPosto.style.display = 'block';
+      } else {
+        _bannerPosto.style.display = 'none';
+      }
+    }
     
     // CORREÇÃO: Listener para atualizar limites em tempo real quando admin edita
     if (role === 'secretarios' || role === 'autorizador') {
@@ -5387,7 +5470,7 @@
     }
     
     const historico = cache
-      .filter(v => v.placa === placa && v.tipo === tipo && v.status === STATUS.AUTORIZADO)
+      .filter(v => v.placa === placa && v.tipo === tipo && v.status === STATUS.AUTORIZADO && v.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 5);
     
@@ -5478,7 +5561,7 @@
     if (!placa || kmAtual === 0) return;
     
     const ultimoAbast = cache
-      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
+      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO && x.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     
     if (ultimoAbast && kmAtual < ultimoAbast.km) {
@@ -5490,7 +5573,7 @@
   
   function calcularMediaAvancada(placa, combustivel) {
     const historico = cache
-      .filter(v => v.placa === placa && v.tipo === combustivel && v.status === STATUS.AUTORIZADO)
+      .filter(v => v.placa === placa && v.tipo === combustivel && v.status === STATUS.AUTORIZADO && v.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
     
@@ -5606,7 +5689,7 @@
     // Validar KM apenas se foi informado e não for GÁS
     if (!isGas && (!isAvulso || (isAvulso && dados.km > 0))) {
       const ultimoAbast = cache
-        .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
+        .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO && x.km > 0)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
       if (ultimoAbast && dados.km < ultimoAbast.km) {
         erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
@@ -5866,6 +5949,34 @@
         }
       }
   
+      // 🚫 REGRA ANTI-DESVIO: mesmo CPF abastecendo em menos de 24h
+      if (dados.cpf && dados.cpf.replace(/\D/g, '').length === 11) {
+        const _cpfLimpo = dados.cpf.replace(/\D/g, '');
+        const _ultimoMesmoCPF = cache
+          .filter(x => x.cpf && x.cpf.replace(/\D/g, '') === _cpfLimpo && x.status !== STATUS.REJEITADO)
+          .sort((a, b) => b.timestamp - a.timestamp)[0];
+        if (_ultimoMesmoCPF) {
+          const _horas = (Date.now() - _ultimoMesmoCPF.timestamp) / 3600000;
+          if (_horas < 24) {
+            const _quando = new Date(_ultimoMesmoCPF.timestamp).toLocaleString('pt-BR');
+            const _confirmarCPF = confirm(
+              `⚠️ ALERTA ANTI-DESVIO: ESTE CPF JÁ ABASTECEU NAS ÚLTIMAS 24H!\n\n` +
+              `CPF: ${dados.cpf}\n` +
+              `Último abastecimento: há ${_horas.toFixed(1)}h (${_quando})\n` +
+              `Posto: ${_ultimoMesmoCPF.posto || '-'}\n` +
+              `Veículo: ${_ultimoMesmoCPF.placa || '-'}\n` +
+              `Litros: ${(_ultimoMesmoCPF.litro || 0).toFixed(1)}L\n\n` +
+              `Deseja autorizar um novo abastecimento mesmo assim?`
+            );
+            if (!_confirmarCPF) {
+              btnRegistrar.disabled = false;
+              btnRegistrar.innerHTML = textoOriginal;
+              return;
+            }
+          }
+        }
+      }
+
       // NOVO: 🔍 Validar média do veículo antes de registrar
       if (!dados.tanqueCheio) { // Tanque cheio não calcula média agora
         const validacaoMedia = validarMediaVeiculo(dados);
@@ -8436,6 +8547,14 @@
   }
   
   function atualizarPendentes() {
+    // Mantém o nome do posto no banner do frentista atualizado (postos podem carregar após o login)
+    if (userRole === 'frentista' && userPostoVinculado) {
+      const _bn = document.getElementById('banner-posto-nome');
+      if (_bn) {
+        const _pp = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
+        _bn.textContent = _pp ? _pp.nome : userPostoVinculado;
+      }
+    }
     let pendentes = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
     
     const tbody = document.getElementById('pendentes-body');
