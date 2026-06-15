@@ -4289,19 +4289,24 @@
   let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
   
   // Função centralizada de filtro por posto
+  // Normaliza nome de posto para comparação tolerante (acento/caixa/espaço)
+  function _normPosto(s) {
+    return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+  }
   function filtrarCachePorPosto(dados) {
     if (userRole === 'frentista' && userPostoVinculado) {
-      // Aceita postoVinculado como ID (padrão) OU como nome (dados legados)
-      const posto = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
-      const nomePosto = posto ? posto.nome : userPostoVinculado; // fallback: usa o valor como nome
-      return dados.filter(x => x.posto === nomePosto);
+      // Resolve por ID (padrão) ou por nome (dados legados), com comparação tolerante
+      const posto = postos.find(p => p.id === userPostoVinculado || _normPosto(p.nome) === _normPosto(userPostoVinculado));
+      const alvo = _normPosto(posto ? posto.nome : userPostoVinculado);
+      return dados.filter(x => _normPosto(x.posto) === alvo);
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomes = postos
-        .filter(p => userPostosVinculados.includes(p.id) || userPostosVinculados.includes(p.nome))
-        .map(p => p.nome);
-      const alvos = nomes.length > 0 ? nomes : userPostosVinculados; // fallback: usa os valores como nomes
-      return dados.filter(x => alvos.includes(x.posto));
+      const encontrados = postos.filter(p =>
+        userPostosVinculados.includes(p.id) ||
+        userPostosVinculados.some(v => _normPosto(v) === _normPosto(p.nome))
+      );
+      const alvos = (encontrados.length > 0 ? encontrados.map(p => p.nome) : userPostosVinculados).map(_normPosto);
+      return dados.filter(x => alvos.includes(_normPosto(x.posto)));
     }
     return dados;
   }
@@ -4347,6 +4352,11 @@
       postos.push(p);
     });
     atualizarSelectPostos();
+    // Postos podem chegar DEPOIS dos abastecimentos. Se já há usuário logado,
+    // re-renderiza para que o filtro por posto (frentista/autorizador) seja aplicado.
+    if (typeof loginUser !== 'undefined' && loginUser && typeof renderizar === 'function') {
+      renderizar();
+    }
   });
   
   // Função para alternar modo tanque cheio
