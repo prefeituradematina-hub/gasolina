@@ -2817,7 +2817,7 @@
         🔔
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
-      <button class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -5193,6 +5193,9 @@
     } else if (role === 'autorizador') {
       abaInicial = 'pendentes'; // Autorizadores também veem pendentes primeiro
     }
+    // Frentista só tem a gasolina → some o botão de voltar ao portal (não há outro sistema p/ ele)
+    var _btnInicio = document.getElementById('btn-inicio-portal');
+    if (_btnInicio) _btnInicio.style.display = (role === 'frentista') ? 'none' : '';
     
     // CORREÇÃO: Listener para atualizar limites em tempo real quando admin edita
     if (role === 'secretarios' || role === 'autorizador') {
@@ -18128,19 +18131,26 @@ entrar = function(u, role, limit, sec, dadosExtras){
 (function(){
   var s = window.__SESSAO;
   if(!s) return; // a guarda no <head> já redirecionou
+  // Resolve permissões de forma defensiva (não deixa faltar permissão derrubar o login)
   try{
     s.dados = s.dados || {};
     if(s.u === 'master'){
-      s.dados.permissoes = Object.keys(PERMISSOES_DISPONIVEIS); // master tem tudo
+      s.dados.permissoes = (typeof PERMISSOES_DISPONIVEIS !== 'undefined') ? Object.keys(PERMISSOES_DISPONIVEIS) : (s.dados.permissoes||[]);
     } else if(!s.dados.permissoes || !s.dados.permissoes.length){
-      s.dados.permissoes = PERMISSOES_PADRAO[s.role] || [];
+      s.dados.permissoes = (typeof PERMISSOES_PADRAO !== 'undefined' && PERMISSOES_PADRAO[s.role]) ? PERMISSOES_PADRAO[s.role] : [];
     }
+  }catch(e){ console.error('Aviso: não foi possível resolver permissões padrão:', e); }
+  // O login em si (entrar) é o passo crítico — isolado para não ser afetado por nada periférico
+  try{
     entrar(s.u, s.role, s.limite || 0, s.sec || "", s.dados);
-    registrarAuditoria('LOGIN', { usuario: s.u, via: 'portal' });
   }catch(e){
-    console.error('Auto-login falhou — exibindo tela de login local:', e);
+    console.error('Auto-login falhou — exibindo tela de login local como alternativa:', e);
     document.documentElement.classList.remove('auto-login');
+    var ls = document.getElementById('login-screen'); if(ls) ls.style.display = '';
+    return;
   }
+  // Auditoria é secundária: se falhar, NÃO afeta o login já realizado
+  try{ registrarAuditoria('LOGIN', { usuario: s.u, via: 'portal' }); }catch(e){ /* silencioso */ }
 })();
 </script>
 </body>
