@@ -1684,11 +1684,16 @@ function abrirSaidaLote(){
           (c.pass?'<span style="font-size:12px;color:#666">🧍 '+c.pass+'</span>':'')+
         '</div>'+
       '</div>'+
-      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:150px">'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:3px;min-width:150px">'+
+        '<label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.03em">Destino</label>'+
         '<input type="text" id="sl-dest-'+i+'" value="'+destVal+'" placeholder="Destino" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+
-        '<input type="datetime-local" id="sl-ret-'+i+'" value="'+(c.retornoISO||'')+'" title="Hora prevista de retorno" style="font-size:12px;padding:6px 8px;border:1.5px solid #D1D5DB;border-radius:8px;color:#475569">'+
       '</div>'+
-      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:170px">'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:3px;min-width:170px">'+
+        '<label style="font-size:10px;font-weight:700;color:#B45309;text-transform:uppercase;letter-spacing:.03em">🕐 Hora de voltar</label>'+
+        '<input type="datetime-local" id="sl-ret-'+i+'" value="'+(c.retornoISO||'')+'" title="Hora prevista de retorno" style="font-size:12px;padding:6px 8px;border:1.5px solid #FBBF24;border-radius:8px;color:#475569;background:#FFFBEB">'+
+      '</div>'+
+      '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:3px;min-width:170px">'+
+        '<label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.03em">Motorista</label>'+
         '<select id="sl-mot-'+i+'" onchange="slMotManual('+i+')" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
         '<input type="text" id="sl-mot-txt-'+i+'" placeholder="Nome do motorista" style="display:none;font-size:13px;padding:7px 10px;border:1.5px solid #93C5FD;border-radius:8px">'+
       '</div>'+
