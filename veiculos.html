@@ -128,8 +128,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.guardado{box-shadow:0 4px 18px rgba(22,163,74,.3)}.vbtn.guardado .vbtn-inner{background:linear-gradient(145deg,#22C55E,#16A34A)}
 .vbtn.trabalhando{box-shadow:0 4px 18px rgba(37,99,235,.35)}.vbtn.trabalhando .vbtn-inner{background:linear-gradient(145deg,#3B82F6,#2563EB)}
 .vbtn.irregular{box-shadow:0 4px 18px rgba(220,38,38,.35)}.vbtn.irregular .vbtn-inner{background:linear-gradient(145deg,#EF4444,#DC2626)}
-@keyframes piscar{0%,100%{box-shadow:0 4px 18px rgba(220,38,38,.35)}50%{box-shadow:0 0 0 8px rgba(220,38,38,.12),0 4px 18px rgba(220,38,38,.5)}}
-.vbtn.irregular{animation:piscar 1.4s ease-in-out infinite}
+@keyframes piscar{
+  0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.55), 0 4px 18px rgba(220,38,38,.45); }
+  50%    { box-shadow:0 0 0 7px rgba(220,38,38,0), 0 4px 22px rgba(220,38,38,.7); }
+}
+@keyframes piscarFundo{
+  0%,100%{ background:linear-gradient(145deg,#F87171,#DC2626); }
+  50%    { background:linear-gradient(145deg,#B91C1C,#7F1D1D); }
+}
+.vbtn.irregular{animation:piscar 1s ease-in-out infinite}
+.vbtn.irregular .vbtn-inner{animation:piscarFundo 1s ease-in-out infinite}
 .vbtn.ausente{box-shadow:0 4px 18px rgba(124,58,237,.3)}.vbtn.ausente .vbtn-inner{background:linear-gradient(145deg,#8B5CF6,#7C3AED)}
 .vbtn.fora_horario{box-shadow:0 2px 8px rgba(0,0,0,.15)}.vbtn.fora_horario .vbtn-inner{background:linear-gradient(145deg,#9CA3AF,#6B7280)}
 .vbtn.liberado{box-shadow:0 4px 18px rgba(249,115,22,.45)}.vbtn.liberado .vbtn-inner{background:linear-gradient(145deg,#FB923C,#EA580C)}
@@ -1604,11 +1612,14 @@ function _candidatosLote(){
     if(st === 'liberado'){
       var sol = getSolicitacaoLiberada(v.id);
       if(sol){
+        var retL = new Date(n); retL.setHours(17,0,0,0);
+        if(retL <= n) retL.setHours(retL.getHours()+4);
         lista.push({
           vid:v.id, fonte:'solicitacao', solId:sol.id,
           destino: sol.destino || '',
           motSug: _ultimoMotorista(v.id),
           pass: sol.qtd_passageiros || (sol.passageiros?sol.passageiros.length:0),
+          retornoISO: new Date(retL.getTime()-retL.getTimezoneOffset()*60000).toISOString().slice(0,16),
           tag:'✅ Viagem aprovada'
         });
         return;
@@ -1625,13 +1636,15 @@ function _candidatosLote(){
         pass:0,
         tag: esc ? ('📅 '+(esc.nome||'Escala')) : '🅿️ Disponível'
       };
+      var ret = new Date(n);
       if(esc){
-        var ret = new Date(n);
         var fp = (esc.fim||'17:00').split(':');
         ret.setHours(parseInt(fp[0])||17, parseInt(fp[1])||0, 0, 0);
-        if(ret <= n) ret.setDate(ret.getDate()+1);
-        item.retornoISO = new Date(ret.getTime()-ret.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      } else {
+        ret.setHours(17,0,0,0); // padrão: fim do expediente
       }
+      if(ret <= n) ret.setHours(ret.getHours()+4); // se já passou, +4h
+      item.retornoISO = new Date(ret.getTime()-ret.getTimezoneOffset()*60000).toISOString().slice(0,16);
       lista.push(item);
     }
   });
@@ -1673,6 +1686,7 @@ function abrirSaidaLote(){
       '</div>'+
       '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:150px">'+
         '<input type="text" id="sl-dest-'+i+'" value="'+destVal+'" placeholder="Destino" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+
+        '<input type="datetime-local" id="sl-ret-'+i+'" value="'+(c.retornoISO||'')+'" title="Hora prevista de retorno" style="font-size:12px;padding:6px 8px;border:1.5px solid #D1D5DB;border-radius:8px;color:#475569">'+
       '</div>'+
       '<div onclick="event.stopPropagation()" style="display:flex;flex-direction:column;gap:4px;min-width:170px">'+
         '<select id="sl-mot-'+i+'" onchange="slMotManual('+i+')" style="font-size:13px;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:8px">'+motSel+'</select>'+
@@ -1743,8 +1757,9 @@ function confirmarSaidaLote(){
     }
     var destEl = document.getElementById('sl-dest-'+i);
     var destino = (destEl ? destEl.value.trim() : '') || c.destino || 'Saída em lote';
-    // retorno: escala usa fim da escala; solicitação/livre usa +10h como padrão
-    var retorno = c.retornoISO;
+    // retorno: lê do campo da linha; cai no padrão se vazio
+    var retEl = document.getElementById('sl-ret-'+i);
+    var retorno = (retEl && retEl.value) ? retEl.value : c.retornoISO;
     if(!retorno){
       var r = new Date(now().getTime() + 10*3600*1000);
       retorno = new Date(r.getTime()-r.getTimezoneOffset()*60000).toISOString().slice(0,16);
