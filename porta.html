@@ -259,8 +259,6 @@ function logar(){
       };
       var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
       try{ db.ref('auditoria').push({acao:'LOGIN', usuario:u, via:'portal', em:new Date().toISOString()}); }catch(e){}
-      // Frentista só tem acesso à gasolina → vai direto, sem hub
-      if(user.role === 'frentista'){ location.href = 'index.html'; return; }
       mostrarHub(sess); travar(false);
     } else {
       erroLogin('Usuário ou senha incorretos.');
@@ -301,13 +299,10 @@ function mostrarHub(s){
   }
 }
 
-// Sessão ativa? Frentista vai direto à gasolina; os demais veem o hub.
+// Sessão ativa? Mostra o hub (frentista vê o hub com o Controle de Frota desabilitado).
 (function(){
   var s = getSessao();
-  if(s){
-    if(s.role === 'frentista'){ location.replace('index.html'); return; }
-    mostrarHub(s);
-  }
+  if(s){ mostrarHub(s); }
 })();
 </script>
 </body>
