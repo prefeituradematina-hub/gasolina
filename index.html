@@ -4293,27 +4293,29 @@
   function _normPosto(s) {
     return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
   }
+  // Casa dois nomes de posto: iguais OU um contém o outro (ex.: "MATINA" ~ "POSTO MATINA")
+  function _postoMatch(a, b) {
+    const na = _normPosto(a), nb = _normPosto(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+    return false;
+  }
   function filtrarCachePorPosto(dados) {
     if (userRole === 'frentista' && userPostoVinculado) {
-      // Resolve por ID (padrão) ou por nome (dados legados), com comparação tolerante
-      const posto = postos.find(p => p.id === userPostoVinculado || _normPosto(p.nome) === _normPosto(userPostoVinculado));
-      if (posto) {
-        const alvo = _normPosto(posto.nome);
-        return dados.filter(x => _normPosto(x.posto) === alvo);
-      }
-      // Posto ainda não resolvido (ex.: lista de postos carregando): tenta casar pelo valor bruto.
-      // Se nada casar, NÃO esconde tudo (mesmo comportamento seguro da versão antiga).
-      const alvoBruto = _normPosto(userPostoVinculado);
-      const filtrado = dados.filter(x => _normPosto(x.posto) === alvoBruto);
-      return filtrado.length > 0 ? filtrado : dados;
+      const posto = postos.find(p => p.id === userPostoVinculado || _postoMatch(p.nome, userPostoVinculado));
+      const alvo = posto ? posto.nome : userPostoVinculado;
+      const filtrado = dados.filter(x => _postoMatch(x.posto, alvo));
+      // Se resolveu o posto, usa o filtrado. Se NÃO resolveu e nada casou, não esconde tudo.
+      return (posto || filtrado.length > 0) ? filtrado : dados;
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
       const encontrados = postos.filter(p =>
         userPostosVinculados.includes(p.id) ||
-        userPostosVinculados.some(v => _normPosto(v) === _normPosto(p.nome))
+        userPostosVinculados.some(v => _postoMatch(p.nome, v))
       );
-      const alvos = (encontrados.length > 0 ? encontrados.map(p => p.nome) : userPostosVinculados).map(_normPosto);
-      const filtrado = dados.filter(x => alvos.includes(_normPosto(x.posto)));
+      const alvos = encontrados.length > 0 ? encontrados.map(p => p.nome) : userPostosVinculados;
+      const filtrado = dados.filter(x => alvos.some(a => _postoMatch(x.posto, a)));
       return (encontrados.length > 0 || filtrado.length > 0) ? filtrado : dados;
     }
     return dados;
@@ -8569,12 +8571,21 @@
   }
   
   function atualizarPendentes() {
-    // Mantém o nome do posto no banner do frentista atualizado (postos podem carregar após o login)
-    if (userRole === 'frentista' && userPostoVinculado) {
+    // Banner do frentista: posto resolvido + contagem (confirma o filtro na tela)
+    if (userRole === 'frentista') {
+      const _banner = document.getElementById('banner-posto-frentista');
       const _bn = document.getElementById('banner-posto-nome');
-      if (_bn) {
-        const _pp = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
-        _bn.textContent = _pp ? _pp.nome : userPostoVinculado;
+      if (_banner && _bn) {
+        if (userPostoVinculado) {
+          const _pp = postos.find(p => p.id === userPostoVinculado || _postoMatch(p.nome, userPostoVinculado));
+          const _nome = _pp ? _pp.nome : userPostoVinculado;
+          const _qtd = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO)).length;
+          _bn.textContent = _nome + ' (' + _qtd + ' pendente' + (_qtd === 1 ? '' : 's') + ')';
+          _banner.style.display = 'block';
+        } else {
+          _bn.textContent = '⚠️ NENHUM POSTO VINCULADO AO SEU USUÁRIO';
+          _banner.style.display = 'block';
+        }
       }
     }
     let pendentes = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
