@@ -144,6 +144,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 @keyframes piscarLaranja{0%,100%{box-shadow:0 4px 18px rgba(249,115,22,.45)}50%{box-shadow:0 0 0 8px rgba(249,115,22,.15),0 4px 18px rgba(249,115,22,.6)}}
 .vbtn.liberado{animation:piscarLaranja 1.8s ease-in-out infinite}
 .vbtn.pendente{box-shadow:0 2px 8px rgba(99,102,241,.3)}.vbtn.pendente .vbtn-inner{background:linear-gradient(145deg,#818CF8,#6366F1)}
+/* Solicitado por secretário (aguardando aprovação) → AMARELO */
+.vbtn.solicitado{box-shadow:0 4px 18px rgba(234,179,8,.5)}
+.vbtn.solicitado .vbtn-inner{background:linear-gradient(145deg,#FCD34D,#F59E0B);color:#422006}
+.vbtn.solicitado .vdesc{color:#3a2a00}
+.vbtn.solicitado .vsec{color:rgba(66,32,6,.72)}
+.vbtn.solicitado .vvagas{color:#3a2a00}
+@keyframes piscarAmarelo{0%,100%{box-shadow:0 4px 18px rgba(234,179,8,.5)}50%{box-shadow:0 0 0 8px rgba(234,179,8,.18),0 4px 18px rgba(234,179,8,.7)}}
+.vbtn.solicitado{animation:piscarAmarelo 1.8s ease-in-out infinite}
 /* Login screen */
 .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0F172A,#1E293B);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem}
 .login-card{background:#fff;border-radius:20px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
@@ -1409,6 +1417,8 @@ function makeBtnVeiculo(v) {
   var agendaWarnHTML = '';
   var _agHoje = getAgendaHoje(v.id);
   var _solPend = getSolicitacaoPendente(v.id);
+  // Veículo parado COM solicitação pendente → estado visual "solicitado" (amarelo)
+  var ehSolicitado = !!_solPend && (s === 'guardado' || s === 'fora_horario');
   if(s==='liberado') {
     agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(255,255,255,.3)">✅ Aprovado p/ viagem</div>';
   } else if(_agHoje && (s==='guardado'||s==='fora_horario')) {
@@ -1425,9 +1435,9 @@ function makeBtnVeiculo(v) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
-  return '<button class="vbtn '+s+'" onclick="verVeiculo(\''+v.id+'\')">'+
+  return '<button class="vbtn '+s+(ehSolicitado?' solicitado':'')+'" onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
-    '<div style="font-size:9px;margin-bottom:1px">'+LABEL[s].toUpperCase()+'</div>'+
+    '<div style="font-size:9px;margin-bottom:1px">'+(ehSolicitado?'SOLICITADO':LABEL[s].toUpperCase())+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+( v.tipo||'🚗')+'</div>'+
 
     '<div class="vplaca-wrap">'+
@@ -1577,14 +1587,14 @@ function confirmarSaidaRapida() {
   var retorno = modal.dataset.retorno;
   var destino = (modal.dataset.destino||'').trim() || (document.getElementById('sr-destino-input') ? document.getElementById('sr-destino-input').value.trim() : '') || 'Saída de escala';
   var sec     = modal.dataset.sec;
-  var motid   = document.getElementById('sr-mot').value;
-  var mot     = motid ? getM(motid) : null;
+  var motid   = getMotId('sr');
+  var motNome = getMotNome('sr');
   var km      = parseInt(document.getElementById('sr-km').value)||null;
 
-  if(!motid) { alert('Selecione o motorista.'); return; }
+  if(!motNome) { alert('Selecione ou digite o motorista.'); return; }
 
   D.movimentacoes.push({
-    id:uid('m'), vid:vid, motid:motid, motorista:mot?mot.nome:'—',
+    id:uid('m'), vid:vid, motid:motid, motorista:motNome,
     solic:'', sec:sec,
     km_saida:km, km_entrada:null,
     pass:0, com_pass:false,
@@ -1709,6 +1719,13 @@ function abrirSaidaLote(){
 function slMotManual(i){
   var sel = document.getElementById('sl-mot-'+i);
   var txt = document.getElementById('sl-mot-txt-'+i);
+  if(!sel||!txt) return;
+  if(sel.value === '__manual__'){ txt.style.display=''; txt.focus(); }
+  else { txt.style.display='none'; }
+}
+function sllMotManual(i){
+  var sel = document.getElementById('sll-mot-'+i);
+  var txt = document.getElementById('sll-mot-txt-'+i);
   if(!sel||!txt) return;
   if(sel.value === '__manual__'){ txt.style.display=''; txt.focus(); }
   else { txt.style.display='none'; }
@@ -2012,7 +2029,7 @@ function confirmarSaida() {
 
   if(_editMovId) {
     var m = getMov(_editMovId);
-    m.vid=vid; m.motid=motid; m.motorista=mot?mot.nome:'—';
+    m.vid=vid; m.motid=motid; m.motorista=motNome;
     m.solic=document.getElementById('s-solic').value.trim();
     m.sec=document.getElementById('s-sec').value;
     m.km_saida=parseInt(document.getElementById('s-km').value)||null;
@@ -3004,13 +3021,14 @@ function uid_u() { return 'u'+(Date.now()%99999)+Math.floor(Math.random()*999); 
 function iniciarSessaoPortal(){
   var s = window.__SESSAO;
   if(!s){ location.replace('porta.html'); return; }
-  // Frentistas não têm acesso ao controle de frota
-  if(s.role === 'frentista'){
-    alert('🚫 Seu perfil (frentista) não tem acesso ao Controle de Frota.\n\nVocê será redirecionado ao painel inicial.');
+  // Bloqueio por acesso (definido pelo master): master sempre entra; os demais precisam de acessoFrota.
+  if(s.u !== 'master' && s.dados && s.dados.acessoFrota === false){
+    alert('🚫 Seu usuário não tem acesso ao Controle de Frota.\n\nVocê será redirecionado ao painel inicial.');
     location.replace('porta.html');
     return;
   }
-  var ehAdmin = (s.u === 'master' || s.role === 'admin');
+  // Frentistas têm acesso TOTAL ao controle de frota (perfil admin, todas as funções)
+  var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista');
   var secBruta = (s.dados && s.dados.secretariaVinculada) || s.sec || '';
   _sessao = {
     id: s.u,
@@ -3288,7 +3306,7 @@ function abrirSolicitacaoLote(){
   }
   vazio.style.display='none';
   document.getElementById('sll-confirmar').style.display='';
-  var motOpts = '<option value="">— Sem motorista —</option>'+D.motoristas.map(function(m){
+  var motOpts = '<option value="">— Sem motorista —</option><option value="__manual__">✏️ Digitar nome...</option>'+D.motoristas.map(function(m){
     return '<option value="'+m.id+'">'+m.nome+' ('+m.categoria+')</option>';
   }).join('');
   lista.innerHTML = veics.map(function(v, i){
@@ -3298,7 +3316,8 @@ function abrirSolicitacaoLote(){
         '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+'</div>'+
         '<div style="font-size:11px;color:#888">'+(v.secretaria||'')+'</div>'+
       '</div>'+
-      '<select id="sll-mot-'+i+'" style="font-size:12px;padding:5px 8px;max-width:160px">'+motOpts+'</select>'+
+      '<select id="sll-mot-'+i+'" onchange="sllMotManual('+i+')" style="font-size:12px;padding:5px 8px;max-width:160px">'+motOpts+'</select>'+
+      '<input type="text" id="sll-mot-txt-'+i+'" placeholder="Nome do motorista" style="display:none;font-size:12px;padding:5px 8px;max-width:160px;border:1.5px solid #93C5FD;border-radius:6px">'+
       '<label style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">🧍<input type="number" id="sll-pass-'+i+'" min="0" value="0" style="font-size:12px;padding:5px 6px;width:56px"></label>'+
     '</div>';
   }).join('');
@@ -3333,13 +3352,15 @@ function confirmarSolicitacaoLote(){
     var i = chk.getAttribute('data-i');
     var vid = chk.getAttribute('data-vid');
     var v = getV(vid);
-    var motid = document.getElementById('sll-mot-'+i).value;
-    var mot = motid ? getM(motid) : null;
+    var motSel = document.getElementById('sll-mot-'+i).value;
+    var motManual = (motSel === '__manual__') ? ((document.getElementById('sll-mot-txt-'+i)||{}).value||'').trim() : '';
+    var mot = (motSel && motSel !== '__manual__') ? getM(motSel) : null;
+    var motNomeFinal = motManual || (mot ? mot.nome : '');
     var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
     if(isNaN(qtd)||qtd<0) qtd=0;
     var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
     D.solicitacoes.push({
-      id:uid_s(), vid:vid, motorista:mot?mot.nome:'', destino:dest, data_viagem:data,
+      id:uid_s(), vid:vid, motorista:motNomeFinal, destino:dest, data_viagem:data,
       obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
       qtd_passageiros:qtd, passageiros:[],
       status:'pendente', criado_em:now().toISOString(),
@@ -3557,6 +3578,8 @@ startCron();
     <div class="field">
       <label>Motorista *</label>
       <select id="sr-mot"></select>
+      <button type="button" onclick="toggleMotManual('sr',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button>
+      <div id="sr-mot-manual" style="display:none;margin-top:5px"><input type="text" id="sr-mot-texto" placeholder="Nome do motorista..."></div>
     </div>
     <div class="field">
       <label>Km saída (hodômetro)</label>

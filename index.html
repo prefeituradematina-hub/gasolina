@@ -2333,6 +2333,17 @@
           <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
         </select>
       </div>
+      <div>
+        <label>SISTEMAS QUE PODE ACESSAR</label>
+        <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
+          </label>
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
+          </label>
+        </div>
+      </div>
       <div id="edit-field-limit">
         <label>LIMITE MENSAL — ⛽ POSTO VICTOR (R$)</label>
         <input type="number" id="edit-limit-victor" placeholder="0.00" step="0.01">
@@ -3840,6 +3851,17 @@
             <option value="frentista">FRENTISTA (SOMENTE LEITURA)</option>
 	    <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
           </select>
+        </div>
+        <div>
+          <label>SISTEMAS QUE PODE ACESSAR</label>
+          <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
+            </label>
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
+            </label>
+          </div>
         </div>
         <div>
           <label>COMBUSTÍVEL PERMITIDO</label>
@@ -10123,6 +10145,8 @@
       limiteMatina: limiteMatina,
       limite: limite,
       secretariaVinculada: secretaria,
+      acessoGasolina: document.getElementById('new-acesso-gasolina').checked,
+      acessoFrota: document.getElementById('new-acesso-frota').checked,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
@@ -10171,6 +10195,8 @@
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
       document.getElementById('new-posto-vinc-frentista').value = '';
+      var _ag = document.getElementById('new-acesso-gasolina'); if(_ag) _ag.checked = true;
+      var _af = document.getElementById('new-acesso-frota'); if(_af) _af.checked = true;
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -10601,10 +10627,18 @@
             : `ativarUsuario('${c.key}')`;
           const textoBotao = estaAtivo ? '🔒 DESATIVAR' : '✅ ATIVAR';
           const corBotao = estaAtivo ? '#dc2626' : '#16a34a';
+
+          // Indicador de sistemas liberados (master define). Padrão: ambos liberados.
+          const _temGas = (u.acessoGasolina !== false);
+          const _temFrota = (u.acessoFrota !== false);
+          const acessoIcons = `<span title="Sistemas liberados: ${_temGas?'Combustível':''}${(_temGas&&_temFrota)?' + ':''}${_temFrota?'Frota':''}${(!_temGas&&!_temFrota)?'nenhum':''}" style="margin-left:6px; font-size:12px; letter-spacing:2px; white-space:nowrap;">`
+            + `<span style="opacity:${_temGas?'1':'.22'}">⛽</span>`
+            + `<span style="opacity:${_temFrota?'1':'.22'}">🚗</span>`
+            + `</span>`;
           
           tbody.innerHTML += `
             <tr style="${!estaAtivo ? 'opacity: 0.5; background: #f1f5f9;' : ''}">
-              <td><b>${c.key.toUpperCase()}</b> ${statusBadge}</td>
+              <td><b>${c.key.toUpperCase()}</b> ${statusBadge}${acessoIcons}</td>
               <td><span class="badge ${badgeClass}">${perfilTexto}</span></td>
               <td style="font-size:11px;">${combustiveisInfo}</td>
               <td>${u.secretariaVinculada || 'TODAS'}</td>
@@ -10747,6 +10781,9 @@
       document.getElementById('edit-limit-victor').value = u.limiteVictor || "";
       document.getElementById('edit-limit-matina').value = u.limiteMatina || "";
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
+      // Acesso aos sistemas (padrão: ambos liberados se não definido)
+      var _eag = document.getElementById('edit-acesso-gasolina'); if(_eag) _eag.checked = (u.acessoGasolina !== false);
+      var _eaf = document.getElementById('edit-acesso-frota'); if(_eaf) _eaf.checked = (u.acessoFrota !== false);
       
       // Carregar dados de frentista se aplicável
       if (u.role === 'frentista') {
@@ -10833,6 +10870,11 @@
     }
     
     const dadosAtualizados = { senha: novaPass, combustivelLiberado: combus, role: role };
+    // Acesso aos sistemas (definido pelo master)
+    var _sag = document.getElementById('edit-acesso-gasolina');
+    var _saf = document.getElementById('edit-acesso-frota');
+    dadosAtualizados.acessoGasolina = _sag ? _sag.checked : true;
+    dadosAtualizados.acessoFrota = _saf ? _saf.checked : true;
     
     if (role === 'frentista') {
       const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;
@@ -18264,6 +18306,12 @@ entrar = function(u, role, limit, sec, dadosExtras){
 (function(){
   var s = window.__SESSAO;
   if(!s) return; // a guarda no <head> já redirecionou
+  // Bloqueio por acesso (definido pelo master): master sempre entra; os demais precisam de acessoGasolina.
+  if(s.u !== 'master' && s.dados && s.dados.acessoGasolina === false){
+    alert('🚫 Seu usuário não tem acesso ao Controle de Combustível.\n\nVocê será redirecionado ao painel inicial.');
+    location.replace('porta.html');
+    return;
+  }
   // Resolve permissões de forma defensiva (não deixa faltar permissão derrubar o login)
   try{
     s.dados = s.dados || {};

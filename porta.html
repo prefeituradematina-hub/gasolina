@@ -163,11 +163,12 @@ body{
     <h1>O que você quer acessar?</h1>
     <div class="hub-sub">Escolha um dos sistemas abaixo</div>
     <div class="modulos">
-      <a class="modulo gas" href="index.html">
+      <a class="modulo gas" id="card-gasolina" href="index.html">
         <div class="mod-icone">⛽</div>
         <h2>Controle de Gasolina</h2>
         <p>Abastecimentos, autorizações, limites por secretaria e relatórios de combustível.</p>
         <span class="mod-entrar">ACESSAR →</span>
+        <span class="mod-cadeado">🔒 SEM ACESSO</span>
       </a>
       <a class="modulo frota" id="card-frota" href="veiculos.html">
         <div class="mod-icone">🚗</div>
@@ -255,6 +256,8 @@ function logar(){
         secretariaVinculada: user.secretariaVinculada || '',
         postoVinculado: user.postoVinculado || '',
         postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
+        acessoGasolina: user.acessoGasolina !== false,
+        acessoFrota: user.acessoFrota !== false,
         permissoes: user.permissoes || null
       };
       var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
@@ -279,23 +282,35 @@ function mostrarHub(s){
   document.getElementById('hub-role').textContent = ROLES[s.role] || s.role || '';
   document.getElementById('hub-avatar').textContent = (s.u||'?').charAt(0).toUpperCase();
 
-  // Frentistas não têm acesso ao Controle de Frota
-  var frota = document.getElementById('card-frota');
-  if(s.role === 'frentista'){
-    frota.classList.add('bloqueado');
-    frota.removeAttribute('href');
-    frota.title = 'Seu perfil não tem acesso a este sistema';
-    frota.onclick = function(e){
-      e.preventDefault();
-      var p = frota.querySelector('p');
-      p.textContent = 'Acesso restrito: frentistas utilizam apenas o controle de combustível.';
-      p.style.color = '#dc2626';
-    };
+  // Acesso por usuário (master sempre tem os dois). Padrão: liberado se não definido.
+  var ehMaster = (s.u === 'master');
+  var d = s.dados || {};
+  var podeGas = ehMaster || (d.acessoGasolina !== false);
+  var podeFrota = ehMaster || (d.acessoFrota !== false);
+
+  configurarCardHub(document.getElementById('card-gasolina'), podeGas, 'index.html',
+    'Acesso ao Controle de Combustível não liberado para o seu usuário.');
+  configurarCardHub(document.getElementById('card-frota'), podeFrota, 'veiculos.html',
+    'Acesso ao Controle de Frota não liberado para o seu usuário.');
+}
+
+// Habilita ou bloqueia visualmente um card do hub
+function configurarCardHub(card, liberado, href, msgBloqueio){
+  if(!card) return;
+  if(liberado){
+    card.classList.remove('bloqueado');
+    card.setAttribute('href', href);
+    card.title = '';
+    card.onclick = null;
   } else {
-    frota.classList.remove('bloqueado');
-    frota.setAttribute('href','veiculos.html');
-    frota.title = '';
-    frota.onclick = null;
+    card.classList.add('bloqueado');
+    card.removeAttribute('href');
+    card.title = msgBloqueio;
+    card.onclick = function(e){
+      e.preventDefault();
+      var p = card.querySelector('p');
+      if(p){ p.textContent = msgBloqueio; p.style.color = '#dc2626'; }
+    };
   }
 }
 
