@@ -4297,8 +4297,15 @@
     if (userRole === 'frentista' && userPostoVinculado) {
       // Resolve por ID (padrão) ou por nome (dados legados), com comparação tolerante
       const posto = postos.find(p => p.id === userPostoVinculado || _normPosto(p.nome) === _normPosto(userPostoVinculado));
-      const alvo = _normPosto(posto ? posto.nome : userPostoVinculado);
-      return dados.filter(x => _normPosto(x.posto) === alvo);
+      if (posto) {
+        const alvo = _normPosto(posto.nome);
+        return dados.filter(x => _normPosto(x.posto) === alvo);
+      }
+      // Posto ainda não resolvido (ex.: lista de postos carregando): tenta casar pelo valor bruto.
+      // Se nada casar, NÃO esconde tudo (mesmo comportamento seguro da versão antiga).
+      const alvoBruto = _normPosto(userPostoVinculado);
+      const filtrado = dados.filter(x => _normPosto(x.posto) === alvoBruto);
+      return filtrado.length > 0 ? filtrado : dados;
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
       const encontrados = postos.filter(p =>
@@ -4306,7 +4313,8 @@
         userPostosVinculados.some(v => _normPosto(v) === _normPosto(p.nome))
       );
       const alvos = (encontrados.length > 0 ? encontrados.map(p => p.nome) : userPostosVinculados).map(_normPosto);
-      return dados.filter(x => alvos.includes(_normPosto(x.posto)));
+      const filtrado = dados.filter(x => alvos.includes(_normPosto(x.posto)));
+      return (encontrados.length > 0 || filtrado.length > 0) ? filtrado : dados;
     }
     return dados;
   }
@@ -6886,7 +6894,7 @@
       }
     }
     
-    if (temPermissao('autorizar_abastecimento')) {
+    if (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes')) {
       atualizarPendentes();
     }
   }
