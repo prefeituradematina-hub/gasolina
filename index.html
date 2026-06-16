@@ -4362,7 +4362,7 @@
     // atualiza pendentes (robusto) e re-renderiza para aplicar o filtro por posto.
     if (typeof loginUser !== 'undefined' && loginUser) {
       try {
-        if (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes')) atualizarPendentes();
+        atualizarPendentes();
       } catch (e) { console.error('Erro ao atualizar pendentes (postos):', e); }
       try { if (typeof renderizar === 'function') renderizar(); } catch (e) { console.error('Erro no renderizar (postos):', e); }
     }
@@ -5189,6 +5189,13 @@
     userSecretaria = sec;
     usuarioData = dadosExtras || {};
     userPermissions = dadosExtras.permissoes || PERMISSOES_PADRAO[role] || [];
+    // Frentista SEMPRE precisa enxergar pendentes/relatório do seu posto,
+    // mesmo que o cadastro tenha permissões customizadas incompletas.
+    if (role === 'frentista') {
+      (PERMISSOES_PADRAO['frentista'] || []).forEach(function(p){
+        if (userPermissions.indexOf(p) === -1) userPermissions.push(p);
+      });
+    }
     
     // Suporte a múltiplos postos para autorizadores
     if (role === 'autorizador') {
@@ -12914,7 +12921,7 @@
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
     // Pendentes de forma robusta: independente de qualquer erro no renderizar()
     try {
-      if (loginUser && (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes'))) {
+      if (loginUser) {
         atualizarPendentes();
       }
     } catch (e) { console.error('Erro ao atualizar pendentes (abastecimentos):', e); }
