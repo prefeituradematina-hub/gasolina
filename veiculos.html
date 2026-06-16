@@ -139,7 +139,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.irregular{animation:piscar 1s ease-in-out infinite}
 .vbtn.irregular .vbtn-inner{animation:piscarFundo 1s ease-in-out infinite}
 .vbtn.ausente{box-shadow:0 4px 18px rgba(124,58,237,.3)}.vbtn.ausente .vbtn-inner{background:linear-gradient(145deg,#8B5CF6,#7C3AED)}
-.vbtn.fora_horario{box-shadow:0 2px 8px rgba(0,0,0,.15)}.vbtn.fora_horario .vbtn-inner{background:linear-gradient(145deg,#9CA3AF,#6B7280)}
+.vbtn.fora_horario{box-shadow:0 4px 18px rgba(22,163,74,.3)}.vbtn.fora_horario .vbtn-inner{background:linear-gradient(145deg,#22C55E,#16A34A)}
 .vbtn.liberado{box-shadow:0 4px 18px rgba(249,115,22,.45)}.vbtn.liberado .vbtn-inner{background:linear-gradient(145deg,#FB923C,#EA580C)}
 @keyframes piscarLaranja{0%,100%{box-shadow:0 4px 18px rgba(249,115,22,.45)}50%{box-shadow:0 0 0 8px rgba(249,115,22,.15),0 4px 18px rgba(249,115,22,.6)}}
 .vbtn.liberado{animation:piscarLaranja 1.8s ease-in-out infinite}
@@ -203,7 +203,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .badge.agendado{background:#DBEAFE;color:#1D4ED8}
 .badge.cancelado{background:var(--surface3);color:var(--text2)}
 .badge.ausente{background:#EDE9FE;color:#5B21B6}
-.badge.fora_horario{background:var(--surface3);color:var(--text2)}
+.badge.fora_horario{background:#DCFCE7;color:#15803D}
+/* Badge de notificação (círculo com número de pendências) */
+.badge-noti{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-left:5px;background:#E24B4A;color:#fff;font-size:11px;font-weight:800;border-radius:10px;line-height:1;vertical-align:middle;box-shadow:0 1px 5px rgba(226,75,74,.55);animation:notiPulse 1.6s ease-in-out infinite}
+@keyframes notiPulse{0%,100%{transform:scale(1);box-shadow:0 1px 5px rgba(226,75,74,.55)}50%{transform:scale(1.13);box-shadow:0 1px 9px rgba(226,75,74,.8)}}
 .badge.manutencao{background:#FEF3C7;color:#92400E}
 .card-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--text2)}
 .card-meta strong{color:var(--text);font-weight:600}
@@ -383,7 +386,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="tab" onclick="aba(this,'relatorio')">Relatório</button>
     <button class="tab" onclick="aba(this,'indicadores')">Indicadores</button>
     <button class="tab" onclick="aba(this,'veiculos')">Veículos</button>
-    <button class="tab" onclick="aba(this,'solicitacoes')">📋 Solicitações</button>
+    <button class="tab" onclick="aba(this,'solicitacoes')">📋 Solicitações <span id="badge-solicitacoes" class="badge-noti" style="display:none">0</span></button>
     <button class="tab" id="tab-usuarios" style="display:none" onclick="aba(this,'usuarios')">👥 Usuários</button>
     <button class="tab" onclick="aba(this,'backup')">💾 Backup</button>
   </div>
@@ -851,7 +854,7 @@ const SECS = [
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
 const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',pendente:'Aguard. aprovação'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -3035,6 +3038,7 @@ function iniciarSessaoPortal(){
     login: s.u,
     nome: (s.dados && s.dados.nome) || s.u,
     perfil: ehAdmin ? 'admin' : 'secretario',
+    roleOrig: s.role,
     secretaria: ehAdmin ? '' : traduzirSec(secBruta)
   };
   document.getElementById('login-screen').style.display = 'none';
@@ -3058,9 +3062,12 @@ function fazerLogout() {
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
 function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
+// Vê todos os veículos/solicitações de todas as secretarias (admin e autorizador).
+// O autorizador mantém as ações restritas de secretário, mas com visão total.
+function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autorizador'); }
 
 function podeVerVeiculo(v) {
-  if(isAdmin()) return true;
+  if(veTudo()) return true;
   if(!_sessao) return false;
   return v.secretaria === _sessao.secretaria || v.compartilhado === true;
 }
@@ -3411,7 +3418,7 @@ function renderSolicitacoes() {
   var el = document.getElementById('lista-solicitacoes');
   if(!el) return;
   var sols = (D.solicitacoes||[]).filter(function(s){
-    if(isAdmin()) return true;
+    if(veTudo()) return true;
     return s.sec === (_sessao?_sessao.secretaria:'');
   }).slice().reverse();
   if(!sols.length) { el.innerHTML='<div class="empty">Nenhuma solicitação.</div>'; return; }
@@ -3527,6 +3534,20 @@ function renderTudo() {
   renderIndicadores();
   renderBackup();
   renderUsuarios();
+  atualizarBadgeSolicitacoes();
+}
+
+// Badge de notificação: nº de solicitações PENDENTES visíveis ao usuário
+function atualizarBadgeSolicitacoes() {
+  var b = document.getElementById('badge-solicitacoes');
+  if(!b) return;
+  var n = (D.solicitacoes||[]).filter(function(s){
+    if(s.status !== 'pendente') return false;
+    if(veTudo()) return true;
+    return s.sec === (_sessao ? _sessao.secretaria : '');
+  }).length;
+  if(n > 0){ b.textContent = n > 99 ? '99+' : n; b.style.display = 'inline-flex'; }
+  else { b.style.display = 'none'; }
 }
 
 // ── INIT ─────────────────────────────────────────────────────
