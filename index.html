@@ -4361,9 +4361,12 @@
     });
     atualizarSelectPostos();
     // Postos podem chegar DEPOIS dos abastecimentos. Se já há usuário logado,
-    // re-renderiza para que o filtro por posto (frentista/autorizador) seja aplicado.
-    if (typeof loginUser !== 'undefined' && loginUser && typeof renderizar === 'function') {
-      renderizar();
+    // atualiza pendentes (robusto) e re-renderiza para aplicar o filtro por posto.
+    if (typeof loginUser !== 'undefined' && loginUser) {
+      try {
+        if (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes')) atualizarPendentes();
+      } catch (e) { console.error('Erro ao atualizar pendentes (postos):', e); }
+      try { if (typeof renderizar === 'function') renderizar(); } catch (e) { console.error('Erro no renderizar (postos):', e); }
     }
   });
   
@@ -5339,11 +5342,11 @@
     setTimeout(() => limparAbastecimentosExpirados(), 2000);
     
     setTimeout(() => {
-      renderizar();
-      calcularDadosMesAnterior();
-      
-      // Abrir aba inicial baseada no perfil
-      switchTab(abaInicial);
+      // Cada passo é isolado: um erro em renderizar() NÃO pode impedir a aba inicial
+      // (pendentes) de ser exibida nem o atualizarPendentes() de rodar.
+      try { renderizar(); } catch (e) { console.error('Erro em renderizar() no login:', e); }
+      try { calcularDadosMesAnterior(); } catch (e) { console.error('Erro em calcularDadosMesAnterior():', e); }
+      try { switchTab(abaInicial); } catch (e) { console.error('Erro em switchTab():', e); }
     }, 100);
   }
   
@@ -7801,6 +7804,7 @@
   
   function atualizarStatusFinanceiro() {
     const statusDiv = document.getElementById('status-financeiro');
+    if (!statusDiv) return; // proteção: sem o elemento, não derruba o renderizar()
     
     let cacheFiltrado = filtrarCachePorPosto(cache);
     
@@ -8574,6 +8578,15 @@
       }
     }
     let pendentes = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
+    // 🔍 DIAGNÓSTICO (visível no Console F12) — ajuda a identificar divergência de posto
+    try {
+      const todosAguardando = cache.filter(x => x.status === STATUS.AGUARDANDO);
+      console.log('🔍 PENDENTES | role:', userRole, '| postoVinculado:', userPostoVinculado,
+        '| total AGUARDANDO no sistema:', todosAguardando.length,
+        '| após filtro de posto:', pendentes.length,
+        '| postos nos pendentes:', [...new Set(todosAguardando.map(x => x.posto))],
+        '| postos cadastrados:', postos.map(p => p.nome));
+    } catch (e) {}
     
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
@@ -8602,7 +8615,19 @@
     }
     
     if (pendentes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
+      let msg = '✅ NENHUMA SOLICITAÇÃO PENDENTE';
+      // Se é frentista e há pendentes no sistema (mas nenhum bateu com o posto), explica o porquê
+      if (userRole === 'frentista') {
+        const todosAg = cache.filter(x => x.status === STATUS.AGUARDANDO);
+        if (todosAg.length > 0) {
+          const postosPend = [...new Set(todosAg.map(x => x.posto || '(sem posto)'))];
+          const _pp = postos.find(p => p.id === userPostoVinculado || p.nome === userPostoVinculado);
+          const nomePostoFrentista = _pp ? _pp.nome : (userPostoVinculado || '(não vinculado)');
+          msg = '✅ Nenhum abastecimento pendente para o seu posto (<b>' + nomePostoFrentista + '</b>).' +
+            '<div style="font-size:11px;color:#94a3b8;margin-top:10px">Há ' + todosAg.length + ' pendente(s) em outros postos: ' + postosPend.join(', ') + '</div>';
+        }
+      }
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:40px;">' + msg + '</td></tr>';
       return;
     }
     tbody.innerHTML = pendentes.map(d => `
@@ -12232,7 +12257,7 @@
     } else if (tab === 'pendentes') {
       document.getElementById('tab-pendentes').style.display = 'block';
       document.getElementById('btn-tab-pendentes').classList.add('active');
-      atualizarPendentes();
+      try { atualizarPendentes(); } catch (e) { console.error('Erro em atualizarPendentes (switchTab):', e); }
     } else if (tab === 'diversas') {
       if (tabDiversas) {
         tabDiversas.style.display = 'block';
@@ -12929,7 +12954,13 @@
     }
     
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
-    renderizar();
+    // Pendentes de forma robusta: independente de qualquer erro no renderizar()
+    try {
+      if (loginUser && (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes'))) {
+        atualizarPendentes();
+      }
+    } catch (e) { console.error('Erro ao atualizar pendentes (abastecimentos):', e); }
+    try { renderizar(); } catch (e) { console.error('Erro no renderizar (abastecimentos):', e); }
   });
   
   // ==================== FUNÇÃO DE MIGRAÇÃO ====================
