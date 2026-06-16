@@ -1660,10 +1660,13 @@ function abrirSaidaLote(){
   var actions = document.getElementById('sl-actions');
   if(!_loteCands.length){
     vazio.style.display = 'block'; lista.innerHTML=''; toolbar.style.display='none';
+    document.getElementById('sl-busca-wrap').style.display='none';
     document.getElementById('sl-confirmar').style.display='none';
     abrir('ov-saida-lote'); return;
   }
   vazio.style.display='none'; toolbar.style.display='flex';
+  var _bw = document.getElementById('sl-busca-wrap'); if(_bw) _bw.style.display='';
+  var _bi = document.getElementById('sl-busca'); if(_bi) _bi.value='';
   document.getElementById('sl-confirmar').style.display='';
   var motOpts = '<option value="">— Sem motorista —</option><option value="__manual__">✏️ Digitar nome...</option>'+D.motoristas.map(function(m){
     return '<option value="'+m.id+'">'+m.nome+' ('+m.categoria+')</option>';
@@ -1674,7 +1677,8 @@ function abrirSaidaLote(){
     var motSel = sug ? motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected') : motOpts;
     var preMarcado = (c.fonte === 'escala' || c.fonte === 'solicitacao'); // o que se espera sair na manhã
     var destVal = (c.destino||'').replace(/"/g,'&quot;');
-    return '<div class="sl-card'+(preMarcado?' sel':'')+'" data-i="'+i+'" onclick="slToggleCard(event,'+i+')" '+
+    var buscaTxt = (v.placa+' '+v.descricao+' '+(v.secretaria||'')).toLowerCase().replace(/"/g,'');
+    return '<div class="sl-card'+(preMarcado?' sel':'')+'" data-i="'+i+'" data-busca="'+buscaTxt+'" onclick="slToggleCard(event,'+i+')" '+
       'style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid '+(preMarcado?'#1D9E75':'#E5E7EB')+';border-radius:10px;cursor:pointer;background:'+(preMarcado?'#F0FAF6':'#fff')+';transition:all .15s">'+
       '<input type="checkbox" class="sl-chk" data-i="'+i+'"'+(preMarcado?' checked':'')+' onclick="event.stopPropagation()" onchange="slCardSync('+i+');slAtualizaContador()" style="width:20px;height:20px;flex-shrink:0;pointer-events:auto">'+
       '<div style="flex:1;min-width:130px">'+
@@ -1708,6 +1712,31 @@ function slMotManual(i){
   if(!sel||!txt) return;
   if(sel.value === '__manual__'){ txt.style.display=''; txt.focus(); }
   else { txt.style.display='none'; }
+}
+function filtrarSaidaLote(){
+  var inp = document.getElementById('sl-busca');
+  var q = (inp ? inp.value : '').toLowerCase().trim();
+  var algum = false;
+  document.querySelectorAll('#sl-lista .sl-card').forEach(function(card){
+    var txt = card.getAttribute('data-busca') || '';
+    var ok = !q || txt.indexOf(q) > -1;
+    card.style.display = ok ? '' : 'none';
+    if(ok) algum = true;
+  });
+  var lista = document.getElementById('sl-lista');
+  var aviso = document.getElementById('sl-sem-resultado');
+  if(!algum){
+    if(!aviso){
+      aviso = document.createElement('div');
+      aviso.id = 'sl-sem-resultado';
+      aviso.style.cssText = 'text-align:center;color:#888;padding:18px;font-size:13px';
+      aviso.textContent = 'Nenhum veículo encontrado para a busca.';
+      lista.appendChild(aviso);
+    }
+    aviso.style.display = '';
+  } else if(aviso){
+    aviso.style.display = 'none';
+  }
 }
 function slToggleCard(ev, i){
   // clique no card alterna a seleção (exceto se clicou no select/checkbox, que já têm stopPropagation)
@@ -3341,6 +3370,21 @@ function recusarSolicitacao(id) {
   salvar(); renderTudo();
   toast('❌ Solicitação recusada.');
 }
+function deletarSolicitacao(id) {
+  if(!isAdmin()){ toast('🚫 Apenas administradores podem excluir solicitações.'); return; }
+  var s = getS(id);
+  if(!s) return;
+  var v = getV(s.vid);
+  var msg = 'Excluir esta solicitação?\n\n'
+    + (v ? v.placa + ' — ' + v.descricao : 'Veículo removido') + '\n'
+    + '📍 ' + (s.destino||'-') + '\n'
+    + '📅 ' + (s.data_viagem ? new Date(s.data_viagem+'T00:00').toLocaleDateString('pt-BR') : '-') + '\n\n'
+    + 'Esta ação não pode ser desfeita.';
+  if(!confirm(msg)) return;
+  D.solicitacoes = (D.solicitacoes||[]).filter(function(x){ return x.id !== id; });
+  salvar(); renderTudo();
+  toast('🗑️ Solicitação excluída.');
+}
 
 function renderSolicitacoes() {
   var el = document.getElementById('lista-solicitacoes');
@@ -3360,7 +3404,10 @@ function renderSolicitacoes() {
           (isAdmin()&&s.status==='pendente'?'<input type="checkbox" class="sol-chk" data-id="'+s.id+'" onchange="solLoteContador()" style="width:16px;height:16px">':'')+
           (v?v.placa+' — '+v.descricao:'Veículo removido')+
         '</div>'+
-        '<span class="badge '+(s.status==='aprovada'?'guardado':s.status==='recusada'?'irregular':'agendado')+'">'+statusLabel+'</span>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span class="badge '+(s.status==='aprovada'?'guardado':s.status==='recusada'?'irregular':'agendado')+'">'+statusLabel+'</span>'+
+          (isAdmin()?'<button class="btn-trash-sol" data-id="'+s.id+'" title="Excluir solicitação" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px">🗑️</button>':'')+
+        '</div>'+
       '</div>'+
       '<div class="card-meta">'+
         '<span>📅 <strong>'+new Date(s.data_viagem+'T00:00').toLocaleDateString('pt-BR')+'</strong></span>'+
@@ -3385,6 +3432,9 @@ function renderSolicitacoes() {
   });
   el.querySelectorAll('.btn-edit-sol').forEach(function(btn){
     btn.addEventListener('click', function(){ abrirSolicitacao(this.getAttribute('data-vid'), this.getAttribute('data-id')); });
+  });
+  el.querySelectorAll('.btn-trash-sol').forEach(function(btn){
+    btn.addEventListener('click', function(){ deletarSolicitacao(this.getAttribute('data-id')); });
   });
   // Barra de aprovação em lote (só admin, só se houver pendentes)
   var bar = document.getElementById('sol-lote-bar');
@@ -3473,6 +3523,9 @@ startCron();
     <h2>⚡ Saída em lote</h2>
     <div style="font-size:12px;color:#666;margin-bottom:10px">Clique nos cards para selecionar os veículos e escolha o motorista de cada um. Um clique registra todas as saídas.</div>
     <div id="sl-vazio" style="display:none;text-align:center;color:#888;padding:24px">Nenhum veículo pronto para saída em lote no momento.<br><span style="font-size:12px">(veículos guardados com escala de hoje ou viagens já aprovadas)</span></div>
+    <div id="sl-busca-wrap" style="display:none;margin-bottom:8px">
+      <input type="text" id="sl-busca" oninput="filtrarSaidaLote()" placeholder="🔍 Buscar veículo (placa, modelo ou secretaria)..." style="width:100%;padding:9px 12px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box">
+    </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" id="sl-toolbar">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
         <input type="checkbox" id="sl-todos" onchange="slToggleTodos(this.checked)"> Selecionar todos
