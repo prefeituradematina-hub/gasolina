@@ -390,6 +390,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="tab" onclick="aba(this,'indicadores')">Indicadores</button>
     <button class="tab" onclick="aba(this,'veiculos')">Veículos</button>
     <button class="tab" onclick="aba(this,'solicitacoes')">📋 Solicitações <span id="badge-solicitacoes" class="badge-noti" style="display:none">0</span></button>
+    <button class="tab" onclick="aba(this,'caronas')">🚐 Caronas <span id="badge-caronas" style="display:none;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-left:5px;background:#0F6E56;color:#fff;font-size:11px;font-weight:800;border-radius:10px;line-height:1;vertical-align:middle">0</span></button>
     <button class="tab" id="tab-usuarios" style="display:none" onclick="aba(this,'usuarios')">👥 Usuários</button>
     <button class="tab" onclick="aba(this,'backup')">💾 Backup</button>
   </div>
@@ -517,6 +518,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
     </div>
     <div id="lista-solicitacoes"></div>
+  </div>
+
+  <div class="section" id="aba-caronas">
+    <div class="section-hdr">
+      <div class="section-title">🚐 Caronas — vagas compartilhadas</div>
+    </div>
+    <div style="font-size:12px;color:#166534;margin-bottom:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:9px 12px;line-height:1.5">
+      Viagens já aprovadas de <b>outras secretarias</b> com lugares sobrando. Reserve uma vaga para aproveitar a mesma viagem — economizando combustível e evitando mandar um segundo carro pro mesmo destino.
+    </div>
+    <div id="lista-caronas"></div>
   </div>
 
   <div class="section" id="aba-usuarios">
@@ -888,7 +899,8 @@ const DEF = {
   usuarios:[
     {id:'u1',login:'admin',senha:'admin123',nome:'Administrador',perfil:'admin',secretaria:'',ativo:true}
   ],
-  solicitacoes:[]
+  solicitacoes:[],
+  caronas:[]
 };
 
 // ── ESTADO ──────────────────────────────────────────────────
@@ -993,7 +1005,7 @@ function carregar() {
         movimentacoes:d.movimentacoes||DEF.movimentacoes, agendamentos:d.agendamentos||DEF.agendamentos,
         manutencoes:d.manutencoes||DEF.manutencoes, ausencias:d.ausencias||[],
         abastecimentos:d.abastecimentos||[],
-        usuarios:d.usuarios||DEF.usuarios, solicitacoes:d.solicitacoes||[]
+        usuarios:d.usuarios||DEF.usuarios, solicitacoes:d.solicitacoes||[], caronas:d.caronas||[]
       };
     }
   } catch(e) {}
@@ -1027,7 +1039,7 @@ function normalizarFB(d){
     movimentacoes:_arrFB(d.movimentacoes), agendamentos:_arrFB(d.agendamentos),
     manutencoes:_arrFB(d.manutencoes), ausencias:_arrFB(d.ausencias),
     abastecimentos:_arrFB(d.abastecimentos),
-    usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes)
+    usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
   out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); });
@@ -2723,6 +2735,7 @@ function restaurarBackup(input) {
       D.manutencoes   = d.manutencoes   || d.manut || [];
       D.ausencias     = d.ausencias     || [];
       D.abastecimentos= d.abastecimentos|| d.abast || [];
+      D.caronas       = d.caronas       || [];
       salvar();
       fechar('ov-veiculo');
       renderTudo();
@@ -3190,6 +3203,39 @@ function toggleTravar(id) {
 function uid_s() { return 's'+(Date.now()%99999)+Math.floor(Math.random()*999); }
 function getS(id) { return (D.solicitacoes||[]).find(function(s){return s.id===id;})||null; }
 
+// ── CARONAS (vagas compartilhadas entre secretarias) ──────────
+function fmtDataViagem(s){
+  if(!s) return '—';
+  if(String(s).indexOf('T')>=0) return fmtDT(s);
+  var p = String(s).slice(0,10).split('-');
+  return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : String(s);
+}
+function caronasDe(solId){ return (D.caronas||[]).filter(function(c){ return c.solId === solId; }); }
+function passageirosCarona(solId){ return caronasDe(solId).reduce(function(t,c){ return t + (parseInt(c.qtd)||0); }, 0); }
+function vagasLivresSol(s){
+  if(!s) return 0;
+  var v = getV(s.vid); var cap = v ? (parseInt(v.capacidade)||0) : 0;
+  if(!cap) return 0;
+  var ocup = (parseInt(s.qtd_passageiros)||0) + passageirosCarona(s.id);
+  return Math.max(0, cap - ocup);
+}
+// Viagens aprovadas, ainda não saídas, hoje ou no futuro, com vaga sobrando
+function viagensComVaga(){
+  var hoje = now().toISOString().slice(0,10);
+  return (D.solicitacoes||[]).filter(function(s){
+    return s.status === 'aprovada' && !s.saida_registrada &&
+           (!s.data_viagem || String(s.data_viagem).slice(0,10) >= hoje) &&
+           vagasLivresSol(s) > 0;
+  });
+}
+// Viagens com vaga que o usuário atual pode pegar (de outras secretarias; admin vê todas)
+function caronasVisiveis(){
+  var minha = _sessao ? (_sessao.secretaria||'') : '';
+  return viagensComVaga().filter(function(s){
+    return veTudo() || (s.sec||'') !== minha;
+  }).sort(function(a,b){ return String(a.data_viagem||'').localeCompare(String(b.data_viagem||'')); });
+}
+
 function abrirSolicitacao(vid, editId) {
   var s = editId ? getS(editId) : null;
   document.getElementById('sol-id').value = editId || '';
@@ -3450,6 +3496,7 @@ function renderSolicitacoes() {
         (s.passageiros&&s.passageiros.length?'<span>📝 '+s.passageiros.join(', ')+'</span>':'')+
         (s.obs?'<span>💬 '+s.obs+'</span>':'')+
       '</div>'+
+      caronaResumoSol(s)+
       (isAdmin() && s.status==='pendente' ? '<div class="actions"><button class="btn success btn-aprov" data-id="'+s.id+'">✅ Aprovar</button><button class="btn danger btn-recus" data-id="'+s.id+'">❌ Recusar</button></div>' : '')+
       (!isAdmin() && s.status==='pendente' ? '<div class="actions"><button class="btn btn-edit-sol" data-id="'+s.id+'" data-vid="'+s.vid+'">✏️ Editar</button></div>' : '')+
       (s.status==='recusada'&&s.motivo_recusa?'<div style="font-size:11px;color:#DC2626;margin-top:6px">Motivo: '+s.motivo_recusa+'</div>':'')+
@@ -3526,6 +3573,124 @@ function recusarLote(){
 // ── abrirSaida para veículo liberado (admin no portão) ────────
 
 
+// ── CARONAS: render, reserva, cancelamento ────────────────────
+function caronaResumoSol(s){
+  if(!s || s.status !== 'aprovada') return '';
+  var v = getV(s.vid); var cap = v ? (parseInt(v.capacidade)||0) : 0;
+  if(!cap) return '';
+  var cars = caronasDe(s.id);
+  var livres = vagasLivresSol(s);
+  if(!cars.length && (s.saida_registrada || livres<=0)) return '';
+  var html = '<div style="margin-top:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:7px 10px;font-size:12px">';
+  if(!s.saida_registrada && livres>0){
+    html += '<div style="color:#047857;font-weight:600">🚐 '+livres+' vaga(s) livre(s) — disponível como carona para outras secretarias</div>';
+  }
+  if(cars.length){
+    html += '<div style="margin-top:'+(!s.saida_registrada && livres>0?'5px':'0')+';color:#065F46">🧍 Caronas: '+
+      cars.map(function(c){ return (c.secretaria||c.por_nome||'—')+' ('+c.qtd+')'; }).join(', ')+'</div>';
+  }
+  return html + '</div>';
+}
+function renderCaronas(){
+  var cont = document.getElementById('lista-caronas');
+  if(!cont) return;
+  var minha = _sessao ? (_sessao.secretaria||'') : '';
+  var viagens = caronasVisiveis();
+  if(!viagens.length){
+    cont.innerHTML = '<div class="empty">Nenhuma viagem com vaga disponível no momento.</div>';
+    return;
+  }
+  cont.innerHTML = viagens.map(function(s){
+    var v = getV(s.vid);
+    var livres = vagasLivresSol(s);
+    var cars = caronasDe(s.id);
+    var caronasHTML = '';
+    if(cars.length){
+      caronasHTML = '<div style="margin-top:9px;border-top:1px dashed #E5E7EB;padding-top:8px">'+
+        '<div style="font-size:11px;font-weight:700;color:#777;margin-bottom:5px">CARONAS RESERVADAS</div>'+
+        cars.map(function(c){
+          var podeCancelar = veTudo() || (c.secretaria && c.secretaria===minha) || (_sessao && c.por_login===_sessao.login);
+          return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0">'+
+            '<span>🧍 <b>'+c.qtd+'</b> · '+(c.secretaria||c.por_nome||'—')+(c.nomes?' — '+c.nomes:'')+(c.obs?' <span style="color:#999">('+c.obs+')</span>':'')+'</span>'+
+            (podeCancelar?'<button class="btn danger" style="font-size:10px;padding:2px 8px;margin-left:auto" onclick="cancelarCarona(\''+c.id+'\')">cancelar</button>':'')+
+          '</div>';
+        }).join('')+
+      '</div>';
+    }
+    return '<div class="card" style="margin-bottom:10px;padding:13px 15px">'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:170px">'+
+          '<div style="font-weight:700;font-size:14px">'+(v?(v.placa+' — '+v.descricao):'Veículo')+'</div>'+
+          '<div style="font-size:12px;color:#666;margin-top:2px">🏛️ '+(s.sec||'—')+'</div>'+
+          '<div style="font-size:12px;color:#444;margin-top:3px">📍 <b>'+(s.destino||'—')+'</b> · 🗓️ '+fmtDataViagem(s.data_viagem)+(s.motorista?' · 👤 '+s.motorista:'')+'</div>'+
+        '</div>'+
+        '<div style="text-align:center;min-width:58px">'+
+          '<div style="font-size:24px;font-weight:800;color:#0F6E56;line-height:1">'+livres+'</div>'+
+          '<div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px">livre'+(livres!==1?'s':'')+'</div>'+
+        '</div>'+
+        '<button class="btn primary" onclick="abrirReservaCarona(\''+s.id+'\')" style="background:#0F6E56;border-color:#0F6E56">+ Reservar vaga</button>'+
+      '</div>'+
+      caronasHTML+
+    '</div>';
+  }).join('');
+}
+
+var _reservaSolId = null;
+function abrirReservaCarona(solId){
+  var s = getS(solId);
+  if(!s){ toast('Viagem não encontrada.'); return; }
+  var livres = vagasLivresSol(s);
+  if(livres <= 0){ toast('Esta viagem já está lotada.'); renderCaronas(); return; }
+  _reservaSolId = solId;
+  var v = getV(s.vid);
+  document.getElementById('reserva-carona-info').innerHTML =
+    '<b>'+(v?(v.placa+' — '+v.descricao):'Veículo')+'</b><br>'+
+    '🏛️ '+(s.sec||'—')+'<br>'+
+    '📍 '+(s.destino||'—')+' · 🗓️ '+fmtDataViagem(s.data_viagem)+'<br>'+
+    '🟢 <b>'+livres+'</b> vaga(s) livre(s)';
+  var inp = document.getElementById('rc-qtd');
+  inp.value = 1; inp.max = livres;
+  document.getElementById('rc-nomes').value = '';
+  document.getElementById('rc-obs').value = '';
+  abrir('ov-reserva-carona');
+}
+function confirmarReservaCarona(){
+  var s = getS(_reservaSolId);
+  if(!s){ fechar('ov-reserva-carona'); return; }
+  var livres = vagasLivresSol(s);
+  var qtd = parseInt(document.getElementById('rc-qtd').value)||0;
+  if(qtd <= 0){ alert('Informe quantos passageiros vão.'); return; }
+  if(qtd > livres){ alert('Só há '+livres+' vaga(s) livre(s) nesta viagem.'); renderCaronas(); return; }
+  if(!D.caronas) D.caronas = [];
+  D.caronas.push({
+    id: uid('c'), solId: s.id, vid: s.vid,
+    secretaria: _sessao ? (_sessao.secretaria||'') : '',
+    por_login: _sessao ? _sessao.login : '',
+    por_nome: _sessao ? _sessao.nome : '',
+    qtd: qtd,
+    nomes: document.getElementById('rc-nomes').value.trim(),
+    obs: document.getElementById('rc-obs').value.trim(),
+    criado_em: now().toISOString()
+  });
+  salvar();
+  fechar('ov-reserva-carona');
+  toast('✅ Vaga reservada! '+qtd+' lugar(es).');
+  renderTudo();
+}
+function cancelarCarona(id){
+  confirmarAcao('🗑️','Cancelar carona?','A(s) vaga(s) voltará(ão) a ficar disponível(is) para outras secretarias.',function(){
+    D.caronas = (D.caronas||[]).filter(function(c){ return c.id !== id; });
+    salvar(); toast('Carona cancelada.'); renderTudo();
+  });
+}
+function atualizarBadgeCaronas(){
+  var b = document.getElementById('badge-caronas');
+  if(!b) return;
+  var n = caronasVisiveis().length;
+  if(n > 0){ b.textContent = n > 99 ? '99+' : n; b.style.display = 'inline-flex'; }
+  else { b.style.display = 'none'; }
+}
+
 function renderTudo() {
   renderPainel();
   renderSaidas();
@@ -3539,6 +3704,8 @@ function renderTudo() {
   renderBackup();
   renderUsuarios();
   atualizarBadgeSolicitacoes();
+  renderCaronas();
+  atualizarBadgeCaronas();
 }
 
 // Badge de notificação: nº de solicitações PENDENTES visíveis ao usuário
@@ -3738,6 +3905,20 @@ startCron();
     <div class="actions" style="margin-top:12px">
       <button class="btn primary" id="sll-confirmar" onclick="confirmarSolicitacaoLote()">Enviar solicitações</button>
       <button class="btn" onclick="fechar('ov-solicitacao-lote')">Cancelar</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="ov-reserva-carona">
+  <div class="modal">
+    <button class="modal-close" onclick="fechar('ov-reserva-carona')">×</button>
+    <h2>🚐 Reservar vaga</h2>
+    <div id="reserva-carona-info" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;margin-bottom:14px"></div>
+    <div class="field"><label>Quantos passageiros vão? *</label><input type="number" id="rc-qtd" min="1" value="1"></div>
+    <div class="field"><label>Nomes dos passageiros (opcional)</label><input type="text" id="rc-nomes" placeholder="Ex: João Silva, Maria Souza"></div>
+    <div class="field"><label>Observação / motivo (opcional)</label><input type="text" id="rc-obs" placeholder="Ex: reunião, perícia, entrega de documentos..."></div>
+    <div class="actions">
+      <button class="btn primary" onclick="confirmarReservaCarona()" style="background:#0F6E56;border-color:#0F6E56">Confirmar reserva</button>
+      <button class="btn" onclick="fechar('ov-reserva-carona')">Cancelar</button>
     </div>
   </div>
 </div>
