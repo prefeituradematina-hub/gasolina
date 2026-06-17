@@ -101,6 +101,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .stat.sy{background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 4px 15px rgba(37,99,235,.25)}
 .stat.sr{background:linear-gradient(135deg,#DC2626,#B91C1C);box-shadow:0 4px 15px rgba(220,38,38,.25)}
 .stat.sp{background:linear-gradient(135deg,#7C3AED,#6D28D9);box-shadow:0 4px 15px rgba(124,58,237,.25)}
+.stat.ssol{background:linear-gradient(135deg,#F59E0B,#D97706);box-shadow:0 4px 15px rgba(245,158,11,.28)}
 .stat-label{font-size:10px;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.75)}
 .stat.st .stat-label{color:var(--text3)}
 .stat-val{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1}
@@ -198,6 +199,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .card-title{font-size:14px;font-weight:700;color:var(--text)}
 .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
 .badge.guardado{background:#DCFCE7;color:#15803D}
+.badge.solicitado{background:#FEF3C7;color:#92400E}
 .badge.trabalhando{background:#FEF9C3;color:#A16207}
 .badge.irregular{background:#FEE2E2;color:#991B1B}
 .badge.agendado{background:#DBEAFE;color:#1D4ED8}
@@ -310,6 +312,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .status-group-header.guardado{background:rgba(22,163,74,.1);color:var(--green);border-left:3px solid var(--green)}
 .status-group-header.trabalhando{background:rgba(37,99,235,.1);color:#2563EB;border-left:3px solid #2563EB}
 .status-group-header.liberado{background:rgba(249,115,22,.1);color:#EA580C;border-left:3px solid #EA580C}
+.status-group-header.solicitado{background:rgba(245,158,11,.12);color:#B45309;border-left:3px solid #F59E0B}
 .status-group-header.irregular{background:rgba(220,38,38,.12);color:var(--red);border-left:3px solid var(--red)}
 .status-group-header.ausente{background:rgba(124,58,237,.1);color:var(--purple);border-left:3px solid var(--purple)}
 .status-group-header.fora_horario{background:rgba(107,114,128,.1);color:var(--gray);border-left:3px solid var(--gray)}
@@ -420,6 +423,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <button class="btn" id="btn-fil-ausente" onclick="toggleFiltro('ausente')" style="font-size:11px;padding:5px 10px" title="Mostrar não está no local">❓</button>
         <button class="btn" id="btn-fil-fora_horario" onclick="toggleFiltro('fora_horario')" style="font-size:11px;padding:5px 10px" title="Mostrar fora do horário">🌙</button>
         <button class="btn" id="btn-fil-liberado" onclick="toggleFiltro('liberado')" style="font-size:11px;padding:5px 10px" title="Mostrar liberados para viagem">🗓️</button>
+        <button class="btn" id="btn-fil-solicitado" onclick="toggleFiltro('solicitado')" style="font-size:11px;padding:5px 10px" title="Mostrar só solicitados">🟡</button>
       </div>
     </div>
     <div id="frota-container"></div>
@@ -853,8 +857,8 @@ const SECS = [
   'Secretaria de Cultura, Esporte e Lazer','Secretaria de Governo',
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
-const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',pendente:'Aguard. aprovação'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75'};
+const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',solicitado:'Solicitado',pendente:'Aguard. aprovação'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',solicitado:'#F59E0B'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -1221,6 +1225,8 @@ function getStatus(vid) {
   // Check if liberado (approved request, waiting departure)
   var sol = getSolicitacaoLiberada(vid);
   if(sol) return 'liberado';
+  // Solicitação pendente de aprovação (pedido de secretário) → solicitado
+  if(getSolicitacaoPendente(vid)) return 'solicitado';
   var v = getV(vid);
   if(v && !estaNoHorario(v)) return 'fora_horario';
   return 'guardado';
@@ -1308,7 +1314,7 @@ var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
   // Update filter button styles
-  ['irregular','trabalhando','guardado','ausente','fora_horario','liberado'].forEach(function(s) {
+  ['irregular','trabalhando','guardado','ausente','fora_horario','liberado','solicitado'].forEach(function(s) {
     var btn = document.getElementById('btn-fil-'+s);
     if(!btn) return;
     var on = _filtroStatus === s;
@@ -1340,8 +1346,8 @@ function setOrdem(mode) {
 }
 
 function renderFrotaPorStatus() {
-  var ORDER = ['irregular','liberado','trabalhando','ausente','guardado','fora_horario'];
-  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_horario:'🌙 Fora do horário'};
+  var ORDER = ['irregular','liberado','solicitado','trabalhando','ausente','guardado','fora_horario'];
+  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_horario:'🌙 Fora do horário'};
   var grupos = {};
   ORDER.forEach(function(s){ grupos[s] = []; });
   getVeiculosFiltrados().forEach(function(v){ grupos[getStatus(v.id)].push(v); });
@@ -1420,27 +1426,23 @@ function makeBtnVeiculo(v) {
   var agendaWarnHTML = '';
   var _agHoje = getAgendaHoje(v.id);
   var _solPend = getSolicitacaoPendente(v.id);
-  // Veículo parado COM solicitação pendente → estado visual "solicitado" (amarelo)
-  var ehSolicitado = !!_solPend && (s === 'guardado' || s === 'fora_horario');
   if(s==='liberado') {
     agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(255,255,255,.3)">✅ Aprovado p/ viagem</div>';
   } else if(_agHoje && (s==='guardado'||s==='fora_horario')) {
     agendaWarnHTML = '<div class="agenda-warn">📅 Agendado hoje</div>';
-  } else if(_solPend && isAdmin()) {
-    agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(99,102,241,.7)">⏳ Solicitação pendente</div>';
   }
 
   // Botão saída rápida visível no card
   var rapidaHTML = '';
-  if(isAdmin() && (s==='guardado'||s==='fora_horario'||s==='liberado')) {
+  if(isAdmin() && (s==='guardado'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
     var escR = getEscalaHoje(v);
     if(escR && escR.destino) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
-  return '<button class="vbtn '+s+(ehSolicitado?' solicitado':'')+'" onclick="verVeiculo(\''+v.id+'\')">'+
+  return '<button class="vbtn '+s+'" onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
-    '<div style="font-size:9px;margin-bottom:1px">'+(ehSolicitado?'SOLICITADO':LABEL[s].toUpperCase())+'</div>'+
+    '<div style="font-size:9px;margin-bottom:1px">'+LABEL[s].toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+( v.tipo||'🚗')+'</div>'+
 
     '<div class="vplaca-wrap">'+
@@ -1459,10 +1461,10 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  var g=0,t=0,ir=0,au=0,fh=0;
+  var g=0,t=0,ir=0,au=0,sol=0,fh=0;
   D.veiculos.forEach(function(v){
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else fh++;
   });
 
   if(_ordemMode === 'status') {
@@ -1481,7 +1483,8 @@ function renderPainel() {
     '<div class="stat sg"><div class="stat-label">Guardados</div><div class="stat-val">'+g+'</div></div>'+
     '<div class="stat sy"><div class="stat-label">Em uso</div><div class="stat-val">'+t+'</div></div>'+
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
-    '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>';
+    '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>'+
+    '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>';
 
   var al = '';
   if(ir>0) al += '<div class="alerta vermelho">🚨 '+ir+' veículo(s) com retorno em atraso!</div>';
@@ -1640,7 +1643,7 @@ function _candidatosLote(){
     }
     // 2) Parado e disponível para sair: guardado OU fora do horário de escala.
     //    (não entram: em viagem, ausente/não está no local)
-    if(st === 'guardado' || st === 'fora_horario'){
+    if(st === 'guardado' || st === 'fora_horario' || st === 'solicitado'){
       var esc = getEscalaHoje(v);
       var item = {
         vid:v.id, fonte: esc?'escala':'livre',
@@ -3031,7 +3034,7 @@ function iniciarSessaoPortal(){
     return;
   }
   // Frentistas têm acesso TOTAL ao controle de frota (perfil admin, todas as funções)
-  var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista');
+  var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista' || s.role === 'autorizador');
   var secBruta = (s.dados && s.dados.secretariaVinculada) || s.sec || '';
   _sessao = {
     id: s.u,
@@ -3062,8 +3065,9 @@ function fazerLogout() {
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
 function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
-// Vê todos os veículos/solicitações de todas as secretarias (admin e autorizador).
-// O autorizador mantém as ações restritas de secretário, mas com visão total.
+// Vê todos os veículos/solicitações de todas as secretarias.
+// Admin, frentista e autorizador entram como perfil admin (acesso total),
+// então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
 function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autorizador'); }
 
 function podeVerVeiculo(v) {
