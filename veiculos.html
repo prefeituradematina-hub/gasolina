@@ -1244,11 +1244,23 @@ function getStatus(vid) {
   return 'guardado';
 }
 
+// Considera a viagem como "já saída" se foi marcada OU se o veículo tem
+// uma movimentação registrada na data da viagem (saiu e/ou voltou nesse dia).
+// Assim, ao voltar para a garagem o carro deixa de ficar laranja e volta a verde.
+function solicitacaoJaSaiu(s){
+  if(!s) return true;
+  if(s.saida_registrada) return true;
+  var d = s.data_viagem ? String(s.data_viagem).slice(0,10) : '';
+  if(!d) return false;
+  return (D.movimentacoes||[]).some(function(m){
+    return m.vid===s.vid && m.saida && String(m.saida).slice(0,10)===d;
+  });
+}
 function getSolicitacaoLiberada(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    return s.vid===vid && s.status==='aprovada' && !s.saida_registrada &&
+    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) &&
            s.data_viagem && s.data_viagem.slice(0,10)===hoje;
   }) || null;
 }
@@ -3223,7 +3235,7 @@ function vagasLivresSol(s){
 function viagensComVaga(){
   var hoje = now().toISOString().slice(0,10);
   return (D.solicitacoes||[]).filter(function(s){
-    return s.status === 'aprovada' && !s.saida_registrada &&
+    return s.status === 'aprovada' && !solicitacaoJaSaiu(s) &&
            (!s.data_viagem || String(s.data_viagem).slice(0,10) >= hoje) &&
            vagasLivresSol(s) > 0;
   });
@@ -3580,13 +3592,14 @@ function caronaResumoSol(s){
   if(!cap) return '';
   var cars = caronasDe(s.id);
   var livres = vagasLivresSol(s);
-  if(!cars.length && (s.saida_registrada || livres<=0)) return '';
+  var jaSaiu = solicitacaoJaSaiu(s);
+  if(!cars.length && (jaSaiu || livres<=0)) return '';
   var html = '<div style="margin-top:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:7px 10px;font-size:12px">';
-  if(!s.saida_registrada && livres>0){
+  if(!jaSaiu && livres>0){
     html += '<div style="color:#047857;font-weight:600">🚐 '+livres+' vaga(s) livre(s) — disponível como carona para outras secretarias</div>';
   }
   if(cars.length){
-    html += '<div style="margin-top:'+(!s.saida_registrada && livres>0?'5px':'0')+';color:#065F46">🧍 Caronas: '+
+    html += '<div style="margin-top:'+(!jaSaiu && livres>0?'5px':'0')+';color:#065F46">🧍 Caronas: '+
       cars.map(function(c){ return (c.secretaria||c.por_nome||'—')+' ('+c.qtd+')'; }).join(', ')+'</div>';
   }
   return html + '</div>';
