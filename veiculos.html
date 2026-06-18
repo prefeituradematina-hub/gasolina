@@ -654,6 +654,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 <div class="overlay" id="ov-agenda">
   <div class="modal">
     <h2 id="ag-titulo">Novo agendamento</h2>
+    <div id="ag-volta-hint" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E40AF;margin-bottom:12px;line-height:1.5"></div>
     <div class="form-row">
       <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag')"></select></div>
       <div class="field"><label>Motorista</label><select id="ag-mot"></select><button type="button" onclick="toggleMotManual('ag',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="ag-mot-manual" style="display:none;margin-top:5px"><input type="text" id="ag-mot-texto" placeholder="Nome do motorista..."></div></div>
@@ -1098,7 +1099,16 @@ if(fbDB){
 D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; });
 
 // ── SELETOR TIPO + COR ──────────────────────────────────────
-var TIPOS_VEI=[{e:'🚗',n:'Carro'},{e:'🚙',n:'SUV'},{e:'🛻',n:'Picape'},{e:'🚐',n:'Van'},{e:'🚌',n:'Ônibus'},{e:'🚎',n:'Micro-ônibus'},{e:'🚑',n:'Ambulância'},{e:'🚒',n:'Bombeiros'},{e:'🚓',n:'Viatura'},{e:'🚕',n:'Táxi'},{e:'🏎️',n:'Esportivo'},{e:'🚚',n:'Caminhão'},{e:'🚛',n:'Carreta'},{e:'🚜',n:'Trator'},{e:'🏍️',n:'Moto'},{e:'🛵',n:'Scooter'},{e:'🚲',n:'Bicicleta'},{e:'🚁',n:'Helicóptero'}];
+var TIPOS_VEI=[{e:'🚗',n:'Carro'},{e:'🚘',n:'Sedan'},{e:'🚙',n:'SUV'},{e:'🛻',n:'Picape'},{e:'🚐',n:'Van'},{e:'🚌',n:'Ônibus'},{e:'🚎',n:'Micro-ônibus'},{e:'🚑',n:'Ambulância'},{e:'🚒',n:'Bombeiros'},{e:'🚓',n:'Viatura'},{e:'🚕',n:'Táxi'},{e:'🏎️',n:'Esportivo'},{e:'🚚',n:'Caminhão'},{e:'🚛',n:'Carreta'},{e:'m:cacamba',n:'Caçamba'},{e:'m:trator',n:'Trator'},{e:'m:pa',n:'Pá carregadeira'},{e:'m:retro',n:'Retroescavadeira'},{e:'m:patrol',n:'Patrol/Motoniv.'},{e:'🏗️',n:'Guindaste'},{e:'🏍️',n:'Moto'},{e:'🛵',n:'Scooter'},{e:'🚲',n:'Bicicleta'},{e:'🛺',n:'Triciclo'},{e:'⛴️',n:'Barco/Balsa'},{e:'🚁',n:'Helicóptero'}];
+// Ícones SVG desenhados para máquinas pesadas (não existem como emoji no Unicode)
+var ICONES_SVG={
+'m:trator':'<svg viewBox="0 0 28 20" width="1.15em" height="1.15em" style="vertical-align:middle;display:inline-block"><circle cx="20" cy="13.5" r="6" fill="#1b1b1b"/><circle cx="20" cy="13.5" r="2.4" fill="#cfcfcf"/><circle cx="7" cy="15" r="3.4" fill="#1b1b1b"/><circle cx="7" cy="15" r="1.3" fill="#cfcfcf"/><path d="M3 13 L3 10.5 L9.5 10.5 L11.5 4.5 L15.5 4.5 L15.5 10.5 L26.5 10.5 L26.5 13.5 L25 13.5" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7" stroke-linejoin="round"/><rect x="11.7" y="5" width="3.6" height="5.2" fill="#7fc4ef"/><rect x="4.6" y="5.5" width="1" height="5" rx="0.5" fill="#444"/></svg>',
+'m:pa':'<svg viewBox="0 0 28 20" width="1.15em" height="1.15em" style="vertical-align:middle;display:inline-block"><circle cx="9" cy="14" r="4.6" fill="#1b1b1b"/><circle cx="9" cy="14" r="1.8" fill="#cfcfcf"/><circle cx="20.5" cy="14" r="4.6" fill="#1b1b1b"/><circle cx="20.5" cy="14" r="1.8" fill="#cfcfcf"/><path d="M13.5 9 L7 9 L2 12.6 L13.5 12.6 Z" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7" stroke-linejoin="round"/><path d="M3 10.4 L3 15.6 L1 15.6 L1 11 Z" fill="#555"/><path d="M14 5.5 L24.5 5.5 L24.5 12 L13 12 L13 8 Z" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7" stroke-linejoin="round"/><rect x="15" y="3.6" width="6" height="3" rx="0.6" fill="#7fc4ef"/></svg>',
+'m:retro':'<svg viewBox="0 0 28 20" width="1.15em" height="1.15em" style="vertical-align:middle;display:inline-block"><circle cx="8" cy="15" r="3.4" fill="#1b1b1b"/><circle cx="8" cy="15" r="1.3" fill="#cfcfcf"/><circle cx="19" cy="15" r="4.4" fill="#1b1b1b"/><circle cx="19" cy="15" r="1.7" fill="#cfcfcf"/><path d="M9.5 10.5 L4 10.5 L1.5 12.8 L9.5 12.8 Z" fill="#F5B301" stroke="#7a5c00" stroke-width="0.6"/><rect x="0.6" y="10.2" width="1.7" height="3.6" fill="#555"/><rect x="9.5" y="5.5" width="7" height="6.5" rx="1" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7"/><rect x="10.6" y="6.3" width="5" height="3" fill="#7fc4ef"/><path d="M16 7.5 L21.5 4 L23.6 5.6" stroke="#7a5c00" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M22.4 5 L26 6.4 L24.4 9.6 Z" fill="#555"/></svg>',
+'m:patrol':'<svg viewBox="0 0 28 20" width="1.15em" height="1.15em" style="vertical-align:middle;display:inline-block"><circle cx="5" cy="15" r="3" fill="#1b1b1b"/><circle cx="21.5" cy="15" r="3.4" fill="#1b1b1b"/><circle cx="21.5" cy="15" r="1.3" fill="#cfcfcf"/><path d="M5 11.5 L24 11.5 L24 9.5 L7 9.5 L4 6 L3 6 L5.5 9.5 Z" fill="#F5B301" stroke="#7a5c00" stroke-width="0.6" stroke-linejoin="round"/><rect x="17.5" y="4.5" width="7" height="6.5" rx="1" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7"/><rect x="18.5" y="5.3" width="5" height="3" fill="#7fc4ef"/><path d="M9.5 12 L16 15.5" stroke="#666" stroke-width="2" stroke-linecap="round"/></svg>',
+'m:cacamba':'<svg viewBox="0 0 28 20" width="1.15em" height="1.15em" style="vertical-align:middle;display:inline-block"><circle cx="7" cy="15.5" r="3" fill="#1b1b1b"/><circle cx="16.5" cy="15.5" r="3" fill="#1b1b1b"/><circle cx="21.5" cy="15.5" r="3" fill="#1b1b1b"/><path d="M2.5 13 L2.5 7.5 L7 7.5 L8.5 10 L8.5 13 Z" fill="#2E78B6" stroke="#184a73" stroke-width="0.5"/><path d="M9 13 L9 5.5 L26 9 L26 13 Z" fill="#F5B301" stroke="#7a5c00" stroke-width="0.7" stroke-linejoin="round"/></svg>'
+};
+function iconeVei(t){ t=t||'🚗'; return ICONES_SVG[t]||t; }
 var CORES_VEI=[{id:'branco',hex:'#F1F5F9',n:'Branco'},{id:'prata',hex:'#CBD5E1',n:'Prata'},{id:'cinza',hex:'#64748B',n:'Cinza'},{id:'preto',hex:'#1E293B',n:'Preto'},{id:'vermelho',hex:'#EF4444',n:'Vermelho'},{id:'laranja',hex:'#F97316',n:'Laranja'},{id:'amarelo',hex:'#EAB308',n:'Amarelo'},{id:'verde',hex:'#22C55E',n:'Verde'},{id:'azul',hex:'#3B82F6',n:'Azul'},{id:'azulesc',hex:'#1E3A8A',n:'Azul esc.'},{id:'roxo',hex:'#8B5CF6',n:'Roxo'},{id:'rosa',hex:'#EC4899',n:'Rosa'},{id:'marrom',hex:'#92400E',n:'Marrom'},{id:'bege',hex:'#D4A574',n:'Bege'},{id:'vinho',hex:'#7C0020',n:'Vinho'}];
 var _selTipo='🚗', _selCor='branco';
 var _justifAprovado=false;
@@ -1113,7 +1123,7 @@ function buildVeiPicker(){
   var tg=document.getElementById('tipo-grid'); if(!tg)return;
   // Build tipo buttons using data attributes to avoid onclick quote issues
   tg.innerHTML=TIPOS_VEI.map(function(t){
-    return '<div class="tipo-btn'+(t.e===_selTipo?' on':'')+'" data-e="'+t.e+'" data-picker="tipo"><div class="te">'+t.e+'</div><div class="tn">'+t.n+'</div></div>';
+    return '<div class="tipo-btn'+(t.e===_selTipo?' on':'')+'" data-e="'+t.e+'" data-picker="tipo"><div class="te">'+iconeVei(t.e)+'</div><div class="tn">'+t.n+'</div></div>';
   }).join('');
   var cg=document.getElementById('cor-grid'); if(!cg)return;
   cg.innerHTML=CORES_VEI.map(function(k){
@@ -1145,7 +1155,7 @@ function pickerCor(corId){
 function atualizarPreviewVei(){
   var inp=document.getElementById('v-tipo'); if(inp) inp.value=_selTipo;
   var inpc=document.getElementById('v-cor'); if(inpc) inpc.value=_selCor;
-  var icon=document.getElementById('v-tipo-icon'); if(icon) icon.textContent=_selTipo;
+  var icon=document.getElementById('v-tipo-icon'); if(icon) icon.innerHTML=iconeVei(_selTipo);
   var lbl=document.getElementById('v-tipo-label'); if(lbl) lbl.textContent=getTipoNome(_selTipo)+' — '+getCorNome(_selCor);
   var dot=document.getElementById('vei-cor-dot'); if(dot){dot.style.background=getCorHex(_selCor);dot.style.border='3px solid #fff';}
   var box=document.getElementById('vei-preview-box'); if(box) box.style.background=getCorHex(_selCor)+'22';
@@ -1467,7 +1477,7 @@ function makeBtnVeiculo(v) {
   return '<button class="vbtn '+s+'" onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
     '<div style="font-size:9px;margin-bottom:1px">'+LABEL[s].toUpperCase()+'</div>'+
-    '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+( v.tipo||'🚗')+'</div>'+
+    '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
 
     '<div class="vplaca-wrap">'+
     '<div class="vplaca-top">'+
@@ -1912,6 +1922,9 @@ function verVeiculo(vid) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
   } else if(s==='trabalhando'||s==='irregular') {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
+    if(isAdmin()) {
+      btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
+    }
   } else {
     if(!isAdmin()) {
       // Secretário só pode solicitar viagem
@@ -2115,8 +2128,20 @@ function confirmarEntrada() {
 // ── AGENDAMENTO ───────────────────────────────────────────────
 function abrirAgenda(vid) {
   popVeis(['ag-vei']); popMots(['ag-mot']); popSecs(['ag-sec']);
-  document.getElementById('ag-saida').value = nowLocal();
-  document.getElementById('ag-retorno').value = nowLocal();
+  // Se o carro está em viagem, o agendamento começa a partir da volta prevista
+  var movAtual = vid ? getMovAtiva(vid) : null;
+  var inicioAg = (movAtual && movAtual.retorno) ? String(movAtual.retorno).slice(0,16) : nowLocal();
+  document.getElementById('ag-saida').value = inicioAg;
+  document.getElementById('ag-retorno').value = inicioAg;
+  var voltaHint = document.getElementById('ag-volta-hint');
+  if(voltaHint){
+    if(movAtual && movAtual.retorno){
+      voltaHint.style.display = 'block';
+      voltaHint.innerHTML = '🚗 Este veículo está <b>em viagem</b>, com retorno previsto para <b>'+fmtDT(movAtual.retorno)+'</b>. O agendamento já foi posicionado para começar após o retorno — ajuste os horários se precisar.';
+    } else {
+      voltaHint.style.display = 'none';
+    }
+  }
   document.getElementById('ag-solic').value = '';
   document.getElementById('ag-itin').value = '';
   document.getElementById('ag-outro').value = '';
@@ -2156,6 +2181,15 @@ function confirmarAgenda() {
   var saida = document.getElementById('ag-saida').value;
   var ret   = document.getElementById('ag-retorno').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo e horários.'); return; }
+  // Carro em viagem: analisa a data de volta e avisa se o agendamento começar antes do retorno
+  var movEmViagem = getMovAtiva(vid);
+  if(movEmViagem && movEmViagem.retorno){
+    var voltaPrev = new Date(movEmViagem.retorno);
+    var inicioNovo = new Date(saida);
+    if(!isNaN(voltaPrev) && !isNaN(inicioNovo) && inicioNovo < voltaPrev){
+      if(!confirm('⚠️ Este veículo está em viagem e só retorna em '+fmtDT(movEmViagem.retorno)+'.\n\nO agendamento começa ANTES do retorno ('+fmtDT(saida)+'), o que gera conflito de uso.\n\nDeseja agendar mesmo assim?')) return;
+    }
+  }
   var motid = getMotId('ag');
   var motNomeAg = getMotNome('ag')||(motid?((getM(motid)||{}).nome||'—'):'—');
   var mot = motid ? getM(motid) : null;
