@@ -591,7 +591,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Secretaria solicitante</label><select id="s-sec"><option value="">— Selecione —</option></select></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>Horário saída *</label><input type="datetime-local" id="s-saida" readonly style="background:#F9FAFB;cursor:not-allowed;color:#6B7280"></div>
+      <div class="field"><label>Horário saída *</label><input type="datetime-local" id="s-saida"><div style="font-size:10.5px;color:#92400E;margin-top:3px">✏️ Pode ajustar (ex.: carro que saiu à noite e está sendo lançado agora)</div></div>
       <div class="field"><label>Retorno previsto *</label><input type="datetime-local" id="s-retorno"></div>
     </div>
     <div class="form-row">
@@ -3048,6 +3048,18 @@ function filtrarVeiSelect(selectId, searchId) {
   if(sel.querySelector('[value="'+prev+'"]')) sel.value=prev;
   if(filtered.length===1){sel.value=filtered[0].id;if(typeof hintVagas==='function')hintVagas('ag');}
 }
+function filtrarVeiSolic(){
+  var q = ((document.getElementById('sol-vei-busca')||{}).value||'').toLowerCase().trim();
+  var sel = document.getElementById('sol-vei');
+  if(!sel) return;
+  var prev = sel.value;
+  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
+  sel.innerHTML = filtered.map(function(v){
+    return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
+  }).join('')||'<option value="">Nenhum encontrado</option>';
+  if(sel.querySelector('[value="'+prev+'"]')) sel.value=prev;
+  if(filtered.length===1) sel.value=filtered[0].id;
+}
 
 
 // ══════════════════════════════════════════════════════════════
@@ -3289,13 +3301,15 @@ function abrirSolicitacao(vid, editId) {
   // Populate veiculo select filtered by secretaria
   var sel = document.getElementById('sol-vei');
   var alvoVid = vid || (s?s.vid:'');
-  var veics = isAdmin() ? D.veiculos : D.veiculos.filter(podeVerVeiculo);
+  var sb = document.getElementById('sol-vei-busca'); if(sb) sb.value='';
+  var veics = D.veiculos; // busca geral: toda a frota
   sel.innerHTML = veics.map(function(vv){
     return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
   }).join('');
   document.getElementById('sol-mot-nome').value = s?(s.motorista||''):'';
   document.getElementById('sol-destino').value = s?(s.destino||''):'';
   document.getElementById('sol-data').value = s?(s.data_viagem||''):'';
+  document.getElementById('sol-hora-retirada').value = s?(s.hora_retirada||''):'';
   document.getElementById('sol-obs').value = s?(s.obs||''):'';
   // Passageiros
   _solPessoas = s && Array.isArray(s.passageiros) ? s.passageiros.slice() : [];
@@ -3354,6 +3368,7 @@ function confirmarSolicitacao() {
   var mot  = document.getElementById('sol-mot-nome').value.trim();
   var dest = document.getElementById('sol-destino').value.trim();
   var data = document.getElementById('sol-data').value;
+  var hora = document.getElementById('sol-hora-retirada').value;
   var obs  = document.getElementById('sol-obs').value.trim();
   var sec  = document.getElementById('sol-sec') ? document.getElementById('sol-sec').value : (_sessao?_sessao.secretaria:'');
   // Pessoas: remove nomes em branco
@@ -3363,6 +3378,8 @@ function confirmarSolicitacao() {
   if(qtd < pessoas.length) qtd = pessoas.length; // total nunca menor que nomes listados
   if(!_sessao) { alert('Você precisa estar logado.'); return; }
   if(!vid||!dest||!data) { alert('Preencha veículo, destino e data.'); return; }
+  if(!hora) { alert('Informe a hora em que o motorista vai pegar o carro.'); return; }
+  if(qtd < 1) { alert('Informe a quantidade de passageiros (mínimo 1).'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
 
   if(editId) {
@@ -3370,6 +3387,7 @@ function confirmarSolicitacao() {
     if(!s) { alert('Solicitação não encontrada.'); return; }
     if(s.status !== 'pendente') { alert('Só é possível editar solicitações que ainda estão aguardando aprovação.'); return; }
     s.vid=vid; s.motorista=mot; s.destino=dest; s.data_viagem=data; s.obs=obs;
+    s.hora_retirada=hora;
     s.qtd_passageiros=qtd; s.passageiros=pessoas; s.editado_em=now().toISOString();
     salvar(); fechar('ov-solicitacao');
     toast('✏️ Solicitação atualizada!');
@@ -3379,6 +3397,7 @@ function confirmarSolicitacao() {
 
   D.solicitacoes.push({
     id:uid_s(), vid:vid, motorista:mot, destino:dest, data_viagem:data,
+    hora_retirada:hora,
     obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
     qtd_passageiros:qtd, passageiros:pessoas,
     status:'pendente', criado_em:now().toISOString(),
@@ -3394,6 +3413,7 @@ function confirmarSolicitacao() {
 function abrirSolicitacaoLote(){
   if(!_sessao){ alert('Você precisa estar logado.'); return; }
   document.getElementById('sll-data').value = '';
+  var _sllh=document.getElementById('sll-hora'); if(_sllh) _sllh.value='';
   document.getElementById('sll-destino').value = '';
   document.getElementById('sll-obs').value = '';
   var secVal = _sessao.secretaria || '';
@@ -3421,7 +3441,7 @@ function abrirSolicitacaoLote(){
       '</div>'+
       '<select id="sll-mot-'+i+'" onchange="sllMotManual('+i+')" style="font-size:12px;padding:5px 8px;max-width:160px">'+motOpts+'</select>'+
       '<input type="text" id="sll-mot-txt-'+i+'" placeholder="Nome do motorista" style="display:none;font-size:12px;padding:5px 8px;max-width:160px;border:1.5px solid #93C5FD;border-radius:6px">'+
-      '<label style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">🧍<input type="number" id="sll-pass-'+i+'" min="0" value="0" style="font-size:12px;padding:5px 6px;width:56px"></label>'+
+      '<label style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">🧍<input type="number" id="sll-pass-'+i+'" min="1" value="1" style="font-size:12px;padding:5px 6px;width:56px"></label>'+
     '</div>';
   }).join('');
   document.getElementById('sll-todos').checked=false;
@@ -3444,11 +3464,20 @@ function sllContador(){
 function confirmarSolicitacaoLote(){
   if(!_sessao){ alert('Você precisa estar logado.'); return; }
   var data = document.getElementById('sll-data').value;
+  var hora = (document.getElementById('sll-hora')||{}).value||'';
   var dest = document.getElementById('sll-destino').value.trim();
   var obs  = document.getElementById('sll-obs').value.trim();
   var chks = document.querySelectorAll('#sll-lista .sll-chk:checked');
   if(!data || !dest){ alert('Preencha a data e o destino da viagem.'); return; }
+  if(!hora){ alert('Informe a hora em que o motorista vai pegar o carro.'); return; }
   if(!chks.length){ alert('Selecione ao menos um veículo.'); return; }
+  var faltaPass = false;
+  chks.forEach(function(chk){
+    var i = chk.getAttribute('data-i');
+    var q = parseInt((document.getElementById('sll-pass-'+i)||{}).value,10);
+    if(isNaN(q)||q<1) faltaPass=true;
+  });
+  if(faltaPass){ alert('Informe a quantidade de passageiros (mínimo 1) em cada veículo selecionado.'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
   var n = 0;
   chks.forEach(function(chk){
@@ -3464,6 +3493,7 @@ function confirmarSolicitacaoLote(){
     var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
     D.solicitacoes.push({
       id:uid_s(), vid:vid, motorista:motNomeFinal, destino:dest, data_viagem:data,
+      hora_retirada:hora,
       obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
       qtd_passageiros:qtd, passageiros:[],
       status:'pendente', criado_em:now().toISOString(),
@@ -3535,6 +3565,7 @@ function renderSolicitacoes() {
       '</div>'+
       '<div class="card-meta">'+
         '<span>📅 <strong>'+new Date(s.data_viagem+'T00:00').toLocaleDateString('pt-BR')+'</strong></span>'+
+        (s.hora_retirada?'<span>🕐 Pega às <strong>'+s.hora_retirada+'</strong></span>':'')+
         '<span>📍 '+s.destino+'</span>'+
         (s.motorista?'<span>👤 '+s.motorista+'</span>':'')+
         '<span>🏛 '+s.sec+'</span>'+
@@ -3905,16 +3936,18 @@ startCron();
     <input type="hidden" id="sol-vid">
     <div class="field">
       <label>Veículo *</label>
+      <input type="text" id="sol-vei-busca" placeholder="🔍 Buscar placa ou nome (toda a frota)..." oninput="filtrarVeiSolic()" autocomplete="off" style="margin-bottom:5px;font-size:12px">
       <select id="sol-vei"></select>
     </div>
     <div class="field"><label>Motorista</label><input type="text" id="sol-mot-nome" placeholder="Nome do motorista"></div>
     <div class="form-row">
       <div class="field"><label>Data da viagem *</label><input type="date" id="sol-data"></div>
-      <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
+      <div class="field"><label>Hora p/ pegar o carro *</label><input type="time" id="sol-hora-retirada"></div>
     </div>
+    <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
     <div class="field"><label>Destino *</label><input type="text" id="sol-destino" placeholder="Ex: Guanambi, Salvador..."></div>
     <div class="form-row">
-      <div class="field"><label>Qtd. de passageiros</label><input type="number" id="sol-qtd-pass" min="0" step="1" value="0" oninput="solSyncQtd()"></div>
+      <div class="field"><label>Qtd. de passageiros *</label><input type="number" id="sol-qtd-pass" min="1" step="1" value="1" oninput="solSyncQtd()"></div>
       <div class="field" style="display:flex;align-items:flex-end"><button type="button" class="btn" style="width:100%" onclick="solAddPessoa()">＋ Adicionar pessoa</button></div>
     </div>
     <div class="field" id="sol-pessoas-wrap" style="display:none">
@@ -3937,8 +3970,9 @@ startCron();
     <div style="font-size:12px;color:#666;margin-bottom:10px">Os dados abaixo valem para todos os veículos selecionados. Você pode ajustar motorista e passageiros por veículo.</div>
     <div class="form-row">
       <div class="field"><label>Data da viagem *</label><input type="date" id="sll-data"></div>
-      <div class="field"><label>Secretaria</label><div id="sll-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
+      <div class="field"><label>Hora p/ pegar o carro *</label><input type="time" id="sll-hora"></div>
     </div>
+    <div class="field"><label>Secretaria</label><div id="sll-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
     <div class="field"><label>Destino *</label><input type="text" id="sll-destino" placeholder="Ex: Guanambi, Salvador..."></div>
     <div class="field"><label>Observações</label><textarea id="sll-obs" placeholder="Objetivo da viagem (vale para todos)"></textarea></div>
     <div style="display:flex;align-items:center;gap:8px;margin:12px 0 6px">
