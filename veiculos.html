@@ -525,7 +525,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="section-title">🚐 Caronas — vagas compartilhadas</div>
     </div>
     <div style="font-size:12px;color:#166534;margin-bottom:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:9px 12px;line-height:1.5">
-      Viagens já aprovadas de <b>outras secretarias</b> com lugares sobrando. Reserve uma vaga para aproveitar a mesma viagem — economizando combustível e evitando mandar um segundo carro pro mesmo destino.
+      Viagens de <b>outras secretarias</b> com lugares sobrando — já solicitadas ou aprovadas (não precisa esperar a aprovação). Reserve uma vaga para aproveitar a mesma viagem, economizando combustível e evitando mandar um segundo carro pro mesmo destino.
     </div>
     <div id="lista-caronas"></div>
   </div>
@@ -3277,11 +3277,11 @@ function vagasLivresSol(s){
   var ocup = (parseInt(s.qtd_passageiros)||0) + passageirosCarona(s.id);
   return Math.max(0, cap - ocup);
 }
-// Viagens aprovadas, ainda não saídas, hoje ou no futuro, com vaga sobrando
+// Viagens solicitadas/aprovadas, ainda não saídas, hoje ou no futuro, com vaga sobrando
 function viagensComVaga(){
   var hoje = now().toISOString().slice(0,10);
   return (D.solicitacoes||[]).filter(function(s){
-    return s.status === 'aprovada' && !solicitacaoJaSaiu(s) &&
+    return (s.status === 'aprovada' || s.status === 'pendente') && !solicitacaoJaSaiu(s) &&
            (!s.data_viagem || String(s.data_viagem).slice(0,10) >= hoje) &&
            vagasLivresSol(s) > 0;
   });
@@ -3521,8 +3521,10 @@ function recusarSolicitacao(id) {
   var motivo = prompt('Motivo da recusa (opcional):') || '';
   s.status = 'recusada';
   s.motivo_recusa = motivo;
+  var nCaronas = (D.caronas||[]).filter(function(c){return c.solId===id;}).length;
+  if(nCaronas && D.caronas) D.caronas = D.caronas.filter(function(c){return c.solId!==id;});
   salvar(); renderTudo();
-  toast('❌ Solicitação recusada.');
+  toast('❌ Solicitação recusada.' + (nCaronas?' '+nCaronas+' carona(s) cancelada(s).':''));
 }
 function deletarSolicitacao(id) {
   if(!isAdmin()){ toast('🚫 Apenas administradores podem excluir solicitações.'); return; }
@@ -3536,6 +3538,7 @@ function deletarSolicitacao(id) {
     + 'Esta ação não pode ser desfeita.';
   if(!confirm(msg)) return;
   D.solicitacoes = (D.solicitacoes||[]).filter(function(x){ return x.id !== id; });
+  if(D.caronas) D.caronas = D.caronas.filter(function(c){ return c.solId !== id; });
   salvar(); renderTudo();
   toast('🗑️ Solicitação excluída.');
 }
@@ -3641,7 +3644,9 @@ function recusarLote(){
   var n=0;
   ids.forEach(function(id){
     var s = getS(id);
-    if(s && s.status==='pendente'){ s.status='recusada'; s.motivo_recusa=motivo||''; n++; }
+    if(s && s.status==='pendente'){ s.status='recusada'; s.motivo_recusa=motivo||''; n++;
+      if(D.caronas) D.caronas = D.caronas.filter(function(c){ return c.solId !== id; });
+    }
   });
   salvar(); renderTudo();
   toast('❌ '+n+' solicitação'+(n>1?'ões':'')+' recusada'+(n>1?'s':'')+'.');
@@ -3652,7 +3657,7 @@ function recusarLote(){
 
 // ── CARONAS: render, reserva, cancelamento ────────────────────
 function caronaResumoSol(s){
-  if(!s || s.status !== 'aprovada') return '';
+  if(!s || (s.status !== 'aprovada' && s.status !== 'pendente')) return '';
   var v = getV(s.vid); var cap = v ? (parseInt(v.capacidade)||0) : 0;
   if(!cap) return '';
   var cars = caronasDe(s.id);
