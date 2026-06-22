@@ -102,6 +102,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .stat.sr{background:linear-gradient(135deg,#DC2626,#B91C1C);box-shadow:0 4px 15px rgba(220,38,38,.25)}
 .stat.sp{background:linear-gradient(135deg,#7C3AED,#6D28D9);box-shadow:0 4px 15px rgba(124,58,237,.25)}
 .stat.ssol{background:linear-gradient(135deg,#F59E0B,#D97706);box-shadow:0 4px 15px rgba(245,158,11,.28)}
+.stat.sfg{background:linear-gradient(135deg,#374151,#111);box-shadow:0 4px 15px rgba(0,0,0,.35)}
 .stat-label{font-size:10px;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.75)}
 .stat.st .stat-label{color:var(--text3)}
 .stat-val{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1}
@@ -127,7 +128,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn-inner{padding:20px 13px 16px;display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:var(--radius-xl);position:relative;overflow:hidden}
 .vbtn-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.15),transparent 60%);pointer-events:none;border-radius:inherit}
 .vbtn.guardado{box-shadow:0 4px 18px rgba(22,163,74,.3)}.vbtn.guardado .vbtn-inner{background:linear-gradient(145deg,#22C55E,#16A34A)}
-.vbtn.fora_garagem{box-shadow:0 4px 18px rgba(0,0,0,.4)}.vbtn.fora_garagem .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#111)}
+.vbtn.fora_garagem{box-shadow:0 4px 18px rgba(0,0,0,.5)}.vbtn.fora_garagem .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#111)}
 .vbtn.trabalhando{box-shadow:0 4px 18px rgba(37,99,235,.35)}.vbtn.trabalhando .vbtn-inner{background:linear-gradient(145deg,#3B82F6,#2563EB)}
 .vbtn.irregular{box-shadow:0 4px 18px rgba(220,38,38,.35)}.vbtn.irregular .vbtn-inner{background:linear-gradient(145deg,#EF4444,#DC2626)}
 @keyframes piscar{
@@ -779,11 +780,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
     </div>
     <div class="field" style="margin-top:4px">
-      <label for="v-fora-garagem" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#F3F4F6;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 13px;transition:background .2s">
+      <label for="v-fora-garagem" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#F3F4F6;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 13px">
         <input type="checkbox" id="v-fora-garagem" style="width:18px;height:18px;accent-color:#111;cursor:pointer;flex-shrink:0">
         <span>⬛ Guardado fora da garagem</span>
       </label>
-      <div style="font-size:11px;color:#6B7280;margin-top:4px;padding:0 2px;line-height:1.5">Quando marcado, o veículo aparece em <strong>preto</strong> e <strong>não pisca como irregular</strong> por atraso de retorno, até ser desmarcado.</div>
+      <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo fica <strong>preto</strong> e <strong>não pisca como irregular</strong> por atraso, até ser desmarcado.</div>
     </div>
     <div class="divider"></div>
     <div class="section-title" style="margin-bottom:.5rem">Documentação</div>
@@ -1054,7 +1055,7 @@ function normalizarFB(d){
     usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
-  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); if(v.foraGaragem==null) v.foraGaragem=false; });
+  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
   if(d._salvo_em) out._salvo_em = d._salvo_em;
@@ -1107,7 +1108,7 @@ if(fbDB){
   setFbStatus('offline', 'Firebase não disponível — operando somente com cache local.');
 }
 // Migração: garantir campo cor em todos os veículos
-D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; if(v.foraGaragem==null) v.foraGaragem=false; });
+D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; });
 
 // ── SELETOR TIPO + COR ──────────────────────────────────────
 var TIPOS_VEI=[{e:'🚗',n:'Carro'},{e:'🚘',n:'Sedan'},{e:'🚙',n:'SUV'},{e:'🛻',n:'Picape'},{e:'🚐',n:'Van'},{e:'🚌',n:'Ônibus'},{e:'🚎',n:'Micro-ônibus'},{e:'🚑',n:'Ambulância'},{e:'🚒',n:'Bombeiros'},{e:'🚓',n:'Viatura'},{e:'🚕',n:'Táxi'},{e:'🏎️',n:'Esportivo'},{e:'🚚',n:'Caminhão'},{e:'🚛',n:'Carreta'},{e:'m:cacamba',n:'Caçamba'},{e:'m:trator',n:'Trator'},{e:'m:pa',n:'Pá carregadeira'},{e:'m:retro',n:'Retroescavadeira'},{e:'m:patrol',n:'Patrol/Motoniv.'},{e:'🏗️',n:'Guindaste'},{e:'🏍️',n:'Moto'},{e:'🛵',n:'Scooter'},{e:'🚲',n:'Bicicleta'},{e:'🛺',n:'Triciclo'},{e:'⛴️',n:'Barco/Balsa'},{e:'🚁',n:'Helicóptero'}];
@@ -1256,14 +1257,11 @@ function getStatus(vid) {
   if(getAusAtiva(vid)) return 'ausente';
   var mov = getMovAtiva(vid);
   if(mov) {
-    // Fora da garagem: nunca pisca como irregular
     if(now()>new Date(mov.retorno)) return (v && v.foraGaragem) ? 'trabalhando' : 'irregular';
     return 'trabalhando';
   }
-  // Check if liberado (approved request, waiting departure)
   var sol = getSolicitacaoLiberada(vid);
   if(sol) return 'liberado';
-  // Solicitação pendente de aprovação (pedido de secretário) → solicitado
   if(getSolicitacaoPendente(vid)) return 'solicitado';
   if(v && v.foraGaragem) return 'fora_garagem';
   if(v && !estaNoHorario(v)) return 'fora_horario';
@@ -1511,10 +1509,10 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  var g=0,t=0,ir=0,au=0,sol=0,fh=0;
+  var g=0,t=0,ir=0,au=0,sol=0,fh=0,fg=0;
   D.veiculos.forEach(function(v){
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='fora_garagem')fg++; else fh++;
   });
 
   if(_ordemMode === 'status') {
@@ -1534,7 +1532,8 @@ function renderPainel() {
     '<div class="stat sy"><div class="stat-label">Em uso</div><div class="stat-val">'+t+'</div></div>'+
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
     '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>'+
-    '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>';
+    '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
+    '<div class="stat sfg"><div class="stat-label">Fora do local</div><div class="stat-val">'+fg+'</div></div>';
 
   var al = '';
   if(ir>0) al += '<div class="alerta vermelho">🚨 '+ir+' veículo(s) com retorno em atraso!</div>';
@@ -2400,7 +2399,7 @@ function confirmarVeiculo() {
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
     revKm:parseInt(document.getElementById('v-revkm').value)||null,
-    foraGaragem:document.getElementById('v-fora-garagem').checked,
+    foraGaragem:!!document.getElementById('v-fora-garagem').checked,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
