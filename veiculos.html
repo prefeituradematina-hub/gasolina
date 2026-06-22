@@ -1398,7 +1398,7 @@ function renderFrotaPorStatus() {
   var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_garagem:'⬛ Guardados fora da garagem',fora_horario:'🌙 Fora do horário'};
   var grupos = {};
   ORDER.forEach(function(s){ grupos[s] = []; });
-  getVeiculosFiltrados().forEach(function(v){ grupos[getStatus(v.id)].push(v); });
+  getVeiculosFiltrados().forEach(function(v){ grupos[v.foraGaragem ? 'fora_garagem' : getStatus(v.id)].push(v); });
   var html = '';
   ORDER.forEach(function(s){
     var veics = grupos[s];
@@ -1432,8 +1432,9 @@ function renderPorSecretaria() {
   var html = '';
   secs.forEach(function(sec) {
     var veics = grupos[sec];
-    var g=0,t=0,ir=0,au=0;
+    var g=0,t=0,ir=0,au=0,fg2=0;
     veics.forEach(function(v) {
+      if(v.foraGaragem){ fg2++; return; }
       var s=getStatus(v.id);
       if(s==='guardado')g++;else if(s==='trabalhando')t++;else if(s==='irregular')ir++;else if(s==='ausente')au++;
     });
@@ -1441,7 +1442,8 @@ function renderPorSecretaria() {
       (g>0?'<span class="sec-badge g">🟢 '+g+'</span>':'')+
       (t>0?'<span class="sec-badge y">🟡 '+t+'</span>':'')+
       (ir>0?'<span class="sec-badge r">🔴 '+ir+'</span>':'')+
-      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'');
+      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'')+
+      (fg2>0?'<span class="sec-badge" style="background:#111;color:#fff">⬛ '+fg2+'</span>':'');
     var grid = veics.map(makeBtnVeiculo).join('');
     html += '<div class="sec-group">'+
       '<div class="sec-group-header">'+
@@ -1513,8 +1515,9 @@ function makeBtnVeiculo(v) {
 function renderPainel() {
   var g=0,t=0,ir=0,au=0,sol=0,fh=0,fg=0;
   D.veiculos.forEach(function(v){
+    if(v.foraGaragem){ fg++; return; }
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='fora_garagem')fg++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else fh++;
   });
 
   if(_ordemMode === 'status') {
