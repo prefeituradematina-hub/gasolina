@@ -5771,6 +5771,15 @@
         btnRegistrar.innerHTML = textoOriginal;
         return;
       }
+      
+      // 🔒 BLOQUEIO GARAGEM CENTRAL — secretário não abastece veículo irregular
+      const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
+      if (pendenciaGaragem.bloqueado) {
+        mostrarNotificacao('⛔ ' + pendenciaGaragem.motivo, 'error');
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
   
       // 🔐 Permissão por combustível
       if (usuarioData.combustivelLiberado !== 'todos' && 
@@ -14599,6 +14608,62 @@
   }
   
   // Lançar abastecimento DIVERSAS
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔒 BLOQUEIO GARAGEM CENTRAL — verifica se veículo está irregular na frota
+  // Consulta frota/dados no Firebase (mesmo banco) em tempo real
+  // Retorna Promise<{bloqueado: bool, motivo: string}>
+  // ═══════════════════════════════════════════════════════════════════════════
+  async function verificarPendenciaGaragem(placa) {
+    if (!placa || placa.length < 7) return { bloqueado: false };
+    
+    // Apenas secretários são bloqueados
+    if (userRole !== 'secretarios') return { bloqueado: false };
+    
+    try {
+      const snap = await db.ref('frota/dados').once('value');
+      const frota = snap.val();
+      if (!frota) return { bloqueado: false };
+      
+      const veiculos      = Object.values(frota.veiculos      || {});
+      const movimentacoes = Object.values(frota.movimentacoes || {});
+      
+      const placaUp = placa.toUpperCase().trim();
+      
+      // Encontrar o veículo pela placa
+      const veiculo = veiculos.find(function(v) {
+        return (v.placa || '').toUpperCase().trim() === placaUp;
+      });
+      
+      if (!veiculo) return { bloqueado: false }; // Não cadastrado na frota = sem restrição
+      
+      // Veículo marcado como "Guardado fora da garagem" = isento de bloqueio
+      if (veiculo.foraGaragem) return { bloqueado: false };
+      
+      // Verificar se tem movimentação ativa com retorno vencido (irregular)
+      const agora = Date.now();
+      const movAtrasada = movimentacoes.find(function(m) {
+        return m.vid === veiculo.id      // pertence a este veículo
+          && !m.entrada_real             // ainda não retornou
+          && m.retorno                   // tem retorno previsto
+          && agora > new Date(m.retorno).getTime(); // passou do horário
+      });
+      
+      if (movAtrasada) {
+        return {
+          bloqueado: true,
+          motivo: 'Este veículo não pode ser abastecido pois está com pendências na Garagem Central.'
+        };
+      }
+      
+      return { bloqueado: false };
+      
+    } catch(e) {
+      console.warn('⚠️ Erro ao verificar garagem:', e);
+      return { bloqueado: false }; // Em caso de erro, não bloqueia
+    }
+  }
+  
   async function lancarAbastecimentoDiversas() {
     console.log('');
     console.log('🚀 INICIANDO LANÇAMENTO DE ABASTECIMENTO DIVERSAS');
@@ -14650,6 +14715,13 @@
     }
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
+      return;
+    }
+    
+    // 🔒 BLOQUEIO GARAGEM CENTRAL
+    const pendenciaDiversas = await verificarPendenciaGaragem(placa);
+    if (pendenciaDiversas.bloqueado) {
+      mostrarNotificacao('⛔ ' + pendenciaDiversas.motivo, 'error');
       return;
     }
     if (!motorista) {
