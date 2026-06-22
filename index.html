@@ -5771,15 +5771,6 @@
         btnRegistrar.innerHTML = textoOriginal;
         return;
       }
-      
-      // 🔒 BLOQUEIO GARAGEM CENTRAL — secretário não abastece veículo irregular
-      const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
-      if (pendenciaGaragem.bloqueado) {
-        mostrarNotificacao('⛔ ' + pendenciaGaragem.motivo, 'error');
-        btnRegistrar.disabled = false;
-        btnRegistrar.innerHTML = textoOriginal;
-        return;
-      }
   
       // 🔐 Permissão por combustível
       if (usuarioData.combustivelLiberado !== 'todos' && 
@@ -6073,6 +6064,11 @@
         timestamp: Date.now(),
         horario: horario
       });
+
+      // 📊 Atualizar média KM/L dos 5 últimos abastecimentos
+      if (dados.km > 0 && dados.litro > 0 && status === STATUS.AUTORIZADO) {
+        atualizarMediaKmL(dados.placa);
+      }
   
       mostrarNotificacao(
         status === STATUS.AUTORIZADO
@@ -14608,62 +14604,6 @@
   }
   
   // Lançar abastecimento DIVERSAS
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🔒 BLOQUEIO GARAGEM CENTRAL — verifica se veículo está irregular na frota
-  // Consulta frota/dados no Firebase (mesmo banco) em tempo real
-  // Retorna Promise<{bloqueado: bool, motivo: string}>
-  // ═══════════════════════════════════════════════════════════════════════════
-  async function verificarPendenciaGaragem(placa) {
-    if (!placa || placa.length < 7) return { bloqueado: false };
-    
-    // Apenas secretários são bloqueados
-    if (userRole !== 'secretarios') return { bloqueado: false };
-    
-    try {
-      const snap = await db.ref('frota/dados').once('value');
-      const frota = snap.val();
-      if (!frota) return { bloqueado: false };
-      
-      const veiculos      = Object.values(frota.veiculos      || {});
-      const movimentacoes = Object.values(frota.movimentacoes || {});
-      
-      const placaUp = placa.toUpperCase().trim();
-      
-      // Encontrar o veículo pela placa
-      const veiculo = veiculos.find(function(v) {
-        return (v.placa || '').toUpperCase().trim() === placaUp;
-      });
-      
-      if (!veiculo) return { bloqueado: false }; // Não cadastrado na frota = sem restrição
-      
-      // Veículo marcado como "Guardado fora da garagem" = isento de bloqueio
-      if (veiculo.foraGaragem) return { bloqueado: false };
-      
-      // Verificar se tem movimentação ativa com retorno vencido (irregular)
-      const agora = Date.now();
-      const movAtrasada = movimentacoes.find(function(m) {
-        return m.vid === veiculo.id      // pertence a este veículo
-          && !m.entrada_real             // ainda não retornou
-          && m.retorno                   // tem retorno previsto
-          && agora > new Date(m.retorno).getTime(); // passou do horário
-      });
-      
-      if (movAtrasada) {
-        return {
-          bloqueado: true,
-          motivo: 'Este veículo não pode ser abastecido pois está com pendências na Garagem Central.'
-        };
-      }
-      
-      return { bloqueado: false };
-      
-    } catch(e) {
-      console.warn('⚠️ Erro ao verificar garagem:', e);
-      return { bloqueado: false }; // Em caso de erro, não bloqueia
-    }
-  }
-  
   async function lancarAbastecimentoDiversas() {
     console.log('');
     console.log('🚀 INICIANDO LANÇAMENTO DE ABASTECIMENTO DIVERSAS');
@@ -14715,13 +14655,6 @@
     }
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
-      return;
-    }
-    
-    // 🔒 BLOQUEIO GARAGEM CENTRAL
-    const pendenciaDiversas = await verificarPendenciaGaragem(placa);
-    if (pendenciaDiversas.bloqueado) {
-      mostrarNotificacao('⛔ ' + pendenciaDiversas.motivo, 'error');
       return;
     }
     if (!motorista) {
@@ -15108,6 +15041,72 @@
   }
   
   // 3. CALCULAR MÉDIA KM/L DO VEÍCULO
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📊 MÉDIA KM/L — Recalcula pelos 5 últimos abastecimentos com KM válido
+  //    e salva em veiculos/{placaKey}/mediaKmL no Firebase
+  // ═══════════════════════════════════════════════════════════════════════
+  async function atualizarMediaKmL(placa) {
+    if (!placa) return;
+    try {
+      // Buscar abastecimentos da placa ordenados por timestamp desc
+      const snap = await db.ref('abastecimentos')
+        .orderByChild('placa')
+        .equalTo(placa)
+        .once('value');
+
+      const lista = [];
+      snap.forEach(function(s) {
+        const a = s.val();
+        // Só conta registros autorizados com km e litros válidos
+        if (
+          (a.status === 'AUTORIZADO' || a.status === 'autorizado') &&
+          a.km > 0 && a.litro > 0
+        ) {
+          lista.push({ km: a.km, litro: a.litro, timestamp: a.timestamp || 0 });
+        }
+      });
+
+      if (lista.length < 2) return; // Precisa de ao menos 2 para calcular percurso
+
+      // Ordenar do mais recente para o mais antigo
+      lista.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Pegar os 5 mais recentes (até 6 para calcular 5 intervalos)
+      const recentes = lista.slice(0, 6);
+
+      let somaKmL = 0;
+      let count = 0;
+      for (let i = 0; i < recentes.length - 1; i++) {
+        const kmPercorrido = recentes[i].km - recentes[i + 1].km;
+        const litrosUsados  = recentes[i].litro;
+        if (kmPercorrido > 0 && litrosUsados > 0) {
+          somaKmL += kmPercorrido / litrosUsados;
+          count++;
+          if (count >= 5) break;
+        }
+      }
+
+      if (count === 0) return;
+      const media = parseFloat((somaKmL / count).toFixed(2));
+
+      // Salvar em veiculos/{placaKey}/mediaKmL
+      // A chave no nó veiculos usa a placa como identificador
+      const veicSnap = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
+      if (veicSnap.exists()) {
+        veicSnap.forEach(function(v) {
+          db.ref('veiculos/' + v.key + '/mediaKmL').set(media);
+        });
+      } else {
+        // Caso o nó use a placa diretamente como chave
+        await db.ref('veiculos/' + placa + '/mediaKmL').set(media);
+      }
+
+      console.log('📊 Média KM/L atualizada para', placa, ':', media, 'KM/L (base:', count, 'abastecimentos)');
+    } catch(e) {
+      console.warn('⚠️ Erro ao atualizar média KM/L:', e);
+    }
+  }
+
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
       .orderByChild('veiculo')
