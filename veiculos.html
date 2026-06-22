@@ -186,6 +186,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vplaca-top{background:#003399;border-radius:4px 4px 0 0;padding:1px 5px;display:flex;align-items:center;justify-content:space-between;margin:-2px -8px 3px;font-size:7px;font-weight:700;color:#fff;letter-spacing:.1em}
 .vplaca-pais,.vplaca-br{font-size:7px;font-weight:700;color:#fff}
 .vbtn .vplaca{font-size:18px;font-weight:900;letter-spacing:.12em;color:#111;font-family:'Arial Black',Arial,sans-serif;line-height:1.1}
+.vbtn.fora_garagem .vplaca{color:#fff}
 .vbtn .vdesc{font-size:13px;font-weight:600;color:rgba(255,255,255,.97);text-align:center;line-height:1.3}
 .vbtn .vsec{font-size:9px;color:rgba(255,255,255,.55);text-align:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vbtn .vstatus{font-size:9px;font-weight:700;color:rgba(255,255,255,.92);background:rgba(0,0,0,.2);padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
@@ -1053,7 +1054,7 @@ function normalizarFB(d){
     usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
-  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); });
+  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); if(v.foraGaragem==null) v.foraGaragem=false; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
   if(d._salvo_em) out._salvo_em = d._salvo_em;
@@ -1106,7 +1107,7 @@ if(fbDB){
   setFbStatus('offline', 'Firebase não disponível — operando somente com cache local.');
 }
 // Migração: garantir campo cor em todos os veículos
-D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; });
+D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; if(v.foraGaragem==null) v.foraGaragem=false; });
 
 // ── SELETOR TIPO + COR ──────────────────────────────────────
 var TIPOS_VEI=[{e:'🚗',n:'Carro'},{e:'🚘',n:'Sedan'},{e:'🚙',n:'SUV'},{e:'🛻',n:'Picape'},{e:'🚐',n:'Van'},{e:'🚌',n:'Ônibus'},{e:'🚎',n:'Micro-ônibus'},{e:'🚑',n:'Ambulância'},{e:'🚒',n:'Bombeiros'},{e:'🚓',n:'Viatura'},{e:'🚕',n:'Táxi'},{e:'🏎️',n:'Esportivo'},{e:'🚚',n:'Caminhão'},{e:'🚛',n:'Carreta'},{e:'m:cacamba',n:'Caçamba'},{e:'m:trator',n:'Trator'},{e:'m:pa',n:'Pá carregadeira'},{e:'m:retro',n:'Retroescavadeira'},{e:'m:patrol',n:'Patrol/Motoniv.'},{e:'🏗️',n:'Guindaste'},{e:'🏍️',n:'Moto'},{e:'🛵',n:'Scooter'},{e:'🚲',n:'Bicicleta'},{e:'🛺',n:'Triciclo'},{e:'⛴️',n:'Barco/Balsa'},{e:'🚁',n:'Helicóptero'}];
