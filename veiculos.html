@@ -127,7 +127,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn-inner{padding:20px 13px 16px;display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:var(--radius-xl);position:relative;overflow:hidden}
 .vbtn-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.15),transparent 60%);pointer-events:none;border-radius:inherit}
 .vbtn.guardado{box-shadow:0 4px 18px rgba(22,163,74,.3)}.vbtn.guardado .vbtn-inner{background:linear-gradient(145deg,#22C55E,#16A34A)}
-.vbtn.guardado_trabalho{box-shadow:0 4px 18px rgba(0,0,0,.45)}.vbtn.guardado_trabalho .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#0a0a0a)}
 .vbtn.trabalhando{box-shadow:0 4px 18px rgba(37,99,235,.35)}.vbtn.trabalhando .vbtn-inner{background:linear-gradient(145deg,#3B82F6,#2563EB)}
 .vbtn.irregular{box-shadow:0 4px 18px rgba(220,38,38,.35)}.vbtn.irregular .vbtn-inner{background:linear-gradient(145deg,#EF4444,#DC2626)}
 @keyframes piscar{
@@ -200,7 +199,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .card-title{font-size:14px;font-weight:700;color:var(--text)}
 .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
 .badge.guardado{background:#DCFCE7;color:#15803D}
-.badge.guardado_trabalho{background:#1f2937;color:#fff}
 .badge.solicitado{background:#FEF3C7;color:#92400E}
 .badge.trabalhando{background:#FEF9C3;color:#A16207}
 .badge.irregular{background:#FEE2E2;color:#991B1B}
@@ -312,7 +310,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .status-group{margin-bottom:1.75rem}
 .status-group-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 14px;border-radius:var(--radius);font-size:12px;font-weight:700;letter-spacing:.03em}
 .status-group-header.guardado{background:rgba(22,163,74,.1);color:var(--green);border-left:3px solid var(--green)}
-.status-group-header.guardado_trabalho{background:rgba(0,0,0,.08);color:#111;border-left:3px solid #111}
 .status-group-header.trabalhando{background:rgba(37,99,235,.1);color:#2563EB;border-left:3px solid #2563EB}
 .status-group-header.liberado{background:rgba(249,115,22,.1);color:#EA580C;border-left:3px solid #EA580C}
 .status-group-header.solicitado{background:rgba(245,158,11,.12);color:#B45309;border-left:3px solid #F59E0B}
@@ -777,13 +774,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Capacidade passageiros</label><input type="number" id="v-cap" min="0" placeholder="0 = sem passageiros"></div>
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
     </div>
-    <div class="field" style="margin-top:2px">
-      <label for="v-local-trabalho" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;background:#F3F4F6;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 13px">
-        <input type="checkbox" id="v-local-trabalho" style="width:19px;height:19px;accent-color:#111;cursor:pointer;flex-shrink:0">
-        <span>🏠 Veículo guardado no local de trabalho</span>
-      </label>
-      <div style="font-size:11px;color:#6B7280;margin-top:5px;line-height:1.5">Quando marcado, o veículo aparece em <strong>preto</strong>, sai do garajão (não conta como “guardado”) e <strong>não pisca aviso de atraso</strong>, mesmo que o horário de retorno passe.</div>
-    </div>
     <div class="divider"></div>
     <div class="section-title" style="margin-bottom:.5rem">Documentação</div>
     <div class="form-row">
@@ -879,8 +869,8 @@ const SECS = [
   'Secretaria de Cultura, Esporte e Lazer','Secretaria de Governo',
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
-const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',solicitado:'Solicitado',pendente:'Aguard. aprovação',guardado_trabalho:'No local de trabalho'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',solicitado:'#F59E0B',guardado_trabalho:'#111111'};
+const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',solicitado:'Solicitado',pendente:'Aguard. aprovação'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',solicitado:'#F59E0B'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -1251,21 +1241,15 @@ function estaNoHorario(v) {
   return false;
 }
 function getStatus(vid) {
-  var v = getV(vid);
   if(getAusAtiva(vid)) return 'ausente';
   var mov = getMovAtiva(vid);
-  if(mov) {
-    // Veículos guardados no local de trabalho NUNCA piscam por atraso
-    if(now()>new Date(mov.retorno)) return (v && v.localTrabalho) ? 'trabalhando' : 'irregular';
-    return 'trabalhando';
-  }
+  if(mov) return now()>new Date(mov.retorno)?'irregular':'trabalhando';
   // Check if liberado (approved request, waiting departure)
   var sol = getSolicitacaoLiberada(vid);
   if(sol) return 'liberado';
   // Solicitação pendente de aprovação (pedido de secretário) → solicitado
   if(getSolicitacaoPendente(vid)) return 'solicitado';
-  // Guardado no local de trabalho → estado próprio (preto), fora do garajão
-  if(v && v.localTrabalho) return 'guardado_trabalho';
+  var v = getV(vid);
   if(v && !estaNoHorario(v)) return 'fora_horario';
   return 'guardado';
 }
@@ -1364,7 +1348,7 @@ var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
   // Update filter button styles
-  ['irregular','trabalhando','guardado','guardado_trabalho','ausente','fora_horario','liberado','solicitado'].forEach(function(s) {
+  ['irregular','trabalhando','guardado','ausente','fora_horario','liberado','solicitado'].forEach(function(s) {
     var btn = document.getElementById('btn-fil-'+s);
     if(!btn) return;
     var on = _filtroStatus === s;
@@ -1396,8 +1380,8 @@ function setOrdem(mode) {
 }
 
 function renderFrotaPorStatus() {
-  var ORDER = ['irregular','liberado','solicitado','trabalhando','ausente','guardado','guardado_trabalho','fora_horario'];
-  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',guardado_trabalho:'🏠 Guardados no local de trabalho',fora_horario:'🌙 Fora do horário'};
+  var ORDER = ['irregular','liberado','solicitado','trabalhando','ausente','guardado','fora_horario'];
+  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_horario:'🌙 Fora do horário'};
   var grupos = {};
   ORDER.forEach(function(s){ grupos[s] = []; });
   getVeiculosFiltrados().forEach(function(v){ grupos[getStatus(v.id)].push(v); });
@@ -1467,7 +1451,7 @@ function makeBtnVeiculo(v) {
   if(cap>0 && mov) {
     var livres = Math.max(0,cap-pass);
     vagasHTML = '<div class="vvagas">'+(livres===0?'🔴 LOTADO':'🟢 '+livres+' vaga'+(livres!==1?'s':'')+' livre'+(livres!==1?'s':''))+'</div>';
-  } else if(cap>0 && (s==='guardado'||s==='guardado_trabalho')) {
+  } else if(cap>0 && s==='guardado') {
     vagasHTML = '<div class="vvagas">🟢 '+cap+' vagas disp.</div>';
   }
   var docs = docAlerts(v);
@@ -1478,13 +1462,13 @@ function makeBtnVeiculo(v) {
   var _solPend = getSolicitacaoPendente(v.id);
   if(s==='liberado') {
     agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(255,255,255,.3)">✅ Aprovado p/ viagem</div>';
-  } else if(_agHoje && (s==='guardado'||s==='guardado_trabalho'||s==='fora_horario')) {
+  } else if(_agHoje && (s==='guardado'||s==='fora_horario')) {
     agendaWarnHTML = '<div class="agenda-warn">📅 Agendado hoje</div>';
   }
 
   // Botão saída rápida visível no card
   var rapidaHTML = '';
-  if(isAdmin() && (s==='guardado'||s==='guardado_trabalho'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
+  if(isAdmin() && (s==='guardado'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
     var escR = getEscalaHoje(v);
     if(escR && escR.destino) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
@@ -1693,7 +1677,7 @@ function _candidatosLote(){
     }
     // 2) Parado e disponível para sair: guardado OU fora do horário de escala.
     //    (não entram: em viagem, ausente/não está no local)
-    if(st === 'guardado' || st === 'guardado_trabalho' || st === 'fora_horario' || st === 'solicitado'){
+    if(st === 'guardado' || st === 'fora_horario' || st === 'solicitado'){
       var esc = getEscalaHoje(v);
       var item = {
         vid:v.id, fonte: esc?'escala':'livre',
@@ -2323,7 +2307,6 @@ function abrirVeiculo(id) {
   document.getElementById('v-ipva').value   = v?v.ipva:'';
   document.getElementById('v-licenc').value = v?v.licenc:'';
   document.getElementById('v-seguro').value = v?v.seguro:'';
-  document.getElementById('v-local-trabalho').checked = !!(v && v.localTrabalho);
   _escalasTmpEdit = v ? JSON.parse(JSON.stringify(v.escalas||[])) : [];
   renderEscalasTmp();
   // Reset add box
@@ -2405,7 +2388,6 @@ function confirmarVeiculo() {
     seguro:document.getElementById('v-seguro').value,
     escalas:JSON.parse(JSON.stringify(_escalasTmpEdit)),
     tipo:document.getElementById('v-tipo').value||'🚗',
-    localTrabalho:document.getElementById('v-local-trabalho').checked,
     cor:(document.getElementById('v-cor')?document.getElementById('v-cor').value:'')||'branco'};
   if(_editVeiId) { Object.assign(getV(_editVeiId), obj); }
   else { obj.id=uid('v'); D.veiculos.push(obj); }
@@ -2851,7 +2833,7 @@ function buscar(q) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
-      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',guardado_trabalho:'#111'}[s]||'#888';
+      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888'}[s]||'#888';
       items.push({
         icon: '🚗',
         title: '<span style="font-size:15px;font-weight:800">'+hl(v.placa,q)+'</span> <span style="font-size:12px;font-weight:600;color:#333">'+hl(v.descricao,q)+'</span>',

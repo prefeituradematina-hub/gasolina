@@ -5,10 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>Sistema de Controle de Combustível</title>
 
-<!-- Firebase e Chart.js -->
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js">
-
+<script>
+/* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
+(function(){
+  try{
+    var s = JSON.parse(localStorage.getItem('sessao_global'));
+    if(s && s.exp > Date.now()){
+      window.__SESSAO = s;
+      document.documentElement.classList.add('auto-login');
+      return;
+    }
+  }catch(e){}
+  location.replace('porta.html');
+})();
 </script>
+<style>html.auto-login #login-screen{display:none!important}</style>
+
+<!-- Firebase e Chart.js -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -2319,6 +2333,17 @@
           <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
         </select>
       </div>
+      <div>
+        <label>SISTEMAS QUE PODE ACESSAR</label>
+        <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
+          </label>
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
+          </label>
+        </div>
+      </div>
       <div id="edit-field-limit">
         <label>LIMITE MENSAL — ⛽ POSTO VICTOR (R$)</label>
         <input type="number" id="edit-limit-victor" placeholder="0.00" step="0.01">
@@ -2803,6 +2828,7 @@
         🔔
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
+      <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -3175,17 +3201,15 @@
         </div>
         
         <div>
-          <label>PLACA DO VEÍCULO * 🔒</label>
-          <select 
+          <label>PLACA DO VEÍCULO *</label>
+          <input 
+            type="text" 
             id="diversas-placa" 
-            style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #0284c7; padding: 10px; border-radius: 6px; font-weight: 600;"
-            onchange="validarVeiculoSelecionadoDiversas(this.value)"
+            placeholder="ABC-1234" 
+            maxlength="8" 
+            style="text-transform:uppercase;"
+            onkeyup="sugerirDiversas(this.value)"
           >
-            <option value="">SELECIONE UM CARRO DE SUA SECRETARIA</option>
-          </select>
-          <div id="aviso-carros-secretaria" style="font-size: 11px; color: #0284c7; margin-top: 5px; font-weight: bold; display: none;">
-            🔒 Mostrando apenas carros da sua secretaria
-          </div>
         </div>
         
         <div>
@@ -3802,6 +3826,12 @@
       </div>
     </div>
     
+    <div class="card" style="border:1.5px solid #FCA5A5;background:#FEF6F6">
+      <h3>🔧 MANUTENÇÃO DE DADOS</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Reinicia a contagem de quilometragem de <b>todos os veículos</b>. Útil quando foram registrados KM inconsistentes. Os valores, litros, datas e CPFs dos abastecimentos são <b>preservados</b> — apenas o KM é zerado, e a eficiência (km/l) recomeça a ser calculada a partir dos próximos abastecimentos. Um backup é baixado automaticamente antes.</p>
+      <button class="btn-save" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="zerarTodosKm()">🔄 ZERAR KM DE TODOS OS VEÍCULOS</button>
+    </div>
+    
     <div class="card">
       <h3>👥 GESTÃO DE USUÁRIOS</h3>
       <div class="grid-form">
@@ -3821,6 +3851,17 @@
             <option value="frentista">FRENTISTA (SOMENTE LEITURA)</option>
 	    <option value="autorizador">AUTORIZADOR (RESTRITO)</option>
           </select>
+        </div>
+        <div>
+          <label>SISTEMAS QUE PODE ACESSAR</label>
+          <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
+            </label>
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
+            </label>
+          </div>
         </div>
         <div>
           <label>COMBUSTÍVEL PERMITIDO</label>
@@ -4094,26 +4135,6 @@
 </div>
 
 <script>
-  // 🔒 BLOQUEIO DE SECRETARIA - Validação simples
-  window.bloqueioSecretaria = function() {
-    const userRole = window.userRole || '';
-    const userSecretaria = window.userSecretaria || '';
-    const placa = document.getElementById('diversas-placa')?.value || document.getElementById('abast-veiculo')?.value || '';
-    
-    if (userRole !== 'secretarios' || !placa) return true;
-    
-    const veiculos = window.veiculos || [];
-    const veiculo = veiculos.find(v => v.placa === placa?.toUpperCase?.());
-    
-    if (!veiculo?.secretaria) return true;
-    
-    if (veiculo.secretaria !== userSecretaria) {
-      alert('❌ Este veículo não está cadastrado para a sua secretaria.\n\nEntre em contato com o administrador.');
-      return false;
-    }
-    return true;
-  };
-
   const firebaseConfig = {
     apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
     authDomain: "tabela-gasolina.firebaseapp.com",
@@ -4286,14 +4307,34 @@
   let userPostosVinculados = []; // Array de IDs de postos para autorizadores (suporte múltiplo)
   
   // Função centralizada de filtro por posto
+  // Normaliza nome de posto para comparação tolerante (acento/caixa/espaço)
+  function _normPosto(s) {
+    return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+  }
+  // Casa dois nomes de posto: iguais OU um contém o outro (ex.: "MATINA" ~ "POSTO MATINA")
+  function _postoMatch(a, b) {
+    const na = _normPosto(a), nb = _normPosto(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+    return false;
+  }
   function filtrarCachePorPosto(dados) {
     if (userRole === 'frentista' && userPostoVinculado) {
-      const posto = postos.find(p => p.id === userPostoVinculado);
-      if (posto) return dados.filter(x => x.posto === posto.nome);
+      const posto = postos.find(p => p.id === userPostoVinculado || _postoMatch(p.nome, userPostoVinculado));
+      const alvo = posto ? posto.nome : userPostoVinculado;
+      const filtrado = dados.filter(x => _postoMatch(x.posto, alvo));
+      // Se resolveu o posto, usa o filtrado. Se NÃO resolveu e nada casou, não esconde tudo.
+      return (posto || filtrado.length > 0) ? filtrado : dados;
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
-      const nomes = postos.filter(p => userPostosVinculados.includes(p.id)).map(p => p.nome);
-      if (nomes.length > 0) return dados.filter(x => nomes.includes(x.posto));
+      const encontrados = postos.filter(p =>
+        userPostosVinculados.includes(p.id) ||
+        userPostosVinculados.some(v => _postoMatch(p.nome, v))
+      );
+      const alvos = encontrados.length > 0 ? encontrados.map(p => p.nome) : userPostosVinculados;
+      const filtrado = dados.filter(x => alvos.some(a => _postoMatch(x.posto, a)));
+      return (encontrados.length > 0 || filtrado.length > 0) ? filtrado : dados;
     }
     return dados;
   }
@@ -4339,6 +4380,14 @@
       postos.push(p);
     });
     atualizarSelectPostos();
+    // Postos podem chegar DEPOIS dos abastecimentos. Se já há usuário logado,
+    // atualiza pendentes (robusto) e re-renderiza para aplicar o filtro por posto.
+    if (typeof loginUser !== 'undefined' && loginUser) {
+      try {
+        atualizarPendentes();
+      } catch (e) { console.error('Erro ao atualizar pendentes (postos):', e); }
+      try { if (typeof renderizar === 'function') renderizar(); } catch (e) { console.error('Erro no renderizar (postos):', e); }
+    }
   });
   
   // Função para alternar modo tanque cheio
@@ -4360,240 +4409,7 @@
     calc();
   }
   
-  // ==================== NOVO SISTEMA OTIMIZADO DE CONSUMO MÉDIO ====================
-  // Implementação profissional baseada em ÚLTIMA KM REGISTRADA
-  // Data: 01/05/2026 | Status: Pronto para produção
-  
-  /**
-   * NOVO: Obter última KM registrada de um veículo
-   * Fonte única de verdade para cálculos de consumo
-   */
-  function obterUltimaKmVeiculo(placa) {
-    const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-    if (!veiculo) {
-      console.warn('⚠️ Veículo não encontrado:', placa);
-      return 0;
-    }
-    return veiculo.ultimaKmRegistrada || 0;
-  }
-  
-  /**
-   * NOVO: Calcular consumo médio (KM/L)
-   * Fórmula simples e direta: Diferença de KM / Litros
-   */
-  function calcularConsumoMedio(kmAtual, kmAnterior, litros) {
-    // Validações
-    if (!kmAtual || !kmAnterior || !litros) {
-      console.warn('⚠️ Parâmetros inválidos:', { kmAtual, kmAnterior, litros });
-      return 0;
-    }
-    
-    const kmPercorrido = kmAtual - kmAnterior;
-    
-    // KM não pode diminuir
-    if (kmPercorrido <= 0) {
-      console.warn('⚠️ KM percorrido inválido (≤ 0):', kmPercorrido);
-      return 0;
-    }
-    
-    // Litros deve ser positivo
-    if (litros <= 0) {
-      console.warn('⚠️ Litros inválido (≤ 0):', litros);
-      return 0;
-    }
-    
-    const consumo = kmPercorrido / litros;
-    return parseFloat(consumo.toFixed(2)); // Retorna com 2 casas decimais
-  }
-  
-  /**
-   * NOVO: Validar KM ao registrar abastecimento
-   * Retorna objeto com validação e mensagem
-   */
-  function validarKmAbastecimento(placa, kmAtual) {
-    const ultimaKm = obterUltimaKmVeiculo(placa);
-    
-    // Se é o primeiro abastecimento
-    if (ultimaKm === 0) {
-      return {
-        valido: true,
-        mensagem: '✅ Primeiro abastecimento do veículo',
-        kmAnterior: 0
-      };
-    }
-    
-    // Validar se KM aumentou
-    if (kmAtual <= ultimaKm) {
-      return {
-        valido: false,
-        mensagem: `❌ KM (${kmAtual}) não pode ser ≤ última registrada (${ultimaKm})`,
-        kmAnterior: ultimaKm
-      };
-    }
-    
-    // Validar se aumento é realista (máx 1000 km entre abastecimentos)
-    const kmDiferenca = kmAtual - ultimaKm;
-    if (kmDiferenca > 10000) {
-      return {
-        valido: false,
-        mensagem: `⚠️ Diferença de KM muito alta (${kmDiferenca}). Verifique o valor!`,
-        kmAnterior: ultimaKm
-      };
-    }
-    
-    // Tudo OK
-    return {
-      valido: true,
-      mensagem: `✅ KM válido (percorreram ${kmDiferenca} km)`,
-      kmAnterior: ultimaKm,
-      kmDiferenca: kmDiferenca
-    };
-  }
-  
-  /**
-   * NOVO: Atualizar última KM registrada do veículo
-   * Deve ser chamado quando um abastecimento é aprovado
-   */
-  async function atualizarUltimaKmVeiculo(placa, kmAtual) {
-    try {
-      const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-      
-      if (!veiculo || !veiculo.id) {
-        throw new Error('Veículo não encontrado: ' + placa);
-      }
-      
-      // Preparar dados para atualizar
-      const dataAtual = new Date();
-      const update = {
-        ultimaKmRegistrada: kmAtual,
-        ultimaKmData: Date.now(),
-        [`historicoKm/${dataAtual.toISOString().split('T')[0]}`]: {
-          km: kmAtual,
-          timestamp: Date.now(),
-          dataBrasil: dataAtual.toLocaleString('pt-BR')
-        }
-      };
-      
-      // Atualizar no Firebase
-      await db.ref(`veiculos/${veiculo.id}`).update(update);
-      
-      console.log('✅ KM atualizada:', {
-        placa: placa,
-        kmAtual: kmAtual,
-        data: dataAtual.toLocaleString('pt-BR')
-      });
-      
-      return { sucesso: true, mensagem: 'KM atualizada com sucesso' };
-      
-    } catch (error) {
-      console.error('❌ Erro ao atualizar KM:', error);
-      return { sucesso: false, mensagem: error.message };
-    }
-  }
-  
-  /**
-   * NOVO: Verificar consumo anormal
-   * Alerta se consumo está muito diferente da média esperada
-   */
-  function verificarConsumoAnormal(placa, consumoAtual, combustivel) {
-    // Valores esperados por tipo de combustível (km/l)
-    const consumosEsperados = {
-      'GASOLINA': { min: 6, max: 12 },
-      'DIESEL': { min: 8, max: 15 },
-      'DIESEL S10': { min: 8, max: 15 },
-      'ETANOL': { min: 5, max: 10 },
-      'GNV': { min: 10, max: 20 },
-      'GASOLINA ADITIVADA': { min: 6, max: 12 }
-    };
-    
-    const esperado = consumosEsperados[combustivel] || { min: 5, max: 15 };
-    
-    if (consumoAtual < esperado.min) {
-      return {
-        anormal: true,
-        aviso: `⚠️ Consumo baixo: ${consumoAtual.toFixed(2)} km/l (esperado: ${esperado.min}-${esperado.max})`
-      };
-    }
-    
-    if (consumoAtual > esperado.max) {
-      return {
-        anormal: true,
-        aviso: `⚠️ Consumo alto: ${consumoAtual.toFixed(2)} km/l (esperado: ${esperado.min}-${esperado.max})`
-      };
-    }
-    
-    return {
-      anormal: false,
-      aviso: `✅ Consumo normal: ${consumoAtual.toFixed(2)} km/l`
-    };
-  }
-  
-  /**
-   * NOVO: Obter histórico de KM de um veículo
-   * Para gráficos e análises
-   */
-  async function obterHistoricoKmVeiculo(placa) {
-    const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-    
-    if (!veiculo || !veiculo.historicoKm) {
-      return [];
-    }
-    
-    const historico = [];
-    for (const [data, info] of Object.entries(veiculo.historicoKm)) {
-      historico.push({
-        data: data,
-        km: info.km,
-        timestamp: info.timestamp,
-        dataBrasil: info.dataBrasil || new Date(info.timestamp).toLocaleString('pt-BR')
-      });
-    }
-    
-    return historico.sort((a, b) => b.timestamp - a.timestamp);
-  }
-  
-  /**
-   * NOVO: Reset de dados de consumo (para testes/manutenção)
-   * ⚠️ USE COM CUIDADO - ISSO RESETA DADOS!
-   */
-  async function resetarHistoricoKmVeiculo(placa) {
-    if (!confirm('⚠️ ATENÇÃO: Isso vai RESETAR todo o histórico de KM do veículo ' + placa + '!\n\nTem certeza?')) {
-      return { sucesso: false, mensagem: 'Operação cancelada' };
-    }
-    
-    if (!confirm('⚠️ ÚLTIMA CONFIRMAÇÃO! Confirme novamente para resetar!')) {
-      return { sucesso: false, mensagem: 'Operação cancelada' };
-    }
-    
-    try {
-      const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-      
-      if (!veiculo) {
-        throw new Error('Veículo não encontrado');
-      }
-      
-      const update = {
-        ultimaKmRegistrada: 0,
-        ultimaKmData: 0,
-        historicoKm: {}
-      };
-      
-      await db.ref(`veiculos/${veiculo.id}`).update(update);
-      
-      registrarAuditoria('KM_RESETADO', { placa: placa });
-      console.log('🔄 KM resetada:', placa);
-      
-      return { sucesso: true, mensagem: 'KM resetada com sucesso' };
-      
-    } catch (error) {
-      console.error('❌ Erro ao resetar KM:', error);
-      return { sucesso: false, mensagem: error.message };
-    }
-  }
-  
-  // ==================== FIM NOVO SISTEMA OTIMIZADO ====================
-  
-  // ANTIGO: Função corrigida para calcular média
+  // NOVO: Função corrigida para calcular média
   function calcularMedia(abastecimento) {
     // Buscar o último abastecimento APROVADO do mesmo veículo e combustível
     const ultimoAbast = cache
@@ -4601,6 +4417,7 @@
         v.placa === abastecimento.placa && 
         v.tipo === abastecimento.tipo &&
         v.status === STATUS.AUTORIZADO &&
+        v.km > 0 &&
         v.timestamp < abastecimento.timestamp
       )
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -4625,7 +4442,8 @@
       .filter(x => 
         x.placa === dados.placa && 
         x.tipo === dados.tipo &&
-        x.status === STATUS.AUTORIZADO
+        x.status === STATUS.AUTORIZADO &&
+        x.km > 0
       )
       .sort((a, b) => b.timestamp - a.timestamp)[0];
 
@@ -4650,6 +4468,61 @@
       ultimoKm: ultimoAbast.km,
       kmRodados: kmRodados
     };
+  }
+  
+  // 🔄 ZERAR KM DE TODOS OS VEÍCULOS — reinicia a contagem de quilometragem
+  async function zerarTodosKm() {
+    if (!(loginUser === 'master' || temPermissao('gerenciar_veiculos'))) {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA ESTA AÇÃO!', 'error');
+      return;
+    }
+    const totalRegistros = Array.isArray(cache) ? cache.length : 0;
+    const comKm = (cache || []).filter(x => (x.km || 0) > 0).length;
+    if (comKm === 0) {
+      mostrarNotificacao('ℹ️ Não há KM registrado para zerar.', 'info');
+      return;
+    }
+    if (!confirm(
+      `🔄 ZERAR KM DE TODOS OS VEÍCULOS\n\n` +
+      `Isto vai zerar o KM de ${comKm} abastecimento(s) (de um total de ${totalRegistros}), reiniciando a contagem do zero.\n\n` +
+      `✅ Preservados: valores, litros, datas, CPF, motorista, posto.\n` +
+      `🔄 Zerado: apenas o KM.\n` +
+      `📊 A eficiência (km/l) volta a ser calculada a partir dos próximos abastecimentos.\n\n` +
+      `Um backup será baixado automaticamente antes. Deseja continuar?`
+    )) return;
+
+    // 1) Backup de segurança
+    try {
+      const backup = JSON.stringify(cache, null, 2);
+      const blob = new Blob([backup], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_abastecimentos_antes_de_zerar_km_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {
+      console.error('Falha ao gerar backup:', e);
+      if (!confirm('⚠️ Não foi possível baixar o backup automático. Deseja continuar mesmo assim?')) return;
+    }
+
+    // 2) Confirmação final
+    if (!confirm('⚠️ CONFIRMAÇÃO FINAL\n\nZerar o KM de TODOS os abastecimentos agora? Esta ação só pode ser desfeita restaurando o backup.')) return;
+
+    // 3) Aplicar no Firebase em lote (multi-path update)
+    try {
+      const snap = await db.ref('abastecimentos').once('value');
+      const updates = {};
+      let qtd = 0;
+      snap.forEach(ch => {
+        const v = ch.val();
+        if (v && (v.km || 0) !== 0) { updates[ch.key + '/km'] = 0; qtd++; }
+      });
+      if (qtd === 0) { mostrarNotificacao('ℹ️ Nada para zerar.', 'info'); return; }
+      await db.ref('abastecimentos').update(updates);
+      mostrarNotificacao(`✅ KM ZERADO EM ${qtd} ABASTECIMENTO(S)! Contagem reiniciada.`, 'success');
+    } catch (e) {
+      console.error('Erro ao zerar KM:', e);
+      mostrarNotificacao('❌ ERRO AO ZERAR KM: ' + (e.message || e), 'error');
+    }
   }
   
   // NOVO: Função para verificar média em tempo real no formulário
@@ -5338,6 +5211,13 @@
     userSecretaria = sec;
     usuarioData = dadosExtras || {};
     userPermissions = dadosExtras.permissoes || PERMISSOES_PADRAO[role] || [];
+    // Frentista SEMPRE precisa enxergar pendentes/relatório do seu posto,
+    // mesmo que o cadastro tenha permissões customizadas incompletas.
+    if (role === 'frentista') {
+      (PERMISSOES_PADRAO['frentista'] || []).forEach(function(p){
+        if (userPermissions.indexOf(p) === -1) userPermissions.push(p);
+      });
+    }
     
     // Suporte a múltiplos postos para autorizadores
     if (role === 'autorizador') {
@@ -5433,7 +5313,10 @@
     } else if (role === 'autorizador') {
       abaInicial = 'pendentes'; // Autorizadores também veem pendentes primeiro
     }
-    
+    // Frentista só tem a gasolina → some o botão de voltar ao portal (não há outro sistema p/ ele)
+    var _btnInicio = document.getElementById('btn-inicio-portal');
+    if (_btnInicio) _btnInicio.style.display = (role === 'frentista') ? 'none' : '';
+    // Banner do posto do frentista na aba de pendentes (aprovados + pendentes do posto)
     // CORREÇÃO: Listener para atualizar limites em tempo real quando admin edita
     if (role === 'secretarios' || role === 'autorizador') {
       db.ref('usuarios/' + u).on('value', snap => {
@@ -5474,18 +5357,12 @@
     // Executar limpeza automática de abastecimentos expirados
     setTimeout(() => limparAbastecimentosExpirados(), 2000);
     
-    // 🔒 Carregar veículos filtrados por secretaria (se secretário)
     setTimeout(() => {
-      carregarVeiculosPorSecretaria();
-
-    }, 500);
-    
-    setTimeout(() => {
-      renderizar();
-      calcularDadosMesAnterior();
-      
-      // Abrir aba inicial baseada no perfil
-      switchTab(abaInicial);
+      // Cada passo é isolado: um erro em renderizar() NÃO pode impedir a aba inicial
+      // (pendentes) de ser exibida nem o atualizarPendentes() de rodar.
+      try { renderizar(); } catch (e) { console.error('Erro em renderizar() no login:', e); }
+      try { calcularDadosMesAnterior(); } catch (e) { console.error('Erro em calcularDadosMesAnterior():', e); }
+      try { switchTab(abaInicial); } catch (e) { console.error('Erro em switchTab():', e); }
     }, 100);
   }
   
@@ -5630,7 +5507,7 @@
     }
     
     const historico = cache
-      .filter(v => v.placa === placa && v.tipo === tipo && v.status === STATUS.AUTORIZADO)
+      .filter(v => v.placa === placa && v.tipo === tipo && v.status === STATUS.AUTORIZADO && v.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 5);
     
@@ -5721,7 +5598,7 @@
     if (!placa || kmAtual === 0) return;
     
     const ultimoAbast = cache
-      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
+      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO && x.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     
     if (ultimoAbast && kmAtual < ultimoAbast.km) {
@@ -5733,7 +5610,7 @@
   
   function calcularMediaAvancada(placa, combustivel) {
     const historico = cache
-      .filter(v => v.placa === placa && v.tipo === combustivel && v.status === STATUS.AUTORIZADO)
+      .filter(v => v.placa === placa && v.tipo === combustivel && v.status === STATUS.AUTORIZADO && v.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
     
@@ -5849,7 +5726,7 @@
     // Validar KM apenas se foi informado e não for GÁS
     if (!isGas && (!isAvulso || (isAvulso && dados.km > 0))) {
       const ultimoAbast = cache
-        .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO)
+        .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO && x.km > 0)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
       if (ultimoAbast && dados.km < ultimoAbast.km) {
         erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
@@ -6109,6 +5986,34 @@
         }
       }
   
+      // 🚫 REGRA ANTI-DESVIO: mesmo CPF abastecendo em menos de 24h
+      if (dados.cpf && dados.cpf.replace(/\D/g, '').length === 11) {
+        const _cpfLimpo = dados.cpf.replace(/\D/g, '');
+        const _ultimoMesmoCPF = cache
+          .filter(x => x.cpf && x.cpf.replace(/\D/g, '') === _cpfLimpo && x.status !== STATUS.REJEITADO)
+          .sort((a, b) => b.timestamp - a.timestamp)[0];
+        if (_ultimoMesmoCPF) {
+          const _horas = (Date.now() - _ultimoMesmoCPF.timestamp) / 3600000;
+          if (_horas < 24) {
+            const _quando = new Date(_ultimoMesmoCPF.timestamp).toLocaleString('pt-BR');
+            const _confirmarCPF = confirm(
+              `⚠️ ALERTA ANTI-DESVIO: ESTE CPF JÁ ABASTECEU NAS ÚLTIMAS 24H!\n\n` +
+              `CPF: ${dados.cpf}\n` +
+              `Último abastecimento: há ${_horas.toFixed(1)}h (${_quando})\n` +
+              `Posto: ${_ultimoMesmoCPF.posto || '-'}\n` +
+              `Veículo: ${_ultimoMesmoCPF.placa || '-'}\n` +
+              `Litros: ${(_ultimoMesmoCPF.litro || 0).toFixed(1)}L\n\n` +
+              `Deseja autorizar um novo abastecimento mesmo assim?`
+            );
+            if (!_confirmarCPF) {
+              btnRegistrar.disabled = false;
+              btnRegistrar.innerHTML = textoOriginal;
+              return;
+            }
+          }
+        }
+      }
+
       // NOVO: 🔍 Validar média do veículo antes de registrar
       if (!dados.tanqueCheio) { // Tanque cheio não calcula média agora
         const validacaoMedia = validarMediaVeiculo(dados);
@@ -7008,7 +6913,7 @@
       }
     }
     
-    if (temPermissao('autorizar_abastecimento')) {
+    if (temPermissao('autorizar_abastecimento') || temPermissao('ver_pendentes')) {
       atualizarPendentes();
     }
   }
@@ -7915,6 +7820,7 @@
   
   function atualizarStatusFinanceiro() {
     const statusDiv = document.getElementById('status-financeiro');
+    if (!statusDiv) return; // proteção: sem o elemento, não derruba o renderizar()
     
     let cacheFiltrado = filtrarCachePorPosto(cache);
     
@@ -10239,6 +10145,8 @@
       limiteMatina: limiteMatina,
       limite: limite,
       secretariaVinculada: secretaria,
+      acessoGasolina: document.getElementById('new-acesso-gasolina').checked,
+      acessoFrota: document.getElementById('new-acesso-frota').checked,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
@@ -10287,6 +10195,8 @@
       document.getElementById('new-sec-vinc').value = '';
       document.getElementById('new-posto-vinc').value = '';
       document.getElementById('new-posto-vinc-frentista').value = '';
+      var _ag = document.getElementById('new-acesso-gasolina'); if(_ag) _ag.checked = true;
+      var _af = document.getElementById('new-acesso-frota'); if(_af) _af.checked = true;
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -10717,10 +10627,18 @@
             : `ativarUsuario('${c.key}')`;
           const textoBotao = estaAtivo ? '🔒 DESATIVAR' : '✅ ATIVAR';
           const corBotao = estaAtivo ? '#dc2626' : '#16a34a';
+
+          // Indicador de sistemas liberados (master define). Padrão: ambos liberados.
+          const _temGas = (u.acessoGasolina !== false);
+          const _temFrota = (u.acessoFrota !== false);
+          const acessoIcons = `<span title="Sistemas liberados: ${_temGas?'Combustível':''}${(_temGas&&_temFrota)?' + ':''}${_temFrota?'Frota':''}${(!_temGas&&!_temFrota)?'nenhum':''}" style="margin-left:6px; font-size:12px; letter-spacing:2px; white-space:nowrap;">`
+            + `<span style="opacity:${_temGas?'1':'.22'}">⛽</span>`
+            + `<span style="opacity:${_temFrota?'1':'.22'}">🚗</span>`
+            + `</span>`;
           
           tbody.innerHTML += `
             <tr style="${!estaAtivo ? 'opacity: 0.5; background: #f1f5f9;' : ''}">
-              <td><b>${c.key.toUpperCase()}</b> ${statusBadge}</td>
+              <td><b>${c.key.toUpperCase()}</b> ${statusBadge}${acessoIcons}</td>
               <td><span class="badge ${badgeClass}">${perfilTexto}</span></td>
               <td style="font-size:11px;">${combustiveisInfo}</td>
               <td>${u.secretariaVinculada || 'TODAS'}</td>
@@ -10863,6 +10781,9 @@
       document.getElementById('edit-limit-victor').value = u.limiteVictor || "";
       document.getElementById('edit-limit-matina').value = u.limiteMatina || "";
       document.getElementById('edit-sec-vinc').value = u.secretariaVinculada || "";
+      // Acesso aos sistemas (padrão: ambos liberados se não definido)
+      var _eag = document.getElementById('edit-acesso-gasolina'); if(_eag) _eag.checked = (u.acessoGasolina !== false);
+      var _eaf = document.getElementById('edit-acesso-frota'); if(_eaf) _eaf.checked = (u.acessoFrota !== false);
       
       // Carregar dados de frentista se aplicável
       if (u.role === 'frentista') {
@@ -10949,6 +10870,11 @@
     }
     
     const dadosAtualizados = { senha: novaPass, combustivelLiberado: combus, role: role };
+    // Acesso aos sistemas (definido pelo master)
+    var _sag = document.getElementById('edit-acesso-gasolina');
+    var _saf = document.getElementById('edit-acesso-frota');
+    dadosAtualizados.acessoGasolina = _sag ? _sag.checked : true;
+    dadosAtualizados.acessoFrota = _saf ? _saf.checked : true;
     
     if (role === 'frentista') {
       const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;
@@ -12338,7 +12264,7 @@
     } else if (tab === 'pendentes') {
       document.getElementById('tab-pendentes').style.display = 'block';
       document.getElementById('btn-tab-pendentes').classList.add('active');
-      atualizarPendentes();
+      try { atualizarPendentes(); } catch (e) { console.error('Erro em atualizarPendentes (switchTab):', e); }
     } else if (tab === 'diversas') {
       if (tabDiversas) {
         tabDiversas.style.display = 'block';
@@ -12879,9 +12805,10 @@
       // Registrar logout (não aguardar)
       registrarAuditoria('LOGOUT', { usuario: loginUser });
       
-      // Recarregar após pequeno delay
+      // Encerrar a sessão compartilhada e voltar ao portal
+      localStorage.removeItem('sessao_global');
       setTimeout(() => {
-        location.reload();
+        location.replace('porta.html');
       }, 300);
     }
   }
@@ -13034,7 +12961,13 @@
     }
     
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
-    renderizar();
+    // Pendentes de forma robusta: independente de qualquer erro no renderizar()
+    try {
+      if (loginUser) {
+        atualizarPendentes();
+      }
+    } catch (e) { console.error('Erro ao atualizar pendentes (abastecimentos):', e); }
+    try { renderizar(); } catch (e) { console.error('Erro no renderizar (abastecimentos):', e); }
   });
   
   // ==================== FUNÇÃO DE MIGRAÇÃO ====================
@@ -14387,8 +14320,6 @@
   
   // Verificar se o abastecimento excede o limite
   async function verificarLimiteVIP(valorTotal) {
-
-    
     const pessoaId = document.getElementById('diversas-pessoa').value;
     if (!pessoaId) return;
     
@@ -14678,16 +14609,10 @@
       return;
     }
     
-    // Extrair dados do formulário
-    const placa = document.getElementById('diversas-placa').value.toUpperCase().trim();
-    
-    console.log('📋 VALORES DOS CAMPOS:');
-
-    
     const pessoaId = document.getElementById('diversas-pessoa').value;
     const data = document.getElementById('diversas-data').value;
     const horario = document.getElementById('diversas-horario').value;
-    // placa já foi declarada acima!
+    const placa = document.getElementById('diversas-placa').value.toUpperCase().trim();
     const motorista = document.getElementById('diversas-motorista').value.toUpperCase().trim();
     const cpfBeneficiado = document.getElementById('diversas-cpf').value.trim();
     const postoId = document.getElementById('diversas-posto').value;
@@ -14727,15 +14652,6 @@
       mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
       return;
     }
-    
-    // Validação de segunda camada (já foi validada no início)
-    const validacaoSecretaria = await validarVeiculoSecretaria(placa);
-    if (!validacaoSecretaria.permitido) {
-      console.log('❌ Validação de segunda camada BLOQUEOU');
-      mostrarNotificacao(validacaoSecretaria.mensagem, "error");
-      return;
-    }
-    
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
@@ -16206,559 +16122,9 @@
   
   window.corrigirTimestampsErrados = corrigirTimestampsErrados;
   
-  // ==================== RESET TOTAL DO SISTEMA ====================
+  // ==================== FIM CORRIGIR TIMESTAMPS ====================
   
-  /**
-   * FUNÇÃO NUCLEAR: RESETAR TODO O SISTEMA DE CONSUMO
-   * ⚠️ CUIDADO: Isso vai zerar TUDO relacionado a KM e consumo médio!
-   * Pede 3 confirmações para evitar acidentes
-   */
-  async function resetarSistemaCompletoDeConsumo() {
-    console.log('');
-    console.log('╔═════════════════════════════════════════════════════╗');
-    console.log('║          🚨 FUNÇÃO NUCLEAR DE RESET 🚨              ║');
-    console.log('╚═════════════════════════════════════════════════════╝');
-    console.log('');
-    console.log('⚠️  ATENÇÃO MÁXIMA:');
-    console.log('    • Isto vai ZERAR todos os dados de KM');
-    console.log('    • Isto vai LIMPAR histórico de consumo');
-    console.log('    • Isto NÃO pode ser desfeito sem backup!');
-    console.log('');
-    
-    // CONFIRMAÇÃO 1
-    if (!confirm('⚠️ CONFIRMAÇÃO 1:\n\nVocê entende que isto vai ZERAR tudo?\n\n(OK = SIM, Cancel = NÃO)')) {
-      console.log('❌ Reset cancelado pelo usuário');
-      return { sucesso: false, mensagem: 'Reset cancelado' };
-    }
-    
-    console.log('✅ Confirmação 1 aceita');
-    
-    // CONFIRMAÇÃO 2
-    if (!confirm('⚠️ CONFIRMAÇÃO 2:\n\nVocê fez BACKUP dos dados?\n\n(OK = SIM, Cancel = NÃO)')) {
-      console.log('❌ Reset cancelado - backup não confirmado');
-      alert('⚠️ FAÇA BACKUP ANTES!\n\nAbra o console e execute:\nbackupFirebaseCompleto()');
-      return { sucesso: false, mensagem: 'Backup não confirmado' };
-    }
-    
-    console.log('✅ Confirmação 2 aceita - backup confirmado');
-    
-    // CONFIRMAÇÃO 3 - ÚLTIMA
-    const confirmacaoFinal = prompt(
-      '⚠️ ÚLTIMA CONFIRMAÇÃO:\n\nDigite "RESET TOTAL" (sem aspas) para confirmar:\n\n(ou Cancel para abortar)',
-      ''
-    );
-    
-    if (confirmacaoFinal !== 'RESET TOTAL') {
-      console.log('❌ Reset cancelado - confirmação final rejeitada');
-      return { sucesso: false, mensagem: 'Reset cancelado' };
-    }
-    
-    console.log('✅ Confirmação 3 aceita - EXECUTANDO RESET!');
-    console.log('');
-    
-    try {
-      // PASSO 1: Resetar todos os veículos
-      console.log('📋 PASSO 1: Resetando veículos...');
-      const veiculosSnap = await db.ref('veiculos').once('value');
-      let veiculosResetados = 0;
-      
-      const veiculosPromises = [];
-      veiculosSnap.forEach(snap => {
-        const veiculoId = snap.key;
-        const placa = snap.val().placa;
-        
-        const updateVeiculo = {
-          ultimaKmRegistrada: 0,
-          ultimaKmData: 0,
-          historicoKm: {},
-          kmAtualFormulario: 0
-        };
-        
-        veiculosPromises.push(
-          db.ref(`veiculos/${veiculoId}`).update(updateVeiculo)
-            .then(() => {
-              console.log(`  ✅ ${placa} resetado`);
-              veiculosResetados++;
-            })
-        );
-      });
-      
-      await Promise.all(veiculosPromises);
-      console.log(`✅ ${veiculosResetados} veículos resetados`);
-      console.log('');
-      
-      // PASSO 2: Limpar campos antigos em abastecimentos
-      console.log('📋 PASSO 2: Limpando campos antigos nos abastecimentos...');
-      const abastSnap = await db.ref('abastecimentos').once('value');
-      let abastLimpos = 0;
-      
-      const abastPromises = [];
-      abastSnap.forEach(snap => {
-        const abastId = snap.key;
-        const abast = snap.val();
-        
-        // Checar se tem campos antigos
-        if (abast.km || abast.kmPercorrido || abast.mediaCalculada) {
-          const updates = {};
-          
-          // Marcar campos para remoção
-          if (abast.km !== undefined) updates.km = null;
-          if (abast.kmPercorrido !== undefined) updates.kmPercorrido = null;
-          if (abast.mediaCalculada !== undefined) updates.mediaCalculada = null;
-          
-          abastPromises.push(
-            db.ref(`abastecimentos/${abastId}`).update(updates)
-              .then(() => {
-                abastLimpos++;
-              })
-          );
-        }
-      });
-      
-      await Promise.all(abastPromises);
-      console.log(`✅ ${abastLimpos} abastecimentos limpos`);
-      console.log('');
-      
-      // PASSO 3: Registrar reset na auditoria
-      console.log('📋 PASSO 3: Registrando reset na auditoria...');
-      await registrarAuditoria('RESET_SISTEMA_CONSUMO_TOTAL', {
-        veiculosResetados: veiculosResetados,
-        abastecimentosLimpos: abastLimpos,
-        timestamp: new Date().toLocaleString('pt-BR'),
-        usuario: loginUser
-      });
-      console.log('✅ Reset registrado na auditoria');
-      console.log('');
-      
-      // PASSO 4: Status final
-      console.log('╔═════════════════════════════════════════════════════╗');
-      console.log('║              ✅ RESET CONCLUÍDO COM SUCESSO         ║');
-      console.log('╚═════════════════════════════════════════════════════╝');
-      console.log('');
-      console.log('📊 RESUMO:');
-      console.log(`   • Veículos resetados: ${veiculosResetados}`);
-      console.log(`   • Abastecimentos limpos: ${abastLimpos}`);
-      console.log(`   • Campos antigos removidos`);
-      console.log(`   • Histórico zerado`);
-      console.log('');
-      console.log('🎯 PRÓXIMOS PASSOS:');
-      console.log('   1. Recarregue a página (F5)');
-      console.log('   2. Comece a registrar abastecimentos NOVOS');
-      console.log('   3. Sistema calculará consumo desde o início');
-      console.log('   4. Histórico será construído desde zero');
-      console.log('');
-      
-      // Oferecer reload automático
-      setTimeout(() => {
-        if (confirm('Recarregar página agora?\n\n(OK = SIM, Cancel = DEPOIS)')) {
-          location.reload();
-        }
-      }, 1000);
-      
-      return {
-        sucesso: true,
-        mensagem: 'Sistema resetado com sucesso',
-        veiculosResetados: veiculosResetados,
-        abastecimentosLimpos: abastLimpos
-      };
-      
-    } catch (error) {
-      console.error('❌ ERRO DURANTE RESET:', error);
-      console.log('');
-      console.log('⚠️ ERRO:');
-      console.log('   Algo deu errado durante o reset!');
-      console.log('   Mensagem:', error.message);
-      console.log('');
-      console.log('🆘 O QUE FAZER:');
-      console.log('   1. Não recarregue a página ainda');
-      console.log('   2. Copie o erro acima');
-      console.log('   3. Contate o desenvolvedor');
-      console.log('   4. Use o backup para restaurar se necessário');
-      console.log('');
-      
-      registrarAuditoria('RESET_ERRO', {
-        erro: error.message,
-        timestamp: new Date().toLocaleString('pt-BR')
-      });
-      
-      return {
-        sucesso: false,
-        mensagem: 'Erro durante reset: ' + error.message
-      };
-    }
-  }
-  
-  /**
-   * Fazer BACKUP antes de resetar
-   * Salva todos os dados em um arquivo JSON
-   */
-  async function backupFirebaseCompleto() {
-    console.log('');
-    console.log('💾 INICIANDO BACKUP...');
-    console.log('');
-    
-    try {
-      const backup = {
-        dataBackup: new Date().toLocaleString('pt-BR'),
-        timestamp: Date.now(),
-        versao: '1.0',
-        dados: {}
-      };
-      
-      // Backup de veículos
-      console.log('📋 Buscando veículos...');
-      const veiculosSnap = await db.ref('veiculos').once('value');
-      backup.dados.veiculos = {};
-      veiculosSnap.forEach(snap => {
-        backup.dados.veiculos[snap.key] = snap.val();
-      });
-      console.log(`✅ ${Object.keys(backup.dados.veiculos).length} veículos salvos`);
-      
-      // Backup de abastecimentos (últimos 1000)
-      console.log('📋 Buscando abastecimentos...');
-      const abastSnap = await db.ref('abastecimentos').orderByChild('timestamp').limitToLast(1000).once('value');
-      backup.dados.abastecimentos = {};
-      abastSnap.forEach(snap => {
-        backup.dados.abastecimentos[snap.key] = snap.val();
-      });
-      console.log(`✅ ${Object.keys(backup.dados.abastecimentos).length} abastecimentos salvos`);
-      
-      // Backup de postos
-      console.log('📋 Buscando postos...');
-      const postosSnap = await db.ref('postos').once('value');
-      backup.dados.postos = {};
-      postosSnap.forEach(snap => {
-        backup.dados.postos[snap.key] = snap.val();
-      });
-      console.log(`✅ ${Object.keys(backup.dados.postos).length} postos salvos`);
-      
-      // Criar arquivo
-      const dataStr = JSON.stringify(backup, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-      
-      const exportFileDefaultName = `backup_sistema_${new Date().toISOString().split('T')[0]}.json`;
-      
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
-      
-      console.log('');
-      console.log('✅ BACKUP CONCLUÍDO!');
-      console.log(`📁 Arquivo baixado: ${exportFileDefaultName}`);
-      console.log('');
-      console.log('💾 DADOS INCLUSOS:');
-      console.log(`   • Veículos: ${Object.keys(backup.dados.veiculos).length}`);
-      console.log(`   • Abastecimentos: ${Object.keys(backup.dados.abastecimentos).length}`);
-      console.log(`   • Postos: ${Object.keys(backup.dados.postos).length}`);
-      console.log('');
-      console.log('🔒 SEGURANÇA:');
-      console.log('   • Arquivo está salvo no seu computador');
-      console.log('   • Guarde em local seguro');
-      console.log('   • Pode ser usado para restaurar dados se necessário');
-      console.log('');
-      
-      alert(`✅ Backup salvo como:\n\n${exportFileDefaultName}\n\nGuarde este arquivo em local seguro!`);
-      
-      return { sucesso: true, arquivo: exportFileDefaultName };
-      
-    } catch (error) {
-      console.error('❌ Erro ao fazer backup:', error);
-      alert('❌ Erro ao fazer backup: ' + error.message);
-      return { sucesso: false, erro: error.message };
-    }
-  }
-  
-  // Disponibilizar funções globalmente
-  window.resetarSistemaCompletoDeConsumo = resetarSistemaCompletoDeConsumo;
-  window.backupFirebaseCompleto = backupFirebaseCompleto;
-  
-  // ==================== FIM RESET TOTAL ====================
-  
-  // ==================== VALIDAÇÃO DE SECRETARIA POR VEÍCULO ====================
-  
-  /**
-   * Validar se secretário pode abastecer este veículo
-   * Regra: Secretário só pode abastecer carros da sua secretaria
-   * Exception: Admin/Frentista podem abastecer qualquer carro
-   */
-  async function validarVeiculoSecretaria(placa) {
-    console.log('');
-    console.log('🔒 VALIDANDO SECRETARIA DO VEÍCULO...');
-    console.log('  • Placa:', placa);
-    console.log('  • Usuário:', loginUser);
-    console.log('  • Secretaria do usuário:', userSecretaria);
-    console.log('');
-    
-    // Se é admin ou frentista, permite tudo
-    if (userRole === 'admin' || userRole === 'frentista' || userRole === 'autorizador') {
-      console.log('✅ Usuário é', userRole, '- pode abastecer qualquer carro');
-      return {
-        permitido: true,
-        mensagem: `✅ ${userRole.toUpperCase()} pode abastecer qualquer carro`
-      };
-    }
-    
-    // Se é secretário, verifica a secretaria do carro
-    if (userRole === 'secretarios') {
-      const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-      
-      if (!veiculo) {
-        console.log('❌ Veículo não encontrado:', placa);
-        return {
-          permitido: false,
-          mensagem: `❌ VEÍCULO NÃO ENCONTRADO!\n\nPlaca: ${placa}\n\nVerifique se a placa está correta.`
-        };
-      }
-      
-      console.log('  • Veículo encontrado:', veiculo.placa);
-      console.log('  • Secretaria do veículo:', veiculo.secretaria || 'NÃO DEFINIDA');
-      
-      // Se veículo não tem secretaria definida
-      if (!veiculo.secretaria) {
-        console.log('⚠️ Veículo sem secretaria definida!');
-        return {
-          permitido: false,
-          mensagem: `⚠️ VEÍCULO SEM SECRETARIA!\n\nPlaca: ${placa}\n\nEste veículo não tem secretaria definida no sistema.\nContate o administrador.`
-        };
-      }
-      
-      // Comparar secretarias
-      if (veiculo.secretaria === userSecretaria) {
-        console.log('✅ Secretaria OK - Veículo pertence a:', veiculo.secretaria);
-        return {
-          permitido: true,
-          mensagem: `✅ Veículo de ${veiculo.secretaria}`
-        };
-      } else {
-        console.log('❌ BLOQUEADO - Secretarias diferentes!');
-        console.log('  • Secretaria do veículo:', veiculo.secretaria);
-        console.log('  • Sua secretaria:', userSecretaria);
-        return {
-          permitido: false,
-          mensagem: `❌ Este veículo não está cadastrado para a sua secretaria.\n\nEntre em contato com o administrador.`
-        };
-      }
-    }
-    
-    // Se é outro tipo de role
-    console.log('⚠️ Role desconhecido:', userRole);
-    return {
-      permitido: false,
-      mensagem: `⚠️ ERRO: Role desconhecido: ${userRole}`
-    };
-  }
-  
-  // Disponibilizar globalmente
-  window.validarVeiculoSecretaria = validarVeiculoSecretaria;
-  
-  /**
-   * Atualizar secretaria de um veículo
-   * Admin: Comando para gerenciar secretarias dos veículos
-   */
-  async function atualizarSecretariaVeiculo(placa, novaSecretaria) {
-    console.log('');
-    console.log('🔧 ATUALIZANDO SECRETARIA DO VEÍCULO');
-    console.log('  • Placa:', placa);
-    console.log('  • Nova secretaria:', novaSecretaria);
-    console.log('');
-    
-    if (!temPermissao('admin_dashboard')) {
-      console.log('❌ Sem permissão para atualizar secretaria');
-      return {
-        sucesso: false,
-        mensagem: 'Sem permissão'
-      };
-    }
-    
-    const veiculo = veiculos.find(v => v.placa === placa.toUpperCase());
-    if (!veiculo) {
-      console.log('❌ Veículo não encontrado');
-      return {
-        sucesso: false,
-        mensagem: 'Veículo não encontrado'
-      };
-    }
-    
-    try {
-      await db.ref(`veiculos/${veiculo.id}`).update({
-        secretaria: novaSecretaria
-      });
-      
-      console.log('✅ Secretaria atualizada com sucesso');
-      return {
-        sucesso: true,
-        mensagem: `${placa} agora é da Secretaria de ${novaSecretaria}`
-      };
-    } catch (error) {
-      console.error('❌ Erro ao atualizar:', error);
-      return {
-        sucesso: false,
-        mensagem: error.message
-      };
-    }
-  }
-  
-  window.atualizarSecretariaVeiculo = atualizarSecretariaVeiculo;
-  
-  /**
-   * Ver veículos por secretaria
-   * Útil para debugar e gerenciar alocações
-   */
-  async function verVeiculosPorSecretaria() {
-    console.log('');
-    console.log('📊 VEÍCULOS POR SECRETARIA');
-    console.log('════════════════════════════════════════');
-    
-    const secretarias = {};
-    
-    veiculos.forEach(v => {
-      const sec = v.secretaria || 'SEM SECRETARIA';
-      if (!secretarias[sec]) secretarias[sec] = [];
-      secretarias[sec].push(v.placa);
-    });
-    
-    Object.keys(secretarias).sort().forEach(sec => {
-      console.log(`\n${sec}:`);
-      secretarias[sec].forEach(placa => {
-        console.log(`  • ${placa}`);
-      });
-      console.log(`  Total: ${secretarias[sec].length} carros`);
-    });
-    
-    console.log('');
-    console.log('════════════════════════════════════════');
-    
-    return secretarias;
-  }
-  
-  window.verVeiculosPorSecretaria = verVeiculosPorSecretaria;
-  
-  // ==================== CARREGAMENTO DE VEÍCULOS POR SECRETARIA ====================
-  
-  function carregarVeiculosPorSecretaria() {
-    console.log('');
-    console.log('════════════════════════════════════════════════════════');
-    console.log('🚗 CARREGANDO VEÍCULOS DA SECRETARIA');
-    console.log('════════════════════════════════════════════════════════');
-    console.log('  • Função: carregarVeiculosPorSecretaria()');
-    console.log('  • Secretaria:', userSecretaria);
-    console.log('  • Role:', userRole);
-    console.log('  • Total de veículos no sistema:', veiculos.length);
-    console.log('');
-    
-    const selectPlaca = document.getElementById('diversas-placa');
-    if (!selectPlaca) {
-      console.log('❌ ERRO: Select de placa não encontrado no DOM!');
-      return;
-    }
-    
-    // Se for admin/frentista/autorizador, mostra todos os veículos
-    let veiculosFiltrados = [];
-    
-    if (userRole === 'admin' || userRole === 'frentista' || userRole === 'autorizador') {
-      console.log('👤 Usuário é:', userRole.toUpperCase());
-      console.log('   → SEM RESTRIÇÃO DE SECRETARIA');
-      console.log('   → Mostrando TODOS os veículos');
-      veiculosFiltrados = veiculos.slice(); // Cópia de todos
-      
-    } else if (userRole === 'secretarios') {
-      console.log('🔒 Usuário é: SECRETÁRIO');
-      console.log('   → COM RESTRIÇÃO DE SECRETARIA');
-      console.log('   → Mostrando APENAS veículos de:', userSecretaria);
-      console.log('');
-      
-      veiculosFiltrados = veiculos.filter(v => {
-        const ehDaSua = v.secretaria === userSecretaria;
-        
-        if (ehDaSua) {
-          console.log(`   ✅ ${v.placa.padEnd(10)} → ${v.modelo || 'Modelo desconhecido'} (${v.secretaria})`);
-        } else {
-          console.log(`   ❌ ${v.placa.padEnd(10)} → ${v.modelo || 'Modelo desconhecido'} (${v.secretaria}) [BLOQUEADO]`);
-        }
-        
-        return ehDaSua;
-      });
-      
-      console.log('');
-      
-    } else {
-      console.log('⚠️  Role desconhecido:', userRole);
-      console.log('   → Mostrando todos os veículos por segurança');
-      veiculosFiltrados = veiculos.slice();
-    }
-    
-    // Limpar opções antigas
-    selectPlaca.innerHTML = '<option value="">SELECIONE UM CARRO DE SUA SECRETARIA</option>';
-    
-    if (veiculosFiltrados.length === 0) {
-      console.log('');
-      console.log('⚠️  NENHUM VEÍCULO DISPONÍVEL PARA ESTA SECRETARIA!');
-      selectPlaca.innerHTML = '<option value="" disabled>❌ NENHUM VEÍCULO DISPONÍVEL</option>';
-      selectPlaca.disabled = true;
-      console.log('════════════════════════════════════════════════════════');
-      console.log('');
-      return;
-    }
-    
-    // Adicionar veículos ao dropdown
-    console.log('Preenchendo dropdown com:');
-    veiculosFiltrados.forEach(v => {
-      const option = document.createElement('option');
-      option.value = v.placa;
-      const texto = `${v.placa} - ${v.modelo || 'Modelo desconhecido'} (${v.secretaria || 'S/Secretaria'})`;
-      option.text = texto;
-      selectPlaca.appendChild(option);
-      console.log(`   ✅ ${texto}`);
-    });
-    
-    selectPlaca.disabled = false;
-    
-    // Mostrar aviso de restrição
-    const aviso = document.getElementById('aviso-carros-secretaria');
-    if (aviso && userRole === 'secretarios') {
-      aviso.style.display = 'block';
-      aviso.innerHTML = `🔒 Mostrando APENAS carros da Secretaria de <strong>${userSecretaria}</strong>`;
-    }
-    
-    console.log('');
-    console.log(`✅ ${veiculosFiltrados.length} veículos carregados no dropdown`);
-    console.log('════════════════════════════════════════════════════════');
-    console.log('');
-  }
-  
-  window.carregarVeiculosPorSecretaria = carregarVeiculosPorSecretaria;
-  
-  /**
-   * Validar veículo selecionado (segunda camada de segurança)
-   * Mesmo que o dropdown seja filtrado, validamos novamente
-   */
-  function validarVeiculoSelecionadoDiversas(placa) {
-    console.log('');
-    console.log('✅ VEÍCULO SELECIONADO:');
-    console.log('  • Placa:', placa);
-    
-    if (!placa) {
-      console.log('⚠️ Nenhum veículo selecionado');
-      return;
-    }
-    
-    // Validação de segunda camada
-    validarVeiculoSecretaria(placa).then(resultado => {
-      if (resultado.permitido) {
-        console.log('✅ Veículo permitido:', resultado.mensagem);
-      } else {
-        console.log('❌ Veículo NÃO permitido!');
-        mostrarNotificacao(resultado.mensagem, "error");
-        document.getElementById('diversas-placa').value = '';
-      }
-    });
-  }
-  
-  window.validarVeiculoSelecionadoDiversas = validarVeiculoSelecionadoDiversas;
-  
-  // ==================== FIM CARREGAMENTO VEÍCULOS POR SECRETARIA ====================
-  
+  // ==================== FIM CORRIGIR MATEUS ====================
   
   // ==================== FIM DEBUG MATEUS ====================
   
@@ -18921,6 +18287,52 @@
       }, 100);
     }
   }
+</script>
+<script>
+/* ── SESSÃO COMPARTILHADA (porta.html) ─────────────────────── */
+// Todo login (local ou automático) renova a sessão global de 12h
+var _entrarOriginal = entrar;
+entrar = function(u, role, limit, sec, dadosExtras){
+  try{
+    localStorage.setItem('sessao_global', JSON.stringify({
+      u: u, role: role, limite: limit || 0, sec: sec || "",
+      dados: dadosExtras || {}, exp: Date.now() + 12*60*60*1000
+    }));
+  }catch(e){ console.error('Não foi possível gravar a sessão:', e); }
+  return _entrarOriginal(u, role, limit, sec, dadosExtras);
+};
+
+/* ── AUTO-LOGIN VIA SESSÃO COMPARTILHADA ────────────────────── */
+(function(){
+  var s = window.__SESSAO;
+  if(!s) return; // a guarda no <head> já redirecionou
+  // Bloqueio por acesso (definido pelo master): master sempre entra; os demais precisam de acessoGasolina.
+  if(s.u !== 'master' && s.dados && s.dados.acessoGasolina === false){
+    alert('🚫 Seu usuário não tem acesso ao Controle de Combustível.\n\nVocê será redirecionado ao painel inicial.');
+    location.replace('porta.html');
+    return;
+  }
+  // Resolve permissões de forma defensiva (não deixa faltar permissão derrubar o login)
+  try{
+    s.dados = s.dados || {};
+    if(s.u === 'master'){
+      s.dados.permissoes = (typeof PERMISSOES_DISPONIVEIS !== 'undefined') ? Object.keys(PERMISSOES_DISPONIVEIS) : (s.dados.permissoes||[]);
+    } else if(!s.dados.permissoes || !s.dados.permissoes.length){
+      s.dados.permissoes = (typeof PERMISSOES_PADRAO !== 'undefined' && PERMISSOES_PADRAO[s.role]) ? PERMISSOES_PADRAO[s.role] : [];
+    }
+  }catch(e){ console.error('Aviso: não foi possível resolver permissões padrão:', e); }
+  // O login em si (entrar) é o passo crítico — isolado para não ser afetado por nada periférico
+  try{
+    entrar(s.u, s.role, s.limite || 0, s.sec || "", s.dados);
+  }catch(e){
+    console.error('Auto-login falhou — exibindo tela de login local como alternativa:', e);
+    document.documentElement.classList.remove('auto-login');
+    var ls = document.getElementById('login-screen'); if(ls) ls.style.display = '';
+    return;
+  }
+  // Auditoria é secundária: se falhar, NÃO afeta o login já realizado
+  try{ registrarAuditoria('LOGIN', { usuario: s.u, via: 'portal' }); }catch(e){ /* silencioso */ }
+})();
 </script>
 </body>
 </html>
