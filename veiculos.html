@@ -1488,9 +1488,11 @@ function makeBtnVeiculo(v) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
-  return '<button class="vbtn '+s+'" onclick="verVeiculo(\''+v.id+'\')">'+
+  var classeBtn = v.foraGaragem ? 'fora_garagem' : s;
+  var labelBtn  = LABEL[classeBtn] || LABEL[s];
+  return '<button class="vbtn '+classeBtn+'" onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
-    '<div style="font-size:9px;margin-bottom:1px">'+LABEL[s].toUpperCase()+'</div>'+
+    '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
 
     '<div class="vplaca-wrap">'+
