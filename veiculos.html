@@ -2399,7 +2399,7 @@ function confirmarVeiculo() {
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
     revKm:parseInt(document.getElementById('v-revkm').value)||null,
-    foraGaragem:!!document.getElementById('v-fora-garagem').checked,
+    foraGaragem:document.getElementById('v-fora-garagem').checked ? 1 : null,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
