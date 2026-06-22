@@ -102,7 +102,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .stat.sr{background:linear-gradient(135deg,#DC2626,#B91C1C);box-shadow:0 4px 15px rgba(220,38,38,.25)}
 .stat.sp{background:linear-gradient(135deg,#7C3AED,#6D28D9);box-shadow:0 4px 15px rgba(124,58,237,.25)}
 .stat.ssol{background:linear-gradient(135deg,#F59E0B,#D97706);box-shadow:0 4px 15px rgba(245,158,11,.28)}
-.stat.sfg{background:linear-gradient(135deg,#374151,#111);box-shadow:0 4px 15px rgba(0,0,0,.35)}
 .stat-label{font-size:10px;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.75)}
 .stat.st .stat-label{color:var(--text3)}
 .stat-val{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1}
@@ -128,7 +127,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn-inner{padding:20px 13px 16px;display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:var(--radius-xl);position:relative;overflow:hidden}
 .vbtn-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.15),transparent 60%);pointer-events:none;border-radius:inherit}
 .vbtn.guardado{box-shadow:0 4px 18px rgba(22,163,74,.3)}.vbtn.guardado .vbtn-inner{background:linear-gradient(145deg,#22C55E,#16A34A)}
-.vbtn.fora_garagem{box-shadow:0 4px 18px rgba(0,0,0,.5)}.vbtn.fora_garagem .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#111)}
 .vbtn.trabalhando{box-shadow:0 4px 18px rgba(37,99,235,.35)}.vbtn.trabalhando .vbtn-inner{background:linear-gradient(145deg,#3B82F6,#2563EB)}
 .vbtn.irregular{box-shadow:0 4px 18px rgba(220,38,38,.35)}.vbtn.irregular .vbtn-inner{background:linear-gradient(145deg,#EF4444,#DC2626)}
 @keyframes piscar{
@@ -148,6 +146,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.liberado{animation:piscarLaranja 1.8s ease-in-out infinite}
 .vbtn.pendente{box-shadow:0 2px 8px rgba(99,102,241,.3)}.vbtn.pendente .vbtn-inner{background:linear-gradient(145deg,#818CF8,#6366F1)}
 /* Solicitado por secretário (aguardando aprovação) → AMARELO */
+.vbtn.aprovado{box-shadow:0 4px 18px rgba(14,165,233,.5)}
+.vbtn.aprovado .vbtn-inner{background:linear-gradient(145deg,#38BDF8,#0284C7);color:#fff}
+.vbtn.aprovado .vdesc{color:rgba(255,255,255,.85)}
+.vbtn.aprovado .vsec{color:rgba(255,255,255,.7)}
+.vbtn.aprovado{animation:piscarAzul 2s ease-in-out infinite}
+@keyframes piscarAzul{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(14,165,233,.5)}50%{opacity:.75;box-shadow:0 4px 28px rgba(14,165,233,.85)}}
 .vbtn.solicitado{box-shadow:0 4px 18px rgba(234,179,8,.5)}
 .vbtn.solicitado .vbtn-inner{background:linear-gradient(145deg,#FCD34D,#F59E0B);color:#422006}
 .vbtn.solicitado .vdesc{color:#3a2a00}
@@ -187,7 +191,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vplaca-top{background:#003399;border-radius:4px 4px 0 0;padding:1px 5px;display:flex;align-items:center;justify-content:space-between;margin:-2px -8px 3px;font-size:7px;font-weight:700;color:#fff;letter-spacing:.1em}
 .vplaca-pais,.vplaca-br{font-size:7px;font-weight:700;color:#fff}
 .vbtn .vplaca{font-size:18px;font-weight:900;letter-spacing:.12em;color:#111;font-family:'Arial Black',Arial,sans-serif;line-height:1.1}
-.vbtn.fora_garagem .vplaca{color:#111;text-shadow:0 0 6px rgba(255,255,255,.6)}
 .vbtn .vdesc{font-size:13px;font-weight:600;color:rgba(255,255,255,.97);text-align:center;line-height:1.3}
 .vbtn .vsec{font-size:9px;color:rgba(255,255,255,.55);text-align:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vbtn .vstatus{font-size:9px;font-weight:700;color:rgba(255,255,255,.92);background:rgba(0,0,0,.2);padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
@@ -202,8 +205,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .card-title{font-size:14px;font-weight:700;color:var(--text)}
 .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
 .badge.guardado{background:#DCFCE7;color:#15803D}
-.badge.fora_garagem{background:#1f2937;color:#fff}
 .badge.solicitado{background:#FEF3C7;color:#92400E}
+.badge.aprovado{background:#E0F2FE;color:#0369A1}
 .badge.trabalhando{background:#FEF9C3;color:#A16207}
 .badge.irregular{background:#FEE2E2;color:#991B1B}
 .badge.agendado{background:#DBEAFE;color:#1D4ED8}
@@ -314,10 +317,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .status-group{margin-bottom:1.75rem}
 .status-group-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 14px;border-radius:var(--radius);font-size:12px;font-weight:700;letter-spacing:.03em}
 .status-group-header.guardado{background:rgba(22,163,74,.1);color:var(--green);border-left:3px solid var(--green)}
-.status-group-header.fora_garagem{background:rgba(0,0,0,.07);color:#111;border-left:3px solid #111}
 .status-group-header.trabalhando{background:rgba(37,99,235,.1);color:#2563EB;border-left:3px solid #2563EB}
 .status-group-header.liberado{background:rgba(249,115,22,.1);color:#EA580C;border-left:3px solid #EA580C}
 .status-group-header.solicitado{background:rgba(245,158,11,.12);color:#B45309;border-left:3px solid #F59E0B}
+.status-group-header.aprovado{background:rgba(14,165,233,.1);color:#0369A1;border-left:3px solid #0EA5E9}
 .status-group-header.irregular{background:rgba(220,38,38,.12);color:var(--red);border-left:3px solid var(--red)}
 .status-group-header.ausente{background:rgba(124,58,237,.1);color:var(--purple);border-left:3px solid var(--purple)}
 .status-group-header.fora_horario{background:rgba(107,114,128,.1);color:var(--gray);border-left:3px solid var(--gray)}
@@ -430,6 +433,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <button class="btn" id="btn-fil-fora_horario" onclick="toggleFiltro('fora_horario')" style="font-size:11px;padding:5px 10px" title="Mostrar fora do horário">🌙</button>
         <button class="btn" id="btn-fil-liberado" onclick="toggleFiltro('liberado')" style="font-size:11px;padding:5px 10px" title="Mostrar liberados para viagem">🗓️</button>
         <button class="btn" id="btn-fil-solicitado" onclick="toggleFiltro('solicitado')" style="font-size:11px;padding:5px 10px" title="Mostrar só solicitados">🟡</button>
+        <button class="btn" id="btn-fil-aprovado" onclick="toggleFiltro('aprovado')" style="font-size:11px;padding:5px 10px" title="Mostrar aprovados aguardando saída">🔵</button>
       </div>
     </div>
     <div id="frota-container"></div>
@@ -779,13 +783,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Capacidade passageiros</label><input type="number" id="v-cap" min="0" placeholder="0 = sem passageiros"></div>
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
     </div>
-    <div class="field" style="margin-top:4px">
-      <label for="v-fora-garagem" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#F3F4F6;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 13px">
-        <input type="checkbox" id="v-fora-garagem" style="width:18px;height:18px;accent-color:#111;cursor:pointer;flex-shrink:0">
-        <span>⬛ Guardado fora da garagem</span>
-      </label>
-      <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo fica <strong>preto</strong> e <strong>não pisca como irregular</strong> por atraso, até ser desmarcado.</div>
-    </div>
     <div class="divider"></div>
     <div class="section-title" style="margin-bottom:.5rem">Documentação</div>
     <div class="form-row">
@@ -840,36 +837,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
-<!-- MODAL PRORROGAR RETORNO -->
-<div class="overlay" id="ov-prorrogar">
-  <div class="modal" style="max-width:400px">
-    <h2>⏱ Prorrogar retorno</h2>
-    <div id="prorr-info" style="font-size:12px;color:#5B3E9A;background:#F3EEFF;padding:9px 11px;border-radius:8px;margin-bottom:.75rem;line-height:1.6"></div>
-    <div class="field">
-      <label>Adicionar tempo</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <button class="btn" onclick="prorrogarMin(30)"  style="font-size:13px">+30 min</button>
-        <button class="btn" onclick="prorrogarMin(60)"  style="font-size:13px">+1 hora</button>
-        <button class="btn" onclick="prorrogarMin(120)" style="font-size:13px">+2 horas</button>
-        <button class="btn" onclick="prorrogarMin(240)" style="font-size:13px">+4 horas</button>
-      </div>
-    </div>
-    <div class="field">
-      <label>Ou definir novo horário de retorno</label>
-      <input type="datetime-local" id="prorr-novo-retorno">
-    </div>
-    <div class="field">
-      <label>Motivo <span style="color:#aaa;font-weight:400">(opcional)</span></label>
-      <textarea id="prorr-obs" placeholder="Ex: Imprevisto na estrada, aguardando peça..." style="min-height:60px"></textarea>
-    </div>
-    <div id="prorr-preview" style="font-size:12px;color:#374151;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 11px;margin-bottom:.5rem;display:none"></div>
-    <div class="actions">
-      <button class="btn primary" onclick="confirmarProrrogar()">✅ Confirmar prorrogação</button>
-      <button class="btn" onclick="fechar('ov-prorrogar')">Cancelar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL CONFIRMAR CANCELAR -->
 <div class="overlay" id="ov-confirmar">
   <div class="modal" style="max-width:360px;text-align:center">
@@ -911,8 +878,8 @@ const SECS = [
   'Secretaria de Cultura, Esporte e Lazer','Secretaria de Governo',
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
-const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',solicitado:'Solicitado',pendente:'Aguard. aprovação',fora_garagem:'Fora da garagem'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',solicitado:'#F59E0B',fora_garagem:'#111'};
+const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',aprovado:'Aprovado — ag. saída',solicitado:'Solicitado',pendente:'Aguard. aprovação'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',liberado:'#EA580C',aprovado:'#0EA5E9',solicitado:'#F59E0B'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -1283,17 +1250,17 @@ function estaNoHorario(v) {
   return false;
 }
 function getStatus(vid) {
-  var v = getV(vid);
   if(getAusAtiva(vid)) return 'ausente';
   var mov = getMovAtiva(vid);
-  if(mov) {
-    if(now()>new Date(mov.retorno)) return (v && v.foraGaragem) ? 'trabalhando' : 'irregular';
-    return 'trabalhando';
-  }
+  if(mov) return now()>new Date(mov.retorno)?'irregular':'trabalhando';
+  // Check if liberado (approved request, waiting departure)
   var sol = getSolicitacaoLiberada(vid);
   if(sol) return 'liberado';
+  // Aprovada mas viagem é para data futura — aguardando saída agendada
+  if(getSolicitacaoAprovadaFutura(vid)) return 'aprovado';
+  // Solicitação pendente de aprovação (pedido de secretário) → solicitado
   if(getSolicitacaoPendente(vid)) return 'solicitado';
-  if(v && v.foraGaragem) return 'fora_garagem';
+  var v = getV(vid);
   if(v && !estaNoHorario(v)) return 'fora_horario';
   return 'guardado';
 }
@@ -1323,6 +1290,19 @@ function getSolicitacaoPendente(vid) {
   if(!D.solicitacoes) return null;
   return D.solicitacoes.find(function(s){
     return s.vid===vid && s.status==='pendente';
+  }) || null;
+}
+
+// Aprovada mas data_viagem é futura (ou aprovada sem data hoje) — aguardando saída
+function getSolicitacaoAprovadaFutura(vid) {
+  if(!D.solicitacoes) return null;
+  var hoje = now().toISOString().slice(0,10);
+  return D.solicitacoes.find(function(s){
+    return s.vid === vid
+      && s.status === 'aprovada'
+      && !solicitacaoJaSaiu(s)
+      && s.data_viagem
+      && s.data_viagem.slice(0,10) > hoje; // data futura
   }) || null;
 }
 
@@ -1392,7 +1372,7 @@ var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
   // Update filter button styles
-  ['irregular','trabalhando','guardado','fora_garagem','ausente','fora_horario','liberado','solicitado'].forEach(function(s) {
+  ['irregular','trabalhando','guardado','ausente','fora_horario','liberado','aprovado','solicitado'].forEach(function(s) {
     var btn = document.getElementById('btn-fil-'+s);
     if(!btn) return;
     var on = _filtroStatus === s;
@@ -1424,11 +1404,11 @@ function setOrdem(mode) {
 }
 
 function renderFrotaPorStatus() {
-  var ORDER = ['irregular','liberado','solicitado','trabalhando','ausente','guardado','fora_garagem','fora_horario'];
-  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_garagem:'⬛ Guardados fora da garagem',fora_horario:'🌙 Fora do horário'};
+  var ORDER = ['irregular','liberado','aprovado','solicitado','trabalhando','ausente','guardado','fora_horario'];
+  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',aprovado:'🔵 Aprovados — aguardando saída',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_horario:'🌙 Fora do horário'};
   var grupos = {};
   ORDER.forEach(function(s){ grupos[s] = []; });
-  getVeiculosFiltrados().forEach(function(v){ grupos[v.foraGaragem ? 'fora_garagem' : getStatus(v.id)].push(v); });
+  getVeiculosFiltrados().forEach(function(v){ grupos[getStatus(v.id)].push(v); });
   var html = '';
   ORDER.forEach(function(s){
     var veics = grupos[s];
@@ -1462,9 +1442,8 @@ function renderPorSecretaria() {
   var html = '';
   secs.forEach(function(sec) {
     var veics = grupos[sec];
-    var g=0,t=0,ir=0,au=0,fg2=0;
+    var g=0,t=0,ir=0,au=0;
     veics.forEach(function(v) {
-      if(v.foraGaragem){ fg2++; return; }
       var s=getStatus(v.id);
       if(s==='guardado')g++;else if(s==='trabalhando')t++;else if(s==='irregular')ir++;else if(s==='ausente')au++;
     });
@@ -1472,8 +1451,7 @@ function renderPorSecretaria() {
       (g>0?'<span class="sec-badge g">🟢 '+g+'</span>':'')+
       (t>0?'<span class="sec-badge y">🟡 '+t+'</span>':'')+
       (ir>0?'<span class="sec-badge r">🔴 '+ir+'</span>':'')+
-      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'')+
-      (fg2>0?'<span class="sec-badge" style="background:#111;color:#fff">⬛ '+fg2+'</span>':'');
+      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'');
     var grid = veics.map(makeBtnVeiculo).join('');
     html += '<div class="sec-group">'+
       '<div class="sec-group-header">'+
@@ -1497,7 +1475,7 @@ function makeBtnVeiculo(v) {
   if(cap>0 && mov) {
     var livres = Math.max(0,cap-pass);
     vagasHTML = '<div class="vvagas">'+(livres===0?'🔴 LOTADO':'🟢 '+livres+' vaga'+(livres!==1?'s':'')+' livre'+(livres!==1?'s':''))+'</div>';
-  } else if(cap>0 && (s==='guardado'||s==='fora_garagem')) {
+  } else if(cap>0 && s==='guardado') {
     vagasHTML = '<div class="vvagas">🟢 '+cap+' vagas disp.</div>';
   }
   var docs = docAlerts(v);
@@ -1508,23 +1486,21 @@ function makeBtnVeiculo(v) {
   var _solPend = getSolicitacaoPendente(v.id);
   if(s==='liberado') {
     agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(255,255,255,.3)">✅ Aprovado p/ viagem</div>';
-  } else if(_agHoje && (s==='guardado'||s==='fora_garagem'||s==='fora_horario')) {
+  } else if(_agHoje && (s==='guardado'||s==='fora_horario')) {
     agendaWarnHTML = '<div class="agenda-warn">📅 Agendado hoje</div>';
   }
 
   // Botão saída rápida visível no card
   var rapidaHTML = '';
-  if(isAdmin() && (s==='guardado'||s==='fora_garagem'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
+  if(isAdmin() && (s==='guardado'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
     var escR = getEscalaHoje(v);
     if(escR && escR.destino) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
-  var classeBtn = v.foraGaragem ? 'fora_garagem' : s;
-  var labelBtn  = LABEL[classeBtn] || LABEL[s];
-  return '<button class="vbtn '+classeBtn+'" onclick="verVeiculo(\''+v.id+'\')">'+
+  return '<button class="vbtn '+s+'" onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
-    '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
+    '<div style="font-size:9px;margin-bottom:1px">'+LABEL[s].toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
 
     '<div class="vplaca-wrap">'+
@@ -1543,11 +1519,10 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  var g=0,t=0,ir=0,au=0,sol=0,fh=0,fg=0;
+  var g=0,t=0,ir=0,au=0,sol=0,ap=0,fh=0;
   D.veiculos.forEach(function(v){
-    if(v.foraGaragem){ fg++; return; }
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else fh++;
   });
 
   if(_ordemMode === 'status') {
@@ -1568,7 +1543,7 @@ function renderPainel() {
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
     '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>'+
     '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
-    '<div class="stat sfg"><div class="stat-label">Fora do local</div><div class="stat-val">'+fg+'</div></div>';
+    '<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>';
 
   var al = '';
   if(ir>0) al += '<div class="alerta vermelho">🚨 '+ir+' veículo(s) com retorno em atraso!</div>';
@@ -1727,7 +1702,7 @@ function _candidatosLote(){
     }
     // 2) Parado e disponível para sair: guardado OU fora do horário de escala.
     //    (não entram: em viagem, ausente/não está no local)
-    if(st === 'guardado' || st === 'fora_garagem' || st === 'fora_horario' || st === 'solicitado'){
+    if(st === 'guardado' || st === 'fora_horario' || st === 'solicitado'){
       var esc = getEscalaHoje(v);
       var item = {
         vid:v.id, fonte: esc?'escala':'livre',
@@ -1970,17 +1945,24 @@ function verVeiculo(vid) {
   var btns = '';
   if(aus) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
-  } else if(s==='trabalhando'||s==='irregular'||s==='fora_garagem') {
+  } else if(s==='trabalhando'||s==='irregular') {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
     if(isAdmin()) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
-      btns += '<button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogar(\''+mov.id+'\')">⏱ Prorrogar retorno</button>';
     }
   } else {
     if(!isAdmin()) {
       // Secretário só pode solicitar viagem
       btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSolicitacao(\''+vid+'\')">📋 Solicitar viagem</button>';
-      if(s==='liberado') {
+      if(s==='aprovado') {
+        var solAp = getSolicitacaoAprovadaFutura(vid);
+        btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;padding:8px 0;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
+          '✅ Viagem aprovada para '+( solAp && solAp.data_viagem ? fmtData(solAp.data_viagem) : 'data agendada')+'<br>'+
+          '<span style="font-weight:400;font-size:11px">Aguardando saída — o veículo será liberado automaticamente no dia da viagem.</span></div>';
+        if(isAdmin()){
+          var _sid = solAp ? solAp.id : ''; btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')">❌ Cancelar aprovação</button>';
+        }
+      } else if(s==='liberado') {
         btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>';
       }
     } else {
@@ -2355,7 +2337,6 @@ function abrirVeiculo(id) {
   document.getElementById('v-comb').value   = v?v.combustivel:'Flex';
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
-  document.getElementById('v-fora-garagem').checked = !!(v && v.foraGaragem);
   document.getElementById('v-ipva').value   = v?v.ipva:'';
   document.getElementById('v-licenc').value = v?v.licenc:'';
   document.getElementById('v-seguro').value = v?v.seguro:'';
@@ -2435,7 +2416,6 @@ function confirmarVeiculo() {
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
     revKm:parseInt(document.getElementById('v-revkm').value)||null,
-    foraGaragem:document.getElementById('v-fora-garagem').checked ? 1 : null,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
@@ -2469,65 +2449,6 @@ function confirmarAusente() {
   D.ausencias.push({id:uid('au'),vid:_ausenteVid,obs:obs,abertoEm:nowLocal(),resolvido:false,resolvidoEm:null});
   salvar(); fechar('ov-ausente'); toast('Ocorrência registrada!'); renderTudo();
 }
-// ─── PRORROGAR RETORNO ────────────────────────────────────────────────────────
-var _prorrogarMovId = null;
-
-function abrirProrrogar(movId) {
-  _prorrogarMovId = movId;
-  var mov = D.movimentacoes.find(function(m){ return m.id === movId; });
-  if(!mov) return;
-  var v = getV(mov.vid);
-  var retAtual = new Date(mov.retorno);
-
-  document.getElementById('prorr-info').innerHTML =
-    '<strong>'+(v?v.placa:movId)+'</strong> — '+mov.motorista+'<br>'+
-    'Retorno atual: <strong>'+fmtDT(mov.retorno)+'</strong>';
-
-  // Preencher datetime com retorno atual como base
-  var iso = new Date(retAtual.getTime()-retAtual.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  document.getElementById('prorr-novo-retorno').value = iso;
-  document.getElementById('prorr-obs').value = '';
-  document.getElementById('prorr-preview').style.display = 'none';
-
-  abrir('ov-prorrogar');
-}
-
-function prorrogarMin(min) {
-  var mov = D.movimentacoes.find(function(m){ return m.id === _prorrogarMovId; });
-  if(!mov) return;
-  var base = new Date(mov.retorno);
-  var novo = new Date(base.getTime() + min*60000);
-  var iso = new Date(novo.getTime()-novo.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  document.getElementById('prorr-novo-retorno').value = iso;
-  var prev = document.getElementById('prorr-preview');
-  prev.style.display = 'block';
-  prev.innerHTML = '⏱ Novo retorno previsto: <strong>'+novo.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+'</strong>';
-}
-
-function confirmarProrrogar() {
-  var novoVal = document.getElementById('prorr-novo-retorno').value;
-  if(!novoVal){ toast('Defina o novo horário de retorno.'); return; }
-  var novoRetorno = new Date(novoVal);
-  var mov = D.movimentacoes.find(function(m){ return m.id === _prorrogarMovId; });
-  if(!mov){ toast('Movimentação não encontrada.'); return; }
-  var retAnterior = mov.retorno;
-  mov.retorno = novoRetorno.toISOString();
-  // Registrar no histórico da movimentação
-  if(!mov.prorrogacoes) mov.prorrogacoes = [];
-  mov.prorrogacoes.push({
-    em: new Date().toISOString(),
-    retAnterior: retAnterior,
-    retNovo: mov.retorno,
-    obs: document.getElementById('prorr-obs').value.trim(),
-    por: (_sessao && _sessao.login) || 'admin'
-  });
-  salvar();
-  fechar('ov-prorrogar');
-  toast('✅ Retorno prorrogado para '+novoRetorno.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}));
-  render();
-}
-// ──────────────────────────────────────────────────────────────────────────────
-
 function abrirResolver(auId) {
   _resolverAuId = auId;
   var au = getAus(auId); var v = getV(au.vid);
@@ -2945,7 +2866,7 @@ function buscar(q) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
-      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',fora_garagem:'#111'}[s]||'#888';
+      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888'}[s]||'#888';
       items.push({
         icon: '🚗',
         title: '<span style="font-size:15px;font-weight:800">'+hl(v.placa,q)+'</span> <span style="font-size:12px;font-weight:600;color:#333">'+hl(v.descricao,q)+'</span>',
