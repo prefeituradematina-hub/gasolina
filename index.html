@@ -2829,6 +2829,7 @@
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
       <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button class="btn-logout" style="background:linear-gradient(135deg,#10b981,#059669)" onclick="window.open('https://vx.app.br/matina/login/','_blank')" title="Controle de Diárias">📋 DIÁRIAS</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -6064,11 +6065,6 @@
         timestamp: Date.now(),
         horario: horario
       });
-
-      // 📊 Atualizar média KM/L dos 5 últimos abastecimentos
-      if (dados.km > 0 && dados.litro > 0 && status === STATUS.AUTORIZADO) {
-        atualizarMediaKmL(dados.placa);
-      }
   
       mostrarNotificacao(
         status === STATUS.AUTORIZADO
@@ -15041,72 +15037,6 @@
   }
   
   // 3. CALCULAR MÉDIA KM/L DO VEÍCULO
-  // ═══════════════════════════════════════════════════════════════════════
-  // 📊 MÉDIA KM/L — Recalcula pelos 5 últimos abastecimentos com KM válido
-  //    e salva em veiculos/{placaKey}/mediaKmL no Firebase
-  // ═══════════════════════════════════════════════════════════════════════
-  async function atualizarMediaKmL(placa) {
-    if (!placa) return;
-    try {
-      // Buscar abastecimentos da placa ordenados por timestamp desc
-      const snap = await db.ref('abastecimentos')
-        .orderByChild('placa')
-        .equalTo(placa)
-        .once('value');
-
-      const lista = [];
-      snap.forEach(function(s) {
-        const a = s.val();
-        // Só conta registros autorizados com km e litros válidos
-        if (
-          (a.status === 'AUTORIZADO' || a.status === 'autorizado') &&
-          a.km > 0 && a.litro > 0
-        ) {
-          lista.push({ km: a.km, litro: a.litro, timestamp: a.timestamp || 0 });
-        }
-      });
-
-      if (lista.length < 2) return; // Precisa de ao menos 2 para calcular percurso
-
-      // Ordenar do mais recente para o mais antigo
-      lista.sort((a, b) => b.timestamp - a.timestamp);
-
-      // Pegar os 5 mais recentes (até 6 para calcular 5 intervalos)
-      const recentes = lista.slice(0, 6);
-
-      let somaKmL = 0;
-      let count = 0;
-      for (let i = 0; i < recentes.length - 1; i++) {
-        const kmPercorrido = recentes[i].km - recentes[i + 1].km;
-        const litrosUsados  = recentes[i].litro;
-        if (kmPercorrido > 0 && litrosUsados > 0) {
-          somaKmL += kmPercorrido / litrosUsados;
-          count++;
-          if (count >= 5) break;
-        }
-      }
-
-      if (count === 0) return;
-      const media = parseFloat((somaKmL / count).toFixed(2));
-
-      // Salvar em veiculos/{placaKey}/mediaKmL
-      // A chave no nó veiculos usa a placa como identificador
-      const veicSnap = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
-      if (veicSnap.exists()) {
-        veicSnap.forEach(function(v) {
-          db.ref('veiculos/' + v.key + '/mediaKmL').set(media);
-        });
-      } else {
-        // Caso o nó use a placa diretamente como chave
-        await db.ref('veiculos/' + placa + '/mediaKmL').set(media);
-      }
-
-      console.log('📊 Média KM/L atualizada para', placa, ':', media, 'KM/L (base:', count, 'abastecimentos)');
-    } catch(e) {
-      console.warn('⚠️ Erro ao atualizar média KM/L:', e);
-    }
-  }
-
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
       .orderByChild('veiculo')
