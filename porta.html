@@ -81,7 +81,7 @@ body{
 .btn-sair:hover{background:#fef2f2;transform:translateY(-1px)}
 .hub h1{font-size:26px;text-align:center;margin:26px 0 6px}
 .hub-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:36px}
-.modulos{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.modulos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px}
 .modulo{
   border:2px solid #e2e8f0;border-radius:20px;padding:38px 26px;text-align:center;
   cursor:pointer;text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
@@ -109,6 +109,7 @@ body{
 }
 .modulo.gas{--ma:var(--gas-a);--mb:var(--gas-b)}
 .modulo.frota{--ma:var(--car-a);--mb:var(--car-b)}
+.modulo.diarias{--ma:#10b981;--mb:#059669}
 .modulo.bloqueado{cursor:not-allowed;opacity:.55;filter:grayscale(.7)}
 .modulo.bloqueado:hover{transform:none;box-shadow:none;border-color:#e2e8f0}
 .modulo.bloqueado:hover::before{transform:scaleX(0)}
@@ -176,6 +177,12 @@ body{
         <p>Entradas e saídas de veículos, agendamentos, motoristas e manutenções.</p>
         <span class="mod-entrar">ACESSAR →</span>
         <span class="mod-cadeado">🔒 SEM ACESSO</span>
+      </a>
+      <a class="modulo diarias" id="card-diarias" href="https://vx.app.br/matina/login/" target="_blank" rel="noopener">
+        <div class="mod-icone">📋</div>
+        <h2>Controle de Diárias</h2>
+        <p>Solicitação, aprovação e controle de diárias dos servidores municipais.</p>
+        <span class="mod-entrar">ACESSAR →</span>
       </a>
     </div>
   </div>
