@@ -1548,10 +1548,10 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,mn=0,fh=0;
+  var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,mn=0,lib=0,fh=0;
   D.veiculos.forEach(function(v){
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else if(s==='fora_garagem')fg++; else if(s==='manutencao')mn++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else if(s==='fora_garagem')fg++; else if(s==='manutencao')mn++; else if(s==='liberado')lib++; else fh++;
   });
 
   if(_ordemMode === 'status') {
@@ -1572,6 +1572,7 @@ function renderPainel() {
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
     (au>0?'<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>':'')+
     '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
+    (lib>0?'<div class="stat" style="background:linear-gradient(135deg,#EA580C,#C2410C);box-shadow:0 4px 15px rgba(234,88,12,.3)"><div class="stat-label">Liberados</div><div class="stat-val">'+lib+'</div></div>':'')+
     (ap>0?'<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>':'')+
     (mn>0?'<div class="stat sp"><div class="stat-label">Manutenção</div><div class="stat-val">'+mn+'</div></div>':'')+
     (fg>0?'<div class="stat" style="background:linear-gradient(135deg,#374151,#111);box-shadow:0 4px 15px rgba(0,0,0,.35)"><div class="stat-label">Fora do local</div><div class="stat-val">'+fg+'</div></div>':'');
