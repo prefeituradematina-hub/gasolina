@@ -195,6 +195,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn .vplaca{font-size:18px;font-weight:900;letter-spacing:.12em;color:#111;font-family:'Arial Black',Arial,sans-serif;line-height:1.1}
 .vbtn .vdesc{font-size:13px;font-weight:600;color:rgba(255,255,255,.97);text-align:center;line-height:1.3}
 .vbtn .vsec{font-size:9px;color:rgba(255,255,255,.55);text-align:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vbtn .vkml{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);background:rgba(0,0,0,.18);border-radius:20px;padding:2px 8px;margin-top:1px;letter-spacing:.02em}
+.vbtn.fora_garagem .vkml{color:#fff;background:rgba(255,255,255,.15)}
+.vbtn.solicitado .vkml{color:#422006;background:rgba(0,0,0,.08)}
 .vbtn .vstatus{font-size:9px;font-weight:700;color:rgba(255,255,255,.92);background:rgba(0,0,0,.2);padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
 .vbtn .vvagas{font-size:9px;font-weight:600;color:rgba(255,255,255,.88);margin-top:1px}
 .vbtn-rapida-btn{display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:700;padding:3px 11px;border-radius:99px;margin-top:3px;cursor:pointer;border:1px solid rgba(255,255,255,.4);transition:background .15s}
@@ -789,9 +792,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div class="field" style="margin-top:4px">
       <label for="v-fora-garagem" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#F3F4F6;border:1.5px solid #D1D5DB;border-radius:10px;padding:11px 13px">
-        <input type="checkbox" id="v-fora-garagem" style="width:18px;height:18px;accent-color:#111;cursor:pointer;flex-shrink:0">
+        <input type="checkbox" id="v-fora-garagem" style="width:18px;height:18px;accent-color:#111;cursor:pointer;flex-shrink:0" onchange="document.getElementById('v-fora-garagem-obs-wrap').style.display=this.checked?'block':'none'">
         <span>⬛ Guardado fora da garagem</span>
       </label>
+      <div id="v-fora-garagem-obs-wrap" style="display:none;margin-top:6px">
+        <textarea id="v-fora-garagem-obs" placeholder="Informe o local onde o veículo está guardado..." style="width:100%;border:1.5px solid #D1D5DB;border-radius:8px;padding:9px 11px;font-size:13px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+      </div>
       <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo fica <strong>preto</strong> e <strong>não pisca como irregular</strong> por atraso, até ser desmarcado.</div>
     </div>
     <div class="divider"></div>
@@ -1063,7 +1069,7 @@ function normalizarFB(d){
     usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
-  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); if(v.foraGaragem==null) v.foraGaragem=0; });
+  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); if(v.foraGaragem==null) v.foraGaragem=0; v.mediaKmL = v.mediaKmL || 0; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
   if(d._salvo_em) out._salvo_em = d._salvo_em;
@@ -1515,7 +1521,8 @@ function makeBtnVeiculo(v) {
   }
   var classeBtn = v.foraGaragem ? 'fora_garagem' : s;
   var labelBtn = LABEL[classeBtn] || LABEL[s];
-  return '<button class="vbtn '+classeBtn+'" onclick="verVeiculo(\''+v.id+'\')">'+
+  var titleBtn = (v.foraGaragem && v.foraGaraObs) ? ' title="📍 '+v.foraGaraObs+'"' : '';
+  return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
     '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
@@ -1529,6 +1536,7 @@ function makeBtnVeiculo(v) {
     '</div>'+
     '<div class="vdesc">'+v.descricao+'</div>'+
     '<div class="vsec">'+v.secretaria+'</div>'+
+    (v.mediaKmL > 0 ? '<div class="vkml">⛽ '+parseFloat(v.mediaKmL).toFixed(1)+' KM/L</div>' : '')+
     vagasHTML+docW+rapidaHTML+agendaWarnHTML+
     '</div>'+
     '<div class="vbtn-cor" style="background:'+getCorHex(v.cor||'branco')+'"></div>'+
@@ -1932,7 +1940,7 @@ function verVeiculo(vid) {
     '<span class="badge '+s+'">'+LABEL[s]+'</span></div><hr class="divider">';
 
   var docs = docAlerts(v);
-  var docHTML = docs.map(function(d){return '<div class="doc-alerta">⚠ '+d+'</div>';}).join('');
+  var docHTML = docs.map(function(d){return '<div class="doc-alerta">⚠ '+d+'</div>';}).join('')+mediaHtml;
 
   var movHTML = '';
   if(aus) {
@@ -1951,6 +1959,22 @@ function verVeiculo(vid) {
       '<span>'+(mov.com_pass?'🧍 Pass: <strong>'+mov.pass+'</strong>':'🔧 Sem passageiros')+'</span>'+
       (mov.destino?'<span>Destino: <strong>'+mov.destino+'</strong></span>':'')+
       '</div>'+cronBadge+'</div>';
+  }
+
+  // Média KM/L
+  var mediaHtml = '';
+  if(v.mediaKmL > 0) {
+    var km = parseFloat(v.mediaKmL);
+    var cor = km < 8 ? '#DC2626' : km >= 12 ? '#16A34A' : '#D97706';
+    var icon = km < 8 ? '🔴' : km >= 12 ? '🟢' : '🟡';
+    mediaHtml = '<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+
+      icon+' Média de consumo: <strong style="color:'+cor+'">'+km.toFixed(2)+' KM/L</strong>'+
+      '<span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
+  }
+  if(v.foraGaragem && v.foraGaraObs) {
+    mediaHtml += '<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px;line-height:1.5">'+
+      '<span style="font-size:16px;flex-shrink:0">📍</span>'+
+      '<span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
   }
 
   var escHtml = v.escalas&&v.escalas.length ?
@@ -2357,6 +2381,9 @@ function abrirVeiculo(id) {
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
   document.getElementById('v-fora-garagem').checked = !!(v && v.foraGaragem);
+  var obsWrap = document.getElementById('v-fora-garagem-obs-wrap');
+  document.getElementById('v-fora-garagem-obs').value = (v && v.foraGaraObs) || '';
+  obsWrap.style.display = (v && v.foraGaragem) ? 'block' : 'none';
   document.getElementById('v-ipva').value   = v?v.ipva:'';
   document.getElementById('v-licenc').value = v?v.licenc:'';
   document.getElementById('v-seguro').value = v?v.seguro:'';
@@ -2437,6 +2464,7 @@ function confirmarVeiculo() {
     combustivel:document.getElementById('v-comb').value,
     revKm:parseInt(document.getElementById('v-revkm').value)||null,
     foraGaragem:document.getElementById('v-fora-garagem').checked ? 1 : null,
+    foraGaraObs:document.getElementById('v-fora-garagem').checked ? (document.getElementById('v-fora-garagem-obs').value.trim()||null) : null,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
