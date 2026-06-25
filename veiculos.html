@@ -146,14 +146,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.liberado{animation:piscarLaranja 1.8s ease-in-out infinite}
 .vbtn.pendente{box-shadow:0 2px 8px rgba(99,102,241,.3)}.vbtn.pendente .vbtn-inner{background:linear-gradient(145deg,#818CF8,#6366F1)}
 /* Solicitado por secretário (aguardando aprovação) → AMARELO */
-.vbtn.fora_garagem{box-shadow:0 4px 18px rgba(0,0,0,.5)}.vbtn.fora_garagem .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#111)}
-.vbtn.fora_garagem .vplaca{color:#111;text-shadow:0 0 6px rgba(255,255,255,.6)}
-.vbtn.aprovado{box-shadow:0 4px 18px rgba(14,165,233,.5)}
-.vbtn.aprovado .vbtn-inner{background:linear-gradient(145deg,#38BDF8,#0284C7);color:#fff}
-.vbtn.aprovado .vdesc{color:rgba(255,255,255,.85)}
-.vbtn.aprovado .vsec{color:rgba(255,255,255,.7)}
-.vbtn.aprovado{animation:piscarAzul 2s ease-in-out infinite}
-@keyframes piscarAzul{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(14,165,233,.5)}50%{opacity:.75;box-shadow:0 4px 28px rgba(14,165,233,.85)}}
 .vbtn.solicitado{box-shadow:0 4px 18px rgba(234,179,8,.5)}
 .vbtn.solicitado .vbtn-inner{background:linear-gradient(145deg,#FCD34D,#F59E0B);color:#422006}
 .vbtn.solicitado .vdesc{color:#3a2a00}
@@ -161,6 +153,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.solicitado .vvagas{color:#3a2a00}
 @keyframes piscarAmarelo{0%,100%{box-shadow:0 4px 18px rgba(234,179,8,.5)}50%{box-shadow:0 0 0 8px rgba(234,179,8,.18),0 4px 18px rgba(234,179,8,.7)}}
 .vbtn.solicitado{animation:piscarAmarelo 1.8s ease-in-out infinite}
+.vbtn.fora_garagem{box-shadow:0 4px 18px rgba(0,0,0,.5)}.vbtn.fora_garagem .vbtn-inner{background:linear-gradient(145deg,#3a3a3a,#111)}
+.vbtn.fora_garagem .vplaca{color:#111;text-shadow:0 0 6px rgba(255,255,255,.6)}
+.vbtn.fora_garagem .vkml{color:#fff;background:rgba(255,255,255,.15)}
+.vbtn.aprovado{box-shadow:0 4px 18px rgba(14,165,233,.5)}.vbtn.aprovado .vbtn-inner{background:linear-gradient(145deg,#38BDF8,#0284C7);color:#fff}
+.vbtn.aprovado .vdesc{color:rgba(255,255,255,.85)}.vbtn.aprovado .vsec{color:rgba(255,255,255,.7)}
+.vbtn.aprovado{animation:piscarAzul 2s ease-in-out infinite}
+@keyframes piscarAzul{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(14,165,233,.5)}50%{opacity:.75;box-shadow:0 4px 28px rgba(14,165,233,.85)}}
+.vbtn.manutencao{box-shadow:0 4px 18px rgba(234,88,12,.45)}.vbtn.manutencao .vbtn-inner{background:linear-gradient(145deg,#F97316,#C2410C)}
+.vbtn.manutencao .vplaca{color:#fff}.vbtn.manutencao .vdesc{color:rgba(255,255,255,.9)}.vbtn.manutencao .vsec{color:rgba(255,255,255,.7)}.vbtn.manutencao .vkml{color:#fff;background:rgba(0,0,0,.18)}
+.vbtn.manutencao{animation:piscarManutencao 2.5s ease-in-out infinite}
+@keyframes piscarManutencao{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(234,88,12,.45)}50%{opacity:.7;box-shadow:0 4px 28px rgba(234,88,12,.8)}}
 /* Login screen */
 .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0F172A,#1E293B);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem}
 .login-card{background:#fff;border-radius:20px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
@@ -195,9 +198,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn .vplaca{font-size:18px;font-weight:900;letter-spacing:.12em;color:#111;font-family:'Arial Black',Arial,sans-serif;line-height:1.1}
 .vbtn .vdesc{font-size:13px;font-weight:600;color:rgba(255,255,255,.97);text-align:center;line-height:1.3}
 .vbtn .vsec{font-size:9px;color:rgba(255,255,255,.55);text-align:center;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vbtn .vkml{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);background:rgba(0,0,0,.18);border-radius:20px;padding:2px 8px;margin-top:1px;letter-spacing:.02em}
-.vbtn.fora_garagem .vkml{color:#fff;background:rgba(255,255,255,.15)}
-.vbtn.solicitado .vkml{color:#422006;background:rgba(0,0,0,.08)}
 .vbtn .vstatus{font-size:9px;font-weight:700;color:rgba(255,255,255,.92);background:rgba(0,0,0,.2);padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
 .vbtn .vvagas{font-size:9px;font-weight:600;color:rgba(255,255,255,.88);margin-top:1px}
 .vbtn-rapida-btn{display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:700;padding:3px 11px;border-radius:99px;margin-top:3px;cursor:pointer;border:1px solid rgba(255,255,255,.4);transition:background .15s}
@@ -211,8 +211,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
 .badge.guardado{background:#DCFCE7;color:#15803D}
 .badge.solicitado{background:#FEF3C7;color:#92400E}
-.badge.aprovado{background:#E0F2FE;color:#0369A1}
 .badge.fora_garagem{background:#1f2937;color:#fff}
+.badge.aprovado{background:#E0F2FE;color:#0369A1}
+.badge.manutencao{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
 .badge.trabalhando{background:#FEF9C3;color:#A16207}
 .badge.irregular{background:#FEE2E2;color:#991B1B}
 .badge.agendado{background:#DBEAFE;color:#1D4ED8}
@@ -326,8 +327,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .status-group-header.trabalhando{background:rgba(37,99,235,.1);color:#2563EB;border-left:3px solid #2563EB}
 .status-group-header.liberado{background:rgba(249,115,22,.1);color:#EA580C;border-left:3px solid #EA580C}
 .status-group-header.solicitado{background:rgba(245,158,11,.12);color:#B45309;border-left:3px solid #F59E0B}
-.status-group-header.aprovado{background:rgba(14,165,233,.1);color:#0369A1;border-left:3px solid #0EA5E9}
 .status-group-header.fora_garagem{background:rgba(0,0,0,.07);color:#111;border-left:3px solid #111}
+.status-group-header.aprovado{background:rgba(14,165,233,.1);color:#0369A1;border-left:3px solid #0EA5E9}
+.status-group-header.manutencao{background:rgba(234,88,12,.08);color:#C2410C;border-left:3px solid #F97316}
 .status-group-header.irregular{background:rgba(220,38,38,.12);color:var(--red);border-left:3px solid var(--red)}
 .status-group-header.ausente{background:rgba(124,58,237,.1);color:var(--purple);border-left:3px solid var(--purple)}
 .status-group-header.fora_horario{background:rgba(107,114,128,.1);color:var(--gray);border-left:3px solid var(--gray)}
@@ -441,6 +443,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <button class="btn" id="btn-fil-liberado" onclick="toggleFiltro('liberado')" style="font-size:11px;padding:5px 10px" title="Mostrar liberados para viagem">🗓️</button>
         <button class="btn" id="btn-fil-solicitado" onclick="toggleFiltro('solicitado')" style="font-size:11px;padding:5px 10px" title="Mostrar só solicitados">🟡</button>
         <button class="btn" id="btn-fil-aprovado" onclick="toggleFiltro('aprovado')" style="font-size:11px;padding:5px 10px" title="Mostrar aprovados aguardando saída">🔵</button>
+        <button class="btn" id="btn-fil-manutencao" onclick="toggleFiltro('manutencao')" style="font-size:11px;padding:5px 10px" title="Mostrar em manutenção">🔧</button>
+        <button class="btn" id="btn-fil-fora_garagem" onclick="toggleFiltro('fora_garagem')" style="font-size:11px;padding:5px 10px" title="Mostrar fora da garagem">⬛</button>
       </div>
     </div>
     <div id="frota-container"></div>
@@ -800,6 +804,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
       <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo fica <strong>preto</strong> e <strong>não pisca como irregular</strong> por atraso, até ser desmarcado.</div>
     </div>
+    <div class="field" style="margin-top:4px">
+      <label for="v-manutencao" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:11px 13px">
+        <input type="checkbox" id="v-manutencao" style="width:18px;height:18px;accent-color:#C2410C;cursor:pointer;flex-shrink:0" onchange="document.getElementById('v-manutencao-obs-wrap').style.display=this.checked?'block':'none'">
+        <span>🔧 Em manutenção</span>
+      </label>
+      <div id="v-manutencao-obs-wrap" style="display:none;margin-top:6px">
+        <textarea id="v-manutencao-obs" placeholder="Descreva o problema ou serviço em andamento..." style="width:100%;border:1.5px solid #FED7AA;border-radius:8px;padding:9px 11px;font-size:13px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
+      </div>
+      <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo aparece em <strong>laranja piscando</strong> e fica <strong>bloqueado para uso</strong> até ser desmarcado.</div>
+    </div>
     <div class="divider"></div>
     <div class="section-title" style="margin-bottom:.5rem">Documentação</div>
     <div class="form-row">
@@ -895,8 +909,8 @@ const SECS = [
   'Secretaria de Cultura, Esporte e Lazer','Secretaria de Governo',
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
-const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',aprovado:'Aprovado — ag. saída',solicitado:'Solicitado',pendente:'Aguard. aprovação',fora_garagem:'Fora da garagem'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',liberado:'#EA580C',aprovado:'#0EA5E9',solicitado:'#F59E0B',fora_garagem:'#111'};
+const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',aprovado:'Aprovado — ag. saída',solicitado:'Solicitado',pendente:'Aguard. aprovação',fora_garagem:'Fora da garagem',manutencao:'Em manutenção'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',liberado:'#EA580C',aprovado:'#0EA5E9',solicitado:'#F59E0B',fora_garagem:'#111',manutencao:'#F97316'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -1069,7 +1083,7 @@ function normalizarFB(d){
     usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
-  out.veiculos.forEach(function(v){ v.escalas = _arrFB(v.escalas); if(v.foraGaragem==null) v.foraGaragem=0; v.mediaKmL = v.mediaKmL || 0; });
+  out.veiculos.forEach(function(v){ v.escalas=_arrFB(v.escalas); if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; v.mediaKmL=v.mediaKmL||0; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
   if(d._salvo_em) out._salvo_em = d._salvo_em;
@@ -1122,7 +1136,7 @@ if(fbDB){
   setFbStatus('offline', 'Firebase não disponível — operando somente com cache local.');
 }
 // Migração: garantir campo cor em todos os veículos
-D.veiculos.forEach(function(v){ if(!v.cor) v.cor='branco'; if(v.foraGaragem==null) v.foraGaragem=0; });
+D.veiculos.forEach(function(v){ if(!v.cor)v.cor='branco'; if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; });
 
 // ── SELETOR TIPO + COR ──────────────────────────────────────
 var TIPOS_VEI=[{e:'🚗',n:'Carro'},{e:'🚘',n:'Sedan'},{e:'🚙',n:'SUV'},{e:'🛻',n:'Picape'},{e:'🚐',n:'Van'},{e:'🚌',n:'Ônibus'},{e:'🚎',n:'Micro-ônibus'},{e:'🚑',n:'Ambulância'},{e:'🚒',n:'Bombeiros'},{e:'🚓',n:'Viatura'},{e:'🚕',n:'Táxi'},{e:'🏎️',n:'Esportivo'},{e:'🚚',n:'Caminhão'},{e:'🚛',n:'Carreta'},{e:'m:cacamba',n:'Caçamba'},{e:'m:trator',n:'Trator'},{e:'m:pa',n:'Pá carregadeira'},{e:'m:retro',n:'Retroescavadeira'},{e:'m:patrol',n:'Patrol/Motoniv.'},{e:'🏗️',n:'Guindaste'},{e:'🏍️',n:'Moto'},{e:'🛵',n:'Scooter'},{e:'🚲',n:'Bicicleta'},{e:'🛺',n:'Triciclo'},{e:'⛴️',n:'Barco/Balsa'},{e:'🚁',n:'Helicóptero'}];
@@ -1268,20 +1282,15 @@ function estaNoHorario(v) {
 }
 function getStatus(vid) {
   var v = getV(vid);
+  if(v && v.manutencao) return 'manutencao';
+  if(v && v.foraGaragem) return 'fora_garagem';
   if(getAusAtiva(vid)) return 'ausente';
   var mov = getMovAtiva(vid);
-  if(mov) {
-    if(now()>new Date(mov.retorno)) return (v && v.foraGaragem) ? 'trabalhando' : 'irregular';
-    return 'trabalhando';
-  }
-  // Check if liberado (approved request, waiting departure)
+  if(mov) return now()>new Date(mov.retorno)?'irregular':'trabalhando';
   var sol = getSolicitacaoLiberada(vid);
   if(sol) return 'liberado';
-  // Aprovada mas viagem é para data futura — aguardando saída agendada
   if(getSolicitacaoAprovadaFutura(vid)) return 'aprovado';
-  // Solicitação pendente de aprovação (pedido de secretário) → solicitado
   if(getSolicitacaoPendente(vid)) return 'solicitado';
-  if(v && v.foraGaragem) return 'fora_garagem';
   if(v && !estaNoHorario(v)) return 'fora_horario';
   return 'guardado';
 }
@@ -1313,17 +1322,11 @@ function getSolicitacaoPendente(vid) {
     return s.vid===vid && s.status==='pendente';
   }) || null;
 }
-
-// Aprovada mas data_viagem é futura (ou aprovada sem data hoje) — aguardando saída
 function getSolicitacaoAprovadaFutura(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    return s.vid === vid
-      && s.status === 'aprovada'
-      && !solicitacaoJaSaiu(s)
-      && s.data_viagem
-      && s.data_viagem.slice(0,10) > hoje; // data futura
+    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) && s.data_viagem && s.data_viagem.slice(0,10)>hoje;
   }) || null;
 }
 
@@ -1393,7 +1396,7 @@ var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
   // Update filter button styles
-  ['irregular','trabalhando','guardado','fora_garagem','ausente','fora_horario','liberado','aprovado','solicitado'].forEach(function(s) {
+  ['irregular','trabalhando','guardado','fora_garagem','manutencao','ausente','fora_horario','liberado','aprovado','solicitado'].forEach(function(s) {
     var btn = document.getElementById('btn-fil-'+s);
     if(!btn) return;
     var on = _filtroStatus === s;
@@ -1425,11 +1428,11 @@ function setOrdem(mode) {
 }
 
 function renderFrotaPorStatus() {
-  var ORDER = ['irregular','liberado','aprovado','solicitado','trabalhando','ausente','guardado','fora_garagem','fora_horario'];
-  var LBLS = {irregular:'🚨 Atrasados',liberado:'🟠 Liberados para viagem',aprovado:'🔵 Aprovados — aguardando saída',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_garagem:'⬛ Guardados fora da garagem',fora_horario:'🌙 Fora do horário'};
+  var ORDER = ['irregular','manutencao','liberado','aprovado','solicitado','trabalhando','ausente','guardado','fora_garagem','fora_horario'];
+  var LBLS = {irregular:'🚨 Atrasados',manutencao:'🔧 Em manutenção',liberado:'🟠 Liberados para viagem',aprovado:'🔵 Aprovados — aguardando saída',solicitado:'🟡 Solicitados',trabalhando:'🔵 Em viagem',ausente:'❓ Não está no local',guardado:'🅿️ Guardados',fora_garagem:'⬛ Guardados fora da garagem',fora_horario:'🌙 Fora do horário'};
   var grupos = {};
   ORDER.forEach(function(s){ grupos[s] = []; });
-  getVeiculosFiltrados().forEach(function(v){ grupos[v.foraGaragem ? 'fora_garagem' : getStatus(v.id)].push(v); });
+  getVeiculosFiltrados().forEach(function(v){ grupos[getStatus(v.id)].push(v); });
   var html = '';
   ORDER.forEach(function(s){
     var veics = grupos[s];
@@ -1519,9 +1522,10 @@ function makeBtnVeiculo(v) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
-  var classeBtn = v.foraGaragem ? 'fora_garagem' : s;
+  var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
   var labelBtn = LABEL[classeBtn] || LABEL[s];
-  var titleBtn = (v.foraGaragem && v.foraGaraObs) ? ' title="📍 '+v.foraGaraObs+'"' : '';
+  var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
+  var titleBtn = _tip ? ' title="'+_tip+'"' : '';
   return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
     '<div class="vbtn-inner">'+
     '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
@@ -1544,11 +1548,10 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,fh=0;
+  var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,mn=0,fh=0;
   D.veiculos.forEach(function(v){
-    if(v.foraGaragem){ fg++; return; }
     var s=getStatus(v.id);
-    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else fh++;
+    if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else if(s==='fora_garagem')fg++; else if(s==='manutencao')mn++; else fh++;
   });
 
   if(_ordemMode === 'status') {
@@ -1569,7 +1572,8 @@ function renderPainel() {
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
     '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>'+
     '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
-    '<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>'+
+    (ap>0?'<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>':'')+
+    (mn>0?'<div class="stat" style="background:linear-gradient(135deg,#F97316,#C2410C);box-shadow:0 4px 15px rgba(234,88,12,.35)"><div class="stat-label">Manutenção</div><div class="stat-val">'+mn+'</div></div>':'')+
     (fg>0?'<div class="stat" style="background:linear-gradient(135deg,#374151,#111);box-shadow:0 4px 15px rgba(0,0,0,.35)"><div class="stat-label">Fora do local</div><div class="stat-val">'+fg+'</div></div>':'');
 
   var al = '';
@@ -1961,20 +1965,13 @@ function verVeiculo(vid) {
       '</div>'+cronBadge+'</div>';
   }
 
-  // Média KM/L
   var mediaHtml = '';
   if(v.mediaKmL > 0) {
-    var km = parseFloat(v.mediaKmL);
-    var cor = km < 8 ? '#DC2626' : km >= 12 ? '#16A34A' : '#D97706';
-    var icon = km < 8 ? '🔴' : km >= 12 ? '🟢' : '🟡';
-    mediaHtml = '<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+
-      icon+' Média de consumo: <strong style="color:'+cor+'">'+km.toFixed(2)+' KM/L</strong>'+
-      '<span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
+    var km=parseFloat(v.mediaKmL), corKm=km<8?'#DC2626':km>=12?'#16A34A':'#D97706', iconKm=km<8?'🔴':km>=12?'🟢':'🟡';
+    mediaHtml='<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+iconKm+' Média de consumo: <strong style="color:'+corKm+'">'+ km.toFixed(2)+' KM/L</strong><span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
   }
   if(v.foraGaragem && v.foraGaraObs) {
-    mediaHtml += '<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px;line-height:1.5">'+
-      '<span style="font-size:16px;flex-shrink:0">📍</span>'+
-      '<span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
+    mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">📍</span><span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
   }
 
   var escHtml = v.escalas&&v.escalas.length ?
@@ -1997,14 +1994,16 @@ function verVeiculo(vid) {
     if(!isAdmin()) {
       // Secretário só pode solicitar viagem
       btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSolicitacao(\''+vid+'\')">📋 Solicitar viagem</button>';
-      if(s==='aprovado') {
+      if(s==='manutencao') {
+        btns = '<div style="font-size:12px;color:#C2410C;font-weight:600;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 12px">'+
+          '🔧 Veículo em manutenção'+(v.manutencaoObs?'<br><span style="font-weight:400">'+v.manutencaoObs+'</span>':'')+'</div>';
+        if(isAdmin()) btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirVeiculo('+JSON.stringify(vid)+')" style="margin-top:6px">✏️ Editar veículo</button>';
+      } else if(s==='aprovado') {
         var solAp = getSolicitacaoAprovadaFutura(vid);
-        btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;padding:8px 0;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
-          '✅ Viagem aprovada para '+( solAp && solAp.data_viagem ? fmtData(solAp.data_viagem) : 'data agendada')+'<br>'+
-          '<span style="font-weight:400;font-size:11px">Aguardando saída — o veículo será liberado automaticamente no dia da viagem.</span></div>';
-        if(isAdmin()){
-          var _sid = solAp ? solAp.id : ''; btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')">❌ Cancelar aprovação</button>';
-        }
+        btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
+          '✅ Viagem aprovada para '+(solAp&&solAp.data_viagem?fmtData(solAp.data_viagem):'data agendada')+'<br>'+
+          '<span style="font-weight:400;font-size:11px">Aguardando saída — liberado automaticamente no dia da viagem.</span></div>';
+        if(isAdmin()){ var _sid=solAp?solAp.id:''; btns+='<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')" style="margin-top:6px">❌ Cancelar aprovação</button>'; }
       } else if(s==='liberado') {
         btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>';
       }
@@ -2380,10 +2379,14 @@ function abrirVeiculo(id) {
   document.getElementById('v-comb').value   = v?v.combustivel:'Flex';
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
-  document.getElementById('v-fora-garagem').checked = !!(v && v.foraGaragem);
-  var obsWrap = document.getElementById('v-fora-garagem-obs-wrap');
-  document.getElementById('v-fora-garagem-obs').value = (v && v.foraGaraObs) || '';
-  obsWrap.style.display = (v && v.foraGaragem) ? 'block' : 'none';
+  // Fora da garagem
+  document.getElementById('v-fora-garagem').checked = !!(v&&v.foraGaragem);
+  document.getElementById('v-fora-garagem-obs').value = (v&&v.foraGaraObs)||'';
+  document.getElementById('v-fora-garagem-obs-wrap').style.display = (v&&v.foraGaragem)?'block':'none';
+  // Manutenção
+  document.getElementById('v-manutencao').checked = !!(v&&v.manutencao);
+  document.getElementById('v-manutencao-obs').value = (v&&v.manutencaoObs)||'';
+  document.getElementById('v-manutencao-obs-wrap').style.display = (v&&v.manutencao)?'block':'none';
   document.getElementById('v-ipva').value   = v?v.ipva:'';
   document.getElementById('v-licenc').value = v?v.licenc:'';
   document.getElementById('v-seguro').value = v?v.seguro:'';
@@ -2463,8 +2466,10 @@ function confirmarVeiculo() {
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
     revKm:parseInt(document.getElementById('v-revkm').value)||null,
-    foraGaragem:document.getElementById('v-fora-garagem').checked ? 1 : null,
-    foraGaraObs:document.getElementById('v-fora-garagem').checked ? (document.getElementById('v-fora-garagem-obs').value.trim()||null) : null,
+    foraGaragem:document.getElementById('v-fora-garagem').checked?1:null,
+    foraGaraObs:document.getElementById('v-fora-garagem').checked?(document.getElementById('v-fora-garagem-obs').value.trim()||null):null,
+    manutencao:document.getElementById('v-manutencao').checked?1:null,
+    manutencaoObs:document.getElementById('v-manutencao').checked?(document.getElementById('v-manutencao-obs').value.trim()||null):null,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
@@ -2915,7 +2920,7 @@ function buscar(q) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
-      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',fora_garagem:'#111'}[s]||'#888';
+      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',fora_garagem:'#111',manutencao:'#F97316'}[s]||'#888';
       items.push({
         icon: '🚗',
         title: '<span style="font-size:15px;font-weight:800">'+hl(v.placa,q)+'</span> <span style="font-size:12px;font-weight:600;color:#333">'+hl(v.descricao,q)+'</span>',
