@@ -1570,7 +1570,7 @@ function renderPainel() {
     '<div class="stat sg"><div class="stat-label">Guardados</div><div class="stat-val">'+g+'</div></div>'+
     '<div class="stat sy"><div class="stat-label">Em uso</div><div class="stat-val">'+t+'</div></div>'+
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
-    '<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>'+
+    (au>0?'<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>':'')+
     '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
     (ap>0?'<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>':'')+
     (mn>0?'<div class="stat" style="background:linear-gradient(135deg,#F97316,#C2410C);box-shadow:0 4px 15px rgba(234,88,12,.35)"><div class="stat-label">Manutenção</div><div class="stat-val">'+mn+'</div></div>':'')+
