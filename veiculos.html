@@ -160,10 +160,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.aprovado .vdesc{color:rgba(255,255,255,.85)}.vbtn.aprovado .vsec{color:rgba(255,255,255,.7)}
 .vbtn.aprovado{animation:piscarAzul 2s ease-in-out infinite}
 @keyframes piscarAzul{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(14,165,233,.5)}50%{opacity:.75;box-shadow:0 4px 28px rgba(14,165,233,.85)}}
-.vbtn.manutencao{box-shadow:0 4px 18px rgba(234,88,12,.45)}.vbtn.manutencao .vbtn-inner{background:linear-gradient(145deg,#F97316,#C2410C)}
+.vbtn.manutencao{box-shadow:0 4px 18px rgba(124,58,237,.45)}.vbtn.manutencao .vbtn-inner{background:linear-gradient(145deg,#8B5CF6,#7C3AED)}
 .vbtn.manutencao .vplaca{color:#fff}.vbtn.manutencao .vdesc{color:rgba(255,255,255,.9)}.vbtn.manutencao .vsec{color:rgba(255,255,255,.7)}.vbtn.manutencao .vkml{color:#fff;background:rgba(0,0,0,.18)}
 .vbtn.manutencao{animation:piscarManutencao 2.5s ease-in-out infinite}
-@keyframes piscarManutencao{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(234,88,12,.45)}50%{opacity:.7;box-shadow:0 4px 28px rgba(234,88,12,.8)}}
+@keyframes piscarManutencao{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(124,58,237,.45)}50%{opacity:.7;box-shadow:0 4px 28px rgba(124,58,237,.85)}}
 /* Login screen */
 .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0F172A,#1E293B);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem}
 .login-card{background:#fff;border-radius:20px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
@@ -213,7 +213,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .badge.solicitado{background:#FEF3C7;color:#92400E}
 .badge.fora_garagem{background:#1f2937;color:#fff}
 .badge.aprovado{background:#E0F2FE;color:#0369A1}
-.badge.manutencao{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
+.badge.manutencao{background:#F5F3FF;color:#4C1D95;border:1px solid #DDD6FE}
 .badge.trabalhando{background:#FEF9C3;color:#A16207}
 .badge.irregular{background:#FEE2E2;color:#991B1B}
 .badge.agendado{background:#DBEAFE;color:#1D4ED8}
@@ -329,7 +329,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .status-group-header.solicitado{background:rgba(245,158,11,.12);color:#B45309;border-left:3px solid #F59E0B}
 .status-group-header.fora_garagem{background:rgba(0,0,0,.07);color:#111;border-left:3px solid #111}
 .status-group-header.aprovado{background:rgba(14,165,233,.1);color:#0369A1;border-left:3px solid #0EA5E9}
-.status-group-header.manutencao{background:rgba(234,88,12,.08);color:#C2410C;border-left:3px solid #F97316}
+.status-group-header.manutencao{background:rgba(124,58,237,.1);color:#4C1D95;border-left:3px solid #7C3AED}
 .status-group-header.irregular{background:rgba(220,38,38,.12);color:var(--red);border-left:3px solid var(--red)}
 .status-group-header.ausente{background:rgba(124,58,237,.1);color:var(--purple);border-left:3px solid var(--purple)}
 .status-group-header.fora_horario{background:rgba(107,114,128,.1);color:var(--gray);border-left:3px solid var(--gray)}
@@ -910,7 +910,7 @@ const SECS = [
   'Secretaria de Planejamento','Secretaria de Assistência Social','Outro'
 ];
 const LABEL = {guardado:'Guardado',trabalhando:'Em viagem',irregular:'Irregular',ausente:'Não está no local',fora_horario:'Fora do horário',liberado:'Liberado p/ viagem',aprovado:'Aprovado — ag. saída',solicitado:'Solicitado',pendente:'Aguard. aprovação',fora_garagem:'Fora da garagem',manutencao:'Em manutenção'};
-const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',liberado:'#EA580C',aprovado:'#0EA5E9',solicitado:'#F59E0B',fora_garagem:'#111',manutencao:'#F97316'};
+const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#1D9E75',liberado:'#EA580C',aprovado:'#0EA5E9',solicitado:'#F59E0B',fora_garagem:'#111',manutencao:'#7C3AED'};
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
@@ -1573,7 +1573,7 @@ function renderPainel() {
     (au>0?'<div class="stat sp"><div class="stat-label">Não no local</div><div class="stat-val">'+au+'</div></div>':'')+
     '<div class="stat ssol"><div class="stat-label">Solicitados</div><div class="stat-val">'+sol+'</div></div>'+
     (ap>0?'<div class="stat" style="background:linear-gradient(135deg,#0EA5E9,#0284C7);box-shadow:0 4px 15px rgba(14,165,233,.3)"><div class="stat-label">Aprovados</div><div class="stat-val">'+ap+'</div></div>':'')+
-    (mn>0?'<div class="stat" style="background:linear-gradient(135deg,#F97316,#C2410C);box-shadow:0 4px 15px rgba(234,88,12,.35)"><div class="stat-label">Manutenção</div><div class="stat-val">'+mn+'</div></div>':'')+
+    (mn>0?'<div class="stat sp"><div class="stat-label">Manutenção</div><div class="stat-val">'+mn+'</div></div>':'')+
     (fg>0?'<div class="stat" style="background:linear-gradient(135deg,#374151,#111);box-shadow:0 4px 15px rgba(0,0,0,.35)"><div class="stat-label">Fora do local</div><div class="stat-val">'+fg+'</div></div>':'');
 
   var al = '';
@@ -2920,7 +2920,7 @@ function buscar(q) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
-      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',fora_garagem:'#111',manutencao:'#F97316'}[s]||'#888';
+      var cor = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ausente:'#7B5EA7',fora_horario:'#888',fora_garagem:'#111',manutencao:'#7C3AED'}[s]||'#888';
       items.push({
         icon: '🚗',
         title: '<span style="font-size:15px;font-weight:800">'+hl(v.placa,q)+'</span> <span style="font-size:12px;font-weight:600;color:#333">'+hl(v.descricao,q)+'</span>',
