@@ -2829,6 +2829,7 @@
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
       <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button class="btn-logout" style="background:linear-gradient(135deg,#10b981,#059669)" onclick="window.open('https://vx.app.br/matina/login/','_blank')" title="Controle de Diárias">📋 DIÁRIAS</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -5767,15 +5768,6 @@
       const erros = validarAbastecimento(dados);
       if (erros.length > 0) {
         mostrarNotificacao(erros.join("\n"), "error");
-        btnRegistrar.disabled = false;
-        btnRegistrar.innerHTML = textoOriginal;
-        return;
-      }
-
-      // 🔒 BLOQUEIO GARAGEM CENTRAL
-      const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
-      if (pendenciaGaragem.bloqueado) {
-        mostrarNotificacao('⛔ ' + pendenciaGaragem.motivo, 'error');
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -14661,13 +14653,6 @@
       mostrarNotificacao("❌ INFORME UMA PLACA VÁLIDA!", "error");
       return;
     }
-
-    // 🔒 BLOQUEIO GARAGEM CENTRAL
-    const pendenciaDiversas = await verificarPendenciaGaragem(placa);
-    if (pendenciaDiversas.bloqueado) {
-      mostrarNotificacao('⛔ ' + pendenciaDiversas.motivo, 'error');
-      return;
-    }
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
@@ -15052,52 +15037,6 @@
   }
   
   // 3. CALCULAR MÉDIA KM/L DO VEÍCULO
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🔒 BLOQUEIO GARAGEM CENTRAL — impede secretários de abastecerem
-  //    veículos com movimentação ativa em atraso (irregulares na frota)
-  // ═══════════════════════════════════════════════════════════════════════
-  async function verificarPendenciaGaragem(placa) {
-    if (!placa || placa.length < 7) return { bloqueado: false };
-    if (userRole !== 'secretarios') return { bloqueado: false };
-
-    try {
-      const snap = await db.ref('frota/dados').once('value');
-      const frota = snap.val();
-      if (!frota) return { bloqueado: false };
-
-      const veiculos      = Object.values(frota.veiculos      || {});
-      const movimentacoes = Object.values(frota.movimentacoes || {});
-      const placaUp = placa.toUpperCase().trim();
-
-      const veiculo = veiculos.find(v => (v.placa||'').toUpperCase().trim() === placaUp);
-      if (!veiculo) return { bloqueado: false };
-
-      // Veículo em manutenção ou guardado fora → não bloqueia por irregularidade
-      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
-
-      const agora = Date.now();
-      const irregular = movimentacoes.find(m =>
-        m.vid === veiculo.id &&
-        !m.entrada_real &&
-        m.retorno &&
-        agora > new Date(m.retorno).getTime()
-      );
-
-      if (irregular) {
-        return {
-          bloqueado: true,
-          motivo: 'Este veículo está em situação irregular  -  Procure a Garagem Central.'
-        };
-      }
-
-      return { bloqueado: false };
-    } catch(e) {
-      console.warn('⚠️ Erro ao verificar garagem:', e);
-      return { bloqueado: false };
-    }
-  }
-
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
       .orderByChild('veiculo')
