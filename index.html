@@ -5912,7 +5912,7 @@
       // 🔒 BLOQUEIO GARAGEM CENTRAL
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
-        abrirModalBloqueioGaragem(dados.placa);
+        abrirModalBloqueioGaragem(dados.placa, pendenciaGaragem.atrasado);
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -14818,7 +14818,7 @@
     // 🔒 BLOQUEIO GARAGEM CENTRAL
     const pendenciaDiversas = await verificarPendenciaGaragem(placa);
     if (pendenciaDiversas.bloqueado) {
-      abrirModalBloqueioGaragem(placa);
+      abrirModalBloqueioGaragem(placa, pendenciaDiversas.atrasado);
       return;
     }
     if (!motorista) {
@@ -15231,16 +15231,18 @@
       if (!veiculo) return { bloqueado: false };
       if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
 
-      const agora = Date.now();
-      const irregular = movimentacoes.find(function(m) {
-        return m.vid === veiculo.id
-          && !m.entrada_real
-          && m.retorno
-          && agora > new Date(m.retorno).getTime();
+      // Bloquear se há movimentação ativa (em viagem OU com retorno vencido)
+      const emMovimento = movimentacoes.find(function(m) {
+        return m.vid === veiculo.id && !m.entrada_real;
       });
 
-      if (irregular) {
-        return { bloqueado: true };
+      if (emMovimento) {
+        const agora = Date.now();
+        const atrasado = agora > new Date(emMovimento.retorno).getTime();
+        return {
+          bloqueado: true,
+          atrasado: atrasado
+        };
       }
 
       return { bloqueado: false };
@@ -15251,7 +15253,7 @@
   }
 
   // ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────────────────────
-  function abrirModalBloqueioGaragem(placa) {
+  function abrirModalBloqueioGaragem(placa, atrasado) {
     const el = document.getElementById('modal-bloqueio-garagem');
     if (!el) return;
     const elPlaca = document.getElementById('mbg-placa');
@@ -15259,9 +15261,15 @@
     const elMsg  = el.querySelector('.modal-bloqueio-msg');
     const elDest = el.querySelector('.modal-bloqueio-destaque');
     const elSub  = el.querySelector('.modal-bloqueio-sub');
-    if (elMsg)  elMsg.textContent  = 'Este veículo está em situação irregular';
-    if (elDest) elDest.textContent = '⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer';
-    if (elSub)  elSub.innerHTML    = 'O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.';
+    if (atrasado) {
+      if (elMsg)  elMsg.textContent  = 'Este veículo está em situação irregular';
+      if (elDest) elDest.textContent = '⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer';
+      if (elSub)  elSub.innerHTML    = 'O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.';
+    } else {
+      if (elMsg)  elMsg.textContent  = 'Este veículo está em viagem';
+      if (elDest) elDest.textContent = '🚗 Veículo fora da garagem — abastecimento não permitido';
+      if (elSub)  elSub.innerHTML    = 'O veículo ainda não retornou à Garagem Central.<br>Aguarde o retorno e registro de entrada para realizar o abastecimento.';
+    }
     el.style.display = 'flex';
   }
   function fecharModalBloqueioGaragem() {
