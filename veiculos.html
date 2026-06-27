@@ -161,7 +161,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .vbtn.aprovado{animation:piscarAzul 2s ease-in-out infinite}
 @keyframes piscarAzul{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(14,165,233,.5)}50%{opacity:.75;box-shadow:0 4px 28px rgba(14,165,233,.85)}}
 .vbtn.manutencao{box-shadow:0 4px 18px rgba(124,58,237,.45)}.vbtn.manutencao .vbtn-inner{background:linear-gradient(145deg,#8B5CF6,#7C3AED)}
-.vbtn.manutencao .vplaca{color:#fff}.vbtn.manutencao .vdesc{color:rgba(255,255,255,.9)}.vbtn.manutencao .vsec{color:rgba(255,255,255,.7)}.vbtn.manutencao .vkml{color:#fff;background:rgba(0,0,0,.18)}
+.vbtn.manutencao .vplaca{color:#111;text-shadow:0 0 8px rgba(255,255,255,.6)}.vbtn.manutencao .vdesc{color:rgba(255,255,255,.9)}.vbtn.manutencao .vsec{color:rgba(255,255,255,.7)}.vbtn.manutencao .vkml{color:#fff;background:rgba(0,0,0,.18)}
 .vbtn.manutencao{animation:piscarManutencao 2.5s ease-in-out infinite}
 @keyframes piscarManutencao{0%,100%{opacity:1;box-shadow:0 4px 18px rgba(124,58,237,.45)}50%{opacity:.7;box-shadow:0 4px 28px rgba(124,58,237,.85)}}
 /* Login screen */
@@ -3898,87 +3898,6 @@ setInterval(updateClock, 30000);
 // Login único: aplica a sessão vinda do portal (a guarda no <head> já redirecionou se não houver)
 iniciarSessaoPortal();
 startCron();
-
-// ══════════════════════════════════════════════════════════════
-// SYNC BIDIRECIONAL — frota ↔ combustível
-// ══════════════════════════════════════════════════════════════
-
-// Espelha veículos da frota no nó 'veiculos' do combustível
-function _syncVeiculosParaCombustivel() {
-  if(!fbDB || !D.veiculos || !D.veiculos.length) return;
-  try {
-    var db2 = firebase.database();
-    D.veiculos.forEach(function(v) {
-      if(!v.placa) return;
-      var pn = v.placa.toUpperCase().replace(/-/g,'');
-      db2.ref('veiculos').orderByChild('placa').once('value').then(function(snap) {
-        var found = false;
-        snap.forEach(function(child) {
-          var vc = child.val();
-          if(vc && (vc.placa||'').replace(/-/g,'').toUpperCase() === pn) {
-            db2.ref('veiculos/'+child.key).update({
-              modelo:      v.descricao || vc.modelo || '',
-              combustivel: v.combustivel || vc.combustivel || 'FLEX',
-              ano:         v.ano || vc.ano || '',
-              secretaria:  v.secretaria || vc.secretaria || '',
-              foraGaragem: v.foraGaragem || 0,
-              manutencao:  v.manutencao  || 0,
-              cor:         v.cor || 'branco'
-            });
-            found = true;
-          }
-        });
-        if(!found) {
-          db2.ref('veiculos').push({
-            placa:        v.placa,
-            modelo:       v.descricao || '',
-            combustivel:  v.combustivel || 'FLEX',
-            ano:          v.ano || '',
-            secretaria:   v.secretaria || '',
-            motorista:    '',
-            cpfMotorista: '',
-            foraGaragem:  v.foraGaragem || 0,
-            manutencao:   v.manutencao  || 0,
-            cor:          v.cor || 'branco',
-            cadastradoEm: Date.now()
-          });
-        }
-      }).catch(function(e){ console.warn('[Sync→Comb]', e); });
-    });
-  } catch(e){ console.warn('[_syncVeiculosParaCombustivel]', e); }
-}
-
-// Recebe mediaKmL atualizada pelo combustível e aplica na frota em tempo real
-function _iniciarSyncMediaKmL() {
-  if(!fbDB) return;
-  try {
-    firebase.database().ref('veiculos').on('value', function(snap) {
-      snap.forEach(function(child) {
-        var vc = child.val();
-        if(!vc || !vc.placa || !vc.mediaKmL) return;
-        var pn = (vc.placa||'').replace(/-/g,'').toUpperCase();
-        var vFrota = D.veiculos.find(function(v){
-          return (v.placa||'').replace(/-/g,'').toUpperCase() === pn;
-        });
-        if(vFrota && vFrota.mediaKmL !== vc.mediaKmL) {
-          vFrota.mediaKmL = vc.mediaKmL;
-          // Escrever diretamente na frota sem re-salvar tudo
-          fbDB.ref('frota/dados/veiculos').orderByChild('id').equalTo(vFrota.id).once('value')
-            .then(function(s){
-              s.forEach(function(c){
-                fbDB.ref('frota/dados/veiculos/'+c.key+'/mediaKmL').set(vc.mediaKmL);
-              });
-            }).catch(function(){});
-        }
-      });
-    });
-    console.log('✅ [Sync] mediaKmL combustível→frota ativo');
-  } catch(e){ console.warn('[_iniciarSyncMediaKmL]', e); }
-}
-
-// Aguardar D ser carregado antes de iniciar sync de mediaKmL
-setTimeout(_iniciarSyncMediaKmL, 3000);
-// ══════════════════════════════════════════════════════════════
 </script>
 
 <!-- MODAL SAÍDA EM LOTE -->
