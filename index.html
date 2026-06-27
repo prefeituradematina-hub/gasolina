@@ -552,117 +552,6 @@
       z-index: 1000;
       animation: fadeIn 0.3s;
   }
-
-  /* ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────────────── */
-  #modal-bloqueio-garagem {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,.75);
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-      animation: fadeIn .25s;
-  }
-  /* .show removido — modal controlado por style.display diretamente */
-  #modal-bloqueio-inner { position: relative; z-index: 100000; }
-  .modal-bloqueio-inner {
-      background: #fff;
-      border-radius: 24px;
-      max-width: 520px;
-      width: 92%;
-      overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,.45);
-      animation: bloqueioEntrar .3s cubic-bezier(.34,1.56,.64,1);
-  }
-  @keyframes bloqueioEntrar {
-      from { transform: scale(.8) translateY(40px); opacity: 0; }
-      to   { transform: scale(1) translateY(0);     opacity: 1; }
-  }
-  .modal-bloqueio-topo {
-      background: linear-gradient(135deg,#dc2626,#991b1b);
-      padding: 36px 32px 28px;
-      text-align: center;
-      position: relative;
-  }
-  .modal-bloqueio-icone {
-      font-size: 72px;
-      display: block;
-      margin-bottom: 12px;
-      animation: piscarIcone 1s ease-in-out infinite;
-  }
-  @keyframes piscarIcone {
-      0%,100% { transform: scale(1); }
-      50%      { transform: scale(1.12); }
-  }
-  .modal-bloqueio-topo h2 {
-      color: #fff;
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: .3px;
-      margin: 0;
-  }
-  .modal-bloqueio-topo p {
-      color: rgba(255,255,255,.85);
-      font-size: 14px;
-      margin-top: 6px;
-  }
-  .modal-bloqueio-corpo {
-      padding: 28px 32px 32px;
-      text-align: center;
-  }
-  .modal-bloqueio-placa {
-      display: inline-block;
-      background: #1e293b;
-      color: #fff;
-      font-size: 26px;
-      font-weight: 900;
-      letter-spacing: .15em;
-      padding: 10px 28px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      font-family: 'Arial Black', Arial, sans-serif;
-  }
-  .modal-bloqueio-msg {
-      font-size: 16px;
-      color: #1e293b;
-      line-height: 1.6;
-      margin-bottom: 8px;
-      font-weight: 600;
-  }
-  .modal-bloqueio-sub {
-      font-size: 13px;
-      color: #64748b;
-      margin-bottom: 28px;
-      line-height: 1.5;
-  }
-  .modal-bloqueio-destaque {
-      background: #fef2f2;
-      border: 2px solid #fecaca;
-      border-radius: 12px;
-      padding: 14px 18px;
-      margin-bottom: 24px;
-      font-size: 15px;
-      font-weight: 700;
-      color: #991b1b;
-      letter-spacing: .3px;
-  }
-  .modal-bloqueio-btn {
-      background: linear-gradient(135deg,#dc2626,#991b1b);
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      padding: 14px 40px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform .2s, box-shadow .2s;
-      width: 100%;
-  }
-  .modal-bloqueio-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(220,38,38,.4);
-  }
   @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -2728,32 +2617,6 @@
   </div>
 </div>
 
-<!-- ── MODAL BLOQUEIO GARAGEM CENTRAL ───────────────────── -->
-<div id="modal-bloqueio-garagem" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:99999">
-  <div class="modal-bloqueio-inner" style="position:relative">
-    <button onclick="document.getElementById('modal-bloqueio-garagem').style.display='none'" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.25);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;color:#fff;cursor:pointer;line-height:1;z-index:100000">✕</button>
-    <div class="modal-bloqueio-topo">
-      <span class="modal-bloqueio-icone">🚨</span>
-      <h2>VEÍCULO COM PENDÊNCIA</h2>
-      <p>Abastecimento bloqueado pelo sistema</p>
-    </div>
-    <div class="modal-bloqueio-corpo">
-      <div class="modal-bloqueio-placa" id="mbg-placa">———</div>
-      <div class="modal-bloqueio-msg">Este veículo está em situação irregular</div>
-      <div class="modal-bloqueio-destaque">
-        ⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer
-      </div>
-      <div class="modal-bloqueio-sub">
-        O veículo possui retorno em atraso no Controle de Frota.<br>
-        Somente após regularização o abastecimento poderá ser realizado.
-      </div>
-      <button class="modal-bloqueio-btn" onclick="document.getElementById('modal-bloqueio-garagem').style.display='none'">
-        ✅ ENTENDIDO — FECHAR
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- Modal de Edição de DIVERSAS -->
 <div id="modal-edit-diversas" class="modal">
   <div class="modal-content">
@@ -4500,14 +4363,85 @@
     }
   });
   
-  db.ref('veiculos').on('value', snap => {
-    veiculos = [];
-    snap.forEach(item => {
-      let v = item.val();
-      v.id = item.key;
-      veiculos.push(v);
-    });
+
+  // ══════════════════════════════════════════════════════════════
+  // SYNC BIDIRECIONAL — Fonte única: frota/dados
+  // Veículos e motoristas compartilhados em tempo real
+  // ══════════════════════════════════════════════════════════════
+  let _frotaMotoristas = [];
+
+  // Normaliza estrutura rica da frota → formato do combustível
+  function _normVeiFrota(v, key) {
+    const p = (v.placa||'').toUpperCase().replace(/-/g,'');
+    const placa = p.length >= 7 ? p.slice(0,3)+'-'+p.slice(3) : p;
+    return {
+      _key:         key,
+      id:           v.id || key,
+      placa:        placa,
+      modelo:       v.descricao || v.modelo || '',
+      motorista:    v.motoristaPadrao || v.motorista || '',
+      cpfMotorista: v.cpfMotoristaPadrao || v.cpfMotorista || '',
+      combustivel:  v.combustivel || 'FLEX',
+      secretaria:   v.secretaria || '',
+      ano:          v.ano || '',
+      foraGaragem:  v.foraGaragem || 0,
+      manutencao:   v.manutencao  || 0,
+      mediaKmL:     v.mediaKmL    || 0,
+      cor:          v.cor || 'branco',
+      tipo:         v.tipo || '🚗'
+    };
+  }
+
+  // ── Listener principal: frota/dados ──────────────────────────
+  db.ref('frota/dados').on('value', function(snap) {
+    const frota = snap.val();
+    if (!frota) return;
+
+    // Veículos
+    if (frota.veiculos) {
+      const raw = Array.isArray(frota.veiculos)
+        ? frota.veiculos.map(function(v,i){ return _normVeiFrota(v, v.id||('v'+i)); })
+        : Object.entries(frota.veiculos).map(function(e){ return _normVeiFrota(e[1], e[0]); });
+      veiculos = raw.filter(function(v){ return v.placa; });
+    }
+
+    // Motoristas
+    if (frota.motoristas) {
+      _frotaMotoristas = (Array.isArray(frota.motoristas)
+        ? frota.motoristas
+        : Object.values(frota.motoristas)
+      ).filter(function(m){ return m && m.nome; });
+      _syncDatalistMotoristas();
+    }
   });
+
+  // Fallback: nó próprio veiculos (caso frota/dados vazio)
+  db.ref('veiculos').on('value', function(snap) {
+    if (veiculos.length > 0) return;
+    const tmp = [];
+    snap.forEach(function(item) {
+      const v = item.val(); v.id = item.key; tmp.push(v);
+    });
+    if (tmp.length > 0) veiculos = tmp;
+  });
+
+  // Datalist de autocompletar motoristas nos campos do formulário
+  function _syncDatalistMotoristas() {
+    let dl = document.getElementById('_dl_mot_frota');
+    if (!dl) {
+      dl = document.createElement('datalist');
+      dl.id = '_dl_mot_frota';
+      document.body.appendChild(dl);
+      ['f-mot','diversas-motorista','vei-motorista','edit-abast-motorista'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('list','_dl_mot_frota');
+      });
+    }
+    dl.innerHTML = _frotaMotoristas.map(function(m) {
+      return '<option value="'+(m.nome||'').toUpperCase()+'"></option>';
+    }).join('');
+  }
+  // ═══════════════════════════════════════════════════════════════
   
   db.ref('postos').on('value', snap => {
     postos = [];
@@ -5873,59 +5807,6 @@
     return erros;
   }
   
-  async function verificarPendenciaGaragem(placa) {
-    if (userRole !== 'secretarios') return { bloqueado: false };
-    if (!placa || placa.length < 7) return { bloqueado: false };
-
-    try {
-      const snap = await db.ref('frota/dados').once('value');
-      const frota = snap.val();
-      if (!frota || !frota.veiculos) return { bloqueado: false };
-
-      const placaUp = placa.toUpperCase().replace(/[^A-Z0-9]/g,'');
-
-      // Buscar veículo — guardar também a chave Firebase
-      let veiculo = null;
-      let veiculoKey = null;
-      Object.entries(frota.veiculos).forEach(function(entry) {
-        const key = entry[0], v = entry[1];
-        if ((v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'') === placaUp) {
-          veiculo = v;
-          veiculoKey = key;
-        }
-      });
-
-      if (!veiculo) return { bloqueado: false };
-      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
-
-      // id pode ser campo interno ou a chave do Firebase
-      const vid1 = veiculo.id   || null;
-      const vid2 = veiculoKey   || null;
-
-      const movimentacoes = Object.values(frota.movimentacoes || {});
-      const agora = Date.now();
-
-      const irregular = movimentacoes.find(function(m) {
-        const mesmoVeiculo = (vid1 && m.vid === vid1) || (vid2 && m.vid === vid2);
-        return mesmoVeiculo
-          && !m.entrada_real
-          && m.retorno
-          && agora > new Date(m.retorno).getTime();
-      });
-
-      console.log('[Garagem] placa:', placaUp, '| vid:', vid1||vid2, '| irregular:', !!irregular);
-
-      if (irregular) {
-        return { bloqueado: true, atrasado: true };
-      }
-
-      return { bloqueado: false };
-    } catch(e) {
-      console.warn('⚠️ verificarPendenciaGaragem erro (liberando):', e);
-      return { bloqueado: false };
-    }
-  }
-
   async function processar() {
     if (!temPermissao('registrar_abastecimento')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO!", "error");
@@ -5965,7 +5846,7 @@
       // 🔒 BLOQUEIO GARAGEM CENTRAL
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
-        abrirModalBloqueioGaragem(dados.placa, pendenciaGaragem.atrasado);
+        mostrarNotificacao('⛔ ' + pendenciaGaragem.motivo, 'error');
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -6282,24 +6163,8 @@
       limparFormulario();
       
     } catch (erro) {
-      console.error('❌ Erro ao processar abastecimento:', erro);
-      // Popup grande de erro em português
-      const msgErro = (erro && erro.message) ? erro.message : String(erro);
-      const elErro = document.getElementById('modal-bloqueio-garagem');
-      // Reutilizar o modal mas com mensagem de erro genérico
-      const elPlacaErro = document.getElementById('mbg-placa');
-      const elMsgErro   = document.querySelector('.modal-bloqueio-msg');
-      const elDestErro  = document.querySelector('.modal-bloqueio-destaque');
-      const elSubErro   = document.querySelector('.modal-bloqueio-sub');
-      if (elErro && elPlacaErro && elMsgErro && elDestErro && elSubErro) {
-        elPlacaErro.textContent  = '⚠️ ERRO';
-        elMsgErro.textContent    = 'Não foi possível registrar o abastecimento';
-        elDestErro.textContent   = '❌ Ocorreu um erro interno no sistema';
-        elSubErro.textContent    = 'Feche esta janela e tente novamente. Se o problema persistir, entre em contato com o administrador.';
-        elErro.style.display = 'flex';
-      } else {
-        mostrarNotificacao("❌ Erro ao registrar abastecimento. Tente novamente.", "error");
-      }
+      console.error('Erro ao processar abastecimento:', erro);
+      mostrarNotificacao("❌ Erro ao registrar abastecimento!", "error");
     } finally {
       btnRegistrar.disabled = false;
       btnRegistrar.innerHTML = textoOriginal;
@@ -11580,7 +11445,8 @@
     console.log('🔎 Buscando veículo em veiculos[]...');
     console.log('Total de veículos cadastrados:', veiculos.length);
     
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = function(p){ return (p||'').toUpperCase().replace(/-/g,''); };
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     
     if (veiculo) {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -11762,7 +11628,8 @@
     console.log('🔎 Buscando veículo...');
     
     // Primeiro tentar no cadastro de veículos
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = function(p){ return (p||'').toUpperCase().replace(/-/g,''); };
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     
     if (veiculo) {
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
@@ -12181,7 +12048,8 @@
     document.getElementById('resultados-busca-autorizador').style.display = 'none';
     
     // Buscar dados do veículo
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = function(p){ return (p||'').toUpperCase().replace(/-/g,''); };
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     const ultimoAbast = cache
       .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -12392,7 +12260,8 @@
     document.getElementById('resultados-busca-diversas').style.display = 'none';
     
     // Buscar dados do veículo para preencher motorista
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = function(p){ return (p||'').toUpperCase().replace(/-/g,''); };
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     if (veiculo) {
       console.log('✅ Veículo encontrado no cadastro:', veiculo);
       console.log('  • Motorista:', veiculo.motorista);
@@ -13373,17 +13242,56 @@
     
     const veiculoRef = db.ref('veiculos').push();
     
-    veiculoRef.set({
-      placa: placa,
-      modelo: modelo,
-      // REMOVIDO: secretaria (veículo não tem secretaria fixa)
-      // A secretaria é definida em cada abastecimento
-      motorista: motorista,
+    const dadosVeiculo = {
+      placa:        placa,
+      modelo:       modelo,
+      motorista:    motorista,
       cpfMotorista: cpfMotorista,
-      combustivel: combustivel,
-      ano: ano,
+      combustivel:  combustivel,
+      ano:          ano,
       cadastradoEm: Date.now()
-    }).then(() => {
+    };
+
+    veiculoRef.set(dadosVeiculo).then(() => {
+      // ── SYNC: espelhar em frota/dados para compartilhar com frota ──
+      const placaNorm = placa.replace(/-/g,'');
+      // Procurar se já existe na frota pelo placa
+      db.ref('frota/dados/veiculos').orderByChild('placa').once('value').then(function(snapFrota) {
+        let existeNaFrota = false;
+        snapFrota.forEach(function(child) {
+          const vf = child.val();
+          if (vf && (vf.placa||'').replace(/-/g,'').toUpperCase() === placaNorm.toUpperCase()) {
+            // Atualizar campos básicos preservando dados ricos (escalas, secretaria, etc.)
+            db.ref('frota/dados/veiculos/'+child.key).update({
+              motoristaPadrao:    motorista,
+              cpfMotoristaPadrao: cpfMotorista,
+              combustivel:        combustivel,
+              ano:                ano
+            });
+            existeNaFrota = true;
+          }
+        });
+        if (!existeNaFrota) {
+          // Criar na frota com estrutura mínima
+          const novoId = 'v_cb_'+Date.now();
+          db.ref('frota/dados/veiculos/'+novoId).set({
+            id:          novoId,
+            placa:       placa,
+            descricao:   modelo,
+            motoristaPadrao:    motorista,
+            cpfMotoristaPadrao: cpfMotorista,
+            combustivel: combustivel,
+            ano:         ano,
+            secretaria:  '',
+            capacidade:  0,
+            cor:         'branco',
+            tipo:        '🚗',
+            escalas:     []
+          });
+        }
+      }).catch(function(e){ console.warn('Sync frota (cadastro):', e); });
+      // ────────────────────────────────────────────────────────────
+
       registrarAuditoria('VEICULO_CADASTRADO', { placa: placa });
       mostrarNotificacao("✅ VEÍCULO SALVO COM SUCESSO!", "success");
       
@@ -14871,7 +14779,7 @@
     // 🔒 BLOQUEIO GARAGEM CENTRAL
     const pendenciaDiversas = await verificarPendenciaGaragem(placa);
     if (pendenciaDiversas.bloqueado) {
-      abrirModalBloqueioGaragem(placa, pendenciaDiversas.atrasado);
+      mostrarNotificacao('⛔ ' + pendenciaDiversas.motivo, 'error');
       return;
     }
     if (!motorista) {
@@ -15263,44 +15171,46 @@
   // 🔒 BLOQUEIO GARAGEM CENTRAL — impede secretários de abastecerem
   //    veículos com movimentação ativa em atraso (irregulares na frota)
   // ═══════════════════════════════════════════════════════════════════════
+  async function verificarPendenciaGaragem(placa) {
+    if (!placa || placa.length < 7) return { bloqueado: false };
+    if (userRole !== 'secretarios') return { bloqueado: false };
 
-  // ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────────────────────
-  function abrirModalBloqueioGaragem(placa, atrasado) {
-    const el = document.getElementById('modal-bloqueio-garagem');
-    if (!el) return;
-    const elPlaca = document.getElementById('mbg-placa');
-    if (elPlaca) elPlaca.textContent = (placa || '').toUpperCase();
-    const elMsg  = el.querySelector('.modal-bloqueio-msg');
-    const elDest = el.querySelector('.modal-bloqueio-destaque');
-    const elSub  = el.querySelector('.modal-bloqueio-sub');
-    if (atrasado) {
-      if (elMsg)  elMsg.textContent  = 'Este veículo está em situação irregular';
-      if (elDest) elDest.textContent = '⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer';
-      if (elSub)  elSub.innerHTML    = 'O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.';
-    } else {
-      if (elMsg)  elMsg.textContent  = 'Este veículo está em viagem';
-      if (elDest) elDest.textContent = '🚗 Veículo fora da garagem — abastecimento não permitido';
-      if (elSub)  elSub.innerHTML    = 'O veículo ainda não retornou à Garagem Central.<br>Aguarde o retorno e registro de entrada para realizar o abastecimento.';
+    try {
+      const snap = await db.ref('frota/dados').once('value');
+      const frota = snap.val();
+      if (!frota) return { bloqueado: false };
+
+      const veiculos      = Object.values(frota.veiculos      || {});
+      const movimentacoes = Object.values(frota.movimentacoes || {});
+      const placaUp = placa.toUpperCase().trim();
+
+      const veiculo = veiculos.find(v => (v.placa||'').toUpperCase().trim() === placaUp);
+      if (!veiculo) return { bloqueado: false };
+
+      // Veículo em manutenção ou guardado fora → não bloqueia por irregularidade
+      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
+
+      const agora = Date.now();
+      const irregular = movimentacoes.find(m =>
+        m.vid === veiculo.id &&
+        !m.entrada_real &&
+        m.retorno &&
+        agora > new Date(m.retorno).getTime()
+      );
+
+      if (irregular) {
+        return {
+          bloqueado: true,
+          motivo: 'Este veículo está em situação irregular  -  Procure a Garagem Central.'
+        };
+      }
+
+      return { bloqueado: false };
+    } catch(e) {
+      console.warn('⚠️ Erro ao verificar garagem:', e);
+      return { bloqueado: false };
     }
-    el.style.display = 'flex';
   }
-  function fecharModalBloqueioGaragem() {
-    const el = document.getElementById('modal-bloqueio-garagem');
-    if (el) el.style.display = 'none';
-  }
-  // Expor no window — obrigatório pois o script está em IIFE
-  window.fecharModalBloqueioGaragem = fecharModalBloqueioGaragem;
-  window.abrirModalBloqueioGaragem  = abrirModalBloqueioGaragem;
-  // Fechar clicando no fundo escuro
-  document.addEventListener('click', function(e) {
-    const el = document.getElementById('modal-bloqueio-garagem');
-    if (el && e.target === el) fecharModalBloqueioGaragem();
-  });
-  // Fechar com ESC
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') fecharModalBloqueioGaragem();
-  });
-  // ──────────────────────────────────────────────────────────────
 
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
