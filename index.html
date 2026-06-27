@@ -20,13 +20,13 @@
 })();
 </script>
 <style>html.auto-login #login-screen{display:none!important}
-  /* ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────────────── */
-  #modal-bloqueio-garagem{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:99999}
+  /* ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────── */
+  #modal-bloqueio-garagem{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);align-items:center;justify-content:center;z-index:99999}
   .mbg-inner{background:#fff;border-radius:24px;max-width:520px;width:92%;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.45);animation:mbgEntrar .3s cubic-bezier(.34,1.56,.64,1)}
   @keyframes mbgEntrar{from{transform:scale(.8) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-  .mbg-topo{background:linear-gradient(135deg,#dc2626,#991b1b);padding:32px;text-align:center;position:relative}
+  .mbg-topo{background:linear-gradient(135deg,#dc2626,#991b1b);padding:32px;text-align:center}
   .mbg-icone{font-size:64px;display:block;margin-bottom:10px;animation:mbgPulse 1s ease-in-out infinite}
-  @keyframes mbgPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  @keyframes mbgPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
   .mbg-topo h2{color:#fff;font-size:22px;font-weight:800;margin:0}
   .mbg-topo p{color:rgba(255,255,255,.85);font-size:13px;margin-top:4px}
   .mbg-corpo{padding:28px 32px 32px;text-align:center}
@@ -2635,7 +2635,7 @@
 </div>
 
 <!-- ── MODAL BLOQUEIO GARAGEM CENTRAL ── -->
-<div id="modal-bloqueio-garagem" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:99999">
+<div id="modal-bloqueio-garagem" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);align-items:center;justify-content:center;z-index:99999">
   <div class="mbg-inner">
     <div class="mbg-topo">
       <span class="mbg-icone">🚨</span>
@@ -2644,9 +2644,9 @@
     </div>
     <div class="mbg-corpo">
       <div class="mbg-placa" id="mbg-placa">———</div>
-      <div class="mbg-msg" id="mbg-msg">Este veículo está em situação irregular</div>
-      <div class="mbg-destaque" id="mbg-destaque">⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer</div>
-      <div class="mbg-sub" id="mbg-sub">O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.</div>
+      <div class="mbg-msg">Este veículo está em situação irregular</div>
+      <div class="mbg-destaque">⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer</div>
+      <div class="mbg-sub">O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.</div>
       <button class="mbg-btn" onclick="document.getElementById('modal-bloqueio-garagem').style.display='none'">✅ ENTENDIDO — FECHAR</button>
     </div>
   </div>
@@ -5771,11 +5771,6 @@
     return erros;
   }
   
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🔒 BLOQUEIO GARAGEM CENTRAL — impede secretários de abastecerem
-  //    veículos com movimentação ativa em atraso (irregulares na frota)
-  // ═══════════════════════════════════════════════════════════════════════
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
     if (userRole !== 'secretarios') return { bloqueado: false };
@@ -5817,6 +5812,27 @@
     }
   }
 
+  // ── MODAL BLOQUEIO GARAGEM CENTRAL ──────────────────────────────
+  function abrirModalBloqueioGaragem(placa) {
+    const el = document.getElementById('modal-bloqueio-garagem');
+    if (!el) { mostrarNotificacao('⛔ Este veículo está em situação irregular — Procure a Garagem Central.', 'error'); return; }
+    const elP = document.getElementById('mbg-placa');
+    if (elP) elP.textContent = (placa || '').toUpperCase();
+    el.style.display = 'flex';
+    el.onclick = function(e) { if (e.target === el) el.style.display = 'none'; };
+  }
+  function fecharModalBloqueioGaragem() {
+    const el = document.getElementById('modal-bloqueio-garagem');
+    if (el) el.style.display = 'none';
+  }
+  // Expor globalmente (script roda em IIFE — onclick HTML precisa de window.*)
+  window.abrirModalBloqueioGaragem  = abrirModalBloqueioGaragem;
+  window.fecharModalBloqueioGaragem = fecharModalBloqueioGaragem;
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') fecharModalBloqueioGaragem();
+  });
+  // ────────────────────────────────────────────────────────────────
+
   async function processar() {
     if (!temPermissao('registrar_abastecimento')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO!", "error");
@@ -5856,7 +5872,7 @@
       // 🔒 BLOQUEIO GARAGEM CENTRAL
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
-        abrirModalBloqueioGaragem(dados.placa, true);
+        abrirModalBloqueioGaragem(dados.placa);
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -11455,8 +11471,7 @@
     console.log('🔎 Buscando veículo em veiculos[]...');
     console.log('Total de veículos cadastrados:', veiculos.length);
     
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+    const veiculo = veiculos.find(v => v.placa === placa);
     
     if (veiculo) {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -11638,8 +11653,7 @@
     console.log('🔎 Buscando veículo...');
     
     // Primeiro tentar no cadastro de veículos
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+    const veiculo = veiculos.find(v => v.placa === placa);
     
     if (veiculo) {
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
@@ -12058,8 +12072,7 @@
     document.getElementById('resultados-busca-autorizador').style.display = 'none';
     
     // Buscar dados do veículo
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+    const veiculo = veiculos.find(v => v.placa === placa);
     const ultimoAbast = cache
       .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -12270,8 +12283,7 @@
     document.getElementById('resultados-busca-diversas').style.display = 'none';
     
     // Buscar dados do veículo para preencher motorista
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+    const veiculo = veiculos.find(v => v.placa === placa);
     if (veiculo) {
       console.log('✅ Veículo encontrado no cadastro:', veiculo);
       console.log('  • Motorista:', veiculo.motorista);
@@ -14750,7 +14762,7 @@
     // 🔒 BLOQUEIO GARAGEM CENTRAL
     const pendenciaDiversas = await verificarPendenciaGaragem(placa);
     if (pendenciaDiversas.bloqueado) {
-      abrirModalBloqueioGaragem(placa || (dados && dados.placa) || '', true);
+      abrirModalBloqueioGaragem(placa);
       return;
     }
     if (!motorista) {
@@ -15138,31 +15150,12 @@
   
   // 3. CALCULAR MÉDIA KM/L DO VEÍCULO
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔒 BLOQUEIO GARAGEM CENTRAL — impede secretários de abastecerem
+  //    veículos com movimentação ativa em atraso (irregulares na frota)
+  // ═══════════════════════════════════════════════════════════════════════
 
-  // ── MODAL BLOQUEIO GARAGEM CENTRAL ──────────────────────────────
-  function abrirModalBloqueioGaragem(placa, atrasado) {
-    const el = document.getElementById('modal-bloqueio-garagem');
-    if (!el) return;
-    document.getElementById('mbg-placa').textContent = (placa||'').toUpperCase();
-    if (atrasado !== false) {
-      document.getElementById('mbg-msg').textContent     = 'Este veículo está em situação irregular';
-      document.getElementById('mbg-destaque').textContent = '⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer';
-      document.getElementById('mbg-sub').innerHTML        = 'O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.';
-    }
-    el.style.display = 'flex';
-    // Fechar ao clicar no fundo
-    el.onclick = function(e){ if(e.target === el) el.style.display = 'none'; };
-  }
-  function fecharModalBloqueioGaragem() {
-    const el = document.getElementById('modal-bloqueio-garagem');
-    if (el) el.style.display = 'none';
-  }
-  window.abrirModalBloqueioGaragem  = abrirModalBloqueioGaragem;
-  window.fecharModalBloqueioGaragem = fecharModalBloqueioGaragem;
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') fecharModalBloqueioGaragem();
-  });
-  // ────────────────────────────────────────────────────────────────
+
 
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
