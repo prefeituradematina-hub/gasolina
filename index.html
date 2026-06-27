@@ -15231,18 +15231,17 @@
       if (!veiculo) return { bloqueado: false };
       if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
 
-      // Bloquear se há movimentação ativa (em viagem OU com retorno vencido)
-      const emMovimento = movimentacoes.find(function(m) {
-        return m.vid === veiculo.id && !m.entrada_real;
+      // Bloquear APENAS veículos irregulares: em movimentação ativa COM retorno vencido
+      const agora = Date.now();
+      const irregular = movimentacoes.find(function(m) {
+        return m.vid === veiculo.id
+          && !m.entrada_real
+          && m.retorno
+          && agora > new Date(m.retorno).getTime();
       });
 
-      if (emMovimento) {
-        const agora = Date.now();
-        const atrasado = agora > new Date(emMovimento.retorno).getTime();
-        return {
-          bloqueado: true,
-          atrasado: atrasado
-        };
+      if (irregular) {
+        return { bloqueado: true, atrasado: true };
       }
 
       return { bloqueado: false };
