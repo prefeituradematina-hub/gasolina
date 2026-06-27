@@ -5873,6 +5873,59 @@
     return erros;
   }
   
+  async function verificarPendenciaGaragem(placa) {
+    if (userRole !== 'secretarios') return { bloqueado: false };
+    if (!placa || placa.length < 7) return { bloqueado: false };
+
+    try {
+      const snap = await db.ref('frota/dados').once('value');
+      const frota = snap.val();
+      if (!frota || !frota.veiculos) return { bloqueado: false };
+
+      const placaUp = placa.toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+      // Buscar veículo — guardar também a chave Firebase
+      let veiculo = null;
+      let veiculoKey = null;
+      Object.entries(frota.veiculos).forEach(function(entry) {
+        const key = entry[0], v = entry[1];
+        if ((v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'') === placaUp) {
+          veiculo = v;
+          veiculoKey = key;
+        }
+      });
+
+      if (!veiculo) return { bloqueado: false };
+      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
+
+      // id pode ser campo interno ou a chave do Firebase
+      const vid1 = veiculo.id   || null;
+      const vid2 = veiculoKey   || null;
+
+      const movimentacoes = Object.values(frota.movimentacoes || {});
+      const agora = Date.now();
+
+      const irregular = movimentacoes.find(function(m) {
+        const mesmoVeiculo = (vid1 && m.vid === vid1) || (vid2 && m.vid === vid2);
+        return mesmoVeiculo
+          && !m.entrada_real
+          && m.retorno
+          && agora > new Date(m.retorno).getTime();
+      });
+
+      console.log('[Garagem] placa:', placaUp, '| vid:', vid1||vid2, '| irregular:', !!irregular);
+
+      if (irregular) {
+        return { bloqueado: true, atrasado: true };
+      }
+
+      return { bloqueado: false };
+    } catch(e) {
+      console.warn('⚠️ verificarPendenciaGaragem erro (liberando):', e);
+      return { bloqueado: false };
+    }
+  }
+
   async function processar() {
     if (!temPermissao('registrar_abastecimento')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO!", "error");
@@ -15210,46 +15263,6 @@
   // 🔒 BLOQUEIO GARAGEM CENTRAL — impede secretários de abastecerem
   //    veículos com movimentação ativa em atraso (irregulares na frota)
   // ═══════════════════════════════════════════════════════════════════════
-  async function verificarPendenciaGaragem(placa) {
-    // Só bloqueia secretários
-    if (userRole !== 'secretarios') return { bloqueado: false };
-    if (!placa || placa.length < 7) return { bloqueado: false };
-
-    try {
-      const snap = await db.ref('frota/dados').once('value');
-      const frota = snap.val();
-      if (!frota || !frota.veiculos) return { bloqueado: false };
-
-      const veiculos      = Object.values(frota.veiculos);
-      const movimentacoes = Object.values(frota.movimentacoes || {});
-      const placaUp = placa.toUpperCase().replace(/[^A-Z0-9]/g,'');
-
-      const veiculo = veiculos.find(function(v) {
-        return (v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'') === placaUp;
-      });
-
-      if (!veiculo) return { bloqueado: false };
-      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
-
-      // Bloquear APENAS veículos irregulares: em movimentação ativa COM retorno vencido
-      const agora = Date.now();
-      const irregular = movimentacoes.find(function(m) {
-        return m.vid === veiculo.id
-          && !m.entrada_real
-          && m.retorno
-          && agora > new Date(m.retorno).getTime();
-      });
-
-      if (irregular) {
-        return { bloqueado: true, atrasado: true };
-      }
-
-      return { bloqueado: false };
-    } catch(e) {
-      console.warn('⚠️ verificarPendenciaGaragem erro (liberando):', e);
-      return { bloqueado: false };
-    }
-  }
 
   // ── MODAL BLOQUEIO GARAGEM CENTRAL ─────────────────────────────
   function abrirModalBloqueioGaragem(placa, atrasado) {
