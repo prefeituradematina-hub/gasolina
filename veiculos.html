@@ -856,6 +856,59 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </div>
 
 <!-- MODAL RESOLVER AUSENTE -->
+<div class="overlay" id="ov-prorrogar">
+  <div class="modal" style="max-width:420px">
+    <h2>⏱️ Prorrogar retorno</h2>
+    <div id="prorr-info" style="font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:9px 12px;margin-bottom:.75rem;line-height:1.6"></div>
+    <div class="field">
+      <label>Adicionar tempo rapidamente</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button class="btn" onclick="prorrogarMin(30)"  style="font-size:13px;padding:8px">+30 min</button>
+        <button class="btn" onclick="prorrogarMin(60)"  style="font-size:13px;padding:8px">+1 hora</button>
+        <button class="btn" onclick="prorrogarMin(120)" style="font-size:13px;padding:8px">+2 horas</button>
+        <button class="btn" onclick="prorrogarMin(240)" style="font-size:13px;padding:8px">+4 horas</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ou defina o novo horário exato</label>
+      <input type="datetime-local" id="prorr-novo-retorno" style="width:100%">
+    </div>
+    <div id="prorr-preview" style="display:none;font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:8px 11px;margin-bottom:.5rem"></div>
+    <div class="field">
+      <label>Motivo <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <textarea id="prorr-obs" placeholder="Ex: Imprevisto na estrada, veículo aguardando peça..." style="min-height:58px"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn success" onclick="confirmarProrrogar()">✅ Confirmar prorrogação</button>
+      <button class="btn" onclick="fechar('ov-prorrogar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-guardado-noite">
+  <div class="modal" style="max-width:420px">
+    <h2>🌙 Guardado durante a noite</h2>
+    <div id="gn-info" style="font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:9px 12px;margin-bottom:.75rem;line-height:1.6"></div>
+    <div class="field">
+      <label>Horário que o veículo chegou</label>
+      <input type="datetime-local" id="gn-hora-entrada" style="width:100%">
+      <div style="font-size:11px;color:#64748b;margin-top:4px">Informe quando o veículo foi recebido pelo guarda</div>
+    </div>
+    <div class="field">
+      <label>KM de chegada <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <input type="number" id="gn-km" placeholder="Ex: 45230" style="width:100%">
+    </div>
+    <div class="field">
+      <label>Observações <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <textarea id="gn-obs" placeholder="Ex: Chegou às 22h, recebido pelo guarda João..." style="min-height:58px"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn success" onclick="confirmarGuardadoNoite()">🌙 Confirmar entrada noturna</button>
+      <button class="btn" onclick="fechar('ov-guardado-noite')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ov-resolver">
   <div class="modal">
     <h2>✅ Veículo retornou</h2>
@@ -1988,8 +2041,10 @@ function verVeiculo(vid) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
   } else if(s==='trabalhando'||s==='irregular') {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
+    btns += '<button class="btn" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirGuardadoNoite(\''+mov.id+'\')">🌙 Guardado durante a noite</button>';
     if(isAdmin()) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
+      btns += '<button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogar(\''+mov.id+'\')">⏱️ Prorrogar retorno</button>';
     }
   } else {
     if(!isAdmin()) {
@@ -2504,6 +2559,99 @@ function confirmarAusente() {
   D.ausencias.push({id:uid('au'),vid:_ausenteVid,obs:obs,abertoEm:nowLocal(),resolvido:false,resolvidoEm:null});
   salvar(); fechar('ov-ausente'); toast('Ocorrência registrada!'); renderTudo();
 }
+// ── GUARDADO DURANTE A NOITE (frentista e admin) ────────────────────
+var _guardadoNoiteMovId = null;
+
+function abrirGuardadoNoite(movId) {
+  _guardadoNoiteMovId = movId;
+  var mov = D.movimentacoes.find(function(m){ return m.id === movId; });
+  if(!mov){ toast('Movimentação não encontrada.'); return; }
+  var v = getV(mov.vid);
+  document.getElementById('gn-info').innerHTML =
+    '<strong>' + (v ? v.placa + ' — ' + v.descricao : '?') + '</strong><br>' +
+    'Motorista: ' + (mov.motorista||'—') +
+    '<br>Retorno previsto: <strong>' + fmtDT(mov.retorno) + '</strong>';
+  // Preencher com hora atual como sugestão
+  document.getElementById('gn-hora-entrada').value = nowLocal();
+  document.getElementById('gn-km').value = '';
+  document.getElementById('gn-obs').value = '';
+  abrir('ov-guardado-noite');
+}
+
+function confirmarGuardadoNoite() {
+  var hora = document.getElementById('gn-hora-entrada').value;
+  if(!hora){ toast('Informe o horário de chegada.'); return; }
+  var mov = D.movimentacoes.find(function(m){ return m.id === _guardadoNoiteMovId; });
+  if(!mov){ toast('Movimentação não encontrada.'); return; }
+  mov.entrada_real   = hora;
+  mov.guardadoNoite  = true;
+  mov.km_entrada     = parseInt(document.getElementById('gn-km').value) || null;
+  mov.obsEntrada     = document.getElementById('gn-obs').value.trim() || null;
+  mov.registradoPor  = (_sessao && _sessao.login) || 'frentista';
+  salvar();
+  fechar('ov-guardado-noite');
+  render();
+  toast('🌙 Entrada noturna registrada para ' + fmtDT(hora));
+}
+// ─────────────────────────────────────────────────────────────────────
+
+// ── PRORROGAR RETORNO (admin e autorizador) ──────────────────────────
+var _prorrogarMovId = null;
+
+function abrirProrrogar(movId) {
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
+  _prorrogarMovId = movId;
+  var mov = D.movimentacoes.find(function(m){ return m.id === movId; });
+  if(!mov){ toast('Movimentação não encontrada.'); return; }
+  var v = getV(mov.vid);
+  var retAtual = new Date(mov.retorno);
+  document.getElementById('prorr-info').innerHTML =
+    '<strong>' + (v ? v.placa : movId) + '</strong> — ' + (mov.motorista||'') +
+    '<br>Retorno atual: <strong>' +
+    retAtual.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) + '</strong>';
+  var iso = new Date(retAtual.getTime() - retAtual.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('prorr-novo-retorno').value = iso;
+  document.getElementById('prorr-obs').value = '';
+  document.getElementById('prorr-preview').style.display = 'none';
+  abrir('ov-prorrogar');
+}
+
+function prorrogarMin(min) {
+  var mov = D.movimentacoes.find(function(m){ return m.id === _prorrogarMovId; });
+  if(!mov) return;
+  var novo = new Date(new Date(mov.retorno).getTime() + min*60000);
+  var iso = new Date(novo.getTime() - novo.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('prorr-novo-retorno').value = iso;
+  var prev = document.getElementById('prorr-preview');
+  prev.style.display = 'block';
+  prev.innerHTML = '⏱️ Novo retorno: <strong>' +
+    novo.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) + '</strong>';
+}
+
+function confirmarProrrogar() {
+  var novoVal = document.getElementById('prorr-novo-retorno').value;
+  if(!novoVal){ toast('Defina o novo horário de retorno.'); return; }
+  var novoRetorno = new Date(novoVal);
+  var mov = D.movimentacoes.find(function(m){ return m.id === _prorrogarMovId; });
+  if(!mov){ toast('Movimentação não encontrada.'); return; }
+  var retAnterior = mov.retorno;
+  mov.retorno = novoRetorno.toISOString();
+  if(!mov.prorrogacoes) mov.prorrogacoes = [];
+  mov.prorrogacoes.push({
+    em:          new Date().toISOString(),
+    retAnterior: retAnterior,
+    retNovo:     mov.retorno,
+    obs:         document.getElementById('prorr-obs').value.trim() || null,
+    por:         (_sessao && _sessao.login) || 'admin'
+  });
+  salvar();
+  fechar('ov-prorrogar');
+  render();
+  toast('✅ Retorno prorrogado para ' +
+    novoRetorno.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}));
+}
+// ─────────────────────────────────────────────────────────────────────
+
 function abrirResolver(auId) {
   _resolverAuId = auId;
   var au = getAus(auId); var v = getV(au.vid);

@@ -9802,9 +9802,21 @@
   
   function toggleUserFields() {
     const role = document.getElementById('new-role').value;
-    const isFrentista = (role === 'frentista');
+    const isFrentista  = (role === 'frentista');
     const isSecretario = (role === 'secretarios');
     const isAutorizador = (role === 'autorizador');
+    const isFrota = (role === 'frentista' || role === 'autorizador');
+    
+    // Se for frentista ou autorizador: acesso frota obrigatório, gasolina opcional
+    const chkGas   = document.getElementById('new-acesso-gasolina');
+    const chkFrota = document.getElementById('new-acesso-frota');
+    if (chkFrota) chkFrota.checked = true; // frota sempre marcada
+    if (isFrota && chkGas) {
+      // Frentista/autorizador: gasolina pode ser desmarcada — não forçar
+      // mas garantir que pelo menos frota esteja marcada
+    } else if (!isFrota && chkGas) {
+      // Admin/secretario: manter ambos marcados por padrão
+    }
     
     document.getElementById('field-limit').style.display = isSecretario ? 'block' : 'none';
     document.getElementById('field-sec').style.display = isSecretario ? 'block' : 'none';
@@ -10228,6 +10240,24 @@
       return;
     }
     
+    // ── Acesso frota: se só frota marcada, gasolina não é obrigatória ──
+    const acessoGasolina = document.getElementById('new-acesso-gasolina').checked;
+    const acessoFrota    = document.getElementById('new-acesso-frota').checked;
+    
+    // dadosUsuario declarado ANTES dos blocos que o modificam
+    const dadosUsuario = {
+      senha: senha,
+      role: role,
+      combustivelLiberado: combustivel,
+      limiteVictor: limiteVictor,
+      limiteMatina: limiteMatina,
+      limite: limite,
+      secretariaVinculada: secretaria,
+      acessoGasolina: acessoGasolina,
+      acessoFrota:    acessoFrota,
+      permissoes: PERMISSOES_PADRAO[role] || []
+    };
+    
     if (role === 'secretarios') {
       const postosPermitidos = Array.from(document.querySelectorAll('.posto-secretario-new:checked')).map(cb => cb.value);
       const combustiveisPermitidos = Array.from(document.querySelectorAll('.comb-secretario-new:checked')).map(cb => cb.value);
@@ -10242,19 +10272,6 @@
       dadosUsuario.postosPermitidos = postosPermitidos;
       dadosUsuario.combustiveisPermitidos = combustiveisPermitidos;
     }
-    
-    const dadosUsuario = {
-      senha: senha,
-      role: role,
-      combustivelLiberado: combustivel,
-      limiteVictor: limiteVictor,
-      limiteMatina: limiteMatina,
-      limite: limite,
-      secretariaVinculada: secretaria,
-      acessoGasolina: document.getElementById('new-acesso-gasolina').checked,
-      acessoFrota: document.getElementById('new-acesso-frota').checked,
-      permissoes: PERMISSOES_PADRAO[role] || []
-    };
     
     // Se for frentista, incluir posto vinculado
     if (role === 'frentista') {
@@ -11471,7 +11488,8 @@
     console.log('🔎 Buscando veículo em veiculos[]...');
     console.log('Total de veículos cadastrados:', veiculos.length);
     
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     
     if (veiculo) {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -11653,7 +11671,8 @@
     console.log('🔎 Buscando veículo...');
     
     // Primeiro tentar no cadastro de veículos
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     
     if (veiculo) {
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
@@ -12072,7 +12091,8 @@
     document.getElementById('resultados-busca-autorizador').style.display = 'none';
     
     // Buscar dados do veículo
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     const ultimoAbast = cache
       .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -12283,7 +12303,8 @@
     document.getElementById('resultados-busca-diversas').style.display = 'none';
     
     // Buscar dados do veículo para preencher motorista
-    const veiculo = veiculos.find(v => v.placa === placa);
+    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
+    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     if (veiculo) {
       console.log('✅ Veículo encontrado no cadastro:', veiculo);
       console.log('  • Motorista:', veiculo.motorista);
