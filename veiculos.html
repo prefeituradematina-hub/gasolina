@@ -716,7 +716,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>CPF</label><input type="text" id="mt-cpf" placeholder="000.000.000-00"></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>CNH *</label><input type="text" id="mt-cnh" placeholder="Número"></div>
+      <div class="field"><label>CNH</label><input type="text" id="mt-cnh" placeholder="Número (opcional)"></div>
       <div class="field"><label>Categoria</label><select id="mt-cat"><option>B</option><option>C</option><option>D</option><option>E</option><option>AB</option><option>AD</option><option>AE</option></select></div>
     </div>
     <div class="form-row">
@@ -2315,7 +2315,7 @@ function confirmarMotorista() {
   var nome = document.getElementById('mt-nome').value.trim();
   var cnh  = document.getElementById('mt-cnh').value.trim();
   var val  = document.getElementById('mt-val').value;
-  if(!nome||!cnh||!val) { alert('Nome, CNH e validade são obrigatórios.'); return; }
+  if(!nome||!val) { alert('Nome e validade da CNH são obrigatórios.'); return; }
   if(_editMotId) {
     var m = getM(_editMotId);
     m.nome=nome; m.cpf=document.getElementById('mt-cpf').value.trim();
@@ -2633,7 +2633,7 @@ function renderMotoristas() {
     return '<div class="card '+(st==='expirada'?'':'')+'">'+
       '<div class="card-header"><span class="card-title">'+m.nome+'</span>'+badge+'</div>'+
       '<div class="card-meta">'+
-      '<span>CNH: <strong>'+m.cnh+'</strong></span>'+
+      (m.cnh?'<span>CNH: <strong>'+m.cnh+'</strong></span>':'<span>CNH: <strong>não informada</strong></span>')+
       '<span>Categoria: <strong>'+m.categoria+'</strong></span>'+
       '<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>'+
       (m.telefone?'<span>Tel: <strong>'+m.telefone+'</strong></span>':'')+
@@ -2946,7 +2946,7 @@ function buscar(q) {
       items.push({
         icon: '👤',
         title: hl(m.nome,q),
-        sub: 'CNH: '+hl(m.cnh,q)+' (Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
+        sub: (m.cnh?'CNH: '+hl(m.cnh,q)+' ':'')+'(Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
         badge: '<span class="sr-badge motorista" style="color:'+stColor+'">'+stLabel+'</span>',
         action: function(){ aba(document.querySelectorAll('.tab')[3], 'motoristas'); }
       });
