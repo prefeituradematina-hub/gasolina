@@ -239,25 +239,11 @@ function logar(){
   if(!u || !s){ erroLogin('Preencha usuário e senha.'); return; }
   travar(true);
 
-  if(u === 'master'){
-    // Senha do master fica no banco (config/masterPassword) e pode ser trocada
-    // no painel do Controle de Combustível. A original só vale se nenhuma nova
-    // senha tiver sido definida.
-    db.ref('config/masterPassword').once('value').then(function(snap){
-      var senhaMaster = snap.val() || '05048989';
-      if(s === senhaMaster){
-        var sess = salvarSessao('master','admin',0,'',{
-          combustivelLiberado:'todos', senha:senhaMaster, role:'admin', permissoes:null
-        });
-        try{ db.ref('auditoria').push({acao:'LOGIN', usuario:'master', via:'portal', em:new Date().toISOString()}); }catch(e){}
-        mostrarHub(sess); travar(false);
-      } else {
-        erroLogin('Usuário ou senha incorretos.');
-      }
-    }).catch(function(){
-      erroLogin('Erro ao conectar ao banco de dados. Verifique sua internet.');
+  if(u === 'master' && s === '05048989'){
+    var sess = salvarSessao('master','admin',0,'',{
+      combustivelLiberado:'todos', senha:'05048989', role:'admin', permissoes:null
     });
-    return;
+    mostrarHub(sess); travar(false); return;
   }
 
   db.ref('usuarios/' + u).once('value').then(function(snap){
