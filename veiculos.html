@@ -675,6 +675,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
+<!-- MODAL PRORROGAR RETORNO -->
+<div class="overlay" id="ov-prorrogar">
+  <div class="modal">
+    <h2>⏱ Prorrogar retorno</h2>
+    <div id="pr-info" style="font-size:12px;color:#666;background:#f0f0ee;padding:9px 11px;border-radius:8px;margin-bottom:.75rem;line-height:1.7"></div>
+    <div class="field">
+      <label>Acrescentar tempo rápido</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn" onclick="prTempoRapido(30)">+30 min</button>
+        <button class="btn" onclick="prTempoRapido(60)">+1 hora</button>
+        <button class="btn" onclick="prTempoRapido(120)">+2 horas</button>
+        <button class="btn" onclick="prTempoRapido(240)">+4 horas</button>
+        <button class="btn" onclick="prTempoRapido(1440)">+1 dia</button>
+      </div>
+    </div>
+    <div class="field"><label>Ou defina o novo retorno *</label><input type="datetime-local" id="pr-novo"></div>
+    <div class="field"><label>Motivo (opcional)</label><input type="text" id="pr-motivo" placeholder="Ex: viagem estendida a pedido da secretaria"></div>
+    <div class="modal-actions">
+      <button class="btn success" onclick="confirmarProrrogacao()">✓ Confirmar prorrogação</button>
+      <button class="btn" onclick="fechar('ov-prorrogar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL AGENDAMENTO -->
 <div class="overlay" id="ov-agenda">
   <div class="modal">
@@ -2170,6 +2194,7 @@ function verVeiculo(vid) {
       btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
     }
     if(isAdmin()) {
+      btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogacao(\''+mov.id+'\')">⏱ Prorrogar retorno</button>';
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
     }
   } else {
@@ -2349,6 +2374,59 @@ function confirmarSaida() {
 }
 
 // ── ENTRADA ──────────────────────────────────────────────────
+// ── PRORROGAR RETORNO (Garagem Central) ───────────────────────
+// Acrescenta tempo ao retorno previsto de uma viagem em andamento ou
+// atrasada — o veículo irregular volta ao status "Em viagem".
+var _prorrogaId = null;
+function abrirProrrogacao(movId) {
+  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode prorrogar retornos.'); return; }
+  var m = getMov(movId);
+  if(!m || m.entrada_real){ toast('Esta viagem já foi encerrada.'); return; }
+  _prorrogaId = movId;
+  var v = getV(m.vid);
+  var atrasado = now() > new Date(m.retorno);
+  document.getElementById('pr-info').innerHTML =
+    '<strong>'+(v?v.placa+' — '+v.descricao:'?')+'</strong><br>'+
+    'Motorista: '+m.motorista+' · Retorno atual: '+fmtDT(m.retorno)+
+    (atrasado?' <span style="color:#A32D2D;font-weight:600">(EM ATRASO)</span>':'');
+  // sugestão inicial: retorno atual (ou agora, se já passou) + 1 hora
+  var base = new Date(m.retorno);
+  if(atrasado) base = now();
+  base = new Date(base.getTime() + 60*60000 - base.getTimezoneOffset()*60000);
+  document.getElementById('pr-novo').value = base.toISOString().slice(0,16);
+  document.getElementById('pr-motivo').value = '';
+  abrir('ov-prorrogar');
+}
+function prTempoRapido(min) {
+  var m = getMov(_prorrogaId);
+  if(!m) return;
+  // soma sobre o retorno atual; se já está atrasado, soma a partir de agora
+  var base = new Date(m.retorno);
+  if(now() > base) base = now();
+  base = new Date(base.getTime() + min*60000 - base.getTimezoneOffset()*60000);
+  document.getElementById('pr-novo').value = base.toISOString().slice(0,16);
+}
+function confirmarProrrogacao() {
+  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode prorrogar retornos.'); return; }
+  var novo = document.getElementById('pr-novo').value;
+  if(!novo){ alert('Informe o novo horário de retorno.'); return; }
+  var m = getMov(_prorrogaId);
+  if(!m || m.entrada_real){ alert('Esta viagem já foi encerrada.'); fechar('ov-prorrogar'); return; }
+  if(new Date(novo) <= new Date(m.retorno)){ alert('O novo retorno precisa ser DEPOIS do retorno atual ('+fmtDT(m.retorno)+').'); return; }
+  var motivo = document.getElementById('pr-motivo').value.trim();
+  // histórico de prorrogações da viagem
+  if(!m.prorrogacoes) m.prorrogacoes = [];
+  m.prorrogacoes.push({
+    de: m.retorno, para: novo, motivo: motivo,
+    por: _sessao ? _sessao.u : '?', em: new Date().toISOString()
+  });
+  m.retorno = novo;
+  salvar(); renderTudo();
+  fechar('ov-prorrogar');
+  var v = getV(m.vid);
+  toast('⏱ Retorno de '+(v?v.placa:'veículo')+' prorrogado para '+fmtDT(novo)+'.');
+}
+
 function abrirEntrada(movId) {
   _entradaId = movId;
   var m = getMov(movId); var v = getV(m.vid);
@@ -2732,7 +2810,8 @@ function renderSaidas() {
       ? '<span style="font-size:11px;color:#666;background:#f0f0ee;padding:3px 9px;border-radius:6px">✓ Entrada: '+fmtDT(m.entrada_real)+'</span>'
       : (s==='irregular' && !isAdmin())
         ? '<span style="font-size:11px;color:#A32D2D;font-weight:600;background:#FDEAEA;border:1px solid #F5C6C6;padding:4px 10px;border-radius:8px">⚠ Veículo atrasado — a entrada só pode ser registrada pela Garagem Central</span>'
-        : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>';
+        : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>'+
+          (isAdmin()?'<button class="btn" onclick="abrirProrrogacao(\''+m.id+'\')">⏱ Prorrogar</button>':'');
     return '<div class="card">'+
       '<div class="card-header"><span class="card-title">'+(v?v.placa+' — '+v.descricao:'Removido')+'</span>'+
       '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
@@ -2741,7 +2820,9 @@ function renderSaidas() {
       (m.solic?'<span>Solicitante: <strong>'+m.solic+'</strong></span>':'')+
       '<span>'+(m.com_pass?'🧍 Pass: <strong>'+m.pass+'</strong>':'🔧 Sem passageiros')+'</span>'+
       '<span>Saída: <strong>'+fmtDT(m.saida)+'</strong></span>'+
-      '<span>Retorno prev.: <strong>'+fmtDT(m.retorno)+'</strong></span>'+
+      '<span>Retorno prev.: <strong>'+fmtDT(m.retorno)+'</strong>'+
+        (m.prorrogacoes&&m.prorrogacoes.length?' <span title="Retorno original: '+fmtDT(m.prorrogacoes[0].de)+'" style="font-size:10px;font-weight:600;color:#854F0B;background:#FEF3E0;padding:1px 6px;border-radius:99px">⏱ prorrogado '+m.prorrogacoes.length+'x</span>':'')+
+      '</span>'+
       (m.km_saida?'<span>Km saída: <strong>'+m.km_saida.toLocaleString('pt-BR')+'</strong></span>':'')+
       (km?'<span>Km percorridos: <strong>'+km+'</strong></span>':'')+
       (m.destino?'<span>Destino: <strong>'+m.destino+'</strong></span>':'')+
