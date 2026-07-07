@@ -2724,7 +2724,7 @@
       </div>
       <div>
         <label>MOTORISTA *</label>
-        <input type="text" id="edit-abast-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+        <input type="text" id="edit-abast-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
       </div>
       <div>
         <label>DESTINO</label>
@@ -3001,7 +3001,7 @@
         </div>
         <div>
           <label>MOTORISTA *</label>
-          <input type="text" id="f-mot" placeholder="NOME DO MOTORISTA">
+          <input type="text" id="f-mot" list="dl-motoristas" placeholder="NOME DO MOTORISTA">
         </div>
         <div id="campo-cpf-container">
           <label id="label-cpf">CPF <span style="font-size:9px; color:#64748b;">(Opcional)</span></label>
@@ -3249,7 +3249,7 @@
         
         <div>
           <label>MOTORISTA *</label>
-          <input type="text" id="diversas-motorista" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
+          <input type="text" id="diversas-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA" style="text-transform:uppercase;">
         </div>
         
         <div>
@@ -3817,7 +3817,7 @@
         </div>
         <div>
           <label>MOTORISTA PADRÃO (OPCIONAL)</label>
-          <input type="text" id="vei-motorista" placeholder="NOME DO MOTORISTA">
+          <input type="text" id="vei-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA">
         </div>
         <div>
           <label>CPF DO MOTORISTA (OPCIONAL)</label>
@@ -4402,8 +4402,26 @@
     veiculos = [];
     snap.forEach(item => {
       let v = item.val();
-      v.id = item.key;
+      v.id = v.id || item.key;
+      // Compatibilidade com o Controle de Frota (que usa "descricao")
+      v.modelo = v.modelo || v.descricao || '';
       veiculos.push(v);
+    });
+  });
+  
+  // ── MOTORISTAS COMPARTILHADOS (cadastro feito no Controle de Frota) ──
+  db.ref('motoristas').on('value', snap => {
+    const dl = document.getElementById('dl-motoristas');
+    if (!dl) return;
+    dl.innerHTML = '';
+    snap.forEach(item => {
+      const m = item.val();
+      if (m && m.nome) {
+        const opt = document.createElement('option');
+        opt.value = String(m.nome).toUpperCase();
+        if (m.cpf) opt.label = 'CPF: ' + m.cpf;
+        dl.appendChild(opt);
+      }
     });
   });
   
@@ -5166,41 +5184,41 @@
   }
   
   function logar() {
-    console.log("=== INICIANDO LOGIN ===");
     const u = document.getElementById('user').value.toLowerCase().trim();
     const s = document.getElementById('senha').value.trim();
     
-    console.log("Usuário digitado:", u);
-    console.log("Senha digitada:", s ? "***" : "(vazia)");
-    
     if (!u || !s) {
-      console.log("Campos vazios");
       mostrarNotificacao("PREENCHA USUÁRIO E SENHA!", "error");
       return;
     }
     
-    if (u === "master" && s === "05048989") {
-      console.log("Login como MASTER");
-      return entrar("master", "admin", 0, "", { 
-        combustivelLiberado: "todos",
-        senha: "05048989",
-        role: "admin",
-        permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
+    if (u === "master") {
+      // A senha do master fica no banco (config/masterPassword) e pode ser
+      // trocada pelo painel. A senha original só vale enquanto nenhuma
+      // nova senha tiver sido definida.
+      db.ref('config/masterPassword').once('value').then(snap => {
+        const senhaMaster = snap.val() || "05048989";
+        if (s === senhaMaster) {
+          entrar("master", "admin", 0, "", { 
+            combustivelLiberado: "todos",
+            senha: senhaMaster,
+            role: "admin",
+            permissoes: Object.keys(PERMISSOES_DISPONIVEIS) // Master tem todas as permissões
+          });
+          registrarAuditoria('LOGIN', { usuario: 'master' });
+        } else {
+          mostrarNotificacao("USUÁRIO OU SENHA INCORRETOS!", "error");
+        }
+      }).catch(() => {
+        mostrarNotificacao("ERRO AO CONECTAR AO BANCO DE DADOS!", "error");
       });
+      return;
     }
     
-    console.log("Buscando no Firebase:", 'usuarios/' + u);
-    console.log("Firebase DB:", db);
-    
     db.ref('usuarios/' + u).once('value', snap => {
-      console.log("Resposta Firebase recebida");
-      console.log("Usuário existe?", snap.exists());
-      
       const user = snap.val();
-      console.log("Dados do usuário:", user);
       
       if (user && user.senha === s) {
-        console.log("✅ Senha correta! Fazendo login...");
         const permissoes = user.permissoes || PERMISSOES_PADRAO[user.role] || [];
         
         // CORREÇÃO: Somar limiteVictor + limiteMatina para secretários
@@ -5224,15 +5242,10 @@
         entrar(u, user.role, limiteTotal, user.secretariaVinculada || "", dadosUsuario);
         registrarAuditoria('LOGIN', { usuario: u });
       } else {
-        console.log("❌ Falha no login");
-        console.log("Usuário existe:", !!user);
-        console.log("Senha bate:", user ? user.senha === s : false);
         mostrarNotificacao("USUÁRIO OU SENHA INCORRETOS!", "error");
       }
     }).catch(error => {
-      console.error("❌ ERRO AO BUSCAR USUÁRIO:", error);
-      console.error("Detalhes:", error.message);
-      console.error("Stack:", error.stack);
+      console.error("ERRO AO BUSCAR USUÁRIO:", error.message);
       mostrarNotificacao("ERRO AO CONECTAR AO BANCO DE DADOS!", "error");
     });
   }
@@ -5776,11 +5789,16 @@
     if (userRole !== 'secretarios') return { bloqueado: false };
 
     try {
-      const snap = await db.ref('frota/dados').once('value');
+      const [veiSnap, snap] = await Promise.all([
+        db.ref('veiculos').once('value'),
+        db.ref('frota/dados').once('value')
+      ]);
       const frota = snap.val();
       if (!frota) return { bloqueado: false };
 
-      const veiculos      = Object.values(frota.veiculos      || {});
+      // Veículos agora vivem no nó compartilhado; mantém fallback para o blob antigo
+      const veiculosNo    = veiSnap.val() || frota.veiculos || {};
+      const veiculos      = Object.values(veiculosNo);
       const movimentacoes = Object.values(frota.movimentacoes || {});
       const placaUp = placa.toUpperCase().trim();
 
@@ -13286,8 +13304,10 @@
     const veiculoRef = db.ref('veiculos').push();
     
     veiculoRef.set({
+      id: veiculoRef.key,               // id compartilhado com o Controle de Frota
       placa: placa,
       modelo: modelo,
+      descricao: modelo,                // compatibilidade: a frota usa "descricao"
       // REMOVIDO: secretaria (veículo não tem secretaria fixa)
       // A secretaria é definida em cada abastecimento
       motorista: motorista,
@@ -13603,7 +13623,7 @@
         tbody.innerHTML += `
           <tr>
             <td><b>${v.placa}</b></td>
-            <td>${v.modelo || '---'}</td>
+            <td>${v.modelo || v.descricao || '---'}</td>
             <td>${v.secretaria || 'COMPARTILHADO'}</td>
             <td>${v.motorista || 'VÁRIOS'}</td>
             <td style="font-size: 11px;">${v.cpfMotorista || '---'}</td>
@@ -17557,11 +17577,13 @@
     if (veiculosSnap.exists()) {
       veiculosSnap.forEach(snap => {
         const veiculo = snap.val();
-        if (veiculo.modelo.includes(queryUpper) || veiculo.placa.includes(queryUpper)) {
+        const modeloBusca = String(veiculo.modelo || veiculo.descricao || '').toUpperCase();
+        const placaBusca = String(veiculo.placa || '').toUpperCase();
+        if (modeloBusca.includes(queryUpper) || placaBusca.includes(queryUpper)) {
           results.push({
             type: '🚗 VEÍCULO',
-            title: `${veiculo.modelo} - ${veiculo.placa}`,
-            desc: `${veiculo.ano} | ${veiculo.cor}`,
+            title: `${modeloBusca || 'VEÍCULO'} - ${veiculo.placa || ''}`,
+            desc: `${veiculo.ano || ''} | ${veiculo.cor || ''}`,
             action: () => trocarAba('veiculos')
           });
         }
@@ -18476,5 +18498,7 @@ entrar = function(u, role, limit, sec, dadosExtras){
   try{ registrarAuditoria('LOGIN', { usuario: s.u, via: 'portal' }); }catch(e){ /* silencioso */ }
 })();
 </script>
+<!-- Motoristas compartilhados com o Controle de Frota (nó "motoristas") -->
+<datalist id="dl-motoristas"></datalist>
 </body>
 </html>
