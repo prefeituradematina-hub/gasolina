@@ -513,7 +513,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section" id="aba-veiculos">
     <div class="section-hdr">
       <div class="section-title">Frota cadastrada</div>
-      <button class="btn primary" onclick="abrirVeiculo(null)">+ Cadastrar</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="btn-importar-comb" onclick="abrirImportar()" style="display:none">⬇️ Importar do Combustível</button>
+        <button class="btn primary" onclick="abrirVeiculo(null)">+ Cadastrar</button>
+      </div>
     </div>
     <div id="lista-veiculos"></div>
   </div>
@@ -671,6 +674,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="actions">
       <button class="btn success" onclick="confirmarEntrada()">✓ Confirmar entrada</button>
       <button class="btn" onclick="fechar('ov-entrada')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR DO COMBUSTÍVEL -->
+<div class="overlay" id="ov-importar">
+  <div class="modal">
+    <h2>⬇️ Importar veículos</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:.75rem;line-height:1.6">Veículos cadastrados no <strong>Controle de Combustível</strong> que ainda não fazem parte do Controle de Frota. Marque os que deseja trazer — o cadastro continua único entre os dois sistemas.</p>
+    <div id="imp-lista" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+    <div class="field" style="margin-top:.75rem"><label>Secretaria dos veículos importados *</label><select id="imp-sec"><option value="">— Selecione —</option></select></div>
+    <div class="modal-actions">
+      <button class="btn success" onclick="confirmarImportar()">✓ Importar selecionados</button>
+      <button class="btn" onclick="fechar('ov-importar')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1015,10 +1032,12 @@ function salvar() {
       if(_veicSync){
         (copia.veiculos||[]).forEach(function(v){
           if(!v.id) v.id = uid('v');
+          v.frota = true;                              // pertence ao Controle de Frota
           v.modelo = v.descricao || v.modelo || '';   // compatibilidade com o sistema de gasolina
           updates['veiculos/' + v.id] = v;
         });
         _delVeic.forEach(function(id){ updates['veiculos/' + id] = null; });
+        _desmarcaVeic.forEach(function(id){ updates['veiculos/' + id + '/frota'] = false; });
       }
       if(_motSync){
         (copia.motoristas||[]).forEach(function(m){
@@ -1034,7 +1053,7 @@ function salvar() {
     updates['frota/dados'] = copia;
     fbDB.ref().update(updates)
       .then(function(){
-        _delVeic = []; _delMot = [];   // exclusões confirmadas no banco
+        _delVeic = []; _delMot = []; _desmarcaVeic = [];   // exclusões confirmadas no banco
         if(_fbConectado) setFbStatus('sincronizado');
       })
       .catch(function(e){
@@ -1128,6 +1147,8 @@ var fbDB = null, _fbUltimoPush = 0, _fbInicializado = false;
 var _veicSync = false, _motSync = false; // primeira leitura dos nós compartilhados já chegou?
 var _unifOk = false;                     // migração para os nós compartilhados confirmada?
 var _delVeic = [], _delMot = [];         // exclusões pendentes de envio aos nós compartilhados
+var _veicNoTodos = [];                   // TODOS os veículos do nó compartilhado (frota + só-combustível)
+var _desmarcaVeic = [];                  // veículos a desmarcar da frota (permanecem no combustível)
 try {
   firebase.initializeApp({
     apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
@@ -1205,7 +1226,9 @@ if(fbDB){
         var val = snap.val() || {};
         var arr = [];
         Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_veicDoNo(k, val[k])); });
-        D.veiculos = arr;
+        _veicNoTodos = arr;                        // tudo que existe no nó compartilhado
+        D.veiculos = arr.filter(ehDaFrota);        // a frota só trabalha com os seus
+        _atualizarBtnImportar();
         localStorage.setItem('frota_v3', JSON.stringify(D));
         if(_sessao && typeof renderTudo === 'function') renderTudo();
       }, function(err){ _erroLeitura(err, 'veiculos'); });
@@ -2750,10 +2773,10 @@ function confirmarVeiculo() {
 
 function removerVeiculo(id) {
   if(!isAdmin()){ toast('🚫 Sem permissão para remover veículos.'); return; }
-  confirmarAcao('🗑️','Remover veículo?','Esta ação não pode ser desfeita.',function(){
+  confirmarAcao('🗑️','Remover veículo da frota?','Ele sai do Controle de Frota, mas o cadastro permanece no Controle de Combustível (pode ser importado de volta).',function(){
     D.veiculos = D.veiculos.filter(function(v){return v.id!==id;});
-    _delVeic.push(id);
-    salvar(); toast('Veículo removido.'); renderTudo();
+    _desmarcaVeic.push(id);   // sai da frota sem apagar do nó compartilhado
+    salvar(); toast('Veículo removido da frota.'); renderTudo();
   });
 }
 
@@ -2949,6 +2972,7 @@ function renderManutencao() {
 }
 
 function renderVeiculos() {
+  _atualizarBtnImportar();
   var el = document.getElementById('lista-veiculos');
   // Secretário: apenas os veículos da sua secretaria
   var lista = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
@@ -3123,6 +3147,60 @@ function renderBackup() {
   el.innerHTML = html;
 }
 
+// ── IMPORTAR VEÍCULOS DO CONTROLE DE COMBUSTÍVEL ──────────────
+// O nó do banco é compartilhado, mas a frota só exibe veículos marcados
+// com frota:true. Este importador traz os demais, um a um, por escolha.
+function _candidatosImportar(){
+  var placasFrota = {};
+  D.veiculos.forEach(function(v){ placasFrota[String(v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]=1; });
+  return _veicNoTodos.filter(function(v){
+    if(ehDaFrota(v)) return false;
+    var p = String(v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    return !placasFrota[p];
+  });
+}
+function _atualizarBtnImportar(){
+  var b = document.getElementById('btn-importar-comb');
+  if(!b) return;
+  var mostra = (typeof isAdmin==='function' && isAdmin()) && _candidatosImportar().length > 0;
+  b.style.display = mostra ? '' : 'none';
+  if(mostra) b.textContent = '⬇️ Importar do Combustível ('+_candidatosImportar().length+')';
+}
+function abrirImportar(){
+  if(!isAdmin()){ toast('🚫 Apenas administradores podem importar veículos.'); return; }
+  var cands = _candidatosImportar();
+  if(!cands.length){ toast('Nenhum veículo do Combustível para importar.'); _atualizarBtnImportar(); return; }
+  document.getElementById('imp-lista').innerHTML = cands.map(function(v){
+    return '<label style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px">'+
+      '<input type="checkbox" class="imp-check" value="'+v.id+'">'+
+      '<span><strong>'+(v.placa||'—')+'</strong> — '+(v.descricao||v.modelo||'Sem descrição')+
+      (v.ano?' <span style="color:#999;font-size:11px">('+v.ano+')</span>':'')+
+      (v.motorista?'<br><span style="color:#666;font-size:11px">Motorista padrão: '+v.motorista+'</span>':'')+
+      '</span></label>';
+  }).join('');
+  popSecs(['imp-sec']);
+  abrir('ov-importar');
+}
+function confirmarImportar(){
+  if(!isAdmin()) return;
+  var marcados = Array.prototype.slice.call(document.querySelectorAll('.imp-check:checked')).map(function(c){return c.value;});
+  if(!marcados.length){ alert('Marque pelo menos um veículo para importar.'); return; }
+  var sec = document.getElementById('imp-sec').value;
+  if(!sec){ alert('Selecione a secretaria dos veículos importados.'); return; }
+  var n = 0;
+  marcados.forEach(function(id){
+    var v = _veicNoTodos.find(function(x){return x.id===id;});
+    if(!v) return;
+    v.frota = true;
+    if(!v.secretaria) v.secretaria = sec;
+    D.veiculos.push(v); n++;
+  });
+  salvar(); renderTudo();
+  fechar('ov-importar');
+  _atualizarBtnImportar();
+  toast('⬇️ '+n+' veículo(s) importado(s) do Controle de Combustível.');
+}
+
 // ── RECUPERAÇÃO DE CADASTROS (resgate do cache local) ─────────
 function recuperarResgate(){
   if(!isAdmin()){ toast('🚫 Apenas administradores podem recuperar cadastros.'); return; }
@@ -3146,8 +3224,10 @@ function recuperarResgate(){
           var alvo = porPlaca[p];
           Object.keys(v).forEach(function(c){ if(alvo[c]==null || alvo[c]==='') alvo[c]=v[c]; });
           alvo.descricao = alvo.descricao || v.descricao || alvo.modelo || '';
+          alvo.frota = true;   // veio do cache da frota: pertence à frota
         } else {
           if(!v.id) v.id = uid('v');
+          v.frota = true;
           D.veiculos.push(v); addV++;
         }
       });
@@ -3558,6 +3638,16 @@ function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
 function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autorizador'); }
+
+// Pertence ao Controle de Frota? Marca explícita 'frota:true'.
+// Legado (sem marca): veículo com secretaria preenchida veio do cadastro da
+// frota — os do Controle de Combustível não têm secretaria no cadastro.
+function ehDaFrota(v){
+  if(!v) return false;
+  if(v.frota === true) return true;
+  if(v.frota === false) return false;
+  return !!(v.secretaria && String(v.secretaria).trim());
+}
 
 function podeVerVeiculo(v) {
   if(veTudo()) return true;
