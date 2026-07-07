@@ -1722,8 +1722,11 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
+  // Secretário: contadores e alertas calculados APENAS sobre os veículos
+  // da sua secretaria (admin/frentista/autorizador continuam vendo tudo)
+  var veisVis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
   var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,mn=0,lib=0,fh=0;
-  D.veiculos.forEach(function(v){
+  veisVis.forEach(function(v){
     var s=getStatus(v.id);
     if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else if(s==='fora_garagem')fg++; else if(s==='manutencao')mn++; else if(s==='liberado')lib++; else fh++;
   });
@@ -1740,7 +1743,7 @@ function renderPainel() {
   }
 
   document.getElementById('stats').innerHTML =
-    '<div class="stat st"><div class="stat-label">Total</div><div class="stat-val" style="color:#1a1a1a">'+D.veiculos.length+'</div></div>'+
+    '<div class="stat st"><div class="stat-label">Total</div><div class="stat-val" style="color:#1a1a1a">'+veisVis.length+'</div></div>'+
     '<div class="stat sg"><div class="stat-label">Guardados</div><div class="stat-val">'+g+'</div></div>'+
     '<div class="stat sy"><div class="stat-label">Em uso</div><div class="stat-val">'+t+'</div></div>'+
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
@@ -1754,7 +1757,7 @@ function renderPainel() {
   var al = '';
   if(ir>0) al += '<div class="alerta vermelho">🚨 '+ir+' veículo(s) com retorno em atraso!</div>';
   if(au>0) al += '<div class="alerta roxo">❓ '+au+' veículo(s) não está no local</div>';
-  var docW2 = D.veiculos.filter(function(v){return docAlerts(v).length;});
+  var docW2 = veisVis.filter(function(v){return docAlerts(v).length;});
   if(docW2.length) al += '<div class="alerta amarelo">⚠ '+docW2.length+' veículo(s) com documentação a vencer</div>';
   var cnhW = D.motoristas.filter(function(m){var st=cnhStatus(m);return st==='expirada'||st==='proxima';});
   if(cnhW.length) al += '<div class="alerta amarelo">⚠ '+cnhW.length+' motorista(s) com CNH vencida ou próxima</div>';
@@ -2866,8 +2869,10 @@ function renderManutencao() {
 
 function renderVeiculos() {
   var el = document.getElementById('lista-veiculos');
-  if(!D.veiculos.length) { el.innerHTML='<div class="empty">Nenhum veículo.</div>'; return; }
-  el.innerHTML = D.veiculos.map(function(v){
+  // Secretário: apenas os veículos da sua secretaria
+  var lista = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
+  if(!lista.length) { el.innerHTML='<div class="empty">Nenhum veículo.</div>'; return; }
+  el.innerHTML = lista.map(function(v){
     var s = getStatus(v.id);
     var docs = docAlerts(v);
     var mov = getMovAtiva(v.id);
@@ -2962,16 +2967,23 @@ function exportCSV() {
 }
 
 function renderIndicadores() {
+  // Secretário: indicadores calculados apenas sobre os veículos, viagens e
+  // abastecimentos da sua secretaria
+  var veisVis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
   var movC = D.movimentacoes.filter(function(m){return m.entrada_real && _podeVerRegistro(m);});
   var totalKm = movC.reduce(function(s,m){return s+(m.km_entrada&&m.km_saida?m.km_entrada-m.km_saida:0);},0);
   var kmMed = movC.length ? Math.round(totalKm/movC.length) : 0;
-  var ab = D.abastecimentos;
+  var ab = D.abastecimentos.filter(function(a){
+    if(veTudo()) return true;
+    var v = getV(a.vid);
+    return v && podeVerVeiculo(v);
+  });
   var totalL = ab.reduce(function(s,a){return s+a.litros;},0);
   var totalR = ab.reduce(function(s,a){return s+a.valor;},0);
   var eff = totalL>0?(totalKm/totalL).toFixed(1):'—';
   var irr = D.movimentacoes.filter(function(m){return !m.entrada_real&&now()>new Date(m.retorno)&&_podeVerRegistro(m);}).length;
   document.getElementById('kpi-grid').innerHTML =
-    kpiCard('Total veículos',D.veiculos.length,'')+
+    kpiCard('Total veículos',veisVis.length,'')+
     kpiCard('Viagens concluídas',movC.length,'')+
     kpiCard('Km total rodado',totalKm.toLocaleString('pt-BR'),'km')+
     kpiCard('Km médio/viagem',kmMed.toLocaleString('pt-BR'),'km')+
@@ -2981,7 +2993,7 @@ function renderIndicadores() {
     kpiCard('Retornos em atraso',irr,'',irr>0?'#A32D2D':'');
 
   var custoSec = {};
-  D.movimentacoes.forEach(function(m){
+  D.movimentacoes.filter(_podeVerRegistro).forEach(function(m){
     var v=getV(m.vid); if(!v) return;
     var s=v.secretaria||'—';
     if(!custoSec[s]) custoSec[s]={viagens:0,km:0};
@@ -3152,7 +3164,7 @@ function buscar(q) {
   var items = [];
 
   // ── Veículos ──
-  D.veiculos.forEach(function(v) {
+  D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); }).forEach(function(v) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
@@ -3364,7 +3376,8 @@ function filtrarVeiSelect(selectId, searchId) {
   var sel = document.getElementById(selectId);
   if(!sel) return;
   var prev = sel.value;
-  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
+  var visiveis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
+  var filtered = q ? visiveis.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : visiveis;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
@@ -3376,7 +3389,8 @@ function filtrarVeiSolic(){
   var sel = document.getElementById('sol-vei');
   if(!sel) return;
   var prev = sel.value;
-  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
+  var visiveis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
+  var filtered = q ? visiveis.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : visiveis;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
