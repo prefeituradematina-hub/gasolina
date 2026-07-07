@@ -572,6 +572,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <input type="file" id="bk-input" accept=".json" style="display:none" onchange="restaurarBackup(this)">
         <button class="btn warn" onclick="document.getElementById('bk-input').click()">Selecionar arquivo</button>
       </div>
+      <div class="backup-card" style="border-color:#FCA5A5;background:#FFF7F7">
+        <h3>🚑 Recuperar veículos e motoristas</h3>
+        <p>Restaura os cadastros guardados no cache deste aparelho antes da última sincronização. Use se veículos ou motoristas sumiram após uma atualização.</p>
+        <button class="btn danger" onclick="recuperarResgate()">Recuperar do cache deste aparelho</button>
+      </div>
       <div class="backup-card">
         <h3>📊 Exportar CSV</h3>
         <p>Exporta todas as movimentações em formato planilha.</p>
@@ -978,30 +983,36 @@ function salvar() {
     if(_fbConectado) setFbStatus('salvando');
     var copia = JSON.parse(JSON.stringify(D));
     var updates = {};
-    // Veículos e motoristas vivem em nós COMPARTILHADOS com o sistema de gasolina.
-    // Só regrava esses nós depois que a primeira sincronização chegou (evita apagar
-    // cadastros feitos no outro sistema antes de a frota carregar).
-    if(_veicSync){
-      var veic = {};
-      (copia.veiculos||[]).forEach(function(v){
-        if(!v.id) v.id = uid('v');
-        v.modelo = v.descricao || v.modelo || '';   // compatibilidade com o sistema de gasolina
-        veic[v.id] = v;
-      });
-      updates['veiculos'] = veic;
+    // Os nós compartilhados só são tocados depois que a MIGRAÇÃO foi confirmada
+    // e a primeira sincronização de cada nó chegou. E a gravação é POR ITEM
+    // (nunca substitui o nó inteiro) — cadastros feitos no outro sistema nunca
+    // são apagados por engano. Exclusões são enviadas explicitamente.
+    if(_unifOk){
+      if(_veicSync){
+        (copia.veiculos||[]).forEach(function(v){
+          if(!v.id) v.id = uid('v');
+          v.modelo = v.descricao || v.modelo || '';   // compatibilidade com o sistema de gasolina
+          updates['veiculos/' + v.id] = v;
+        });
+        _delVeic.forEach(function(id){ updates['veiculos/' + id] = null; });
+      }
+      if(_motSync){
+        (copia.motoristas||[]).forEach(function(m){
+          if(!m.id) m.id = uid('mt');
+          updates['motoristas/' + m.id] = m;
+        });
+        _delMot.forEach(function(id){ updates['motoristas/' + id] = null; });
+      }
+      delete copia.veiculos; delete copia.motoristas;   // não duplicar no blob da frota
     }
-    if(_motSync){
-      var mot = {};
-      (copia.motoristas||[]).forEach(function(m){
-        if(!m.id) m.id = uid('mt');
-        mot[m.id] = m;
-      });
-      updates['motoristas'] = mot;
-    }
-    delete copia.veiculos; delete copia.motoristas;   // não duplicar no blob da frota
+    // Sem migração confirmada, grava no formato antigo (com veiculos/motoristas
+    // dentro do blob) — nada se perde enquanto a unificação não estiver ok.
     updates['frota/dados'] = copia;
     fbDB.ref().update(updates)
-      .then(function(){ if(_fbConectado) setFbStatus('sincronizado'); })
+      .then(function(){
+        _delVeic = []; _delMot = [];   // exclusões confirmadas no banco
+        if(_fbConectado) setFbStatus('sincronizado');
+      })
       .catch(function(e){
         console.error('⚠️ Erro ao salvar no Firebase (dados mantidos no cache local):', e);
         if(_ehErroPermissao(e)){
@@ -1078,9 +1089,21 @@ function carregar() {
 }
 var D = carregar();
 
+// ── SNAPSHOT DE RESGATE ──────────────────────────────────────
+// Guarda uma cópia do cache local ANTES de qualquer sincronização sobrescrevê-lo.
+// Se cadastros sumirem do banco, dá para recuperar pela aba Backup em qualquer
+// aparelho que tenha usado o sistema antes.
+try{
+  if(!localStorage.getItem('frota_v3_resgate') && localStorage.getItem('frota_v3')){
+    localStorage.setItem('frota_v3_resgate', localStorage.getItem('frota_v3'));
+  }
+}catch(e){}
+
 // ── FIREBASE — banco compartilhado com o sistema de gasolina ──
 var fbDB = null, _fbUltimoPush = 0, _fbInicializado = false;
 var _veicSync = false, _motSync = false; // primeira leitura dos nós compartilhados já chegou?
+var _unifOk = false;                     // migração para os nós compartilhados confirmada?
+var _delVeic = [], _delMot = [];         // exclusões pendentes de envio aos nós compartilhados
 try {
   firebase.initializeApp({
     apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
@@ -1150,29 +1173,31 @@ if(fbDB){
   }
 
   function _iniciarSync(){
-    // Veículos (compartilhado)
-    fbDB.ref('veiculos').on('value', function(snap){
-      _veicSync = true;
-      if(Date.now() - _fbUltimoPush < 1500) return; // eco da própria gravação
-      var val = snap.val() || {};
-      var arr = [];
-      Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_veicDoNo(k, val[k])); });
-      D.veiculos = arr;
-      localStorage.setItem('frota_v3', JSON.stringify(D));
-      if(_sessao && typeof renderTudo === 'function') renderTudo();
-    }, function(err){ _erroLeitura(err, 'veiculos'); });
+    if(_unifOk){
+      // Veículos (compartilhado)
+      fbDB.ref('veiculos').on('value', function(snap){
+        _veicSync = true;
+        if(Date.now() - _fbUltimoPush < 1500) return; // eco da própria gravação
+        var val = snap.val() || {};
+        var arr = [];
+        Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_veicDoNo(k, val[k])); });
+        D.veiculos = arr;
+        localStorage.setItem('frota_v3', JSON.stringify(D));
+        if(_sessao && typeof renderTudo === 'function') renderTudo();
+      }, function(err){ _erroLeitura(err, 'veiculos'); });
 
-    // Motoristas (compartilhado)
-    fbDB.ref('motoristas').on('value', function(snap){
-      _motSync = true;
-      if(Date.now() - _fbUltimoPush < 1500) return;
-      var val = snap.val() || {};
-      var arr = [];
-      Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_motDoNo(k, val[k])); });
-      D.motoristas = arr;
-      localStorage.setItem('frota_v3', JSON.stringify(D));
-      if(_sessao && typeof renderTudo === 'function') renderTudo();
-    }, function(err){ _erroLeitura(err, 'motoristas'); });
+      // Motoristas (compartilhado)
+      fbDB.ref('motoristas').on('value', function(snap){
+        _motSync = true;
+        if(Date.now() - _fbUltimoPush < 1500) return;
+        var val = snap.val() || {};
+        var arr = [];
+        Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_motDoNo(k, val[k])); });
+        D.motoristas = arr;
+        localStorage.setItem('frota_v3', JSON.stringify(D));
+        if(_sessao && typeof renderTudo === 'function') renderTudo();
+      }, function(err){ _erroLeitura(err, 'motoristas'); });
+    }
 
     // Restante da frota (movimentações, agendamentos, manutenções etc.)
     fbDB.ref('frota/dados').on('value', function(snap){
@@ -1184,7 +1209,7 @@ if(fbDB){
           _fbUltimoPush = Date.now();
           setFbStatus('salvando');
           var copia = JSON.parse(JSON.stringify(D));
-          delete copia.veiculos; delete copia.motoristas;
+          if(_unifOk){ delete copia.veiculos; delete copia.motoristas; }
           fbDB.ref('frota/dados').set(copia)
             .then(function(){ setFbStatus('sincronizado'); })
             .catch(function(e){
@@ -1200,9 +1225,11 @@ if(fbDB){
       if(Date.now() - _fbUltimoPush < 1500) return; // ignora o eco da própria gravação
       var veiAtuais = D.veiculos, motAtuais = D.motoristas;
       D = normalizarFB(val);
-      // veículos e motoristas vêm dos nós compartilhados, não do blob
-      if(_veicSync || !D.veiculos.length) D.veiculos = veiAtuais;
-      if(_motSync  || !D.motoristas.length) D.motoristas = motAtuais;
+      if(_unifOk){
+        // veículos e motoristas vêm dos nós compartilhados, não do blob
+        if(_veicSync || !D.veiculos.length) D.veiculos = veiAtuais;
+        if(_motSync  || !D.motoristas.length) D.motoristas = motAtuais;
+      }
       localStorage.setItem('frota_v3', JSON.stringify(D));
       if(_sessao && typeof renderTudo === 'function') renderTudo();
     }, function(err){ _erroLeitura(err, 'frota'); });
@@ -1212,7 +1239,7 @@ if(fbDB){
   //    para os nós compartilhados, mesclando por PLACA com os cadastros
   //    já existentes do sistema de gasolina (não duplica).
   fbDB.ref('frota/migrado_unificado').once('value').then(function(flagSnap){
-    if(flagSnap.val()){ _iniciarSync(); return; }
+    if(flagSnap.val()){ _unifOk = true; _iniciarSync(); return; }
     return Promise.all([
       fbDB.ref('frota/dados').once('value'),
       fbDB.ref('veiculos').once('value'),
@@ -1261,14 +1288,20 @@ if(fbDB){
       up['frota/dados/motoristas'] = null;
       _fbUltimoPush = 0; // queremos receber o estado migrado nos listeners
       return fbDB.ref().update(up).then(function(){
+        _unifOk = true;   // migração gravada com sucesso — pode usar os nós compartilhados
         console.log('✅ Migração concluída: veículos e motoristas unificados com o sistema de gasolina.');
         if(typeof toast==='function') toast('☁️ Veículos e motoristas unificados com o Controle de Combustível!');
       });
     }).then(_iniciarSync);
   }).catch(function(e){
-    console.error('Falha na migração/leitura inicial — seguindo com sincronização normal:', e);
+    // QUALQUER falha aqui (permissão, rede) → NÃO ativa a unificação.
+    // O sistema segue no formato antigo (veiculos/motoristas dentro de frota/dados),
+    // sem gravar nos nós compartilhados — nada se perde. Na próxima abertura,
+    // com as regras corrigidas, a migração tenta de novo.
+    console.error('Falha na migração/leitura inicial — operando no formato antigo, sem unificação:', e);
     if(_ehErroPermissao(e)){
-      setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas".');
+      setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas". A unificação será concluída na próxima abertura.');
+      if(typeof toast==='function') toast('🚫 Sem permissão nos nós novos do banco. Ajuste as regras do Firebase — a unificação fica pendente até lá.');
     }
     _iniciarSync();
   });
@@ -2638,6 +2671,7 @@ function removerVeiculo(id) {
   if(!isAdmin()){ toast('🚫 Sem permissão para remover veículos.'); return; }
   confirmarAcao('🗑️','Remover veículo?','Esta ação não pode ser desfeita.',function(){
     D.veiculos = D.veiculos.filter(function(v){return v.id!==id;});
+    _delVeic.push(id);
     salvar(); toast('Veículo removido.'); renderTudo();
   });
 }
@@ -2796,7 +2830,7 @@ function renderMotoristas() {
       '</div>'+
       '<div class="actions">'+
       '<button class="btn" onclick="abrirMotorista(\''+m.id+'\')">✏️ Editar</button>'+
-      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
+      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});_delMot.push(\''+m.id+'\');salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
       '</div></div>';
   }).join('');
 }
@@ -2994,6 +3028,48 @@ function renderBackup() {
     }).join('');
   }
   el.innerHTML = html;
+}
+
+// ── RECUPERAÇÃO DE CADASTROS (resgate do cache local) ─────────
+function recuperarResgate(){
+  if(!isAdmin()){ toast('🚫 Apenas administradores podem recuperar cadastros.'); return; }
+  var raw = null;
+  try{ raw = localStorage.getItem('frota_v3_resgate'); }catch(e){}
+  if(!raw){ alert('Este aparelho não tem cache de resgate guardado.\n\nTente em outro computador ou celular que usava o Controle de Frota antes da atualização — ao abrir esta versão, o resgate é guardado automaticamente.'); return; }
+  var d; try{ d = JSON.parse(raw); }catch(e){ alert('O cache de resgate deste aparelho está corrompido.'); return; }
+  var vs = (d.veiculos||[]).filter(function(v){return v && v.placa;});
+  var ms = (d.motoristas||[]).filter(function(m){return m && m.nome;});
+  if(!vs.length && !ms.length){ alert('O cache de resgate deste aparelho não contém veículos nem motoristas.'); return; }
+  confirmarAcao('🚑','Recuperar cadastros?',
+    'Encontrados no cache deste aparelho: '+vs.length+' veículo(s) e '+ms.length+' motorista(s).\nCadastros já existentes (mesma placa ou nome) serão mantidos e apenas completados — nada é apagado.',
+    function(){
+      function chavePlaca(p){ return String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+      var porPlaca = {};
+      D.veiculos.forEach(function(v){ var p=chavePlaca(v.placa); if(p) porPlaca[p]=v; });
+      var addV = 0;
+      vs.forEach(function(v){
+        var p = chavePlaca(v.placa);
+        if(p && porPlaca[p]){
+          var alvo = porPlaca[p];
+          Object.keys(v).forEach(function(c){ if(alvo[c]==null || alvo[c]==='') alvo[c]=v[c]; });
+          alvo.descricao = alvo.descricao || v.descricao || alvo.modelo || '';
+        } else {
+          if(!v.id) v.id = uid('v');
+          D.veiculos.push(v); addV++;
+        }
+      });
+      var nomes = {};
+      D.motoristas.forEach(function(m){ nomes[String(m.nome||'').trim().toLowerCase()]=1; if(m.id) nomes['id:'+m.id]=1; });
+      var addM = 0;
+      ms.forEach(function(m){
+        if(nomes[String(m.nome||'').trim().toLowerCase()] || (m.id && nomes['id:'+m.id])) return;
+        if(!m.id) m.id = uid('mt');
+        D.motoristas.push(m); addM++;
+      });
+      salvar(); renderTudo();
+      toast('🚑 Recuperados: '+addV+' veículo(s) e '+addM+' motorista(s) novos.');
+      if(!addV && !addM) alert('Todos os cadastros do cache já existiam no sistema — os existentes foram apenas completados com campos que faltavam.');
+    });
 }
 
 function baixarBackup() {
