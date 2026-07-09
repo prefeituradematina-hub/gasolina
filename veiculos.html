@@ -3602,8 +3602,15 @@ function iniciarSessaoPortal(){
     location.replace('porta.html');
     return;
   }
-  // Frentistas têm acesso TOTAL ao controle de frota (perfil admin, todas as funções)
-  var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista' || s.role === 'autorizador');
+  // 👑 Admin da Frota: controlado pela caixa no cadastro de usuários da gasolina.
+  //   marcada (true)   → funções completas de admin na frota
+  //   desmarcada(false)→ perfil secretário (restrito)
+  //   nunca definida   → comportamento legado (frentista/autorizador = admin)
+  var roleNorm = String(s.role||'').trim().toLowerCase();
+  var fa = (s.dados && s.dados.frotaAdmin !== undefined) ? s.dados.frotaAdmin : null;
+  var ehAdmin = (s.u === 'master' || roleNorm === 'admin' ||
+                 fa === true ||
+                 (fa == null && (roleNorm === 'frentista' || roleNorm === 'autorizador')));
   var secBruta = (s.dados && s.dados.secretariaVinculada) || s.sec || '';
   _sessao = {
     id: s.u,
@@ -3611,6 +3618,7 @@ function iniciarSessaoPortal(){
     nome: (s.dados && s.dados.nome) || s.u,
     perfil: ehAdmin ? 'admin' : 'secretario',
     roleOrig: s.role,
+    frotaAdmin: fa,
     secretaria: ehAdmin ? '' : traduzirSec(secBruta)
   };
   document.getElementById('login-screen').style.display = 'none';
@@ -3637,7 +3645,12 @@ function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
-function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autorizador'); }
+function veTudo() {
+  if(isAdmin()) return true;
+  // Autorizador legado (caixa nunca definida) mantém a visão total;
+  // com a caixa DESMARCADA (frotaAdmin === false), fica restrito como secretário.
+  return _sessao && String(_sessao.roleOrig||'').trim().toLowerCase() === 'autorizador' && _sessao.frotaAdmin == null;
+}
 
 // Pertence ao Controle de Frota? Marca explícita 'frota:true'.
 // Legado (sem marca): veículo com secretaria preenchida veio do cadastro da

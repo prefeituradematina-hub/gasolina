@@ -2359,6 +2359,9 @@
           <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
             <input type="checkbox" id="edit-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
           </label>
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;" title="Com esta opção marcada, o usuário tem TODAS as funções de administrador dentro do Controle de Frota (todas as secretarias, entradas de atrasados, prorrogações, importação, saída em lote).">
+            <input type="checkbox" id="edit-frota-admin" style="width:18px; height:18px; cursor:pointer;"> 👑 Admin da Frota
+          </label>
         </div>
       </div>
       <div id="edit-field-limit">
@@ -2550,7 +2553,7 @@
         <option value="admin">ADMIN (TOTAL)</option>
         <option value="secretarios">SECRETÁRIO (RESTRITO)</option>
         <option value="frentista">FRENTISTA (SOMENTE LEITURA)</option>
-	<option value="Autorizador">FRENTISTA (REST)</option>
+	<option value="autorizador">AUTORIZADOR (RESTRITO)</option>
         <option value="custom">PERSONALIZADO</option>
       </select>
     </div>
@@ -3896,6 +3899,9 @@
             <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
               <input type="checkbox" id="new-acesso-frota" checked style="width:18px; height:18px; cursor:pointer;"> 🚗 Frota
             </label>
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;" title="Com esta opção marcada, o usuário tem TODAS as funções de administrador dentro do Controle de Frota (todas as secretarias, entradas de atrasados, prorrogações, importação, saída em lote).">
+              <input type="checkbox" id="new-frota-admin" style="width:18px; height:18px; cursor:pointer;"> 👑 Admin da Frota
+            </label>
           </div>
         </div>
         <div>
@@ -5217,6 +5223,9 @@
     
     db.ref('usuarios/' + u).once('value', snap => {
       const user = snap.val();
+      // Normaliza o papel: usuários antigos podem ter sido gravados com
+      // maiúsculas (ex.: "Autorizador") por um defeito no formulário
+      if (user && user.role) user.role = String(user.role).trim().toLowerCase();
       
       if (user && user.senha === s) {
         const permissoes = user.permissoes || PERMISSOES_PADRAO[user.role] || [];
@@ -5237,6 +5246,7 @@
           secretariaVinculada: user.secretariaVinculada || "",
           postoVinculado: user.postoVinculado || "",
           postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
+          frotaAdmin: (user.frotaAdmin === undefined ? null : user.frotaAdmin),
           permissoes: permissoes
         };
         entrar(u, user.role, limiteTotal, user.secretariaVinculada || "", dadosUsuario);
@@ -10261,6 +10271,8 @@
     // ── Acesso frota: se só frota marcada, gasolina não é obrigatória ──
     const acessoGasolina = document.getElementById('new-acesso-gasolina').checked;
     const acessoFrota    = document.getElementById('new-acesso-frota').checked;
+    const _nfa = document.getElementById('new-frota-admin');
+    const frotaAdmin     = _nfa ? _nfa.checked : false;
     
     // dadosUsuario declarado ANTES dos blocos que o modificam
     const dadosUsuario = {
@@ -10273,6 +10285,7 @@
       secretariaVinculada: secretaria,
       acessoGasolina: acessoGasolina,
       acessoFrota:    acessoFrota,
+      frotaAdmin:     frotaAdmin,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
@@ -10338,6 +10351,7 @@
       document.getElementById('new-posto-vinc-frentista').value = '';
       var _ag = document.getElementById('new-acesso-gasolina'); if(_ag) _ag.checked = true;
       var _af = document.getElementById('new-acesso-frota'); if(_af) _af.checked = true;
+      var _fa = document.getElementById('new-frota-admin'); if(_fa) _fa.checked = false;
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -10925,6 +10939,10 @@
       // Acesso aos sistemas (padrão: ambos liberados se não definido)
       var _eag = document.getElementById('edit-acesso-gasolina'); if(_eag) _eag.checked = (u.acessoGasolina !== false);
       var _eaf = document.getElementById('edit-acesso-frota'); if(_eaf) _eaf.checked = (u.acessoFrota !== false);
+      // Admin da Frota: se nunca foi definido, mantém o comportamento antigo
+      // (frentista e autorizador entravam como admin na frota)
+      var _efa = document.getElementById('edit-frota-admin');
+      if(_efa) _efa.checked = (u.frotaAdmin === true) || (u.frotaAdmin == null && (u.role === 'frentista' || u.role === 'autorizador'));
       
       // Carregar dados de frentista se aplicável
       if (u.role === 'frentista') {
@@ -11014,8 +11032,10 @@
     // Acesso aos sistemas (definido pelo master)
     var _sag = document.getElementById('edit-acesso-gasolina');
     var _saf = document.getElementById('edit-acesso-frota');
+    var _sfa = document.getElementById('edit-frota-admin');
     dadosAtualizados.acessoGasolina = _sag ? _sag.checked : true;
     dadosAtualizados.acessoFrota = _saf ? _saf.checked : true;
+    dadosAtualizados.frotaAdmin = _sfa ? _sfa.checked : false;
     
     if (role === 'frentista') {
       const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;

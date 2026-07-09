@@ -262,6 +262,8 @@ function logar(){
 
   db.ref('usuarios/' + u).once('value').then(function(snap){
     var user = snap.val();
+    // Normaliza o papel (usuários antigos podem ter "Autorizador" com maiúscula)
+    if(user && user.role) user.role = String(user.role).trim().toLowerCase();
     if(user && user.senha === s){
       var limiteVictor = user.limiteVictor || 0;
       var limiteMatina = user.limiteMatina || 0;
@@ -279,6 +281,7 @@ function logar(){
         postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
         acessoGasolina: user.acessoGasolina !== false,
         acessoFrota: user.acessoFrota !== false,
+        frotaAdmin: (user.frotaAdmin === undefined ? null : user.frotaAdmin),
         permissoes: user.permissoes || null
       };
       var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
