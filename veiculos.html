@@ -2516,6 +2516,11 @@ function abrirAgenda(vid) {
   document.getElementById('ag-pass-row').style.display = 'none';
   document.getElementById('ag-hint').style.display = 'none';
   document.getElementById('ag-titulo').textContent = 'Novo agendamento';
+  // Secretário comum: já abre com a própria secretaria selecionada.
+  // Autorizador e admin escolhem livremente.
+  if(isSecretario() && !ehAutorizador() && _sessao && _sessao.secretaria){
+    document.getElementById('ag-sec').value = _sessao.secretaria;
+  }
   _editAgId = null;
   if(vid) document.getElementById('ag-vei').value = vid;
   abrir('ov-agenda');
@@ -3642,14 +3647,15 @@ function fazerLogout() {
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
 function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
+function ehAutorizador() { return _sessao && String(_sessao.roleOrig||'').trim().toLowerCase() === 'autorizador'; }
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
 function veTudo() {
-  if(isAdmin()) return true;
-  // Autorizador legado (caixa nunca definida) mantém a visão total;
-  // com a caixa DESMARCADA (frotaAdmin === false), fica restrito como secretário.
-  return _sessao && String(_sessao.roleOrig||'').trim().toLowerCase() === 'autorizador' && _sessao.frotaAdmin == null;
+  // Autorizador SEMPRE enxerga todas as secretarias (precisa disso para
+  // agendar qualquer veículo). A caixa 👑 Admin da Frota controla apenas
+  // as funções administrativas, não a visão.
+  return isAdmin() || ehAutorizador();
 }
 
 // Pertence ao Controle de Frota? Marca explícita 'frota:true'.
@@ -3672,6 +3678,7 @@ function podeVerVeiculo(v) {
 // Admin/frentista/autorizador veem tudo (veTudo() = true para eles)
 function _podeVerRegistro(reg) {
   if(!isSecretario()) return true;          // não é secretário: vê tudo
+  if(ehAutorizador()) return true;          // autorizador (mesmo restrito) vê tudo
   if(!_sessao) return false;
   var minha = (_sessao.secretaria||'').trim().toLowerCase();
   if(!minha) return true;                   // secretário sem secretaria: vê tudo
