@@ -2516,10 +2516,18 @@ function abrirAgenda(vid) {
   document.getElementById('ag-pass-row').style.display = 'none';
   document.getElementById('ag-hint').style.display = 'none';
   document.getElementById('ag-titulo').textContent = 'Novo agendamento';
-  // Secretário comum: já abre com a própria secretaria selecionada.
-  // Autorizador e admin escolhem livremente.
-  if(isSecretario() && !ehAutorizador() && _sessao && _sessao.secretaria){
-    document.getElementById('ag-sec').value = _sessao.secretaria;
+  // Campo Secretaria por perfil:
+  //  · Admin e AUTORIZADOR: escolha LIVRE (campo sempre habilitado)
+  //  · Secretário comum: travado na própria secretaria
+  var selSecAg = document.getElementById('ag-sec');
+  if(isAdmin() || ehAutorizador()){
+    selSecAg.disabled = false;
+    selSecAg.value = '';
+  } else if(isSecretario() && _sessao && _sessao.secretaria){
+    selSecAg.value = _sessao.secretaria;
+    selSecAg.disabled = true;
+  } else {
+    selSecAg.disabled = false;
   }
   _editAgId = null;
   if(vid) document.getElementById('ag-vei').value = vid;
@@ -2550,7 +2558,9 @@ function confirmarAgenda() {
   var vid   = document.getElementById('ag-vei').value;
   var saida = document.getElementById('ag-saida').value;
   var ret   = document.getElementById('ag-retorno').value;
+  var secAg = document.getElementById('ag-sec').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo e horários.'); return; }
+  if(!secAg) { alert('Selecione a SECRETARIA do agendamento.'); return; }
   // Carro em viagem: analisa a data de volta e avisa se o agendamento começar antes do retorno
   var movEmViagem = getMovAtiva(vid);
   if(movEmViagem && movEmViagem.retorno){
@@ -2571,14 +2581,14 @@ function confirmarAgenda() {
     var a = getAg(_editAgId);
     a.vid=vid; a.motid=motid; a.motorista=motNomeAg;
     a.solic=document.getElementById('ag-solic').value.trim();
-    a.sec=document.getElementById('ag-sec').value;
+    a.sec=secAg;
     a.saida=saida; a.retorno=ret; a.itin=itin;
     a.com_pass=comPass; a.pass=pass;
   } else {
     D.agendamentos.push({
       id:uid('a'), vid:vid, motid:motid, motorista:motNomeAg,
       solic:document.getElementById('ag-solic').value.trim(),
-      sec:document.getElementById('ag-sec').value,
+      sec:secAg,
       pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, itin:itin, cancelado:false
     });
@@ -3445,8 +3455,23 @@ function getAgendaHoje(vid) {
     if(a.vid !== vid) return false;
     var dSaida = a.saida ? a.saida.slice(0, 10) : '';
     var dRetorno = a.retorno ? a.retorno.slice(0, 10) : '';
-    return dSaida === hoje || dRetorno === hoje;
+    if(dSaida !== hoje && dRetorno !== hoje) return false;
+    // Agendamento já CUMPRIDO: a viagem do dia saiu e o carro já voltou
+    // (entrada registrada) → o veículo volta ao verde, sem selo de agendado.
+    if(agendaJaCumprida(a)) return false;
+    return true;
   }) || null;
+}
+
+// A viagem correspondente ao agendamento já aconteceu e foi encerrada?
+function agendaJaCumprida(a) {
+  if(!a) return false;
+  var d = a.saida ? String(a.saida).slice(0, 10) : '';
+  if(!d) return false;
+  return (D.movimentacoes||[]).some(function(m) {
+    return m.vid === a.vid && m.entrada_real && m.saida &&
+           String(m.saida).slice(0, 10) === d;
+  });
 }
 
 var _justifVid = null;
