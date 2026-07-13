@@ -3889,12 +3889,23 @@ function abrirSolicitacao(vid, editId) {
   _solPessoas = s && Array.isArray(s.passageiros) ? s.passageiros.slice() : [];
   document.getElementById('sol-qtd-pass').value = s && s.qtd_passageiros!=null ? s.qtd_passageiros : _solPessoas.length;
   renderSolPessoas();
-  // Preenche secretaria automaticamente
+  // Secretaria por perfil:
+  //  · Admin e AUTORIZADOR: select de escolha LIVRE (obrigatório)
+  //  · Secretário comum: fixa na própria secretaria (texto)
   var secEl = document.getElementById('sol-sec');
   var secDisplay = document.getElementById('sol-sec-display');
+  var secSel = document.getElementById('sol-sec-select');
   var secVal = s ? s.sec : (_sessao ? _sessao.secretaria : '');
-  if(secEl) secEl.value = secVal;
-  if(secDisplay) secDisplay.textContent = secVal || '(não definida)';
+  if(isAdmin() || ehAutorizador()){
+    popSecs(['sol-sec-select']);
+    if(secSel){ secSel.style.display = ''; secSel.value = secVal || ''; }
+    if(secDisplay) secDisplay.style.display = 'none';
+    if(secEl) secEl.value = secSel ? secSel.value : (secVal||'');
+  } else {
+    if(secSel) secSel.style.display = 'none';
+    if(secDisplay){ secDisplay.style.display = ''; secDisplay.textContent = secVal || '(não definida)'; }
+    if(secEl) secEl.value = secVal;
+  }
   // Título e botão
   document.querySelector('#ov-solicitacao h2').textContent = editId ? '✏️ Editar solicitação' : '📋 Solicitar viagem';
   abrir('ov-solicitacao');
@@ -3952,6 +3963,7 @@ function confirmarSolicitacao() {
   if(qtd < pessoas.length) qtd = pessoas.length; // total nunca menor que nomes listados
   if(!_sessao) { alert('Você precisa estar logado.'); return; }
   if(!vid||!dest||!data) { alert('Preencha veículo, destino e data.'); return; }
+  if((isAdmin() || ehAutorizador()) && !sec) { alert('Selecione a SECRETARIA da viagem.'); return; }
   if(!hora) { alert('Informe a hora em que o motorista vai pegar o carro.'); return; }
   if(qtd < 1) { alert('Informe a quantidade de passageiros (mínimo 1).'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
@@ -4064,7 +4076,7 @@ function confirmarSolicitacaoLote(){
     var motNomeFinal = motManual || (mot ? mot.nome : '');
     var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
     if(isNaN(qtd)||qtd<0) qtd=0;
-    var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
+    var sec = (isAdmin() || ehAutorizador()) ? (v.secretaria||'') : (_sessao.secretaria||'');
     D.solicitacoes.push({
       id:uid_s(), vid:vid, motorista:motNomeFinal, destino:dest, data_viagem:data,
       hora_retirada:hora,
@@ -4537,7 +4549,7 @@ startCron();
       <div class="field"><label>Data da viagem *</label><input type="date" id="sol-data"></div>
       <div class="field"><label>Hora p/ pegar o carro *</label><input type="time" id="sol-hora-retirada"></div>
     </div>
-    <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
+    <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><select id="sol-sec-select" style="display:none" onchange="document.getElementById('sol-sec').value=this.value"><option value="">— Selecione —</option></select><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
     <div class="field"><label>Destino *</label><input type="text" id="sol-destino" placeholder="Ex: Guanambi, Salvador..."></div>
     <div class="form-row">
       <div class="field"><label>Qtd. de passageiros *</label><input type="number" id="sol-qtd-pass" min="1" step="1" value="1" oninput="solSyncQtd()"></div>
