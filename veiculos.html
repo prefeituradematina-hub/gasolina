@@ -4089,6 +4089,20 @@ function aprovarSolicitacao(id) {
   toast('✅ Viagem aprovada! Veículo liberado para saída.');
 }
 
+// Desfaz a APROVAÇÃO de uma solicitação (volta para pendente).
+// Usado pelo botão "❌ Cancelar aprovação" no detalhe do veículo.
+function cancelarSolicitacao(id) {
+  if(!isAdmin()){ toast('🚫 Apenas administradores podem cancelar aprovações.'); return; }
+  var s = getS(id);
+  if(!s){ toast('Solicitação não encontrada.'); return; }
+  confirmarAcao('↩️','Cancelar aprovação?','A solicitação volta para PENDENTE e o veículo deixa de estar liberado para saída.',function(){
+    s.status = 'pendente';
+    s.aprovado_em = null;
+    salvar(); renderTudo();
+    toast('↩️ Aprovação cancelada — solicitação voltou para pendente.');
+  });
+}
+
 function recusarSolicitacao(id) {
   var s = getS(id);
   if(!s) return;

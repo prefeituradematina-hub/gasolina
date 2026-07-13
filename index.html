@@ -5992,10 +5992,7 @@
         console.log('');
         console.log('💵 LIMITE SELECIONADO:', limitePosto);
         console.log('');
-        
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🔍 VERIFICAÇÃO DE LIMITE ZERADO');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('Limite do posto:', limitePosto);
         console.log('É zero?', limitePosto === 0);
         console.log('É undefined?', limitePosto === undefined);
@@ -6089,7 +6086,6 @@
           }
           
           console.log('✅ Há saldo disponível, tanque cheio permitido');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
         } else {
           // Para abastecimento normal, verificar se valor excede limite
@@ -6097,7 +6093,6 @@
           
           console.log('Gasto projetado (atual + novo):', gastoProjetado);
           console.log('Excederá limite?', gastoProjetado > limitePosto);
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
           if (gastoProjetado > limitePosto) {
             const saldoRestante = Math.max(0, limitePosto - gastoAtualPosto);
@@ -6269,10 +6264,7 @@
       // Fallback: soma total
       limiteMensal = (secretarioEncontrado.limiteVictor || 0) + (secretarioEncontrado.limiteMatina || 0) || secretarioEncontrado.limite || 0;
     }
-    
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('💰 CALCULANDO GASTO DA SECRETARIA - VERSÃO CORRIGIDA');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Secretaria:', secretaria);
     console.log('Posto do abastecimento:', postodoAbast);
     console.log('Limite mensal:', limiteMensal);
@@ -6383,14 +6375,11 @@
     }, 0);
     
     console.log('');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📊 RESULTADO FINAL DO CÁLCULO:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  • Limite mensal:', 'R$', formatarMoeda(limiteMensal));
     console.log('  • Gasto calculado:', 'R$', formatarMoeda(gastoAtual));
     console.log('  • Saldo restante:', 'R$', formatarMoeda(limiteMensal - gastoAtual));
     console.log('  • Percentual gasto:', ((gastoAtual / limiteMensal) * 100).toFixed(2) + '%');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const saldoRestante = Math.max(0, limiteMensal - gastoAtual);
     
@@ -11509,17 +11498,11 @@
   function sugerir(valor) {
     const placa = valor.toUpperCase().trim();
     
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔍 SUGERIR CHAMADO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Placa:', placa);
-    
     // Limpar notificação anterior
     const notifContainer = document.getElementById('autocomplete-notif');
     if (notifContainer) notifContainer.remove();
     
     if (placa.length < 7) {
-      console.log('⚠️ Placa muito curta, aguardando...');
       return;
     }
     
@@ -11530,9 +11513,7 @@
     const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
     
     if (veiculo) {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('Dados completos do veículo:', veiculo);
       console.log('');
       console.log('Detalhes:');
@@ -11557,9 +11538,7 @@
       console.log('Aguardando 100ms para garantir que campo existe...');
       
       setTimeout(() => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('⏱️ TIMEOUT EXECUTADO - PREENCHENDO CPF');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         const cpfField = document.getElementById('f-cpf');
         
@@ -11611,9 +11590,7 @@
             console.log('   ✅ Evento disparado!');
             
             console.log('');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('✅ CPF PREENCHIDO COM SUCESSO!');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('CPF final no campo:', cpfField.value);
           } else {
             console.log('');
@@ -11695,14 +11672,9 @@
   
   function sugerirDiversas(valor) {
     const placa = valor.toUpperCase().trim();
-    
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🌟 SUGERIR DIVERSAS CHAMADO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Placa:', placa);
     
     if (placa.length < 7) {
-      console.log('⚠️ Placa muito curta, aguardando...');
       return;
     }
     
@@ -12328,10 +12300,7 @@
   }
   
   function preencherPlacaDiversas(placa) {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🌟 PREENCHENDO DADOS DIVERSAS');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Placa:', placa);
     
     // Preencher campo de placa DIVERSAS
     document.getElementById('diversas-placa').value = placa;
@@ -13154,10 +13123,7 @@
     );
     
     if (!confirmar) return;
-    
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🔄 INICIANDO MIGRAÇÃO DE AGRICULTURA');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
       const snapshot = await db.ref('abastecimentos').once('value');
@@ -13194,10 +13160,7 @@
       console.log('⏳ Atualizando no Firebase...\n');
       
       await Promise.all(promises);
-      
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ MIGRAÇÃO CONCLUÍDA!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`📊 Estatísticas:`);
       console.log(`  • Encontrados: ${encontrados}`);
       console.log(`  • Atualizados: ${atualizados}`);
@@ -13232,10 +13195,7 @@
     );
     
     if (!confirmar) return;
-    
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🔄 INICIANDO MIGRAÇÃO DE INFRAESTRUTURA');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
       const snapshot = await db.ref('abastecimentos').once('value');
@@ -13272,10 +13232,7 @@
       console.log('⏳ Atualizando no Firebase...\n');
       
       await Promise.all(promises);
-      
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ MIGRAÇÃO CONCLUÍDA!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`📊 Estatísticas:`);
       console.log(`  • Encontrados: ${encontrados}`);
       console.log(`  • Atualizados: ${atualizados}`);
@@ -14939,7 +14896,8 @@
         document.getElementById('diversas-placa').value = '';
         document.getElementById('diversas-motorista').value = '';
         document.getElementById('diversas-cpf').value = '';
-        document.getElementById('historico-vip-cpf').style.display = 'none';
+        var _hvip = document.getElementById('historico-vip-cpf');
+        if (_hvip) _hvip.style.display = 'none';
         document.getElementById('diversas-posto').value = '';
         document.getElementById('diversas-combustivel').innerHTML = '<option value="">SELECIONE O POSTO PRIMEIRO</option>';
         document.getElementById('diversas-litros').value = '';
@@ -15291,277 +15249,8 @@
   }
   
   // 5. EXIBIR ALERTAS E HISTÓRICO AO SELECIONAR VEÍCULO
-  async function verificarVeiculoSelecionado() {
-    const placa = document.getElementById('abast-veiculo').value;
-    const containerAlertas = document.getElementById('alertas-abastecimento');
-    
-    // Limpar alertas anteriores
-    containerAlertas.innerHTML = '';
-    
-    if (!placa) {
-      return;
-    }
-    
-    // ALERTA 1: Verificar se já abasteceu hoje
-    const abastHoje = await verificarAbastecimentoHoje(placa);
-    
-    if (abastHoje) {
-      const dataHoje = new Date(abastHoje.data);
-      const horaFormatada = dataHoje.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      
-      containerAlertas.innerHTML += `
-        <div class="alert-ja-abasteceu">
-          <div class="alert-icon">⚠️</div>
-          <div class="alert-title">VEÍCULO JÁ FOI ABASTECIDO HOJE!</div>
-          <div class="alert-message">
-            Este veículo já recebeu abastecimento hoje às <strong>${horaFormatada}</strong>.<br>
-            Tem certeza que deseja registrar um novo abastecimento?
-          </div>
-          <div class="ultimo-abastecimento">
-            <div style="font-size:12px; font-weight:bold; color:var(--warning); margin-bottom:10px; text-align:center;">
-              📋 ÚLTIMO ABASTECIMENTO
-            </div>
-            <div class="abast-info">
-              <div class="abast-item">
-                <div class="abast-label">⛽ LITROS</div>
-                <div class="abast-value">${abastHoje.litros.toFixed(2)}L</div>
-              </div>
-              <div class="abast-item">
-                <div class="abast-label">💰 VALOR</div>
-                <div class="abast-value">R$ ${abastHoje.valor.toFixed(2)}</div>
-              </div>
-              <div class="abast-item">
-                <div class="abast-label">🛣️ KM</div>
-                <div class="abast-value">${abastHoje.kmAtual.toFixed(1)}</div>
-              </div>
-              <div class="abast-item">
-                <div class="abast-label">🏪 POSTO</div>
-                <div class="abast-value">${abastHoje.posto || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
-    // HISTÓRICO: Buscar e exibir últimos 5 abastecimentos
-    const ultimos = await buscarUltimosAbastecimentos(placa, 5);
-    
-    if (ultimos.length > 0) {
-      let htmlHistorico = `
-        <div class="historico-container">
-          <div class="historico-header">
-            📊 ÚLTIMOS ${ultimos.length} ABASTECIMENTOS DESTE VEÍCULO
-          </div>
-          <div class="historico-lista">
-      `;
-      
-      for (const abast of ultimos) {
-        const dataAbast = new Date(abast.data);
-        const dataFormatada = dataAbast.toLocaleDateString('pt-BR');
-        const horaFormatada = dataAbast.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        
-        htmlHistorico += `
-          <div class="historico-item">
-            <div class="historico-item-header">
-              <div class="historico-item-data">📅 ${dataFormatada} ${horaFormatada}</div>
-              <div class="historico-item-valor">💰 R$ ${formatarMoeda(abast.valor)}</div>
-            </div>
-            <div class="historico-item-detalhes">
-              <div class="historico-item-detalhe">
-                <div class="historico-item-detalhe-label">LITROS</div>
-                <div class="historico-item-detalhe-value">⛽ ${abast.litros.toFixed(2)}L</div>
-              </div>
-              <div class="historico-item-detalhe">
-                <div class="historico-item-detalhe-label">KM</div>
-                <div class="historico-item-detalhe-value">🛣️ ${abast.kmAtual.toFixed(1)}</div>
-              </div>
-              <div class="historico-item-detalhe">
-                <div class="historico-item-detalhe-label">KM/L</div>
-                <div class="historico-item-detalhe-value">📊 ${abast.kmPorLitro ? abast.kmPorLitro.toFixed(2) : 'N/A'}</div>
-              </div>
-            </div>
-            ${abast.posto ? `<div style="font-size:10px; color:#64748b; margin-top:5px;">🏪 ${abast.posto}</div>` : ''}
-          </div>
-        `;
-      }
-      
-      // Calcular e exibir média
-      const mediaKmL = await calcularMediaKmLVeiculo(placa);
-      
-      if (mediaKmL > 0) {
-        let classeMedia = 'consumo-normal';
-        if (mediaKmL < 8) classeMedia = 'consumo-alto';
-        else if (mediaKmL >= 12) classeMedia = 'consumo-bom';
-        
-        htmlHistorico += `
-          </div>
-          <div class="historico-media-km">
-            <div class="historico-media-label">MÉDIA DE CONSUMO DO VEÍCULO</div>
-            <div class="historico-media-value ${classeMedia}">${mediaKmL.toFixed(2)} KM/L</div>
-          </div>
-        </div>
-        `;
-      } else {
-        htmlHistorico += '</div></div>';
-      }
-      
-      containerAlertas.innerHTML += htmlHistorico;
-    }
-  }
   
   // 6. CALCULAR KM/L EM TEMPO REAL
-  async function calcularMediaKmL() {
-    const placa = document.getElementById('abast-veiculo').value;
-    const kmAtual = parseFloat(document.getElementById('abast-km').value);
-    const litros = parseFloat(document.getElementById('abast-litros').value);
-    
-    const resultadoDiv = document.getElementById('resultado-media-kml');
-    
-    if (!placa || !kmAtual || !litros) {
-      resultadoDiv.style.display = 'none';
-      return;
-    }
-    
-    // Buscar último abastecimento
-    const snapshot = await db.ref('abastecimentos')
-      .orderByChild('veiculo')
-      .equalTo(placa)
-      .once('value');
-    
-    if (!snapshot.exists()) {
-      resultadoDiv.style.display = 'none';
-      return;
-    }
-    
-    const abastecimentos = [];
-    snapshot.forEach(snap => {
-      const abast = snap.val();
-      if (abast.kmAtual && abast.status === STATUS.AUTORIZADO) {
-        abastecimentos.push(abast);
-      }
-    });
-    
-    if (abastecimentos.length === 0) {
-      resultadoDiv.style.display = 'none';
-      return;
-    }
-    
-    // Ordenar por data
-    abastecimentos.sort((a, b) => new Date(b.data) - new Date(a.data));
-    
-    const ultimoAbast = abastecimentos[0];
-    const kmPercorrido = kmAtual - ultimoAbast.kmAtual;
-    
-    if (kmPercorrido <= 0) {
-      resultadoDiv.innerHTML = `
-        <div class="warning-box">
-          <strong>⚠️ ATENÇÃO!</strong><br>
-          A quilometragem atual (${kmAtual.toFixed(1)} km) não pode ser menor ou igual à do último abastecimento (${ultimoAbast.kmAtual.toFixed(1)} km).
-        </div>
-      `;
-      resultadoDiv.style.display = 'block';
-      return;
-    }
-    
-    const kmPorLitro = kmPercorrido / litros;
-    const mediaHistorica = await calcularMediaKmLVeiculo(placa);
-    
-    // Determinar classe de consumo
-    let classeConsumo = 'consumo-normal';
-    let mensagemConsumo = 'CONSUMO NORMAL';
-    let corFundo = '#eff6ff';
-    let corBorda = '#3b82f6';
-    
-    if (kmPorLitro < 8) {
-      classeConsumo = 'consumo-alto';
-      mensagemConsumo = 'CONSUMO ALTO - ATENÇÃO!';
-      corFundo = '#fee2e2';
-      corBorda = '#ef4444';
-    } else if (kmPorLitro >= 12) {
-      classeConsumo = 'consumo-bom';
-      mensagemConsumo = 'CONSUMO EXCELENTE!';
-      corFundo = '#d1fae5';
-      corBorda = '#22c55e';
-    }
-    
-    // Verificar se está muito abaixo da média
-    const verificacao = await verificarConsumoAlto(placa, kmAtual, litros);
-    
-    let htmlResultado = `
-      <div style="background:${corFundo}; border:3px solid ${corBorda}; border-radius:12px; padding:20px; margin-top:20px;">
-        <div style="text-align:center; margin-bottom:15px;">
-          <div style="font-size:14px; color:#64748b; margin-bottom:5px;">📊 CONSUMO CALCULADO</div>
-          <div style="font-size:36px; font-weight:bold;" class="${classeConsumo}">${kmPorLitro.toFixed(2)} KM/L</div>
-          <div style="font-size:12px; color:#64748b; margin-top:5px;">${mensagemConsumo}</div>
-        </div>
-        
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; background:white; border-radius:8px; padding:15px;">
-          <div style="text-align:center;">
-            <div style="font-size:11px; color:#64748b;">KM PERCORRIDOS</div>
-            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${kmPercorrido.toFixed(1)} KM</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; color:#64748b;">LITROS ABASTECIDOS</div>
-            <div style="font-size:20px; font-weight:bold; color:var(--accent);">${litros.toFixed(2)} L</div>
-          </div>
-        </div>
-    `;
-    
-    if (mediaHistorica > 0) {
-      const diferenca = ((kmPorLitro - mediaHistorica) / mediaHistorica) * 100;
-      const sinalDiferenca = diferenca >= 0 ? '+' : '';
-      
-      htmlResultado += `
-        <div style="background:white; border-radius:8px; padding:15px; margin-top:10px;">
-          <div style="font-size:11px; color:#64748b; text-align:center; margin-bottom:5px;">
-            COMPARAÇÃO COM MÉDIA HISTÓRICA
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div style="text-align:center;">
-              <div style="font-size:10px; color:#64748b;">MÉDIA HISTÓRICA</div>
-              <div style="font-size:18px; font-weight:bold; color:var(--success);">${mediaHistorica.toFixed(2)} KM/L</div>
-            </div>
-            <div style="text-align:center;">
-              <div style="font-size:10px; color:#64748b;">DIFERENÇA</div>
-              <div style="font-size:18px; font-weight:bold; color:${diferenca < 0 ? 'var(--danger)' : 'var(--success)'};">
-                ${sinalDiferenca}${diferenca.toFixed(1)}%
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
-    htmlResultado += '</div>';
-    
-    // Se houver alerta de consumo alto
-    if (verificacao.alerta) {
-      htmlResultado = `
-        <div class="alert-consumo-alto">
-          <div class="alert-icon">🚨</div>
-          <div class="alert-title">ALERTA DE CONSUMO ELEVADO!</div>
-          <div class="alert-message">
-            ${verificacao.mensagem}<br>
-            Verifique possíveis problemas mecânicos ou condições de uso do veículo.
-          </div>
-          <div class="consumo-info">
-            <div class="consumo-item">
-              <div class="consumo-label">CONSUMO ATUAL</div>
-              <div class="consumo-value">${verificacao.consumoAtual.toFixed(2)} KM/L</div>
-            </div>
-            <div class="consumo-item">
-              <div class="consumo-label">MÉDIA HISTÓRICA</div>
-              <div class="consumo-value" style="color:var(--success);">${verificacao.mediaHistorica.toFixed(2)} KM/L</div>
-            </div>
-          </div>
-        </div>
-      ` + htmlResultado;
-    }
-    
-    resultadoDiv.innerHTML = htmlResultado;
-    resultadoDiv.style.display = 'block';
-  }
   
   // 7. ATUALIZAR A FUNÇÃO DE CÁLCULO DE ESTATÍSTICAS DO VEÍCULO
   async function calcularEstatisticasVeiculo(placa) {
@@ -16453,9 +16142,7 @@
   }
   
   function editarAbastecimento(id) {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✏️ ABRINDO EDIÇÃO DE ABASTECIMENTO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('ID:', id);
     
     if (loginUser !== 'master' && !temPermissao('deletar_abastecimento')) {
@@ -16593,9 +16280,7 @@
     console.log('🔥 OBJETO COMPLETO PARA UPDATE:', dadosAtualizados);
     
     db.ref('abastecimentos/' + id).update(dadosAtualizados).then(() => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ ABASTECIMENTO ATUALIZADO NO FIREBASE');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('ID:', id);
       console.log('Secretaria salva:', secretaria);
       console.log('Data salva:', data);
@@ -17250,6 +16935,9 @@
   let chartDashboardSemanal = null;
   
   async function carregarDashboard() {
+    // O HTML deste dashboard não existe nesta versão da interface —
+    // sem os elementos, sai silenciosamente (evita erro a cada carregamento)
+    if (!document.getElementById('dash-gasto-hoje')) return;
     await carregarEstatisticasDashboard();
     await carregarGraficoDashboardSemanal();
     await carregarTopVeiculos();
