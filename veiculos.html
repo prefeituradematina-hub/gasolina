@@ -611,7 +611,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="modal">
     <h2>Registrar saída</h2>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><select id="s-vei" onchange="hintVagas('s')"></select></div>
+      <div class="field"><label>Veículo *</label><select id="s-vei" onchange="hintVagas('s');aplicarAgendamentoNaSaida(this.value);prefillMotoristaVinc('s')"></select></div>
       <div class="field"><label>Motorista</label><select id="s-mot"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
@@ -722,7 +722,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <h2 id="ag-titulo">Novo agendamento</h2>
     <div id="ag-volta-hint" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E40AF;margin-bottom:12px;line-height:1.5"></div>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag')"></select></div>
+      <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag');prefillMotoristaVinc('ag')"></select></div>
       <div class="field"><label>Motorista</label><select id="ag-mot"></select><button type="button" onclick="toggleMotManual('ag',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="ag-mot-manual" style="display:none;margin-top:5px"><input type="text" id="ag-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
@@ -836,6 +836,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Secretaria</label><select id="v-sec"><option value="">— Selecione —</option></select></div>
       <div class="field"><label>Combustível</label><select id="v-comb"><option>Flex</option><option>Gasolina</option><option>Diesel</option><option>GNV</option><option>Elétrico</option></select></div>
     </div>
+    <div class="field"><label>Motorista vinculado <span style="font-weight:400;color:#94A3B8">(vem pré-selecionado nas saídas — pode ser trocado na hora)</span></label><select id="v-motorista"><option value="">— Nenhum —</option></select></div>
     <div class="form-row">
       <div class="field"><label>Capacidade passageiros</label><input type="number" id="v-cap" min="0" placeholder="0 = sem passageiros"></div>
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
@@ -1600,6 +1601,16 @@ function popMots(ids) {
     if(el) el.innerHTML = opts;
   });
 }
+// Pré-seleciona o motorista VINCULADO ao veículo escolhido (troca manual livre).
+// prefix: 's' (saída), 'ag' (agendamento), 'sr' (saída rápida)
+function prefillMotoristaVinc(prefix) {
+  var selVei = document.getElementById(prefix+'-vei');
+  var selMot = document.getElementById(prefix+'-mot');
+  if(!selVei || !selMot) return;
+  var v = getV(selVei.value);
+  if(!v || !v.motoristaId) return;
+  if(selMot.querySelector('[value="'+v.motoristaId+'"]')) selMot.value = v.motoristaId;
+}
 function popSecs(ids) {
   var opts = '<option value="">— Selecione —</option>'+SECS.map(function(s){
     return '<option value="'+s+'">'+s+'</option>';
@@ -1888,8 +1899,12 @@ function saidaRapida(vid) {
   document.getElementById('sr-saida').textContent = n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('sr-retorno').textContent = ret.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
-  // Preenche select de motorista
+  // Preenche select de motorista (vinculado ao veículo vem pré-selecionado)
   popMots(['sr-mot']);
+  if(v.motoristaId){
+    var srMotSel = document.getElementById('sr-mot');
+    if(srMotSel && srMotSel.querySelector('[value="'+v.motoristaId+'"]')) srMotSel.value = v.motoristaId;
+  }
 
   // Armazena dados para confirmar
   document.getElementById('ov-saida-rapida').dataset.vid = vid;
@@ -2004,7 +2019,7 @@ function abrirSaidaLote(){
   }).join('');
   lista.innerHTML = _loteCands.map(function(c, i){
     var v = getV(c.vid);
-    var sug = c.motSug;
+    var sug = c.motSug || (v && v.motoristaId) || '';
     var motSel = sug ? motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected') : motOpts;
     var preMarcado = (c.fonte === 'escala' || c.fonte === 'solicitacao'); // o que se espera sair na manhã
     var destVal = (c.destino||'').replace(/"/g,'&quot;');
@@ -2255,6 +2270,28 @@ function verVeiculo(vid) {
     }
   }
   if(isAdmin()) btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirVeiculo(\''+vid+'\')">✏️ Editar</button>';
+
+  // 📅 Agendamento de HOJE (ainda não cumprido) para veículo que não está em
+  // viagem: mostra os dados e a opção de cancelar caso o veículo não vá ser usado
+  if(!mov && !aus){
+    var agH = getAgendaHoje(vid);
+    if(agH){
+      var infoAg = '<div style="font-size:12px;color:#1E40AF;font-weight:600;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:6px">'+
+        '📅 Agendado hoje: '+fmtDT(agH.saida)+' → '+fmtDT(agH.retorno)+
+        ((agH.motorista&&agH.motorista!=='—')?'<br><span style="font-weight:400">👤 '+agH.motorista+'</span>':'')+
+        (agH.sec?'<span style="font-weight:400"> · '+agH.sec+'</span>':'')+
+        (agH.itin?'<br><span style="font-weight:400">📍 '+agH.itin+'</span>':'')+
+        '</div>';
+      btns = infoAg + btns;
+      var podeCancAg = isAdmin() || ehAutorizador() ||
+        (isSecretario() && _sessao && _sessao.secretaria &&
+         String(agH.sec||'').trim().toLowerCase() === String(_sessao.secretaria).trim().toLowerCase());
+      if(podeCancAg){
+        btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarAgenda(\''+agH.id+'\')">✕ Cancelar agendamento</button>';
+      }
+    }
+  }
+
   btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\')">Fechar</button>';
 
   var checkAus = '';
@@ -2277,6 +2314,37 @@ function verVeiculo(vid) {
 }
 
 // ── SAÍDA ────────────────────────────────────────────────────
+// Aplica o motorista no formulário de saída: tenta o id na lista, depois o
+// nome, e por fim usa o campo de texto livre (manual)
+function setMotoristaSaida(motid, nome) {
+  var motSel = document.getElementById('s-mot');
+  if(!motSel) return false;
+  if(motid && motSel.querySelector('[value="'+motid+'"]')){ motSel.value = motid; resetMotManual('s'); return true; }
+  if(nome){
+    for(var i=0;i<motSel.options.length;i++){
+      var t = motSel.options[i].text;
+      if(t === nome || t.indexOf(nome+' (') === 0){ motSel.value = motSel.options[i].value; resetMotManual('s'); return true; }
+    }
+    var box = document.getElementById('s-mot-manual'), inp = document.getElementById('s-mot-texto');
+    if(box && inp){ box.style.display = 'block'; inp.value = nome; return true; }
+  }
+  return false;
+}
+// Aplica o destino no select da saída; se não for uma opção da lista, usa "Outro"
+function setDestinoSaida(dest) {
+  if(!dest) return;
+  var sd = document.getElementById('s-dest');
+  if(!sd) return;
+  var tem = false;
+  for(var i=0;i<sd.options.length;i++){ if(sd.options[i].value === dest){ tem = true; break; } }
+  if(tem){ sd.value = dest; document.getElementById('s-outro-box').style.display = 'none'; }
+  else if(sd.querySelector('[value="Outro"]')){
+    sd.value = 'Outro';
+    var so = document.getElementById('s-outro'); if(so) so.value = dest;
+    document.getElementById('s-outro-box').style.display = 'block';
+  }
+}
+
 function abrirSaida(vid) {
   popVeis(['s-vei']); popMots(['s-mot']); popSecs(['s-sec']);
   document.getElementById('s-saida').value = nowLocal();
@@ -2297,11 +2365,7 @@ function abrirSaida(vid) {
   if(solAp) {
     if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
     if(solAp.motorista){
-      var motSel = document.getElementById('s-mot');
-      var achou = false;
-      for(var i=0;i<motSel.options.length;i++){ if(motSel.options[i].text===solAp.motorista){ motSel.value=motSel.options[i].value; achou=true; break; } }
-      // se o motorista era texto livre, mantém no campo manual quando existir
-      if(!achou){ var mm=document.getElementById('s-mot-manual'); if(mm) mm.value=solAp.motorista; }
+      setMotoristaSaida(null, solAp.motorista);
     }
     var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
     if(qp > 0) {
@@ -2311,7 +2375,33 @@ function abrirSaida(vid) {
     }
     document.getElementById('s-solic').value = solAp.solicitante || '';
   }
+  // Sem solicitação: se há AGENDAMENTO de hoje para o veículo, aproveita os
+  // dados já informados — ninguém precisa digitar de novo. Tudo continua editável.
+  if(!solAp && vid) aplicarAgendamentoNaSaida(vid);
+  // Motorista vinculado ao veículo: pré-seleciona se nada veio da solicitação/agendamento
+  if(!document.getElementById('s-mot').value) prefillMotoristaVinc('s');
   abrir('ov-saida');
+}
+
+// Preenche o formulário de saída com os dados do agendamento de hoje do veículo
+// (motorista, destino, solicitante, retorno, secretaria, passageiros)
+function aplicarAgendamentoNaSaida(vid) {
+  var agHoje = vid ? getAgendaHoje(vid) : null;
+  if(!agHoje) return;
+  setMotoristaSaida(agHoje.motid, (agHoje.motorista && agHoje.motorista!=='—') ? agHoje.motorista : '');
+  setDestinoSaida(agHoje.itin);
+  if(agHoje.solic) document.getElementById('s-solic').value = agHoje.solic;
+  if(agHoje.retorno) document.getElementById('s-retorno').value = agHoje.retorno;
+  if(agHoje.sec){
+    var ssec = document.getElementById('s-sec');
+    if(ssec && ssec.querySelector('[value="'+agHoje.sec+'"]')) ssec.value = agHoje.sec;
+  }
+  if(agHoje.com_pass && agHoje.pass > 0){
+    document.getElementById('s-com-pass').value = '1';
+    document.getElementById('s-pass-row').style.display = 'block';
+    document.getElementById('s-pass').value = agHoje.pass;
+  }
+  hintVagas('s');
 }
 
 function togglePassSaida() {
@@ -2597,8 +2687,14 @@ function confirmarAgenda() {
 }
 
 function cancelarAgenda(id) {
+  var a = getAg(id);
+  if(!a){ toast('Agendamento não encontrado.'); return; }
+  var pode = isAdmin() || ehAutorizador() ||
+    (isSecretario() && _sessao && _sessao.secretaria &&
+     String(a.sec||'').trim().toLowerCase() === String(_sessao.secretaria).trim().toLowerCase());
+  if(!pode){ toast('🚫 Você só pode cancelar agendamentos da sua secretaria.'); return; }
   confirmarAcao('❌','Cancelar agendamento?','Esta ação não pode ser desfeita.',function(){
-    var a = getAg(id); a.cancelado=true; salvar(); toast('Agendamento cancelado.'); renderTudo();
+    a.cancelado = true; salvar(); toast('Agendamento cancelado.'); renderTudo();
   });
 }
 
@@ -2682,6 +2778,22 @@ function abrirVeiculo(id) {
   document.getElementById('v-desc').value   = v?v.descricao:'';
   document.getElementById('v-sec').value    = v?v.secretaria:'';
   document.getElementById('v-comb').value   = v?v.combustivel:'Flex';
+  // Motorista vinculado
+  var selMotV = document.getElementById('v-motorista');
+  if(selMotV){
+    selMotV.innerHTML = '<option value="">— Nenhum —</option>'+D.motoristas.map(function(m){
+      return '<option value="'+m.id+'">'+m.nome+'</option>';
+    }).join('');
+    var motIdSel = v ? (v.motoristaId||'') : '';
+    // Cadastro antigo (gasolina) só tem o NOME do motorista padrão: casa pelo nome
+    if(!motIdSel && v && v.motorista){
+      var mLegado = D.motoristas.find(function(m){
+        return String(m.nome||'').trim().toLowerCase() === String(v.motorista).trim().toLowerCase();
+      });
+      if(mLegado) motIdSel = mLegado.id;
+    }
+    selMotV.value = motIdSel;
+  }
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
   // Fora da garagem
@@ -2765,8 +2877,13 @@ function confirmarVeiculo() {
   var placa = document.getElementById('v-placa').value.trim().toUpperCase();
   var desc  = document.getElementById('v-desc').value.trim();
   if(!placa||!desc) { alert('Placa e descrição são obrigatórios.'); return; }
+  var motVinc = document.getElementById('v-motorista') ? document.getElementById('v-motorista').value : '';
+  var motVincObj = motVinc ? getM(motVinc) : null;
   var obj = {placa:placa, descricao:desc,
     secretaria:document.getElementById('v-sec').value,
+    motoristaId: motVinc || null,
+    motorista: motVincObj ? motVincObj.nome : null,          // compat: "motorista padrão" da gasolina
+    cpfMotorista: motVincObj ? (motVincObj.cpf||null) : null,
     ano:document.getElementById('v-ano').value.trim(),
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
@@ -3007,6 +3124,7 @@ function renderVeiculos() {
       '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
+      (v.motoristaId&&getM(v.motoristaId)?'<span>👤 Motorista: <strong>'+getM(v.motoristaId).nome+'</strong></span>':'')+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
       (cap?'<span>Cap.: <strong>'+cap+' pass.</strong></span>':'')+
       (v.combustivel?'<span>Comb.: <strong>'+v.combustivel+'</strong></span>':'')+
@@ -3881,6 +3999,14 @@ function abrirSolicitacao(vid, editId) {
     return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
   }).join('');
   document.getElementById('sol-mot-nome').value = s?(s.motorista||''):'';
+  // Motorista vinculado ao veículo pré-selecionado (só em solicitação nova, campo segue editável)
+  if(!editId && alvoVid){
+    var vAlvo = getV(alvoVid);
+    if(vAlvo && vAlvo.motoristaId){
+      var mVinc = getM(vAlvo.motoristaId);
+      if(mVinc && !document.getElementById('sol-mot-nome').value) document.getElementById('sol-mot-nome').value = mVinc.nome;
+    }
+  }
   document.getElementById('sol-destino').value = s?(s.destino||''):'';
   document.getElementById('sol-data').value = s?(s.data_viagem||''):'';
   document.getElementById('sol-hora-retirada').value = s?(s.hora_retirada||''):'';
@@ -3945,6 +4071,19 @@ function solRemovePessoa(i) {
 function solSyncQtd() {
   // Se a quantidade digitada for menor que o nº de nomes, não força — apenas avisa visualmente
   // (o usuário pode listar só alguns nomes e ter um total maior)
+}
+
+// Ao trocar o veículo na solicitação, sugere o motorista vinculado
+// (só preenche se o campo estiver vazio — nunca apaga o que foi digitado)
+function solPrefillMotVinc() {
+  var vid = document.getElementById('sol-vei').value;
+  var campo = document.getElementById('sol-mot-nome');
+  if(!vid || !campo || campo.value.trim()) return;
+  var v = getV(vid);
+  if(v && v.motoristaId){
+    var m = getM(v.motoristaId);
+    if(m) campo.value = m.nome;
+  }
 }
 
 function confirmarSolicitacao() {
@@ -4542,7 +4681,7 @@ startCron();
     <div class="field">
       <label>Veículo *</label>
       <input type="text" id="sol-vei-busca" placeholder="🔍 Buscar placa ou nome (toda a frota)..." oninput="filtrarVeiSolic()" autocomplete="off" style="margin-bottom:5px;font-size:12px">
-      <select id="sol-vei"></select>
+      <select id="sol-vei" onchange="solPrefillMotVinc()"></select>
     </div>
     <div class="field"><label>Motorista</label><input type="text" id="sol-mot-nome" placeholder="Nome do motorista"></div>
     <div class="form-row">
