@@ -2250,7 +2250,6 @@ function verVeiculo(vid) {
         btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
           '✅ Viagem aprovada para '+(solAp&&solAp.data_viagem?fmtData(solAp.data_viagem):'data agendada')+'<br>'+
           '<span style="font-weight:400;font-size:11px">Aguardando saída — liberado automaticamente no dia da viagem.</span></div>';
-        if(isAdmin()){ var _sid=solAp?solAp.id:''; btns+='<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')" style="margin-top:6px">❌ Cancelar aprovação</button>'; }
       } else if(s==='liberado') {
         btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>';
       }
@@ -2266,8 +2265,16 @@ function verVeiculo(vid) {
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
       }
       if(s==='liberado') {
+        var solLib = getSolicitacaoLiberada(vid);
         btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSaida(\''+vid+'\')">🚗 Registrar saída no portão</button>'+
-               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
+               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>'+
+               (solLib?'<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+solLib.id+'\')">✕ Cancelar viagem aprovada</button>':'');
+      }
+      if(s==='aprovado') {
+        var solApAdm = getSolicitacaoAprovadaFutura(vid);
+        if(solApAdm){
+          btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+solApAdm.id+'\')">✕ Cancelar viagem aprovada</button>';
+        }
       }
     }
   }
