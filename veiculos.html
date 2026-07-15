@@ -769,6 +769,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Validade CNH</label><input type="date" id="mt-val"></div>
       <div class="field"><label>Telefone</label><input type="text" id="mt-tel" placeholder="(77) 9xxxx-xxxx"></div>
     </div>
+    <div class="field"><label>Carro vinculado <span style="font-weight:400;color:#94A3B8">(vem pré-selecionado nas saídas — pode ser trocado na hora)</span></label><select id="mt-carro"><option value="">— Nenhum —</option></select><div id="mt-carro-multi" style="display:none;font-size:11px;color:#B45309;background:#FEF3E0;border-radius:6px;padding:6px 9px;margin-top:5px"></div></div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarMotorista()">Salvar</button>
       <button class="btn" onclick="fechar('ov-motorista')">Cancelar</button>
@@ -2234,6 +2235,7 @@ function verVeiculo(vid) {
     if(isAdmin()) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogacao(\''+mov.id+'\')">⏱ Prorrogar retorno</button>';
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
+      btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarViagem(\''+mov.id+'\')">✕ Cancelar viagem</button>';
     }
   } else {
     if(!isAdmin()) {
@@ -2540,6 +2542,25 @@ function confirmarProrrogacao() {
   toast('⏱ Retorno de '+(v?v.placa:'veículo')+' prorrogado para '+fmtDT(novo)+'.');
 }
 
+// Cancela uma viagem em andamento: remove o registro de saída (uso típico:
+// saída registrada por engano ou viagem que não vai mais acontecer).
+// O veículo volta imediatamente ao status "Na garagem".
+function cancelarViagem(movId) {
+  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode cancelar viagens.'); return; }
+  var m = getMov(movId);
+  if(!m){ toast('Viagem não encontrada.'); return; }
+  if(m.entrada_real){ toast('Esta viagem já foi encerrada — não há o que cancelar.'); return; }
+  var v = getV(m.vid);
+  confirmarAcao('✕','Cancelar viagem?',
+    'O registro de saída de '+(v?v.placa+' — '+v.descricao:'?')+' ('+fmtDT(m.saida)+') será REMOVIDO e o veículo volta para "Na garagem".\nUse quando a saída foi registrada por engano ou a viagem não vai acontecer.',
+    function(){
+      D.movimentacoes = D.movimentacoes.filter(function(x){ return x.id !== movId; });
+      try{ if(!D.auditoria) D.auditoria = []; D.auditoria.push({acao:'VIAGEM_CANCELADA', vid:m.vid, motorista:m.motorista||'', saida:m.saida, por:_sessao?_sessao.login:'?', em:new Date().toISOString()}); }catch(e){}
+      salvar(); renderTudo();
+      toast('✕ Viagem cancelada — '+(v?v.placa:'veículo')+' voltou para a garagem.');
+    });
+}
+
 function abrirEntrada(movId) {
   _entradaId = movId;
   var m = getMov(movId); var v = getV(m.vid);
@@ -2709,6 +2730,22 @@ function abrirMotorista(id) {
   document.getElementById('mt-cat').value  = m?m.categoria:'B';
   document.getElementById('mt-val').value  = m?m.validade:'';
   document.getElementById('mt-tel').value  = m?m.telefone:'';
+  // Carro vinculado (o vínculo mora no veículo: v.motoristaId)
+  var selCarro = document.getElementById('mt-carro');
+  var multi = document.getElementById('mt-carro-multi');
+  if(selCarro){
+    selCarro.innerHTML = '<option value="">— Nenhum —</option>'+D.veiculos.map(function(v){
+      return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
+    }).join('');
+    var carrosDoMot = id ? D.veiculos.filter(function(v){return v.motoristaId===id;}) : [];
+    selCarro.value = carrosDoMot.length ? carrosDoMot[0].id : '';
+    if(multi){
+      if(carrosDoMot.length > 1){
+        multi.style.display = 'block';
+        multi.textContent = '⚠ Este motorista está vinculado a '+carrosDoMot.length+' carros ('+carrosDoMot.map(function(v){return v.placa;}).join(', ')+'). Ao salvar, valerá apenas o carro selecionado acima.';
+      } else { multi.style.display = 'none'; multi.textContent = ''; }
+    }
+  }
   abrir('ov-motorista');
 }
 function confirmarMotorista() {
@@ -2716,17 +2753,35 @@ function confirmarMotorista() {
   var cnh  = document.getElementById('mt-cnh').value.trim();
   var val  = document.getElementById('mt-val').value;
   if(!nome) { alert('O nome do motorista é obrigatório.'); return; }
+  var cpf = document.getElementById('mt-cpf').value.trim();
+  var motId;
   if(_editMotId) {
+    motId = _editMotId;
     var m = getM(_editMotId);
-    m.nome=nome; m.cpf=document.getElementById('mt-cpf').value.trim();
+    m.nome=nome; m.cpf=cpf;
     m.cnh=cnh; m.categoria=document.getElementById('mt-cat').value;
     m.validade=val; m.telefone=document.getElementById('mt-tel').value.trim();
     D.movimentacoes.filter(function(mv){return mv.motid===_editMotId;}).forEach(function(mv){mv.motorista=nome;});
     D.agendamentos.filter(function(a){return a.motid===_editMotId;}).forEach(function(a){a.motorista=nome;});
   } else {
-    D.motoristas.push({id:uid('mt'),nome:nome,cpf:document.getElementById('mt-cpf').value.trim(),
+    motId = uid('mt');
+    D.motoristas.push({id:motId,nome:nome,cpf:cpf,
       cnh:cnh,categoria:document.getElementById('mt-cat').value,validade:val,
       telefone:document.getElementById('mt-tel').value.trim()});
+  }
+  // Carro vinculado: o vínculo é gravado NO VEÍCULO (v.motoristaId) — mesma
+  // fonte usada pelo cadastro de veículo. Desfaz vínculos antigos deste
+  // motorista e aplica o carro escolhido (também no "motorista padrão" da gasolina).
+  var carroSel = document.getElementById('mt-carro') ? document.getElementById('mt-carro').value : '';
+  D.veiculos.forEach(function(v){
+    if(v.motoristaId === motId){
+      if(v.id !== carroSel){ v.motoristaId = null; v.motorista = null; v.cpfMotorista = null; }
+      else { v.motorista = nome; v.cpfMotorista = cpf || null; }   // nome/CPF atualizados
+    }
+  });
+  if(carroSel){
+    var vv = getV(carroSel);
+    if(vv){ vv.motoristaId = motId; vv.motorista = nome; vv.cpfMotorista = cpf || null; }
   }
   salvar(); fechar('ov-motorista'); toast('Motorista salvo!'); renderTudo();
 }
@@ -3058,9 +3113,11 @@ function renderMotoristas() {
       :st==='sem'?'<span style="background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">Sem validade</span>'
       :'<span style="background:#E0F5EC;color:#0F6E56;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH OK</span>';
     var viagens = D.movimentacoes.filter(function(mv){return mv.motid===m.id;}).length;
+    var carrosV = D.veiculos.filter(function(v){return v.motoristaId===m.id;});
     return '<div class="card '+(st==='expirada'?'':'')+'">'+
       '<div class="card-header"><span class="card-title">'+m.nome+'</span>'+badge+'</div>'+
       '<div class="card-meta">'+
+      (carrosV.length?'<span>🚗 Carro: <strong>'+carrosV.map(function(v){return v.placa;}).join(', ')+'</strong></span>':'')+
       (m.cnh?'<span>CNH: <strong>'+m.cnh+'</strong></span>':'<span>CNH: <strong>não informada</strong></span>')+
       '<span>Categoria: <strong>'+m.categoria+'</strong></span>'+
       (m.validade?'<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>':'')+
