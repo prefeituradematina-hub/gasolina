@@ -1624,7 +1624,15 @@ function popSecs(ids) {
 
 // ── VISTA ──
 var _viewMode = 'todos';
-var _ordemMode = 'none';
+// Ordenação PADRÃO do painel: agrupado por status. A escolha do usuário
+// (A–Z, por status ou nenhuma) fica gravada neste aparelho.
+var _ordemMode = (function(){
+  try{
+    var salvo = localStorage.getItem('frota_ordem');
+    if(salvo === 'nome' || salvo === 'status' || salvo === 'none') return salvo;
+  }catch(e){}
+  return 'status';
+})();
 var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
@@ -1649,6 +1657,12 @@ function getVeiculosFiltrados() {
 
 function setOrdem(mode) {
   _ordemMode = _ordemMode === mode ? 'none' : mode;
+  try{ localStorage.setItem('frota_ordem', _ordemMode); }catch(e){}
+  atualizarBtnsOrdem();
+  renderPainel();
+}
+// Destaca o botão do modo de ordenação ativo (usado também na carga inicial)
+function atualizarBtnsOrdem() {
   ['nome','status'].forEach(function(m){
     var btn = document.getElementById('btn-ord-'+m);
     if(!btn) return;
@@ -1657,7 +1671,6 @@ function setOrdem(mode) {
     btn.style.color = on ? '#fff' : '';
     btn.style.borderColor = on ? 'var(--blue)' : '';
   });
-  renderPainel();
 }
 
 function renderFrotaPorStatus() {
@@ -1781,6 +1794,7 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
+  atualizarBtnsOrdem();
   // Secretário: contadores e alertas calculados APENAS sobre os veículos
   // da sua secretaria (admin/frentista/autorizador continuam vendo tudo)
   var veisVis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
