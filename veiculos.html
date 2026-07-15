@@ -2184,6 +2184,15 @@ function verVeiculo(vid) {
     '<div style="font-size:12px;color:#666">'+v.descricao+' · '+v.secretaria+'</div></div>'+
     '<span class="badge '+s+'">'+LABEL[s]+'</span></div><hr class="divider">';
 
+  var mediaHtml = '';
+  if(v.mediaKmL > 0) {
+    var km=parseFloat(v.mediaKmL), corKm=km<8?'#DC2626':km>=12?'#16A34A':'#D97706', iconKm=km<8?'🔴':km>=12?'🟢':'🟡';
+    mediaHtml='<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+iconKm+' Média de consumo: <strong style="color:'+corKm+'">'+ km.toFixed(2)+' KM/L</strong><span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
+  }
+  if(v.foraGaragem && v.foraGaraObs) {
+    mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">📍</span><span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
+  }
+
   var docs = docAlerts(v);
   var docHTML = docs.map(function(d){return '<div class="doc-alerta">⚠ '+d+'</div>';}).join('')+mediaHtml;
 
@@ -2204,15 +2213,6 @@ function verVeiculo(vid) {
       '<span>'+(mov.com_pass?'🧍 Pass: <strong>'+mov.pass+'</strong>':'🔧 Sem passageiros')+'</span>'+
       (mov.destino?'<span>Destino: <strong>'+mov.destino+'</strong></span>':'')+
       '</div>'+cronBadge+'</div>';
-  }
-
-  var mediaHtml = '';
-  if(v.mediaKmL > 0) {
-    var km=parseFloat(v.mediaKmL), corKm=km<8?'#DC2626':km>=12?'#16A34A':'#D97706', iconKm=km<8?'🔴':km>=12?'🟢':'🟡';
-    mediaHtml='<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+iconKm+' Média de consumo: <strong style="color:'+corKm+'">'+ km.toFixed(2)+' KM/L</strong><span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
-  }
-  if(v.foraGaragem && v.foraGaraObs) {
-    mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">📍</span><span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
   }
 
   var escHtml = v.escalas&&v.escalas.length ?
@@ -2265,7 +2265,7 @@ function verVeiculo(vid) {
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
       }
       if(s==='liberado') {
-        var solLib = getSolicitacaoLiberada(vid);
+        var solLib = getSolicitacaoLiberada(vid) || getSolicitacaoAprovadaFutura(vid);
         btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSaida(\''+vid+'\')">🚗 Registrar saída no portão</button>'+
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>'+
                (solLib?'<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+solLib.id+'\')">✕ Cancelar viagem aprovada</button>':'');
