@@ -143,7 +143,10 @@ body{
     <p>Use seu usuário e senha para acessar os sistemas</p>
     <div class="login-erro" id="login-erro"></div>
     <input type="text" id="user" placeholder="USUÁRIO" autocomplete="username">
-    <input type="password" id="senha" placeholder="SENHA" autocomplete="current-password" onkeypress="if(event.key==='Enter') logar()">
+    <div style="position:relative">
+      <input type="password" id="senha" placeholder="SENHA" autocomplete="current-password" style="padding-right:48px" onkeypress="if(event.key==='Enter') logar()">
+      <button type="button" id="btn-olho" onclick="toggleSenha()" title="Mostrar/ocultar senha" style="position:absolute;right:12px;top:16px;background:none;border:none;cursor:pointer;font-size:18px;padding:0;line-height:1">👁️</button>
+    </div>
     <button class="btn-login" id="btn-entrar" onclick="logar()">ENTRAR</button>
   </div>
 </div>
@@ -218,6 +221,14 @@ function sair(){
   document.getElementById('tela-hub').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('senha').value = '';
+}
+function toggleSenha(){
+  var inp = document.getElementById('senha');
+  var btn = document.getElementById('btn-olho');
+  var mostrar = inp.type === 'password';
+  inp.type = mostrar ? 'text' : 'password';
+  if(btn) btn.textContent = mostrar ? '🙈' : '👁️';
+  inp.focus();
 }
 
 // ── LOGIN (mesma lógica do sistema de gasolina) ──────────────

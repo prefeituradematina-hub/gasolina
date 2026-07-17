@@ -1952,6 +1952,9 @@ function confirmarSaidaRapida() {
     saida:saida, retorno:retorno,
     entrada_real:null, destino:destino, abast:[]
   });
+  // Se este veículo tinha solicitação liberada hoje, marca a saída nela também
+  var solSR = getSolicitacaoLiberada(vid);
+  if(solSR) solSR.saida_registrada = true;
 
   salvar(); fechar('ov-saida-rapida'); toast('⚡ Saída rápida registrada!'); renderTudo();
 }
@@ -2505,6 +2508,11 @@ function confirmarSaida() {
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[]
     });
+    // Marca a solicitação liberada como "saída registrada" — garante que o
+    // veículo NUNCA volte ao status Liberado depois que a viagem aconteceu,
+    // independentemente de datas ou ids antigos.
+    var solDesta = getSolicitacaoLiberada(vid);
+    if(solDesta) solDesta.saida_registrada = true;
   }
   salvar(); fechar('ov-saida'); toast('Saída registrada!'); renderTudo();
 }

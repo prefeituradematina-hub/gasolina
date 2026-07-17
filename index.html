@@ -2834,7 +2834,10 @@
       <h2>🚗 BEM-VINDO</h2>
       <p>Faça login para continuar</p>
       <input type="text" id="user" placeholder="USUÁRIO" autocomplete="username">
-      <input type="password" id="senha" placeholder="SENHA" autocomplete="current-password" onkeypress="if(event.key==='Enter') logar()">
+      <div style="position:relative">
+        <input type="password" id="senha" placeholder="SENHA" autocomplete="current-password" style="padding-right:48px" onkeypress="if(event.key==='Enter') logar()">
+        <button type="button" id="btn-olho" onclick="toggleSenhaLogin()" title="Mostrar/ocultar senha" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:0;line-height:1">👁️</button>
+      </div>
       <button class="btn-login" onclick="logar()">🔐 ENTRAR</button>
     </div>
   </div>
@@ -5189,6 +5192,15 @@
     }
   }
   
+  function toggleSenhaLogin() {
+    const inp = document.getElementById('senha');
+    const btn = document.getElementById('btn-olho');
+    const mostrar = inp.type === 'password';
+    inp.type = mostrar ? 'text' : 'password';
+    if (btn) btn.textContent = mostrar ? '🙈' : '👁️';
+    inp.focus();
+  }
+
   function logar() {
     const u = document.getElementById('user').value.toLowerCase().trim();
     const s = document.getElementById('senha').value.trim();
