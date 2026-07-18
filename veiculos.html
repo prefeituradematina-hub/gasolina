@@ -2356,25 +2356,23 @@ function setMotoristaSaida(motid, nome) {
   }
   return false;
 }
-// Aplica o destino no select da saída; se não for uma opção da lista, usa "Outro"
+// Aplica o destino no campo da saída (é um INPUT com sugestões, aceita qualquer texto)
 function setDestinoSaida(dest) {
   if(!dest) return;
   var sd = document.getElementById('s-dest');
   if(!sd) return;
-  var tem = false;
-  for(var i=0;i<sd.options.length;i++){ if(sd.options[i].value === dest){ tem = true; break; } }
-  if(tem){ sd.value = dest; document.getElementById('s-outro-box').style.display = 'none'; }
-  else if(sd.querySelector('[value="Outro"]')){
-    sd.value = 'Outro';
-    var so = document.getElementById('s-outro'); if(so) so.value = dest;
-    document.getElementById('s-outro-box').style.display = 'block';
-  }
+  sd.value = dest;
+  var box = document.getElementById('s-outro-box');
+  if(box) box.style.display = 'none';
 }
 
 function abrirSaida(vid) {
   popVeis(['s-vei']); popMots(['s-mot']); popSecs(['s-sec']);
   document.getElementById('s-saida').value = nowLocal();
-  document.getElementById('s-retorno').value = nowLocal();
+  // Retorno previsto padrão: +8 horas (com "agora", o carro nascia IRREGULAR
+  // segundos após a confirmação)
+  var _ret8 = new Date(now().getTime() + 8*3600*1000);
+  document.getElementById('s-retorno').value = new Date(_ret8.getTime()-_ret8.getTimezoneOffset()*60000).toISOString().slice(0,16);
   document.getElementById('s-solic').value = '';
   document.getElementById('s-km').value = '';
   document.getElementById('s-dest').value = '';
@@ -2389,7 +2387,7 @@ function abrirSaida(vid) {
   // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados
   var solAp = vid ? getSolicitacaoLiberada(vid) : null;
   if(solAp) {
-    if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
+    if(solAp.destino){ setDestinoSaida(solAp.destino); }
     if(solAp.motorista){
       setMotoristaSaida(null, solAp.motorista);
     }
@@ -2481,6 +2479,7 @@ function confirmarSaida() {
   var saida = document.getElementById('s-saida').value;
   var ret   = document.getElementById('s-retorno').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo, saída e retorno.'); return; }
+  if(new Date(ret) <= new Date(saida)) { alert('O retorno previsto deve ser DEPOIS da saída.'); return; }
   var dest = getDestValue('s');
   if(!dest) { alert('Informe o destino.'); return; }
   var motid = getMotId('s');
@@ -2500,6 +2499,9 @@ function confirmarSaida() {
     m.pass=pass; m.com_pass=comPass;
     m.saida=saida; m.retorno=ret; m.destino=dest;
   } else {
+    // captura a solicitação liberada ANTES de criar a viagem (depois de criada,
+    // a busca já a considera "saiu" e retornaria vazio — o carimbo se perdia)
+    var solDesta = getSolicitacaoLiberada(vid);
     D.movimentacoes.push({
       id:uid('m'), vid:vid, motid:motid, motorista:motNome,
       solic:document.getElementById('s-solic').value.trim(),
@@ -2508,10 +2510,8 @@ function confirmarSaida() {
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[]
     });
-    // Marca a solicitação liberada como "saída registrada" — garante que o
-    // veículo NUNCA volte ao status Liberado depois que a viagem aconteceu,
-    // independentemente de datas ou ids antigos.
-    var solDesta = getSolicitacaoLiberada(vid);
+    // Marca a solicitação como "saída registrada" — garante que o veículo
+    // NUNCA volte ao status Liberado depois que a viagem aconteceu.
     if(solDesta) solDesta.saida_registrada = true;
   }
   salvar(); fechar('ov-saida'); toast('Saída registrada!'); renderTudo();
@@ -3712,7 +3712,7 @@ abrirSaida = function(vid) {
     document.getElementById('justif-outro-box').classList.remove('show');
     // Preenche info do agendamento
     var v = getV(vid);
-    var mot = ag.motid ? getMot(ag.motid) : null;
+    var mot = ag.motid ? getM(ag.motid) : null;
     document.getElementById('justif-agenda-info').innerHTML =
       '<strong>' + (v ? v.placa + ' — ' + v.descricao : '') + '</strong><br>' +
       '📅 Agendamento: <strong>' + fmtDT(ag.saida) + '</strong> → <strong>' + fmtDT(ag.retorno) + '</strong><br>' +
