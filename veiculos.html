@@ -1304,22 +1304,30 @@ function getStatus(vid) {
 
 // Considera a viagem como "já saída" se foi marcada OU se o veículo tem
 // uma movimentação registrada na data da viagem (saiu e/ou voltou nesse dia).
-// Assim, ao voltar para a garagem o carro deixa de ficar laranja e volta a verde.
 function solicitacaoJaSaiu(s){
   if(!s) return true;
   if(s.saida_registrada) return true;
+  // Checar se já existe movimentação com esse solId (mais preciso)
+  if(s.id && (D.movimentacoes||[]).some(function(m){ return m.solic===s.id || m.solId===s.id; })) return true;
   var d = s.data_viagem ? String(s.data_viagem).slice(0,10) : '';
   if(!d) return false;
   return (D.movimentacoes||[]).some(function(m){
     return m.vid===s.vid && m.saida && String(m.saida).slice(0,10)===d;
   });
 }
+
 function getSolicitacaoLiberada(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
+  // Data de ontem como limite (evita que aprovações antigas fiquem como "liberadas")
+  var ontem = new Date(now().getTime() - 86400000).toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) &&
-           s.data_viagem && s.data_viagem.slice(0,10)===hoje;
+    if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
+    // Sem data definida → liberada imediatamente
+    if(!s.data_viagem) return true;
+    var dv = String(s.data_viagem).slice(0,10);
+    // Data hoje ou ontem (janela de 1 dia para não perder aprovações recentes)
+    return dv >= ontem && dv <= hoje;
   }) || null;
 }
 
@@ -1329,11 +1337,14 @@ function getSolicitacaoPendente(vid) {
     return s.vid===vid && s.status==='pendente';
   }) || null;
 }
+
 function getSolicitacaoAprovadaFutura(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) && s.data_viagem && s.data_viagem.slice(0,10)>hoje;
+    if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
+    if(!s.data_viagem) return false; // sem data → vai para liberada
+    return String(s.data_viagem).slice(0,10) > hoje;
   }) || null;
 }
 
@@ -1530,7 +1541,7 @@ function makeBtnVeiculo(v) {
     }
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
-  var labelBtn = LABEL[classeBtn] || LABEL[s];
+  var labelBtn = LABEL[classeBtn] || (LABEL[s]||s||'?') || s || 'Veículo';
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
   var titleBtn = _tip ? ' title="'+_tip+'"' : '';
   return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
@@ -1949,7 +1960,7 @@ function verVeiculo(vid) {
     '<div style="width:5px;height:48px;border-radius:3px;background:'+COR[s]+';flex-shrink:0"></div>'+
     '<div style="flex:1"><div style="font-size:20px;font-weight:700;letter-spacing:.05em">'+v.placa+'</div>'+
     '<div style="font-size:12px;color:#666">'+v.descricao+' · '+v.secretaria+'</div></div>'+
-    '<span class="badge '+s+'">'+LABEL[s]+'</span></div><hr class="divider">';
+    '<span class="badge '+s+'">'+(LABEL[s]||s||'?')+'</span></div><hr class="divider">';
 
   var docs = docAlerts(v);
   var docHTML = docs.map(function(d){return '<div class="doc-alerta">⚠ '+d+'</div>';}).join('')+mediaHtml;
@@ -2568,7 +2579,7 @@ function renderSaidas() {
       : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>';
     return '<div class="card">'+
       '<div class="card-header"><span class="card-title">'+(v?v.placa+' — '+v.descricao:'Removido')+'</span>'+
-      '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
+      '<span class="badge '+s+'">'+(LABEL[s]||s||'?')+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Motorista: <strong>'+m.motorista+'</strong></span>'+
       (m.solic?'<span>Solicitante: <strong>'+m.solic+'</strong></span>':'')+
@@ -2714,7 +2725,7 @@ function renderVeiculos() {
       :'';
     return '<div class="card'+(docs.length?' warn-card':'')+'">'+
       '<div class="card-header"><span class="card-title">'+v.placa+' — '+v.descricao+'</span>'+
-      '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
+      '<span class="badge '+s+'">'+(LABEL[s]||s||'?')+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
@@ -2953,7 +2964,7 @@ function buscar(q) {
         icon: '🚗',
         title: '<span style="font-size:15px;font-weight:800">'+hl(v.placa,q)+'</span> <span style="font-size:12px;font-weight:600;color:#333">'+hl(v.descricao,q)+'</span>',
         sub: hl(v.secretaria,q) + (v.ano?' · '+v.ano:'') + (v.combustivel?' · '+v.combustivel:''),
-        badge: '<span class="sr-badge veiculo" style="background:'+cor+'20;color:'+cor+'">'+LABEL[s]+'</span>',
+        badge: '<span class="sr-badge veiculo" style="background:'+cor+'20;color:'+cor+'">'+(LABEL[s]||s||'?')+'</span>',
         action: function(id){ return function(){ fechar('search-results'); verVeiculo(id); }; }(v.id)
       });
     }
