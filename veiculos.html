@@ -1119,8 +1119,8 @@ if(fbDB){
     }
     _fbInicializado = true;
     setFbStatus('sincronizado');
-    if(Date.now() - _fbUltimoPush < 4000) return; // ignora eco da própria gravação
-    if(window._entradaEmAndamento) return;           // não sobrescrever durante entrada
+    if(Date.now() - _fbUltimoPush < 4000) return;
+    if(window._entradaEmAndamento) return;
     D = normalizarFB(val);
     localStorage.setItem('frota_v3', JSON.stringify(D));
     if(_sessao && typeof renderTudo === 'function') renderTudo();
@@ -1313,8 +1313,8 @@ function getSolicitacaoLiberada(vid) {
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
     if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
-    if(!s.data_viagem) return true;                    // aprovada sem data → liberada
-    return s.data_viagem.slice(0,10) === hoje;         // aprovada para hoje → liberada
+    if(!s.data_viagem) return true;
+    return s.data_viagem.slice(0,10) === hoje;
   }) || null;
 }
 
@@ -1329,8 +1329,8 @@ function getSolicitacaoAprovadaFutura(vid) {
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
     if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
-    if(!s.data_viagem) return false;                   // sem data → vai para liberada
-    return s.data_viagem.slice(0,10) > hoje;           // data futura → aprovado
+    if(!s.data_viagem) return false;
+    return s.data_viagem.slice(0,10) > hoje;
   }) || null;
 }
 
@@ -1527,7 +1527,7 @@ function makeBtnVeiculo(v) {
     }
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
-  var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
+  var labelBtn = LABEL[classeBtn] || LABEL[s];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
   var titleBtn = _tip ? ' title="'+_tip+'"' : '';
   return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
@@ -2190,8 +2190,7 @@ function confirmarEntrada() {
   var hora = document.getElementById('e-hora').value;
   if(!hora) { toast('Informe o horário de entrada.'); return; }
   var m = getMov(_entradaId);
-  if(!m) { toast('Erro: movimentação não encontrada.'); fechar('ov-entrada'); return; }
-  // Normalizar para ISO completo (Firefox retorna sem segundos)
+  if(!m) { toast('Movimentação não encontrada.'); fechar('ov-entrada'); return; }
   m.entrada_real = hora.length === 16 ? hora + ':00' : hora;
   m.km_entrada = parseInt(document.getElementById('e-km').value)||null;
   if(document.getElementById('e-abast').value) {
@@ -2204,7 +2203,6 @@ function confirmarEntrada() {
       posto:document.getElementById('e-posto').value.trim()
     });
   }
-  // Render imediato antes de salvar (evita listener sobrescrever)
   window._entradaEmAndamento = true;
   renderTudo();
   fechar('ov-entrada');
