@@ -513,10 +513,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="section" id="aba-veiculos">
     <div class="section-hdr">
       <div class="section-title">Frota cadastrada</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="btn-importar-comb" onclick="abrirImportar()" style="display:none">⬇️ Importar do Combustível</button>
-        <button class="btn primary" onclick="abrirVeiculo(null)">+ Cadastrar</button>
-      </div>
+      <button class="btn primary" onclick="abrirVeiculo(null)">+ Cadastrar</button>
     </div>
     <div id="lista-veiculos"></div>
   </div>
@@ -575,11 +572,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <input type="file" id="bk-input" accept=".json" style="display:none" onchange="restaurarBackup(this)">
         <button class="btn warn" onclick="document.getElementById('bk-input').click()">Selecionar arquivo</button>
       </div>
-      <div class="backup-card" style="border-color:#FCA5A5;background:#FFF7F7">
-        <h3>🚑 Recuperar veículos e motoristas</h3>
-        <p>Restaura os cadastros guardados no cache deste aparelho antes da última sincronização. Use se veículos ou motoristas sumiram após uma atualização.</p>
-        <button class="btn danger" onclick="recuperarResgate()">Recuperar do cache deste aparelho</button>
-      </div>
       <div class="backup-card">
         <h3>📊 Exportar CSV</h3>
         <p>Exporta todas as movimentações em formato planilha.</p>
@@ -611,7 +603,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="modal">
     <h2>Registrar saída</h2>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><select id="s-vei" onchange="hintVagas('s');aplicarAgendamentoNaSaida(this.value);prefillMotoristaVinc('s')"></select></div>
+      <div class="field"><label>Veículo *</label><select id="s-vei" onchange="hintVagas('s')"></select></div>
       <div class="field"><label>Motorista</label><select id="s-mot"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
@@ -678,51 +670,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   </div>
 </div>
 
-<!-- MODAL IMPORTAR DO COMBUSTÍVEL -->
-<div class="overlay" id="ov-importar">
-  <div class="modal">
-    <h2>⬇️ Importar veículos</h2>
-    <p style="font-size:12px;color:#666;margin-bottom:.75rem;line-height:1.6">Veículos cadastrados no <strong>Controle de Combustível</strong> que ainda não fazem parte do Controle de Frota. Marque os que deseja trazer — o cadastro continua único entre os dois sistemas.</p>
-    <div id="imp-lista" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
-    <div class="field" style="margin-top:.75rem"><label>Secretaria dos veículos importados *</label><select id="imp-sec"><option value="">— Selecione —</option></select></div>
-    <div class="modal-actions">
-      <button class="btn success" onclick="confirmarImportar()">✓ Importar selecionados</button>
-      <button class="btn" onclick="fechar('ov-importar')">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL PRORROGAR RETORNO -->
-<div class="overlay" id="ov-prorrogar">
-  <div class="modal">
-    <h2>⏱ Prorrogar retorno</h2>
-    <div id="pr-info" style="font-size:12px;color:#666;background:#f0f0ee;padding:9px 11px;border-radius:8px;margin-bottom:.75rem;line-height:1.7"></div>
-    <div class="field">
-      <label>Acrescentar tempo rápido</label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn" onclick="prTempoRapido(30)">+30 min</button>
-        <button class="btn" onclick="prTempoRapido(60)">+1 hora</button>
-        <button class="btn" onclick="prTempoRapido(120)">+2 horas</button>
-        <button class="btn" onclick="prTempoRapido(240)">+4 horas</button>
-        <button class="btn" onclick="prTempoRapido(1440)">+1 dia</button>
-      </div>
-    </div>
-    <div class="field"><label>Ou defina o novo retorno *</label><input type="datetime-local" id="pr-novo"></div>
-    <div class="field"><label>Motivo (opcional)</label><input type="text" id="pr-motivo" placeholder="Ex: viagem estendida a pedido da secretaria"></div>
-    <div class="modal-actions">
-      <button class="btn success" onclick="confirmarProrrogacao()">✓ Confirmar prorrogação</button>
-      <button class="btn" onclick="fechar('ov-prorrogar')">Cancelar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL AGENDAMENTO -->
 <div class="overlay" id="ov-agenda">
   <div class="modal">
     <h2 id="ag-titulo">Novo agendamento</h2>
     <div id="ag-volta-hint" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E40AF;margin-bottom:12px;line-height:1.5"></div>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag');prefillMotoristaVinc('ag')"></select></div>
+      <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag')"></select></div>
       <div class="field"><label>Motorista</label><select id="ag-mot"></select><button type="button" onclick="toggleMotManual('ag',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="ag-mot-manual" style="display:none;margin-top:5px"><input type="text" id="ag-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
@@ -762,14 +716,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>CPF</label><input type="text" id="mt-cpf" placeholder="000.000.000-00"></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>CNH</label><input type="text" id="mt-cnh" placeholder="Número (opcional)"></div>
+      <div class="field"><label>CNH *</label><input type="text" id="mt-cnh" placeholder="Número"></div>
       <div class="field"><label>Categoria</label><select id="mt-cat"><option>B</option><option>C</option><option>D</option><option>E</option><option>AB</option><option>AD</option><option>AE</option></select></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>Validade CNH</label><input type="date" id="mt-val"></div>
+      <div class="field"><label>Validade CNH *</label><input type="date" id="mt-val"></div>
       <div class="field"><label>Telefone</label><input type="text" id="mt-tel" placeholder="(77) 9xxxx-xxxx"></div>
     </div>
-    <div class="field"><label>Carro vinculado <span style="font-weight:400;color:#94A3B8">(vem pré-selecionado nas saídas — pode ser trocado na hora)</span></label><select id="mt-carro"><option value="">— Nenhum —</option></select><div id="mt-carro-multi" style="display:none;font-size:11px;color:#B45309;background:#FEF3E0;border-radius:6px;padding:6px 9px;margin-top:5px"></div></div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarMotorista()">Salvar</button>
       <button class="btn" onclick="fechar('ov-motorista')">Cancelar</button>
@@ -837,7 +790,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Secretaria</label><select id="v-sec"><option value="">— Selecione —</option></select></div>
       <div class="field"><label>Combustível</label><select id="v-comb"><option>Flex</option><option>Gasolina</option><option>Diesel</option><option>GNV</option><option>Elétrico</option></select></div>
     </div>
-    <div class="field"><label>Motorista vinculado <span style="font-weight:400;color:#94A3B8">(vem pré-selecionado nas saídas — pode ser trocado na hora)</span></label><select id="v-motorista"><option value="">— Nenhum —</option></select></div>
     <div class="form-row">
       <div class="field"><label>Capacidade passageiros</label><input type="number" id="v-cap" min="0" placeholder="0 = sem passageiros"></div>
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
@@ -1024,45 +976,13 @@ function salvar() {
   if(fbDB){
     _fbUltimoPush = Date.now();
     if(_fbConectado) setFbStatus('salvando');
-    var copia = JSON.parse(JSON.stringify(D));
-    var updates = {};
-    // Os nós compartilhados só são tocados depois que a MIGRAÇÃO foi confirmada
-    // e a primeira sincronização de cada nó chegou. E a gravação é POR ITEM
-    // (nunca substitui o nó inteiro) — cadastros feitos no outro sistema nunca
-    // são apagados por engano. Exclusões são enviadas explicitamente.
-    if(_unifOk){
-      if(_veicSync){
-        (copia.veiculos||[]).forEach(function(v){
-          if(!v.id) v.id = uid('v');
-          v.frota = true;                              // pertence ao Controle de Frota
-          v.modelo = v.descricao || v.modelo || '';   // compatibilidade com o sistema de gasolina
-          updates['veiculos/' + v.id] = v;
-        });
-        _delVeic.forEach(function(id){ updates['veiculos/' + id] = null; });
-        _desmarcaVeic.forEach(function(id){ updates['veiculos/' + id + '/frota'] = false; });
-      }
-      if(_motSync){
-        (copia.motoristas||[]).forEach(function(m){
-          if(!m.id) m.id = uid('mt');
-          updates['motoristas/' + m.id] = m;
-        });
-        _delMot.forEach(function(id){ updates['motoristas/' + id] = null; });
-      }
-      delete copia.veiculos; delete copia.motoristas;   // não duplicar no blob da frota
-    }
-    // Sem migração confirmada, grava no formato antigo (com veiculos/motoristas
-    // dentro do blob) — nada se perde enquanto a unificação não estiver ok.
-    updates['frota/dados'] = copia;
-    fbDB.ref().update(updates)
-      .then(function(){
-        _delVeic = []; _delMot = []; _desmarcaVeic = [];   // exclusões confirmadas no banco
-        if(_fbConectado) setFbStatus('sincronizado');
-      })
+    fbDB.ref('frota/dados').set(JSON.parse(JSON.stringify(D)))
+      .then(function(){ if(_fbConectado) setFbStatus('sincronizado'); })
       .catch(function(e){
         console.error('⚠️ Erro ao salvar no Firebase (dados mantidos no cache local):', e);
         if(_ehErroPermissao(e)){
-          setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas".');
-          if(typeof toast==='function') toast('🚫 Sem permissão de escrita no banco. É preciso ajustar as regras do Firebase (nós "frota", "veiculos" e "motoristas").');
+          setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar o nó "frota".');
+          if(typeof toast==='function') toast('🚫 Sem permissão de escrita no banco. É preciso ajustar as regras do Firebase (nó "frota").');
         } else {
           setFbStatus('erro', (e&&e.message)||'Erro desconhecido');
         }
@@ -1071,7 +991,7 @@ function salvar() {
 }
 
 // ── TESTE DE CONEXÃO COM O BANCO (diagnóstico) ────────────────
-var REGRAS_SUGERIDAS = '{\n  "rules": {\n    "usuarios":      { ".read": true, ".write": true },\n    "abastecimentos":{ ".read": true, ".write": true },\n    "postos":        { ".read": true, ".write": true },\n    "pessoas_vip":   { ".read": true, ".write": true },\n    "auditoria":     { ".read": true, ".write": true },\n    "veiculos":      { ".read": true, ".write": true },\n    "motoristas":    { ".read": true, ".write": true },\n    "frota":         { ".read": true, ".write": true }\n  }\n}';
+var REGRAS_SUGERIDAS = '{\n  "rules": {\n    "usuarios":      { ".read": true, ".write": true },\n    "abastecimentos":{ ".read": true, ".write": true },\n    "postos":        { ".read": true, ".write": true },\n    "pessoas_vip":   { ".read": true, ".write": true },\n    "auditoria":     { ".read": true, ".write": true },\n    "veiculos":      { ".read": true, ".write": true },\n    "frota":         { ".read": true, ".write": true }\n  }\n}';
 function testarConexaoBanco(){
   var box = document.getElementById('bk-status');
   function mostra(html){ if(box) box.innerHTML = html; }
@@ -1134,23 +1054,8 @@ function carregar() {
 }
 var D = carregar();
 
-// ── SNAPSHOT DE RESGATE ──────────────────────────────────────
-// Guarda uma cópia do cache local ANTES de qualquer sincronização sobrescrevê-lo.
-// Se cadastros sumirem do banco, dá para recuperar pela aba Backup em qualquer
-// aparelho que tenha usado o sistema antes.
-try{
-  if(!localStorage.getItem('frota_v3_resgate') && localStorage.getItem('frota_v3')){
-    localStorage.setItem('frota_v3_resgate', localStorage.getItem('frota_v3'));
-  }
-}catch(e){}
-
 // ── FIREBASE — banco compartilhado com o sistema de gasolina ──
 var fbDB = null, _fbUltimoPush = 0, _fbInicializado = false;
-var _veicSync = false, _motSync = false; // primeira leitura dos nós compartilhados já chegou?
-var _unifOk = false;                     // migração para os nós compartilhados confirmada?
-var _delVeic = [], _delMot = [];         // exclusões pendentes de envio aos nós compartilhados
-var _veicNoTodos = [];                   // TODOS os veículos do nó compartilhado (frota + só-combustível)
-var _desmarcaVeic = [];                  // veículos a desmarcar da frota (permanecem no combustível)
 try {
   firebase.initializeApp({
     apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
@@ -1193,166 +1098,46 @@ if(fbDB){
     else setFbStatus('offline', 'Sem conexão com o banco — usando dados locais. As mudanças sincronizam quando a conexão voltar.');
   });
 
-  // ── NÓS COMPARTILHADOS com o sistema de gasolina ─────────────
-  // "veiculos" e "motoristas" ficam na raiz do banco e são usados pelos DOIS sistemas.
-  function _veicDoNo(key, v){
-    v = v || {};
-    if(!v.id) v.id = key;
-    v.descricao = v.descricao || v.modelo || v.placa || 'Veículo';
-    v.escalas = _arrFB(v.escalas);
-    if(!v.cor) v.cor = 'branco';
-    if(!v.foraGaragem) v.foraGaragem = 0;
-    if(!v.manutencao) v.manutencao = 0;
-    v.mediaKmL = v.mediaKmL || 0;
-    return v;
-  }
-  function _motDoNo(key, m){ m = m || {}; if(!m.id) m.id = key; return m; }
-  function _placaKey(p){ return String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-
-  function _erroLeitura(err, no){
-    console.error('Erro de leitura do Firebase ('+no+') — usando cache local:', err);
+  fbDB.ref('frota/dados').on('value', function(snap){
+    _fbPrimeiraLeitura = true;
+    var val = snap.val();
+    if(!val){
+      // Primeiro acesso: migra automaticamente os dados locais para o banco compartilhado
+      if(!_fbInicializado){
+        _fbInicializado = true;
+        _fbUltimoPush = Date.now();
+        setFbStatus('salvando');
+        fbDB.ref('frota/dados').set(JSON.parse(JSON.stringify(D)))
+          .then(function(){ console.log('✅ Dados locais migrados para o banco compartilhado.'); setFbStatus('sincronizado'); if(typeof toast==='function') toast('☁️ Dados migrados para o banco compartilhado!'); })
+          .catch(function(e){
+            console.error('Erro na migração inicial:', e);
+            if(_ehErroPermissao(e)){ setFbStatus('permissao','Permissão negada: ajuste as regras do Firebase para liberar o nó "frota".'); if(typeof toast==='function') toast('🚫 Sem permissão no banco. Ajuste as regras do Firebase (nó "frota").'); }
+            else setFbStatus('erro',(e&&e.message)||'Erro');
+          });
+      }
+      return;
+    }
+    _fbInicializado = true;
+    setFbStatus('sincronizado');
+    // Ignora eco da própria gravação: janela de 4s após qualquer set()
+    if(Date.now() - _fbUltimoPush < 4000) return;
+    // Ignora se uma operação de entrada está em andamento
+    if(window._entradaEmAndamento) return;
+    var novo = normalizarFB(val);
+    // Comparar hash simples: se movimentações não mudaram, não re-renderiza
+    var hashNovo  = JSON.stringify(novo.movimentacoes.map(function(m){return m.id+':'+(m.entrada_real||'');}).sort());
+    var hashAtual = JSON.stringify((D.movimentacoes||[]).map(function(m){return m.id+':'+(m.entrada_real||'');}).sort());
+    D = novo;
+    localStorage.setItem('frota_v3', JSON.stringify(D));
+    if(_sessao && typeof renderTudo === 'function') renderTudo();
+  }, function(err){
+    console.error('Erro de leitura do Firebase — usando cache local:', err);
     if(_ehErroPermissao(err)){
-      setFbStatus('permissao', 'Permissão negada na leitura: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas".');
-      if(typeof toast==='function') toast('🚫 Sem permissão de leitura no banco. Ajuste as regras do Firebase (nós "frota", "veiculos" e "motoristas").');
+      setFbStatus('permissao', 'Permissão negada na leitura: ajuste as regras do Firebase para liberar o nó "frota".');
+      if(typeof toast==='function') toast('🚫 Sem permissão de leitura no banco. Ajuste as regras do Firebase (nó "frota").');
     } else {
       setFbStatus('erro', (err&&err.message)||'Erro de leitura');
     }
-  }
-
-  function _iniciarSync(){
-    if(_unifOk){
-      // Veículos (compartilhado)
-      fbDB.ref('veiculos').on('value', function(snap){
-        _veicSync = true;
-        if(Date.now() - _fbUltimoPush < 1500) return; // eco da própria gravação
-        var val = snap.val() || {};
-        var arr = [];
-        Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_veicDoNo(k, val[k])); });
-        _veicNoTodos = arr;                        // tudo que existe no nó compartilhado
-        D.veiculos = arr.filter(ehDaFrota);        // a frota só trabalha com os seus
-        _atualizarBtnImportar();
-        localStorage.setItem('frota_v3', JSON.stringify(D));
-        if(_sessao && typeof renderTudo === 'function') renderTudo();
-      }, function(err){ _erroLeitura(err, 'veiculos'); });
-
-      // Motoristas (compartilhado)
-      fbDB.ref('motoristas').on('value', function(snap){
-        _motSync = true;
-        if(Date.now() - _fbUltimoPush < 1500) return;
-        var val = snap.val() || {};
-        var arr = [];
-        Object.keys(val).forEach(function(k){ if(val[k]!=null) arr.push(_motDoNo(k, val[k])); });
-        D.motoristas = arr;
-        localStorage.setItem('frota_v3', JSON.stringify(D));
-        if(_sessao && typeof renderTudo === 'function') renderTudo();
-      }, function(err){ _erroLeitura(err, 'motoristas'); });
-    }
-
-    // Restante da frota (movimentações, agendamentos, manutenções etc.)
-    fbDB.ref('frota/dados').on('value', function(snap){
-      _fbPrimeiraLeitura = true;
-      var val = snap.val();
-      if(!val){
-        if(!_fbInicializado){
-          _fbInicializado = true;
-          _fbUltimoPush = Date.now();
-          setFbStatus('salvando');
-          var copia = JSON.parse(JSON.stringify(D));
-          if(_unifOk){ delete copia.veiculos; delete copia.motoristas; }
-          fbDB.ref('frota/dados').set(copia)
-            .then(function(){ setFbStatus('sincronizado'); })
-            .catch(function(e){
-              console.error('Erro na migração inicial:', e);
-              if(_ehErroPermissao(e)){ setFbStatus('permissao','Permissão negada: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas".'); }
-              else setFbStatus('erro',(e&&e.message)||'Erro');
-            });
-        }
-        return;
-      }
-      _fbInicializado = true;
-      setFbStatus('sincronizado');
-      if(Date.now() - _fbUltimoPush < 1500) return; // ignora o eco da própria gravação
-      var veiAtuais = D.veiculos, motAtuais = D.motoristas;
-      D = normalizarFB(val);
-      if(_unifOk){
-        // veículos e motoristas vêm dos nós compartilhados, não do blob
-        if(_veicSync || !D.veiculos.length) D.veiculos = veiAtuais;
-        if(_motSync  || !D.motoristas.length) D.motoristas = motAtuais;
-      }
-      localStorage.setItem('frota_v3', JSON.stringify(D));
-      if(_sessao && typeof renderTudo === 'function') renderTudo();
-    }, function(err){ _erroLeitura(err, 'frota'); });
-  }
-
-  // ── MIGRAÇÃO ÚNICA: move veiculos/motoristas do blob "frota/dados"
-  //    para os nós compartilhados, mesclando por PLACA com os cadastros
-  //    já existentes do sistema de gasolina (não duplica).
-  fbDB.ref('frota/migrado_unificado').once('value').then(function(flagSnap){
-    if(flagSnap.val()){ _unifOk = true; _iniciarSync(); return; }
-    return Promise.all([
-      fbDB.ref('frota/dados').once('value'),
-      fbDB.ref('veiculos').once('value'),
-      fbDB.ref('motoristas').once('value')
-    ]).then(function(r){
-      var blob  = r[0].val() || {};
-      var noVei = r[1].val() || {};
-      var noMot = r[2].val() || {};
-      var blobVei = _arrFB(blob.veiculos);
-      var blobMot = _arrFB(blob.motoristas);
-      var up = {};
-
-      // índice por placa do que já existe no nó compartilhado (cadastros da gasolina)
-      var porPlaca = {};
-      Object.keys(noVei).forEach(function(k){
-        if(noVei[k]==null) return;
-        var v = _veicDoNo(k, noVei[k]);
-        var p = _placaKey(v.placa);
-        if(p) porPlaca[p] = v;
-      });
-
-      blobVei.forEach(function(v){
-        var p = _placaKey(v.placa);
-        if(p && porPlaca[p]){
-          // mesmo carro nos dois sistemas → junta os campos (frota completa o que faltar)
-          var alvo = porPlaca[p];
-          Object.keys(v).forEach(function(c){
-            if(alvo[c] == null || alvo[c] === '') alvo[c] = v[c];
-          });
-          alvo.descricao = v.descricao || alvo.descricao || alvo.modelo || '';
-          alvo.modelo = alvo.modelo || alvo.descricao;
-          up['veiculos/' + alvo.id] = alvo;
-        } else {
-          if(!v.id) v.id = uid('v');
-          v.modelo = v.modelo || v.descricao || '';
-          up['veiculos/' + v.id] = v;
-        }
-      });
-      blobMot.forEach(function(m){
-        if(!m.id) m.id = uid('mt');
-        up['motoristas/' + m.id] = m;
-      });
-
-      up['frota/migrado_unificado'] = true;
-      up['frota/dados/veiculos'] = null;    // remove do blob antigo (agora vivem no nó compartilhado)
-      up['frota/dados/motoristas'] = null;
-      _fbUltimoPush = 0; // queremos receber o estado migrado nos listeners
-      return fbDB.ref().update(up).then(function(){
-        _unifOk = true;   // migração gravada com sucesso — pode usar os nós compartilhados
-        console.log('✅ Migração concluída: veículos e motoristas unificados com o sistema de gasolina.');
-        if(typeof toast==='function') toast('☁️ Veículos e motoristas unificados com o Controle de Combustível!');
-      });
-    }).then(_iniciarSync);
-  }).catch(function(e){
-    // QUALQUER falha aqui (permissão, rede) → NÃO ativa a unificação.
-    // O sistema segue no formato antigo (veiculos/motoristas dentro de frota/dados),
-    // sem gravar nos nós compartilhados — nada se perde. Na próxima abertura,
-    // com as regras corrigidas, a migração tenta de novo.
-    console.error('Falha na migração/leitura inicial — operando no formato antigo, sem unificação:', e);
-    if(_ehErroPermissao(e)){
-      setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar os nós "frota", "veiculos" e "motoristas". A unificação será concluída na próxima abertura.');
-      if(typeof toast==='function') toast('🚫 Sem permissão nos nós novos do banco. Ajuste as regras do Firebase — a unificação fica pendente até lá.');
-    }
-    _iniciarSync();
   });
 } else {
   setFbStatus('offline', 'Firebase não disponível — operando somente com cache local.');
@@ -1436,7 +1221,7 @@ function getMov(id) { return D.movimentacoes.find(function(m){return m.id===id;}
 function getAg(id) { return D.agendamentos.find(function(a){return a.id===id;}); }
 function getMn(id) { return D.manutencoes.find(function(m){return m.id===id;}); }
 function getAus(id) { return D.ausencias.find(function(a){return a.id===id;}); }
-function getMovAtiva(vid) { return D.movimentacoes.find(function(m){return m.vid===vid&&!m.entrada_real;})||null; }
+function getMovAtiva(vid) { return D.movimentacoes.find(function(m){return m.vid===vid&&(!m.entrada_real||m.entrada_real==='');}) || null; }
 function getAusAtiva(vid) { return D.ausencias.find(function(a){return a.vid===vid&&!a.resolvido;})||null; }
 function uid(p) { return (p||'x')+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
@@ -1560,7 +1345,6 @@ function docAlerts(v) {
   return a;
 }
 function cnhStatus(m) {
-  if(!m.validade) return 'sem';   // validade não informada
   var d = diasAte(m.validade);
   if(d<0) return 'expirada';
   if(d<=60) return 'proxima';
@@ -1602,16 +1386,6 @@ function popMots(ids) {
     if(el) el.innerHTML = opts;
   });
 }
-// Pré-seleciona o motorista VINCULADO ao veículo escolhido (troca manual livre).
-// prefix: 's' (saída), 'ag' (agendamento), 'sr' (saída rápida)
-function prefillMotoristaVinc(prefix) {
-  var selVei = document.getElementById(prefix+'-vei');
-  var selMot = document.getElementById(prefix+'-mot');
-  if(!selVei || !selMot) return;
-  var v = getV(selVei.value);
-  if(!v || !v.motoristaId) return;
-  if(selMot.querySelector('[value="'+v.motoristaId+'"]')) selMot.value = v.motoristaId;
-}
 function popSecs(ids) {
   var opts = '<option value="">— Selecione —</option>'+SECS.map(function(s){
     return '<option value="'+s+'">'+s+'</option>';
@@ -1624,15 +1398,7 @@ function popSecs(ids) {
 
 // ── VISTA ──
 var _viewMode = 'todos';
-// Ordenação PADRÃO do painel: agrupado por status. A escolha do usuário
-// (A–Z, por status ou nenhuma) fica gravada neste aparelho.
-var _ordemMode = (function(){
-  try{
-    var salvo = localStorage.getItem('frota_ordem');
-    if(salvo === 'nome' || salvo === 'status' || salvo === 'none') return salvo;
-  }catch(e){}
-  return 'status';
-})();
+var _ordemMode = 'none';
 var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
@@ -1657,12 +1423,6 @@ function getVeiculosFiltrados() {
 
 function setOrdem(mode) {
   _ordemMode = _ordemMode === mode ? 'none' : mode;
-  try{ localStorage.setItem('frota_ordem', _ordemMode); }catch(e){}
-  atualizarBtnsOrdem();
-  renderPainel();
-}
-// Destaca o botão do modo de ordenação ativo (usado também na carga inicial)
-function atualizarBtnsOrdem() {
   ['nome','status'].forEach(function(m){
     var btn = document.getElementById('btn-ord-'+m);
     if(!btn) return;
@@ -1671,6 +1431,7 @@ function atualizarBtnsOrdem() {
     btn.style.color = on ? '#fff' : '';
     btn.style.borderColor = on ? 'var(--blue)' : '';
   });
+  renderPainel();
 }
 
 function renderFrotaPorStatus() {
@@ -1794,12 +1555,8 @@ function makeBtnVeiculo(v) {
 }
 
 function renderPainel() {
-  atualizarBtnsOrdem();
-  // Secretário: contadores e alertas calculados APENAS sobre os veículos
-  // da sua secretaria (admin/frentista/autorizador continuam vendo tudo)
-  var veisVis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
   var g=0,t=0,ir=0,au=0,sol=0,ap=0,fg=0,mn=0,lib=0,fh=0;
-  veisVis.forEach(function(v){
+  D.veiculos.forEach(function(v){
     var s=getStatus(v.id);
     if(s==='guardado')g++; else if(s==='trabalhando')t++; else if(s==='irregular')ir++; else if(s==='ausente')au++; else if(s==='solicitado')sol++; else if(s==='aprovado')ap++; else if(s==='fora_garagem')fg++; else if(s==='manutencao')mn++; else if(s==='liberado')lib++; else fh++;
   });
@@ -1816,7 +1573,7 @@ function renderPainel() {
   }
 
   document.getElementById('stats').innerHTML =
-    '<div class="stat st"><div class="stat-label">Total</div><div class="stat-val" style="color:#1a1a1a">'+veisVis.length+'</div></div>'+
+    '<div class="stat st"><div class="stat-label">Total</div><div class="stat-val" style="color:#1a1a1a">'+D.veiculos.length+'</div></div>'+
     '<div class="stat sg"><div class="stat-label">Guardados</div><div class="stat-val">'+g+'</div></div>'+
     '<div class="stat sy"><div class="stat-label">Em uso</div><div class="stat-val">'+t+'</div></div>'+
     '<div class="stat sr"><div class="stat-label">Irregulares</div><div class="stat-val">'+ir+'</div></div>'+
@@ -1830,9 +1587,9 @@ function renderPainel() {
   var al = '';
   if(ir>0) al += '<div class="alerta vermelho">🚨 '+ir+' veículo(s) com retorno em atraso!</div>';
   if(au>0) al += '<div class="alerta roxo">❓ '+au+' veículo(s) não está no local</div>';
-  var docW2 = veisVis.filter(function(v){return docAlerts(v).length;});
+  var docW2 = D.veiculos.filter(function(v){return docAlerts(v).length;});
   if(docW2.length) al += '<div class="alerta amarelo">⚠ '+docW2.length+' veículo(s) com documentação a vencer</div>';
-  var cnhW = D.motoristas.filter(function(m){var st=cnhStatus(m);return st==='expirada'||st==='proxima';});
+  var cnhW = D.motoristas.filter(function(m){return cnhStatus(m)!=='ok';});
   if(cnhW.length) al += '<div class="alerta amarelo">⚠ '+cnhW.length+' motorista(s) com CNH vencida ou próxima</div>';
   document.getElementById('alertas').innerHTML = al;
 }
@@ -1914,12 +1671,8 @@ function saidaRapida(vid) {
   document.getElementById('sr-saida').textContent = n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('sr-retorno').textContent = ret.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
-  // Preenche select de motorista (vinculado ao veículo vem pré-selecionado)
+  // Preenche select de motorista
   popMots(['sr-mot']);
-  if(v.motoristaId){
-    var srMotSel = document.getElementById('sr-mot');
-    if(srMotSel && srMotSel.querySelector('[value="'+v.motoristaId+'"]')) srMotSel.value = v.motoristaId;
-  }
 
   // Armazena dados para confirmar
   document.getElementById('ov-saida-rapida').dataset.vid = vid;
@@ -1952,9 +1705,6 @@ function confirmarSaidaRapida() {
     saida:saida, retorno:retorno,
     entrada_real:null, destino:destino, abast:[]
   });
-  // Se este veículo tinha solicitação liberada hoje, marca a saída nela também
-  var solSR = getSolicitacaoLiberada(vid);
-  if(solSR) solSR.saida_registrada = true;
 
   salvar(); fechar('ov-saida-rapida'); toast('⚡ Saída rápida registrada!'); renderTudo();
 }
@@ -2037,7 +1787,7 @@ function abrirSaidaLote(){
   }).join('');
   lista.innerHTML = _loteCands.map(function(c, i){
     var v = getV(c.vid);
-    var sug = c.motSug || (v && v.motoristaId) || '';
+    var sug = c.motSug;
     var motSel = sug ? motOpts.replace('value="'+sug+'"', 'value="'+sug+'" selected') : motOpts;
     var preMarcado = (c.fonte === 'escala' || c.fonte === 'solicitacao'); // o que se espera sair na manhã
     var destVal = (c.destino||'').replace(/"/g,'&quot;');
@@ -2201,15 +1951,6 @@ function verVeiculo(vid) {
     '<div style="font-size:12px;color:#666">'+v.descricao+' · '+v.secretaria+'</div></div>'+
     '<span class="badge '+s+'">'+LABEL[s]+'</span></div><hr class="divider">';
 
-  var mediaHtml = '';
-  if(v.mediaKmL > 0) {
-    var km=parseFloat(v.mediaKmL), corKm=km<8?'#DC2626':km>=12?'#16A34A':'#D97706', iconKm=km<8?'🔴':km>=12?'🟢':'🟡';
-    mediaHtml='<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+iconKm+' Média de consumo: <strong style="color:'+corKm+'">'+ km.toFixed(2)+' KM/L</strong><span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
-  }
-  if(v.foraGaragem && v.foraGaraObs) {
-    mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">📍</span><span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
-  }
-
   var docs = docAlerts(v);
   var docHTML = docs.map(function(d){return '<div class="doc-alerta">⚠ '+d+'</div>';}).join('')+mediaHtml;
 
@@ -2232,6 +1973,15 @@ function verVeiculo(vid) {
       '</div>'+cronBadge+'</div>';
   }
 
+  var mediaHtml = '';
+  if(v.mediaKmL > 0) {
+    var km=parseFloat(v.mediaKmL), corKm=km<8?'#DC2626':km>=12?'#16A34A':'#D97706', iconKm=km<8?'🔴':km>=12?'🟢':'🟡';
+    mediaHtml='<div style="display:inline-flex;align-items:center;gap:6px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:6px 12px;margin-bottom:.75rem;font-size:13px">'+iconKm+' Média de consumo: <strong style="color:'+corKm+'">'+ km.toFixed(2)+' KM/L</strong><span style="font-size:10px;color:#94A3B8;margin-left:4px">(últimos 5 abastec.)</span></div>';
+  }
+  if(v.foraGaragem && v.foraGaraObs) {
+    mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#1f2937;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">📍</span><span><strong>Local:</strong> '+v.foraGaraObs+'</span></div>';
+  }
+
   var escHtml = v.escalas&&v.escalas.length ?
     '<div style="font-size:11px;color:#666;margin-bottom:.75rem">📅 '+
     v.escalas.map(function(e){
@@ -2244,15 +1994,9 @@ function verVeiculo(vid) {
   if(aus) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
   } else if(s==='trabalhando'||s==='irregular') {
-    if(s==='irregular' && !isAdmin()) {
-      btns = '<div style="font-size:12px;color:#A32D2D;font-weight:600;background:#FDEAEA;border:1px solid #F5C6C6;border-radius:8px;padding:10px 12px">⚠ Veículo em situação irregular (retorno atrasado).<br>A entrada só pode ser registrada pela Garagem Central.</div>';
-    } else {
-      btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
-    }
+    btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
     if(isAdmin()) {
-      btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogacao(\''+mov.id+'\')">⏱ Prorrogar retorno</button>';
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
-      btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarViagem(\''+mov.id+'\')">✕ Cancelar viagem</button>';
     }
   } else {
     if(!isAdmin()) {
@@ -2267,6 +2011,7 @@ function verVeiculo(vid) {
         btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
           '✅ Viagem aprovada para '+(solAp&&solAp.data_viagem?fmtData(solAp.data_viagem):'data agendada')+'<br>'+
           '<span style="font-weight:400;font-size:11px">Aguardando saída — liberado automaticamente no dia da viagem.</span></div>';
+        if(isAdmin()){ var _sid=solAp?solAp.id:''; btns+='<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')" style="margin-top:6px">❌ Cancelar aprovação</button>'; }
       } else if(s==='liberado') {
         btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>';
       }
@@ -2282,42 +2027,12 @@ function verVeiculo(vid) {
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
       }
       if(s==='liberado') {
-        var solLib = getSolicitacaoLiberada(vid) || getSolicitacaoAprovadaFutura(vid);
         btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSaida(\''+vid+'\')">🚗 Registrar saída no portão</button>'+
-               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>'+
-               (solLib?'<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+solLib.id+'\')">✕ Cancelar viagem aprovada</button>':'');
-      }
-      if(s==='aprovado') {
-        var solApAdm = getSolicitacaoAprovadaFutura(vid);
-        if(solApAdm){
-          btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+solApAdm.id+'\')">✕ Cancelar viagem aprovada</button>';
-        }
+               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
       }
     }
   }
   if(isAdmin()) btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirVeiculo(\''+vid+'\')">✏️ Editar</button>';
-
-  // 📅 Agendamento de HOJE (ainda não cumprido) para veículo que não está em
-  // viagem: mostra os dados e a opção de cancelar caso o veículo não vá ser usado
-  if(!mov && !aus){
-    var agH = getAgendaHoje(vid);
-    if(agH){
-      var infoAg = '<div style="font-size:12px;color:#1E40AF;font-weight:600;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:6px">'+
-        '📅 Agendado hoje: '+fmtDT(agH.saida)+' → '+fmtDT(agH.retorno)+
-        ((agH.motorista&&agH.motorista!=='—')?'<br><span style="font-weight:400">👤 '+agH.motorista+'</span>':'')+
-        (agH.sec?'<span style="font-weight:400"> · '+agH.sec+'</span>':'')+
-        (agH.itin?'<br><span style="font-weight:400">📍 '+agH.itin+'</span>':'')+
-        '</div>';
-      btns = infoAg + btns;
-      var podeCancAg = isAdmin() || ehAutorizador() ||
-        (isSecretario() && _sessao && _sessao.secretaria &&
-         String(agH.sec||'').trim().toLowerCase() === String(_sessao.secretaria).trim().toLowerCase());
-      if(podeCancAg){
-        btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarAgenda(\''+agH.id+'\')">✕ Cancelar agendamento</button>';
-      }
-    }
-  }
-
   btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\')">Fechar</button>';
 
   var checkAus = '';
@@ -2340,39 +2055,10 @@ function verVeiculo(vid) {
 }
 
 // ── SAÍDA ────────────────────────────────────────────────────
-// Aplica o motorista no formulário de saída: tenta o id na lista, depois o
-// nome, e por fim usa o campo de texto livre (manual)
-function setMotoristaSaida(motid, nome) {
-  var motSel = document.getElementById('s-mot');
-  if(!motSel) return false;
-  if(motid && motSel.querySelector('[value="'+motid+'"]')){ motSel.value = motid; resetMotManual('s'); return true; }
-  if(nome){
-    for(var i=0;i<motSel.options.length;i++){
-      var t = motSel.options[i].text;
-      if(t === nome || t.indexOf(nome+' (') === 0){ motSel.value = motSel.options[i].value; resetMotManual('s'); return true; }
-    }
-    var box = document.getElementById('s-mot-manual'), inp = document.getElementById('s-mot-texto');
-    if(box && inp){ box.style.display = 'block'; inp.value = nome; return true; }
-  }
-  return false;
-}
-// Aplica o destino no campo da saída (é um INPUT com sugestões, aceita qualquer texto)
-function setDestinoSaida(dest) {
-  if(!dest) return;
-  var sd = document.getElementById('s-dest');
-  if(!sd) return;
-  sd.value = dest;
-  var box = document.getElementById('s-outro-box');
-  if(box) box.style.display = 'none';
-}
-
 function abrirSaida(vid) {
   popVeis(['s-vei']); popMots(['s-mot']); popSecs(['s-sec']);
   document.getElementById('s-saida').value = nowLocal();
-  // Retorno previsto padrão: +8 horas (com "agora", o carro nascia IRREGULAR
-  // segundos após a confirmação)
-  var _ret8 = new Date(now().getTime() + 8*3600*1000);
-  document.getElementById('s-retorno').value = new Date(_ret8.getTime()-_ret8.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('s-retorno').value = nowLocal();
   document.getElementById('s-solic').value = '';
   document.getElementById('s-km').value = '';
   document.getElementById('s-dest').value = '';
@@ -2387,9 +2073,13 @@ function abrirSaida(vid) {
   // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados
   var solAp = vid ? getSolicitacaoLiberada(vid) : null;
   if(solAp) {
-    if(solAp.destino){ setDestinoSaida(solAp.destino); }
+    if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
     if(solAp.motorista){
-      setMotoristaSaida(null, solAp.motorista);
+      var motSel = document.getElementById('s-mot');
+      var achou = false;
+      for(var i=0;i<motSel.options.length;i++){ if(motSel.options[i].text===solAp.motorista){ motSel.value=motSel.options[i].value; achou=true; break; } }
+      // se o motorista era texto livre, mantém no campo manual quando existir
+      if(!achou){ var mm=document.getElementById('s-mot-manual'); if(mm) mm.value=solAp.motorista; }
     }
     var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
     if(qp > 0) {
@@ -2399,33 +2089,7 @@ function abrirSaida(vid) {
     }
     document.getElementById('s-solic').value = solAp.solicitante || '';
   }
-  // Sem solicitação: se há AGENDAMENTO de hoje para o veículo, aproveita os
-  // dados já informados — ninguém precisa digitar de novo. Tudo continua editável.
-  if(!solAp && vid) aplicarAgendamentoNaSaida(vid);
-  // Motorista vinculado ao veículo: pré-seleciona se nada veio da solicitação/agendamento
-  if(!document.getElementById('s-mot').value) prefillMotoristaVinc('s');
   abrir('ov-saida');
-}
-
-// Preenche o formulário de saída com os dados do agendamento de hoje do veículo
-// (motorista, destino, solicitante, retorno, secretaria, passageiros)
-function aplicarAgendamentoNaSaida(vid) {
-  var agHoje = vid ? getAgendaHoje(vid) : null;
-  if(!agHoje) return;
-  setMotoristaSaida(agHoje.motid, (agHoje.motorista && agHoje.motorista!=='—') ? agHoje.motorista : '');
-  setDestinoSaida(agHoje.itin);
-  if(agHoje.solic) document.getElementById('s-solic').value = agHoje.solic;
-  if(agHoje.retorno) document.getElementById('s-retorno').value = agHoje.retorno;
-  if(agHoje.sec){
-    var ssec = document.getElementById('s-sec');
-    if(ssec && ssec.querySelector('[value="'+agHoje.sec+'"]')) ssec.value = agHoje.sec;
-  }
-  if(agHoje.com_pass && agHoje.pass > 0){
-    document.getElementById('s-com-pass').value = '1';
-    document.getElementById('s-pass-row').style.display = 'block';
-    document.getElementById('s-pass').value = agHoje.pass;
-  }
-  hintVagas('s');
 }
 
 function togglePassSaida() {
@@ -2479,7 +2143,6 @@ function confirmarSaida() {
   var saida = document.getElementById('s-saida').value;
   var ret   = document.getElementById('s-retorno').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo, saída e retorno.'); return; }
-  if(new Date(ret) <= new Date(saida)) { alert('O retorno previsto deve ser DEPOIS da saída.'); return; }
   var dest = getDestValue('s');
   if(!dest) { alert('Informe o destino.'); return; }
   var motid = getMotId('s');
@@ -2499,9 +2162,6 @@ function confirmarSaida() {
     m.pass=pass; m.com_pass=comPass;
     m.saida=saida; m.retorno=ret; m.destino=dest;
   } else {
-    // captura a solicitação liberada ANTES de criar a viagem (depois de criada,
-    // a busca já a considera "saiu" e retornaria vazio — o carimbo se perdia)
-    var solDesta = getSolicitacaoLiberada(vid);
     D.movimentacoes.push({
       id:uid('m'), vid:vid, motid:motid, motorista:motNome,
       solic:document.getElementById('s-solic').value.trim(),
@@ -2510,86 +2170,11 @@ function confirmarSaida() {
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[]
     });
-    // Marca a solicitação como "saída registrada" — garante que o veículo
-    // NUNCA volte ao status Liberado depois que a viagem aconteceu.
-    if(solDesta) solDesta.saida_registrada = true;
   }
   salvar(); fechar('ov-saida'); toast('Saída registrada!'); renderTudo();
 }
 
 // ── ENTRADA ──────────────────────────────────────────────────
-// ── PRORROGAR RETORNO (Garagem Central) ───────────────────────
-// Acrescenta tempo ao retorno previsto de uma viagem em andamento ou
-// atrasada — o veículo irregular volta ao status "Em viagem".
-var _prorrogaId = null;
-function abrirProrrogacao(movId) {
-  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode prorrogar retornos.'); return; }
-  var m = getMov(movId);
-  if(!m || m.entrada_real){ toast('Esta viagem já foi encerrada.'); return; }
-  _prorrogaId = movId;
-  var v = getV(m.vid);
-  var atrasado = now() > new Date(m.retorno);
-  document.getElementById('pr-info').innerHTML =
-    '<strong>'+(v?v.placa+' — '+v.descricao:'?')+'</strong><br>'+
-    'Motorista: '+m.motorista+' · Retorno atual: '+fmtDT(m.retorno)+
-    (atrasado?' <span style="color:#A32D2D;font-weight:600">(EM ATRASO)</span>':'');
-  // sugestão inicial: retorno atual (ou agora, se já passou) + 1 hora
-  var base = new Date(m.retorno);
-  if(atrasado) base = now();
-  base = new Date(base.getTime() + 60*60000 - base.getTimezoneOffset()*60000);
-  document.getElementById('pr-novo').value = base.toISOString().slice(0,16);
-  document.getElementById('pr-motivo').value = '';
-  abrir('ov-prorrogar');
-}
-function prTempoRapido(min) {
-  var m = getMov(_prorrogaId);
-  if(!m) return;
-  // soma sobre o retorno atual; se já está atrasado, soma a partir de agora
-  var base = new Date(m.retorno);
-  if(now() > base) base = now();
-  base = new Date(base.getTime() + min*60000 - base.getTimezoneOffset()*60000);
-  document.getElementById('pr-novo').value = base.toISOString().slice(0,16);
-}
-function confirmarProrrogacao() {
-  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode prorrogar retornos.'); return; }
-  var novo = document.getElementById('pr-novo').value;
-  if(!novo){ alert('Informe o novo horário de retorno.'); return; }
-  var m = getMov(_prorrogaId);
-  if(!m || m.entrada_real){ alert('Esta viagem já foi encerrada.'); fechar('ov-prorrogar'); return; }
-  if(new Date(novo) <= new Date(m.retorno)){ alert('O novo retorno precisa ser DEPOIS do retorno atual ('+fmtDT(m.retorno)+').'); return; }
-  var motivo = document.getElementById('pr-motivo').value.trim();
-  // histórico de prorrogações da viagem
-  if(!m.prorrogacoes) m.prorrogacoes = [];
-  m.prorrogacoes.push({
-    de: m.retorno, para: novo, motivo: motivo,
-    por: _sessao ? _sessao.u : '?', em: new Date().toISOString()
-  });
-  m.retorno = novo;
-  salvar(); renderTudo();
-  fechar('ov-prorrogar');
-  var v = getV(m.vid);
-  toast('⏱ Retorno de '+(v?v.placa:'veículo')+' prorrogado para '+fmtDT(novo)+'.');
-}
-
-// Cancela uma viagem em andamento: remove o registro de saída (uso típico:
-// saída registrada por engano ou viagem que não vai mais acontecer).
-// O veículo volta imediatamente ao status "Na garagem".
-function cancelarViagem(movId) {
-  if(!isAdmin()){ toast('🚫 Apenas a Garagem Central pode cancelar viagens.'); return; }
-  var m = getMov(movId);
-  if(!m){ toast('Viagem não encontrada.'); return; }
-  if(m.entrada_real){ toast('Esta viagem já foi encerrada — não há o que cancelar.'); return; }
-  var v = getV(m.vid);
-  confirmarAcao('✕','Cancelar viagem?',
-    'O registro de saída de '+(v?v.placa+' — '+v.descricao:'?')+' ('+fmtDT(m.saida)+') será REMOVIDO e o veículo volta para "Na garagem".\nUse quando a saída foi registrada por engano ou a viagem não vai acontecer.',
-    function(){
-      D.movimentacoes = D.movimentacoes.filter(function(x){ return x.id !== movId; });
-      try{ if(!D.auditoria) D.auditoria = []; D.auditoria.push({acao:'VIAGEM_CANCELADA', vid:m.vid, motorista:m.motorista||'', saida:m.saida, por:_sessao?_sessao.login:'?', em:new Date().toISOString()}); }catch(e){}
-      salvar(); renderTudo();
-      toast('✕ Viagem cancelada — '+(v?v.placa:'veículo')+' voltou para a garagem.');
-    });
-}
-
 function abrirEntrada(movId) {
   _entradaId = movId;
   var m = getMov(movId); var v = getV(m.vid);
@@ -2606,28 +2191,38 @@ function abrirEntrada(movId) {
 
 function confirmarEntrada() {
   var hora = document.getElementById('e-hora').value;
-  if(!hora) { alert('Informe o horário.'); return; }
+  if(!hora) { toast('Informe o horário de entrada.'); return; }
   var m = getMov(_entradaId);
-  // Trava de permissão: veículo com retorno atrasado só pode ter a entrada
-  // registrada por admin/Garagem Central — secretário não pode regularizar.
-  if(!isAdmin() && m && m.retorno && now() > new Date(m.retorno)) {
-    alert('⚠ Este veículo está com o retorno atrasado (situação irregular).\n\nA entrada só pode ser registrada pela Garagem Central.');
-    fechar('ov-entrada');
-    return;
-  }
-  m.entrada_real = hora;
+  if(!m) { toast('Erro: movimentação não encontrada.'); fechar('ov-entrada'); return; }
+
+  // Normalizar hora para ISO 8601 completo (evita diferença Firefox/Chrome)
+  var horaISO = hora.length === 16 ? hora + ':00' : hora; // "YYYY-MM-DDTHH:MM" → "YYYY-MM-DDTHH:MM:SS"
+
+  // Flag: impede listener do Firebase de sobrescrever durante a operação
+  window._entradaEmAndamento = true;
+
+  m.entrada_real = horaISO;
   m.km_entrada = parseInt(document.getElementById('e-km').value)||null;
+
   if(document.getElementById('e-abast').value) {
     D.abastecimentos.push({
       id:uid('ab'), vid:m.vid, movid:m.id,
-      data:hora.slice(0,10),
+      data:horaISO.slice(0,10),
       comb:document.getElementById('e-comb').value,
       litros:parseFloat(document.getElementById('e-litros').value)||0,
       valor:parseFloat(document.getElementById('e-valor').value)||0,
       posto:document.getElementById('e-posto').value.trim()
     });
   }
-  salvar(); fechar('ov-entrada'); toast('Entrada registrada!'); renderTudo();
+
+  // Renderizar imediatamente com o estado já atualizado em memória
+  renderTudo();
+  fechar('ov-entrada');
+  toast('✅ Entrada registrada!');
+
+  // Salvar e liberar flag após confirmação do Firebase
+  salvar();
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 5000);
 }
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
@@ -2656,19 +2251,6 @@ function abrirAgenda(vid) {
   document.getElementById('ag-pass-row').style.display = 'none';
   document.getElementById('ag-hint').style.display = 'none';
   document.getElementById('ag-titulo').textContent = 'Novo agendamento';
-  // Campo Secretaria por perfil:
-  //  · Admin e AUTORIZADOR: escolha LIVRE (campo sempre habilitado)
-  //  · Secretário comum: travado na própria secretaria
-  var selSecAg = document.getElementById('ag-sec');
-  if(isAdmin() || ehAutorizador()){
-    selSecAg.disabled = false;
-    selSecAg.value = '';
-  } else if(isSecretario() && _sessao && _sessao.secretaria){
-    selSecAg.value = _sessao.secretaria;
-    selSecAg.disabled = true;
-  } else {
-    selSecAg.disabled = false;
-  }
   _editAgId = null;
   if(vid) document.getElementById('ag-vei').value = vid;
   abrir('ov-agenda');
@@ -2698,9 +2280,7 @@ function confirmarAgenda() {
   var vid   = document.getElementById('ag-vei').value;
   var saida = document.getElementById('ag-saida').value;
   var ret   = document.getElementById('ag-retorno').value;
-  var secAg = document.getElementById('ag-sec').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo e horários.'); return; }
-  if(!secAg) { alert('Selecione a SECRETARIA do agendamento.'); return; }
   // Carro em viagem: analisa a data de volta e avisa se o agendamento começar antes do retorno
   var movEmViagem = getMovAtiva(vid);
   if(movEmViagem && movEmViagem.retorno){
@@ -2721,14 +2301,14 @@ function confirmarAgenda() {
     var a = getAg(_editAgId);
     a.vid=vid; a.motid=motid; a.motorista=motNomeAg;
     a.solic=document.getElementById('ag-solic').value.trim();
-    a.sec=secAg;
+    a.sec=document.getElementById('ag-sec').value;
     a.saida=saida; a.retorno=ret; a.itin=itin;
     a.com_pass=comPass; a.pass=pass;
   } else {
     D.agendamentos.push({
       id:uid('a'), vid:vid, motid:motid, motorista:motNomeAg,
       solic:document.getElementById('ag-solic').value.trim(),
-      sec:secAg,
+      sec:document.getElementById('ag-sec').value,
       pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, itin:itin, cancelado:false
     });
@@ -2737,14 +2317,8 @@ function confirmarAgenda() {
 }
 
 function cancelarAgenda(id) {
-  var a = getAg(id);
-  if(!a){ toast('Agendamento não encontrado.'); return; }
-  var pode = isAdmin() || ehAutorizador() ||
-    (isSecretario() && _sessao && _sessao.secretaria &&
-     String(a.sec||'').trim().toLowerCase() === String(_sessao.secretaria).trim().toLowerCase());
-  if(!pode){ toast('🚫 Você só pode cancelar agendamentos da sua secretaria.'); return; }
   confirmarAcao('❌','Cancelar agendamento?','Esta ação não pode ser desfeita.',function(){
-    a.cancelado = true; salvar(); toast('Agendamento cancelado.'); renderTudo();
+    var a = getAg(id); a.cancelado=true; salvar(); toast('Agendamento cancelado.'); renderTudo();
   });
 }
 
@@ -2759,58 +2333,24 @@ function abrirMotorista(id) {
   document.getElementById('mt-cat').value  = m?m.categoria:'B';
   document.getElementById('mt-val').value  = m?m.validade:'';
   document.getElementById('mt-tel').value  = m?m.telefone:'';
-  // Carro vinculado (o vínculo mora no veículo: v.motoristaId)
-  var selCarro = document.getElementById('mt-carro');
-  var multi = document.getElementById('mt-carro-multi');
-  if(selCarro){
-    selCarro.innerHTML = '<option value="">— Nenhum —</option>'+D.veiculos.map(function(v){
-      return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
-    }).join('');
-    var carrosDoMot = id ? D.veiculos.filter(function(v){return v.motoristaId===id;}) : [];
-    selCarro.value = carrosDoMot.length ? carrosDoMot[0].id : '';
-    if(multi){
-      if(carrosDoMot.length > 1){
-        multi.style.display = 'block';
-        multi.textContent = '⚠ Este motorista está vinculado a '+carrosDoMot.length+' carros ('+carrosDoMot.map(function(v){return v.placa;}).join(', ')+'). Ao salvar, valerá apenas o carro selecionado acima.';
-      } else { multi.style.display = 'none'; multi.textContent = ''; }
-    }
-  }
   abrir('ov-motorista');
 }
 function confirmarMotorista() {
   var nome = document.getElementById('mt-nome').value.trim();
   var cnh  = document.getElementById('mt-cnh').value.trim();
   var val  = document.getElementById('mt-val').value;
-  if(!nome) { alert('O nome do motorista é obrigatório.'); return; }
-  var cpf = document.getElementById('mt-cpf').value.trim();
-  var motId;
+  if(!nome||!cnh||!val) { alert('Nome, CNH e validade são obrigatórios.'); return; }
   if(_editMotId) {
-    motId = _editMotId;
     var m = getM(_editMotId);
-    m.nome=nome; m.cpf=cpf;
+    m.nome=nome; m.cpf=document.getElementById('mt-cpf').value.trim();
     m.cnh=cnh; m.categoria=document.getElementById('mt-cat').value;
     m.validade=val; m.telefone=document.getElementById('mt-tel').value.trim();
     D.movimentacoes.filter(function(mv){return mv.motid===_editMotId;}).forEach(function(mv){mv.motorista=nome;});
     D.agendamentos.filter(function(a){return a.motid===_editMotId;}).forEach(function(a){a.motorista=nome;});
   } else {
-    motId = uid('mt');
-    D.motoristas.push({id:motId,nome:nome,cpf:cpf,
+    D.motoristas.push({id:uid('mt'),nome:nome,cpf:document.getElementById('mt-cpf').value.trim(),
       cnh:cnh,categoria:document.getElementById('mt-cat').value,validade:val,
       telefone:document.getElementById('mt-tel').value.trim()});
-  }
-  // Carro vinculado: o vínculo é gravado NO VEÍCULO (v.motoristaId) — mesma
-  // fonte usada pelo cadastro de veículo. Desfaz vínculos antigos deste
-  // motorista e aplica o carro escolhido (também no "motorista padrão" da gasolina).
-  var carroSel = document.getElementById('mt-carro') ? document.getElementById('mt-carro').value : '';
-  D.veiculos.forEach(function(v){
-    if(v.motoristaId === motId){
-      if(v.id !== carroSel){ v.motoristaId = null; v.motorista = null; v.cpfMotorista = null; }
-      else { v.motorista = nome; v.cpfMotorista = cpf || null; }   // nome/CPF atualizados
-    }
-  });
-  if(carroSel){
-    var vv = getV(carroSel);
-    if(vv){ vv.motoristaId = motId; vv.motorista = nome; vv.cpfMotorista = cpf || null; }
   }
   salvar(); fechar('ov-motorista'); toast('Motorista salvo!'); renderTudo();
 }
@@ -2862,22 +2402,6 @@ function abrirVeiculo(id) {
   document.getElementById('v-desc').value   = v?v.descricao:'';
   document.getElementById('v-sec').value    = v?v.secretaria:'';
   document.getElementById('v-comb').value   = v?v.combustivel:'Flex';
-  // Motorista vinculado
-  var selMotV = document.getElementById('v-motorista');
-  if(selMotV){
-    selMotV.innerHTML = '<option value="">— Nenhum —</option>'+D.motoristas.map(function(m){
-      return '<option value="'+m.id+'">'+m.nome+'</option>';
-    }).join('');
-    var motIdSel = v ? (v.motoristaId||'') : '';
-    // Cadastro antigo (gasolina) só tem o NOME do motorista padrão: casa pelo nome
-    if(!motIdSel && v && v.motorista){
-      var mLegado = D.motoristas.find(function(m){
-        return String(m.nome||'').trim().toLowerCase() === String(v.motorista).trim().toLowerCase();
-      });
-      if(mLegado) motIdSel = mLegado.id;
-    }
-    selMotV.value = motIdSel;
-  }
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
   // Fora da garagem
@@ -2961,13 +2485,8 @@ function confirmarVeiculo() {
   var placa = document.getElementById('v-placa').value.trim().toUpperCase();
   var desc  = document.getElementById('v-desc').value.trim();
   if(!placa||!desc) { alert('Placa e descrição são obrigatórios.'); return; }
-  var motVinc = document.getElementById('v-motorista') ? document.getElementById('v-motorista').value : '';
-  var motVincObj = motVinc ? getM(motVinc) : null;
   var obj = {placa:placa, descricao:desc,
     secretaria:document.getElementById('v-sec').value,
-    motoristaId: motVinc || null,
-    motorista: motVincObj ? motVincObj.nome : null,          // compat: "motorista padrão" da gasolina
-    cpfMotorista: motVincObj ? (motVincObj.cpf||null) : null,
     ano:document.getElementById('v-ano').value.trim(),
     capacidade:parseInt(document.getElementById('v-cap').value)||0,
     combustivel:document.getElementById('v-comb').value,
@@ -2989,10 +2508,9 @@ function confirmarVeiculo() {
 
 function removerVeiculo(id) {
   if(!isAdmin()){ toast('🚫 Sem permissão para remover veículos.'); return; }
-  confirmarAcao('🗑️','Remover veículo da frota?','Ele sai do Controle de Frota, mas o cadastro permanece no Controle de Combustível (pode ser importado de volta).',function(){
+  confirmarAcao('🗑️','Remover veículo?','Esta ação não pode ser desfeita.',function(){
     D.veiculos = D.veiculos.filter(function(v){return v.id!==id;});
-    _desmarcaVeic.push(id);   // sai da frota sem apagar do nó compartilhado
-    salvar(); toast('Veículo removido da frota.'); renderTudo();
+    salvar(); toast('Veículo removido.'); renderTudo();
   });
 }
 
@@ -3047,10 +2565,7 @@ function renderSaidas() {
     var cronHTML = cr ? '<span class="cron-badge'+(cr.vencido?' vencido':'')+'" style="margin-top:6px;display:inline-flex"><span class="cron-dot"></span>'+(cr.vencido?'⚠ ATRASADO':'⏱ '+cr.str)+'</span>' : '';
     var btn = m.entrada_real
       ? '<span style="font-size:11px;color:#666;background:#f0f0ee;padding:3px 9px;border-radius:6px">✓ Entrada: '+fmtDT(m.entrada_real)+'</span>'
-      : (s==='irregular' && !isAdmin())
-        ? '<span style="font-size:11px;color:#A32D2D;font-weight:600;background:#FDEAEA;border:1px solid #F5C6C6;padding:4px 10px;border-radius:8px">⚠ Veículo atrasado — a entrada só pode ser registrada pela Garagem Central</span>'
-        : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>'+
-          (isAdmin()?'<button class="btn" onclick="abrirProrrogacao(\''+m.id+'\')">⏱ Prorrogar</button>':'');
+      : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>';
     return '<div class="card">'+
       '<div class="card-header"><span class="card-title">'+(v?v.placa+' — '+v.descricao:'Removido')+'</span>'+
       '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
@@ -3059,9 +2574,7 @@ function renderSaidas() {
       (m.solic?'<span>Solicitante: <strong>'+m.solic+'</strong></span>':'')+
       '<span>'+(m.com_pass?'🧍 Pass: <strong>'+m.pass+'</strong>':'🔧 Sem passageiros')+'</span>'+
       '<span>Saída: <strong>'+fmtDT(m.saida)+'</strong></span>'+
-      '<span>Retorno prev.: <strong>'+fmtDT(m.retorno)+'</strong>'+
-        (m.prorrogacoes&&m.prorrogacoes.length?' <span title="Retorno original: '+fmtDT(m.prorrogacoes[0].de)+'" style="font-size:10px;font-weight:600;color:#854F0B;background:#FEF3E0;padding:1px 6px;border-radius:99px">⏱ prorrogado '+m.prorrogacoes.length+'x</span>':'')+
-      '</span>'+
+      '<span>Retorno prev.: <strong>'+fmtDT(m.retorno)+'</strong></span>'+
       (m.km_saida?'<span>Km saída: <strong>'+m.km_saida.toLocaleString('pt-BR')+'</strong></span>':'')+
       (km?'<span>Km percorridos: <strong>'+km+'</strong></span>':'')+
       (m.destino?'<span>Destino: <strong>'+m.destino+'</strong></span>':'')+
@@ -3139,23 +2652,20 @@ function renderMotoristas() {
     var d = diasAte(m.validade);
     var badge = st==='expirada'?'<span style="background:#FDEAEA;color:#A32D2D;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH VENCIDA</span>'
       :st==='proxima'?'<span style="background:#FEF3E0;color:#854F0B;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">Vence em '+d+'d</span>'
-      :st==='sem'?'<span style="background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">Sem validade</span>'
       :'<span style="background:#E0F5EC;color:#0F6E56;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH OK</span>';
     var viagens = D.movimentacoes.filter(function(mv){return mv.motid===m.id;}).length;
-    var carrosV = D.veiculos.filter(function(v){return v.motoristaId===m.id;});
     return '<div class="card '+(st==='expirada'?'':'')+'">'+
       '<div class="card-header"><span class="card-title">'+m.nome+'</span>'+badge+'</div>'+
       '<div class="card-meta">'+
-      (carrosV.length?'<span>🚗 Carro: <strong>'+carrosV.map(function(v){return v.placa;}).join(', ')+'</strong></span>':'')+
-      (m.cnh?'<span>CNH: <strong>'+m.cnh+'</strong></span>':'<span>CNH: <strong>não informada</strong></span>')+
+      '<span>CNH: <strong>'+m.cnh+'</strong></span>'+
       '<span>Categoria: <strong>'+m.categoria+'</strong></span>'+
-      (m.validade?'<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>':'')+
+      '<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>'+
       (m.telefone?'<span>Tel: <strong>'+m.telefone+'</strong></span>':'')+
       '<span>Viagens: <strong>'+viagens+'</strong></span>'+
       '</div>'+
       '<div class="actions">'+
       '<button class="btn" onclick="abrirMotorista(\''+m.id+'\')">✏️ Editar</button>'+
-      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});_delMot.push(\''+m.id+'\');salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
+      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
       '</div></div>';
   }).join('');
 }
@@ -3166,7 +2676,7 @@ function renderManutencao() {
   if(!_manut.length) { el.innerHTML='<div class="empty">Nenhuma manutenção.</div>'; return; }
   var prox = _manut.filter(function(m){return m.proxdata && diasAte(m.proxdata)<=30;});
   var html = prox.length?'<div class="alerta amarelo" style="margin-bottom:8px">⚠ '+prox.length+' revisão(ões) nos próximos 30 dias</div>':'';
-  html += _manut.slice().sort(function(a,b){return b.data.localeCompare(a.data);}).map(function(m){
+  html += D.manutencoes.slice().sort(function(a,b){return b.data.localeCompare(a.data);}).map(function(m){
     var v = getV(m.vid);
     var alerta = m.proxdata && diasAte(m.proxdata)<=30 ? '<div class="doc-alerta">⚠ Revisão em '+fmtData(m.proxdata)+'</div>' : '';
     return '<div class="card">'+
@@ -3190,12 +2700,9 @@ function renderManutencao() {
 }
 
 function renderVeiculos() {
-  _atualizarBtnImportar();
   var el = document.getElementById('lista-veiculos');
-  // Secretário: apenas os veículos da sua secretaria
-  var lista = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
-  if(!lista.length) { el.innerHTML='<div class="empty">Nenhum veículo.</div>'; return; }
-  el.innerHTML = lista.map(function(v){
+  if(!D.veiculos.length) { el.innerHTML='<div class="empty">Nenhum veículo.</div>'; return; }
+  el.innerHTML = D.veiculos.map(function(v){
     var s = getStatus(v.id);
     var docs = docAlerts(v);
     var mov = getMovAtiva(v.id);
@@ -3210,7 +2717,6 @@ function renderVeiculos() {
       '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
-      (v.motoristaId&&getM(v.motoristaId)?'<span>👤 Motorista: <strong>'+getM(v.motoristaId).nome+'</strong></span>':'')+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
       (cap?'<span>Cap.: <strong>'+cap+' pass.</strong></span>':'')+
       (v.combustivel?'<span>Comb.: <strong>'+v.combustivel+'</strong></span>':'')+
@@ -3227,15 +2733,14 @@ function renderVeiculos() {
 }
 
 function renderRelatorio() {
-  var _veicsRel = isSecretario() ? D.veiculos.filter(podeVerVeiculo) : D.veiculos;
-  var secs = [...new Set(_veicsRel.map(function(v){return v.secretaria;}).filter(Boolean))];
+  var secs = [...new Set(D.veiculos.map(function(v){return v.secretaria;}).filter(Boolean))];
   var elSec = document.getElementById('rel-sec');
   if(elSec) {
     elSec.innerHTML = '<option value="">Todas</option>'+secs.map(function(s){return '<option>'+s+'</option>';}).join('');
   }
   var elVei = document.getElementById('rel-vei');
   if(elVei) {
-    elVei.innerHTML = '<option value="">Todos</option>'+_veicsRel.map(function(v){return '<option value="'+v.id+'">'+v.placa+'</option>';}).join('');
+    elVei.innerHTML = '<option value="">Todos</option>'+D.veiculos.map(function(v){return '<option value="'+v.id+'">'+v.placa+'</option>';}).join('');
   }
 }
 
@@ -3291,23 +2796,16 @@ function exportCSV() {
 }
 
 function renderIndicadores() {
-  // Secretário: indicadores calculados apenas sobre os veículos, viagens e
-  // abastecimentos da sua secretaria
-  var veisVis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
   var movC = D.movimentacoes.filter(function(m){return m.entrada_real && _podeVerRegistro(m);});
   var totalKm = movC.reduce(function(s,m){return s+(m.km_entrada&&m.km_saida?m.km_entrada-m.km_saida:0);},0);
   var kmMed = movC.length ? Math.round(totalKm/movC.length) : 0;
-  var ab = D.abastecimentos.filter(function(a){
-    if(veTudo()) return true;
-    var v = getV(a.vid);
-    return v && podeVerVeiculo(v);
-  });
+  var ab = D.abastecimentos;
   var totalL = ab.reduce(function(s,a){return s+a.litros;},0);
   var totalR = ab.reduce(function(s,a){return s+a.valor;},0);
   var eff = totalL>0?(totalKm/totalL).toFixed(1):'—';
-  var irr = D.movimentacoes.filter(function(m){return !m.entrada_real&&now()>new Date(m.retorno)&&_podeVerRegistro(m);}).length;
+  var irr = D.movimentacoes.filter(function(m){return !m.entrada_real&&m.entrada_real!==''&&now()>new Date(m.retorno)&&_podeVerRegistro(m);}).length;
   document.getElementById('kpi-grid').innerHTML =
-    kpiCard('Total veículos',veisVis.length,'')+
+    kpiCard('Total veículos',D.veiculos.length,'')+
     kpiCard('Viagens concluídas',movC.length,'')+
     kpiCard('Km total rodado',totalKm.toLocaleString('pt-BR'),'km')+
     kpiCard('Km médio/viagem',kmMed.toLocaleString('pt-BR'),'km')+
@@ -3317,7 +2815,7 @@ function renderIndicadores() {
     kpiCard('Retornos em atraso',irr,'',irr>0?'#A32D2D':'');
 
   var custoSec = {};
-  D.movimentacoes.filter(_podeVerRegistro).forEach(function(m){
+  D.movimentacoes.forEach(function(m){
     var v=getV(m.vid); if(!v) return;
     var s=v.secretaria||'—';
     if(!custoSec[s]) custoSec[s]={viagens:0,km:0};
@@ -3364,104 +2862,6 @@ function renderBackup() {
     }).join('');
   }
   el.innerHTML = html;
-}
-
-// ── IMPORTAR VEÍCULOS DO CONTROLE DE COMBUSTÍVEL ──────────────
-// O nó do banco é compartilhado, mas a frota só exibe veículos marcados
-// com frota:true. Este importador traz os demais, um a um, por escolha.
-function _candidatosImportar(){
-  var placasFrota = {};
-  D.veiculos.forEach(function(v){ placasFrota[String(v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'')]=1; });
-  return _veicNoTodos.filter(function(v){
-    if(ehDaFrota(v)) return false;
-    var p = String(v.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-    return !placasFrota[p];
-  });
-}
-function _atualizarBtnImportar(){
-  var b = document.getElementById('btn-importar-comb');
-  if(!b) return;
-  var mostra = (typeof isAdmin==='function' && isAdmin()) && _candidatosImportar().length > 0;
-  b.style.display = mostra ? '' : 'none';
-  if(mostra) b.textContent = '⬇️ Importar do Combustível ('+_candidatosImportar().length+')';
-}
-function abrirImportar(){
-  if(!isAdmin()){ toast('🚫 Apenas administradores podem importar veículos.'); return; }
-  var cands = _candidatosImportar();
-  if(!cands.length){ toast('Nenhum veículo do Combustível para importar.'); _atualizarBtnImportar(); return; }
-  document.getElementById('imp-lista').innerHTML = cands.map(function(v){
-    return '<label style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px">'+
-      '<input type="checkbox" class="imp-check" value="'+v.id+'">'+
-      '<span><strong>'+(v.placa||'—')+'</strong> — '+(v.descricao||v.modelo||'Sem descrição')+
-      (v.ano?' <span style="color:#999;font-size:11px">('+v.ano+')</span>':'')+
-      (v.motorista?'<br><span style="color:#666;font-size:11px">Motorista padrão: '+v.motorista+'</span>':'')+
-      '</span></label>';
-  }).join('');
-  popSecs(['imp-sec']);
-  abrir('ov-importar');
-}
-function confirmarImportar(){
-  if(!isAdmin()) return;
-  var marcados = Array.prototype.slice.call(document.querySelectorAll('.imp-check:checked')).map(function(c){return c.value;});
-  if(!marcados.length){ alert('Marque pelo menos um veículo para importar.'); return; }
-  var sec = document.getElementById('imp-sec').value;
-  if(!sec){ alert('Selecione a secretaria dos veículos importados.'); return; }
-  var n = 0;
-  marcados.forEach(function(id){
-    var v = _veicNoTodos.find(function(x){return x.id===id;});
-    if(!v) return;
-    v.frota = true;
-    if(!v.secretaria) v.secretaria = sec;
-    D.veiculos.push(v); n++;
-  });
-  salvar(); renderTudo();
-  fechar('ov-importar');
-  _atualizarBtnImportar();
-  toast('⬇️ '+n+' veículo(s) importado(s) do Controle de Combustível.');
-}
-
-// ── RECUPERAÇÃO DE CADASTROS (resgate do cache local) ─────────
-function recuperarResgate(){
-  if(!isAdmin()){ toast('🚫 Apenas administradores podem recuperar cadastros.'); return; }
-  var raw = null;
-  try{ raw = localStorage.getItem('frota_v3_resgate'); }catch(e){}
-  if(!raw){ alert('Este aparelho não tem cache de resgate guardado.\n\nTente em outro computador ou celular que usava o Controle de Frota antes da atualização — ao abrir esta versão, o resgate é guardado automaticamente.'); return; }
-  var d; try{ d = JSON.parse(raw); }catch(e){ alert('O cache de resgate deste aparelho está corrompido.'); return; }
-  var vs = (d.veiculos||[]).filter(function(v){return v && v.placa;});
-  var ms = (d.motoristas||[]).filter(function(m){return m && m.nome;});
-  if(!vs.length && !ms.length){ alert('O cache de resgate deste aparelho não contém veículos nem motoristas.'); return; }
-  confirmarAcao('🚑','Recuperar cadastros?',
-    'Encontrados no cache deste aparelho: '+vs.length+' veículo(s) e '+ms.length+' motorista(s).\nCadastros já existentes (mesma placa ou nome) serão mantidos e apenas completados — nada é apagado.',
-    function(){
-      function chavePlaca(p){ return String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-      var porPlaca = {};
-      D.veiculos.forEach(function(v){ var p=chavePlaca(v.placa); if(p) porPlaca[p]=v; });
-      var addV = 0;
-      vs.forEach(function(v){
-        var p = chavePlaca(v.placa);
-        if(p && porPlaca[p]){
-          var alvo = porPlaca[p];
-          Object.keys(v).forEach(function(c){ if(alvo[c]==null || alvo[c]==='') alvo[c]=v[c]; });
-          alvo.descricao = alvo.descricao || v.descricao || alvo.modelo || '';
-          alvo.frota = true;   // veio do cache da frota: pertence à frota
-        } else {
-          if(!v.id) v.id = uid('v');
-          v.frota = true;
-          D.veiculos.push(v); addV++;
-        }
-      });
-      var nomes = {};
-      D.motoristas.forEach(function(m){ nomes[String(m.nome||'').trim().toLowerCase()]=1; if(m.id) nomes['id:'+m.id]=1; });
-      var addM = 0;
-      ms.forEach(function(m){
-        if(nomes[String(m.nome||'').trim().toLowerCase()] || (m.id && nomes['id:'+m.id])) return;
-        if(!m.id) m.id = uid('mt');
-        D.motoristas.push(m); addM++;
-      });
-      salvar(); renderTudo();
-      toast('🚑 Recuperados: '+addV+' veículo(s) e '+addM+' motorista(s) novos.');
-      if(!addV && !addM) alert('Todos os cadastros do cache já existiam no sistema — os existentes foram apenas completados com campos que faltavam.');
-    });
 }
 
 function baixarBackup() {
@@ -3544,7 +2944,7 @@ function buscar(q) {
   var items = [];
 
   // ── Veículos ──
-  D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); }).forEach(function(v) {
+  D.veiculos.forEach(function(v) {
     var fields = [v.placa, v.descricao, v.secretaria, v.ano, v.combustivel].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var s = getStatus(v.id);
@@ -3564,12 +2964,12 @@ function buscar(q) {
     var fields = [m.nome, m.cnh, m.cpf||'', m.categoria||'B', m.telefone||''].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var st = cnhStatus(m);
-      var stLabel = {ok:'CNH OK',proxima:'CNH a vencer',expirada:'CNH VENCIDA',sem:'Sem validade'}[st] || '';
-      var stColor = {ok:'#0f6e56',proxima:'#854f0b',expirada:'#a32d2d',sem:'#6b7280'}[st] || '#6b7280';
+      var stLabel = {ok:'CNH OK',warn:'CNH a vencer',exp:'CNH VENCIDA'}[st];
+      var stColor = {ok:'#0f6e56',warn:'#854f0b',exp:'#a32d2d'}[st];
       items.push({
         icon: '👤',
         title: hl(m.nome,q),
-        sub: (m.cnh?'CNH: '+hl(m.cnh,q)+' ':'')+'(Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
+        sub: 'CNH: '+hl(m.cnh,q)+' (Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
         badge: '<span class="sr-badge motorista" style="color:'+stColor+'">'+stLabel+'</span>',
         action: function(){ aba(document.querySelectorAll('.tab')[3], 'motoristas'); }
       });
@@ -3659,23 +3059,8 @@ function getAgendaHoje(vid) {
     if(a.vid !== vid) return false;
     var dSaida = a.saida ? a.saida.slice(0, 10) : '';
     var dRetorno = a.retorno ? a.retorno.slice(0, 10) : '';
-    if(dSaida !== hoje && dRetorno !== hoje) return false;
-    // Agendamento já CUMPRIDO: a viagem do dia saiu e o carro já voltou
-    // (entrada registrada) → o veículo volta ao verde, sem selo de agendado.
-    if(agendaJaCumprida(a)) return false;
-    return true;
+    return dSaida === hoje || dRetorno === hoje;
   }) || null;
-}
-
-// A viagem correspondente ao agendamento já aconteceu e foi encerrada?
-function agendaJaCumprida(a) {
-  if(!a) return false;
-  var d = a.saida ? String(a.saida).slice(0, 10) : '';
-  if(!d) return false;
-  return (D.movimentacoes||[]).some(function(m) {
-    return m.vid === a.vid && m.entrada_real && m.saida &&
-           String(m.saida).slice(0, 10) === d;
-  });
 }
 
 var _justifVid = null;
@@ -3712,7 +3097,7 @@ abrirSaida = function(vid) {
     document.getElementById('justif-outro-box').classList.remove('show');
     // Preenche info do agendamento
     var v = getV(vid);
-    var mot = ag.motid ? getM(ag.motid) : null;
+    var mot = ag.motid ? getMot(ag.motid) : null;
     document.getElementById('justif-agenda-info').innerHTML =
       '<strong>' + (v ? v.placa + ' — ' + v.descricao : '') + '</strong><br>' +
       '📅 Agendamento: <strong>' + fmtDT(ag.saida) + '</strong> → <strong>' + fmtDT(ag.retorno) + '</strong><br>' +
@@ -3771,8 +3156,7 @@ function filtrarVeiSelect(selectId, searchId) {
   var sel = document.getElementById(selectId);
   if(!sel) return;
   var prev = sel.value;
-  var visiveis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
-  var filtered = q ? visiveis.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : visiveis;
+  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
@@ -3784,8 +3168,7 @@ function filtrarVeiSolic(){
   var sel = document.getElementById('sol-vei');
   if(!sel) return;
   var prev = sel.value;
-  var visiveis = D.veiculos.filter(function(v){ return !_sessao || podeVerVeiculo(v); });
-  var filtered = q ? visiveis.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : visiveis;
+  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+v.placa+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
@@ -3836,15 +3219,8 @@ function iniciarSessaoPortal(){
     location.replace('porta.html');
     return;
   }
-  // 👑 Admin da Frota: controlado pela caixa no cadastro de usuários da gasolina.
-  //   marcada (true)   → funções completas de admin na frota
-  //   desmarcada(false)→ perfil secretário (restrito)
-  //   nunca definida   → comportamento legado (frentista/autorizador = admin)
-  var roleNorm = String(s.role||'').trim().toLowerCase();
-  var fa = (s.dados && s.dados.frotaAdmin !== undefined) ? s.dados.frotaAdmin : null;
-  var ehAdmin = (s.u === 'master' || roleNorm === 'admin' ||
-                 fa === true ||
-                 (fa == null && (roleNorm === 'frentista' || roleNorm === 'autorizador')));
+  // Frentistas têm acesso TOTAL ao controle de frota (perfil admin, todas as funções)
+  var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista' || s.role === 'autorizador');
   var secBruta = (s.dados && s.dados.secretariaVinculada) || s.sec || '';
   _sessao = {
     id: s.u,
@@ -3852,7 +3228,6 @@ function iniciarSessaoPortal(){
     nome: (s.dados && s.dados.nome) || s.u,
     perfil: ehAdmin ? 'admin' : 'secretario',
     roleOrig: s.role,
-    frotaAdmin: fa,
     secretaria: ehAdmin ? '' : traduzirSec(secBruta)
   };
   document.getElementById('login-screen').style.display = 'none';
@@ -3876,26 +3251,10 @@ function fazerLogout() {
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
 function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
-function ehAutorizador() { return _sessao && String(_sessao.roleOrig||'').trim().toLowerCase() === 'autorizador'; }
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
-function veTudo() {
-  // Autorizador SEMPRE enxerga todas as secretarias (precisa disso para
-  // agendar qualquer veículo). A caixa 👑 Admin da Frota controla apenas
-  // as funções administrativas, não a visão.
-  return isAdmin() || ehAutorizador();
-}
-
-// Pertence ao Controle de Frota? Marca explícita 'frota:true'.
-// Legado (sem marca): veículo com secretaria preenchida veio do cadastro da
-// frota — os do Controle de Combustível não têm secretaria no cadastro.
-function ehDaFrota(v){
-  if(!v) return false;
-  if(v.frota === true) return true;
-  if(v.frota === false) return false;
-  return !!(v.secretaria && String(v.secretaria).trim());
-}
+function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autorizador'); }
 
 function podeVerVeiculo(v) {
   if(veTudo()) return true;
@@ -3903,25 +3262,14 @@ function podeVerVeiculo(v) {
   return v.secretaria === _sessao.secretaria || v.compartilhado === true;
 }
 
-// Filtro central: secretário só vê registros da sua secretaria
-// Admin/frentista/autorizador veem tudo (veTudo() = true para eles)
 function _podeVerRegistro(reg) {
-  if(!isSecretario()) return true;          // não é secretário: vê tudo
-  if(ehAutorizador()) return true;          // autorizador (mesmo restrito) vê tudo
+  if(!isSecretario()) return true;
   if(!_sessao) return false;
   var minha = (_sessao.secretaria||'').trim().toLowerCase();
-  if(!minha) return true;                   // secretário sem secretaria: vê tudo
-  // 1. Campo 'sec' (agendamentos, solicitações)
-  var s = (reg.sec||'').trim().toLowerCase();
+  if(!minha) return true;
+  var s = (reg.sec||reg.secretaria||'').trim().toLowerCase();
   if(s) return s === minha;
-  // 2. Campo 'secretaria' (manutenções)
-  var s2 = (reg.secretaria||'').trim().toLowerCase();
-  if(s2) return s2 === minha;
-  // 3. Derivar do veículo associado (movimentações sem sec salva)
-  if(reg.vid) {
-    var v = getV(reg.vid);
-    if(v) return (v.secretaria||'').trim().toLowerCase() === minha;
-  }
+  if(reg.vid){ var v=getV(reg.vid); if(v) return (v.secretaria||'').trim().toLowerCase()===minha; }
   return false;
 }
 
@@ -4085,14 +3433,6 @@ function abrirSolicitacao(vid, editId) {
     return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
   }).join('');
   document.getElementById('sol-mot-nome').value = s?(s.motorista||''):'';
-  // Motorista vinculado ao veículo pré-selecionado (só em solicitação nova, campo segue editável)
-  if(!editId && alvoVid){
-    var vAlvo = getV(alvoVid);
-    if(vAlvo && vAlvo.motoristaId){
-      var mVinc = getM(vAlvo.motoristaId);
-      if(mVinc && !document.getElementById('sol-mot-nome').value) document.getElementById('sol-mot-nome').value = mVinc.nome;
-    }
-  }
   document.getElementById('sol-destino').value = s?(s.destino||''):'';
   document.getElementById('sol-data').value = s?(s.data_viagem||''):'';
   document.getElementById('sol-hora-retirada').value = s?(s.hora_retirada||''):'';
@@ -4101,23 +3441,12 @@ function abrirSolicitacao(vid, editId) {
   _solPessoas = s && Array.isArray(s.passageiros) ? s.passageiros.slice() : [];
   document.getElementById('sol-qtd-pass').value = s && s.qtd_passageiros!=null ? s.qtd_passageiros : _solPessoas.length;
   renderSolPessoas();
-  // Secretaria por perfil:
-  //  · Admin e AUTORIZADOR: select de escolha LIVRE (obrigatório)
-  //  · Secretário comum: fixa na própria secretaria (texto)
+  // Preenche secretaria automaticamente
   var secEl = document.getElementById('sol-sec');
   var secDisplay = document.getElementById('sol-sec-display');
-  var secSel = document.getElementById('sol-sec-select');
   var secVal = s ? s.sec : (_sessao ? _sessao.secretaria : '');
-  if(isAdmin() || ehAutorizador()){
-    popSecs(['sol-sec-select']);
-    if(secSel){ secSel.style.display = ''; secSel.value = secVal || ''; }
-    if(secDisplay) secDisplay.style.display = 'none';
-    if(secEl) secEl.value = secSel ? secSel.value : (secVal||'');
-  } else {
-    if(secSel) secSel.style.display = 'none';
-    if(secDisplay){ secDisplay.style.display = ''; secDisplay.textContent = secVal || '(não definida)'; }
-    if(secEl) secEl.value = secVal;
-  }
+  if(secEl) secEl.value = secVal;
+  if(secDisplay) secDisplay.textContent = secVal || '(não definida)';
   // Título e botão
   document.querySelector('#ov-solicitacao h2').textContent = editId ? '✏️ Editar solicitação' : '📋 Solicitar viagem';
   abrir('ov-solicitacao');
@@ -4159,19 +3488,6 @@ function solSyncQtd() {
   // (o usuário pode listar só alguns nomes e ter um total maior)
 }
 
-// Ao trocar o veículo na solicitação, sugere o motorista vinculado
-// (só preenche se o campo estiver vazio — nunca apaga o que foi digitado)
-function solPrefillMotVinc() {
-  var vid = document.getElementById('sol-vei').value;
-  var campo = document.getElementById('sol-mot-nome');
-  if(!vid || !campo || campo.value.trim()) return;
-  var v = getV(vid);
-  if(v && v.motoristaId){
-    var m = getM(v.motoristaId);
-    if(m) campo.value = m.nome;
-  }
-}
-
 function confirmarSolicitacao() {
   var editId = document.getElementById('sol-id').value;
   var vid  = document.getElementById('sol-vei').value;
@@ -4188,7 +3504,6 @@ function confirmarSolicitacao() {
   if(qtd < pessoas.length) qtd = pessoas.length; // total nunca menor que nomes listados
   if(!_sessao) { alert('Você precisa estar logado.'); return; }
   if(!vid||!dest||!data) { alert('Preencha veículo, destino e data.'); return; }
-  if((isAdmin() || ehAutorizador()) && !sec) { alert('Selecione a SECRETARIA da viagem.'); return; }
   if(!hora) { alert('Informe a hora em que o motorista vai pegar o carro.'); return; }
   if(qtd < 1) { alert('Informe a quantidade de passageiros (mínimo 1).'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
@@ -4301,7 +3616,7 @@ function confirmarSolicitacaoLote(){
     var motNomeFinal = motManual || (mot ? mot.nome : '');
     var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
     if(isNaN(qtd)||qtd<0) qtd=0;
-    var sec = (isAdmin() || ehAutorizador()) ? (v.secretaria||'') : (_sessao.secretaria||'');
+    var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
     D.solicitacoes.push({
       id:uid_s(), vid:vid, motorista:motNomeFinal, destino:dest, data_viagem:data,
       hora_retirada:hora,
@@ -4324,20 +3639,6 @@ function aprovarSolicitacao(id) {
   s.aprovado_em = now().toISOString();
   salvar(); renderTudo();
   toast('✅ Viagem aprovada! Veículo liberado para saída.');
-}
-
-// Desfaz a APROVAÇÃO de uma solicitação (volta para pendente).
-// Usado pelo botão "❌ Cancelar aprovação" no detalhe do veículo.
-function cancelarSolicitacao(id) {
-  if(!isAdmin()){ toast('🚫 Apenas administradores podem cancelar aprovações.'); return; }
-  var s = getS(id);
-  if(!s){ toast('Solicitação não encontrada.'); return; }
-  confirmarAcao('↩️','Cancelar aprovação?','A solicitação volta para PENDENTE e o veículo deixa de estar liberado para saída.',function(){
-    s.status = 'pendente';
-    s.aprovado_em = null;
-    salvar(); renderTudo();
-    toast('↩️ Aprovação cancelada — solicitação voltou para pendente.');
-  });
 }
 
 function recusarSolicitacao(id) {
@@ -4767,14 +4068,14 @@ startCron();
     <div class="field">
       <label>Veículo *</label>
       <input type="text" id="sol-vei-busca" placeholder="🔍 Buscar placa ou nome (toda a frota)..." oninput="filtrarVeiSolic()" autocomplete="off" style="margin-bottom:5px;font-size:12px">
-      <select id="sol-vei" onchange="solPrefillMotVinc()"></select>
+      <select id="sol-vei"></select>
     </div>
     <div class="field"><label>Motorista</label><input type="text" id="sol-mot-nome" placeholder="Nome do motorista"></div>
     <div class="form-row">
       <div class="field"><label>Data da viagem *</label><input type="date" id="sol-data"></div>
       <div class="field"><label>Hora p/ pegar o carro *</label><input type="time" id="sol-hora-retirada"></div>
     </div>
-    <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><select id="sol-sec-select" style="display:none" onchange="document.getElementById('sol-sec').value=this.value"><option value="">— Selecione —</option></select><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
+    <div class="field"><label>Secretaria</label><input type="hidden" id="sol-sec"><div id="sol-sec-display" style="font-size:13px;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:8px;color:#374151">—</div></div>
     <div class="field"><label>Destino *</label><input type="text" id="sol-destino" placeholder="Ex: Guanambi, Salvador..."></div>
     <div class="form-row">
       <div class="field"><label>Qtd. de passageiros *</label><input type="number" id="sol-qtd-pass" min="1" step="1" value="1" oninput="solSyncQtd()"></div>
