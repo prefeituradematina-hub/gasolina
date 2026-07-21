@@ -1527,7 +1527,7 @@ function makeBtnVeiculo(v) {
     }
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
-  var labelBtn = LABEL[classeBtn] || LABEL[s] || classeBtn || 'Veículo';
+  var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
   var titleBtn = _tip ? ' title="'+_tip+'"' : '';
   return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
