@@ -2094,6 +2094,47 @@ function verVeiculo(vid) {
 }
 
 // ── SAÍDA ────────────────────────────────────────────────────
+// Agendamento ainda nao utilizado para este veiculo (o mais proximo no tempo)
+function getAgendamentoPendente(vid) {
+  if(!vid || !D.agendamentos) return null;
+  var cands = D.agendamentos.filter(function(a){
+    if(!a || a.cancelado || a.vid !== vid) return false;
+    if(a.usado) return false;
+    // ja existe movimentacao originada deste agendamento?
+    var jaSaiu = (D.movimentacoes||[]).some(function(m){ return m && m.agid === a.id; });
+    return !jaSaiu;
+  });
+  if(!cands.length) return null;
+  cands.sort(function(a,b){ return String(a.saida||'').localeCompare(String(b.saida||'')); });
+  return cands[0];
+}
+
+// Preenche o motorista no formulario: usa a lista quando o id existir,
+// senao abre o campo manual e escreve o nome
+function preencherMotorista(prefix, motid, motNome) {
+  var sel = document.getElementById(prefix+'-mot');
+  if(motid && sel){
+    for(var i=0;i<sel.options.length;i++){
+      if(sel.options[i].value === motid){ sel.value = motid; resetMotManual(prefix); return true; }
+    }
+  }
+  if(motNome && sel){
+    for(var j=0;j<sel.options.length;j++){
+      if(sel.options[j].text === motNome){ sel.value = sel.options[j].value; resetMotManual(prefix); return true; }
+    }
+  }
+  if(motNome){
+    var box = document.getElementById(prefix+'-mot-manual');
+    var inp = document.getElementById(prefix+'-mot-texto');
+    if(box && inp){
+      box.style.display = 'block';
+      inp.value = motNome;
+      return true;
+    }
+  }
+  return false;
+}
+
 function abrirSaida(vid) {
   popVeis(['s-vei']); popMots(['s-mot']); popSecs(['s-sec']);
   document.getElementById('s-saida').value = nowLocal();
@@ -2113,13 +2154,7 @@ function abrirSaida(vid) {
   var solAp = vid ? getSolicitacaoLiberada(vid) : null;
   if(solAp) {
     if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
-    if(solAp.motorista){
-      var motSel = document.getElementById('s-mot');
-      var achou = false;
-      for(var i=0;i<motSel.options.length;i++){ if(motSel.options[i].text===solAp.motorista){ motSel.value=motSel.options[i].value; achou=true; break; } }
-      // se o motorista era texto livre, mantém no campo manual quando existir
-      if(!achou){ var mm=document.getElementById('s-mot-manual'); if(mm) mm.value=solAp.motorista; }
-    }
+    if(solAp.motorista){ preencherMotorista('s', solAp.motid, solAp.motorista); }
     var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
     if(qp > 0) {
       document.getElementById('s-com-pass').value = '1';
@@ -2128,6 +2163,35 @@ function abrirSaida(vid) {
     }
     document.getElementById('s-solic').value = solAp.solicitante || '';
   }
+
+  // Sem solicitacao aprovada? Puxa os dados do AGENDAMENTO do secretario
+  var ag = (!solAp && vid) ? getAgendamentoPendente(vid) : null;
+  if(ag){
+    document.getElementById('ov-saida').dataset.agid = ag.id;
+    preencherMotorista('s', ag.motid, ag.motorista);
+    if(ag.itin) setDestValue('s', ag.itin);
+    if(ag.solic) document.getElementById('s-solic').value = ag.solic;
+    if(ag.sec){
+      var selSec = document.getElementById('s-sec');
+      if(selSec) selSec.value = ag.sec;
+    }
+    if(ag.saida)   document.getElementById('s-saida').value   = ag.saida;
+    if(ag.retorno) document.getElementById('s-retorno').value = ag.retorno;
+    if(ag.com_pass && ag.pass > 0){
+      document.getElementById('s-com-pass').value = '1';
+      document.getElementById('s-pass-row').style.display = 'block';
+      document.getElementById('s-pass').value = ag.pass;
+    }
+    var hint = document.getElementById('s-hint');
+    if(hint){
+      hint.style.display = 'block';
+      hint.innerHTML = '📅 Dados preenchidos pelo agendamento de <strong>' +
+                       (ag.motorista||'—') + '</strong> — ' + fmtDT(ag.saida);
+    }
+  } else {
+    document.getElementById('ov-saida').dataset.agid = '';
+  }
+
   abrir('ov-saida');
 }
 
@@ -2142,6 +2206,27 @@ function togglePassAgenda() {
   document.getElementById('ag-pass-row').style.display = v==='1'?'block':'none';
   if(v!=='1') document.getElementById('ag-pass').value='';
   hintVagas('ag');
+}
+
+function setDestValue(prefix, valor) {
+  var map = {s:'s-dest', ag:'ag-itin'};
+  var el = document.getElementById(map[prefix]);
+  if(!el || !valor) return;
+  if(el.tagName === 'SELECT'){
+    var achou = false;
+    for(var i=0;i<el.options.length;i++){
+      if(el.options[i].value === valor){ el.value = valor; achou = true; break; }
+    }
+    if(!achou){
+      el.value = 'Outro';
+      var box = document.getElementById(prefix+'-outro-box');
+      var inp = document.getElementById(prefix+'-outro');
+      if(box) box.style.display = 'block';
+      if(inp) inp.value = valor;
+    }
+  } else {
+    el.value = valor;
+  }
 }
 
 function getDestValue(prefix) {
@@ -2201,14 +2286,22 @@ function confirmarSaida() {
     m.pass=pass; m.com_pass=comPass;
     m.saida=saida; m.retorno=ret; m.destino=dest;
   } else {
+    var _agid = (document.getElementById('ov-saida').dataset.agid)||'';
     D.movimentacoes.push({
       id:uid('m'), vid:vid, motid:motid, motorista:motNome,
       solic:document.getElementById('s-solic').value.trim(),
       sec:document.getElementById('s-sec').value,
       km_saida:parseInt(document.getElementById('s-km').value)||null,
       km_entrada:null, pass:pass, com_pass:comPass,
-      saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[]
+      saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[],
+      agid:_agid||null
     });
+    // Agendamento consumido: nao pre-preenche mais nem duplica
+    if(_agid){
+      var _ag = getAg(_agid);
+      if(_ag){ _ag.usado = true; _ag.cancelado = true; }
+      document.getElementById('ov-saida').dataset.agid = '';
+    }
   }
   salvar(); fechar('ov-saida'); toast('Saída registrada!'); renderTudo();
 }
