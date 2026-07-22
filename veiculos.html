@@ -1119,8 +1119,7 @@ if(fbDB){
     }
     _fbInicializado = true;
     setFbStatus('sincronizado');
-    if(Date.now() - _fbUltimoPush < 4000) return;
-    if(window._entradaEmAndamento) return;
+    if(Date.now() - _fbUltimoPush < 1500) return; // ignora o eco da própria gravação
     D = normalizarFB(val);
     localStorage.setItem('frota_v3', JSON.stringify(D));
     if(_sessao && typeof renderTudo === 'function') renderTudo();
@@ -1312,9 +1311,8 @@ function getSolicitacaoLiberada(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
-    if(!s.data_viagem) return true;
-    return s.data_viagem.slice(0,10) === hoje;
+    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) &&
+           s.data_viagem && s.data_viagem.slice(0,10)===hoje;
   }) || null;
 }
 
@@ -1328,9 +1326,7 @@ function getSolicitacaoAprovadaFutura(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
   return D.solicitacoes.find(function(s){
-    if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
-    if(!s.data_viagem) return false;
-    return s.data_viagem.slice(0,10) > hoje;
+    return s.vid===vid && s.status==='aprovada' && !solicitacaoJaSaiu(s) && s.data_viagem && s.data_viagem.slice(0,10)>hoje;
   }) || null;
 }
 
@@ -1527,7 +1523,7 @@ function makeBtnVeiculo(v) {
     }
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
-  var labelBtn = LABEL[classeBtn] || LABEL[s];
+  var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
   var titleBtn = _tip ? ' title="'+_tip+'"' : '';
   return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
@@ -2188,10 +2184,9 @@ function abrirEntrada(movId) {
 
 function confirmarEntrada() {
   var hora = document.getElementById('e-hora').value;
-  if(!hora) { toast('Informe o horário de entrada.'); return; }
+  if(!hora) { alert('Informe o horário.'); return; }
   var m = getMov(_entradaId);
-  if(!m) { toast('Movimentação não encontrada.'); fechar('ov-entrada'); return; }
-  m.entrada_real = hora.length === 16 ? hora + ':00' : hora;
+  m.entrada_real = hora;
   m.km_entrada = parseInt(document.getElementById('e-km').value)||null;
   if(document.getElementById('e-abast').value) {
     D.abastecimentos.push({
@@ -2203,12 +2198,7 @@ function confirmarEntrada() {
       posto:document.getElementById('e-posto').value.trim()
     });
   }
-  window._entradaEmAndamento = true;
-  renderTudo();
-  fechar('ov-entrada');
-  toast('✅ Entrada registrada!');
-  salvar();
-  setTimeout(function(){ window._entradaEmAndamento = false; }, 5000);
+  salvar(); fechar('ov-entrada'); toast('Entrada registrada!'); renderTudo();
 }
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
@@ -2541,9 +2531,8 @@ function confirmarAcao(icone, titulo, texto, fn) {
 // ── RENDERS ──────────────────────────────────────────────────
 function renderSaidas() {
   var el = document.getElementById('lista-saidas');
-  var _movs = D.movimentacoes.filter(_podeVerRegistro);
-  if(!_movs.length) { el.innerHTML='<div class="empty">Nenhuma movimentação.</div>'; return; }
-  el.innerHTML = _movs.slice().reverse().map(function(m){
+  if(!D.movimentacoes.length) { el.innerHTML='<div class="empty">Nenhuma movimentação.</div>'; return; }
+  el.innerHTML = D.movimentacoes.slice().reverse().map(function(m){
     var v = getV(m.vid);
     var s = m.entrada_real?'guardado':(now()>new Date(m.retorno)?'irregular':'trabalhando');
     var km = m.km_entrada&&m.km_saida ? (m.km_entrada-m.km_saida).toLocaleString('pt-BR')+' km' : '';
@@ -2594,9 +2583,8 @@ function editarSaida(id) {
 
 function renderAgendamentos() {
   var el = document.getElementById('lista-agendamentos');
-  var _agends = D.agendamentos.filter(_podeVerRegistro);
-  var ativos = _agends.filter(function(a){return !a.cancelado;});
-  var canc   = _agends.filter(function(a){return a.cancelado;});
+  var ativos = D.agendamentos.filter(function(a){return !a.cancelado;});
+  var canc   = D.agendamentos.filter(function(a){return a.cancelado;});
   if(!ativos.length && !canc.length) { el.innerHTML='<div class="empty">Nenhum agendamento.</div>'; return; }
   var html = ativos.map(function(a){
     var v = getV(a.vid);
@@ -2658,9 +2646,8 @@ function renderMotoristas() {
 
 function renderManutencao() {
   var el = document.getElementById('lista-manutencao');
-  var _manut = D.manutencoes.filter(_podeVerRegistro);
-  if(!_manut.length) { el.innerHTML='<div class="empty">Nenhuma manutenção.</div>'; return; }
-  var prox = _manut.filter(function(m){return m.proxdata && diasAte(m.proxdata)<=30;});
+  if(!D.manutencoes.length) { el.innerHTML='<div class="empty">Nenhuma manutenção.</div>'; return; }
+  var prox = D.manutencoes.filter(function(m){return m.proxdata && diasAte(m.proxdata)<=30;});
   var html = prox.length?'<div class="alerta amarelo" style="margin-bottom:8px">⚠ '+prox.length+' revisão(ões) nos próximos 30 dias</div>':'';
   html += D.manutencoes.slice().sort(function(a,b){return b.data.localeCompare(a.data);}).map(function(m){
     var v = getV(m.vid);
@@ -2735,7 +2722,7 @@ function gerarRel() {
   var fim = document.getElementById('rel-fim').value;
   var sec = document.getElementById('rel-sec').value;
   var vid = document.getElementById('rel-vei').value;
-  var rows = D.movimentacoes.filter(_podeVerRegistro).filter(function(m){
+  var rows = D.movimentacoes.filter(function(m){
     if(ini && m.saida < ini) return false;
     if(fim && m.saida > fim+'T23:59') return false;
     if(vid && m.vid !== vid) return false;
@@ -2769,7 +2756,7 @@ function gerarRel() {
 
 function exportCSV() {
   var header = 'Placa,Motorista,Saída,Retorno,Destino,Km saída,Km entrada,Km percorrido,Passageiros\n';
-  var body = D.movimentacoes.filter(_podeVerRegistro).map(function(m){
+  var body = D.movimentacoes.map(function(m){
     var v=getV(m.vid); var km=m.km_entrada&&m.km_saida?m.km_entrada-m.km_saida:'';
     return [(v?v.placa:''),m.motorista,fmtDT(m.saida),fmtDT(m.entrada_real||''),
       (m.destino||''),(m.km_saida||''),(m.km_entrada||''),km,(m.com_pass?m.pass:0)].join(',');
@@ -2782,14 +2769,14 @@ function exportCSV() {
 }
 
 function renderIndicadores() {
-  var movC = D.movimentacoes.filter(function(m){return m.entrada_real && _podeVerRegistro(m);});
+  var movC = D.movimentacoes.filter(function(m){return m.entrada_real;});
   var totalKm = movC.reduce(function(s,m){return s+(m.km_entrada&&m.km_saida?m.km_entrada-m.km_saida:0);},0);
   var kmMed = movC.length ? Math.round(totalKm/movC.length) : 0;
   var ab = D.abastecimentos;
   var totalL = ab.reduce(function(s,a){return s+a.litros;},0);
   var totalR = ab.reduce(function(s,a){return s+a.valor;},0);
   var eff = totalL>0?(totalKm/totalL).toFixed(1):'—';
-  var irr = D.movimentacoes.filter(function(m){return !m.entrada_real&&now()>new Date(m.retorno)&&_podeVerRegistro(m);}).length;
+  var irr = D.movimentacoes.filter(function(m){return !m.entrada_real&&now()>new Date(m.retorno);}).length;
   document.getElementById('kpi-grid').innerHTML =
     kpiCard('Total veículos',D.veiculos.length,'')+
     kpiCard('Viagens concluídas',movC.length,'')+
@@ -3246,16 +3233,6 @@ function podeVerVeiculo(v) {
   if(veTudo()) return true;
   if(!_sessao) return false;
   return v.secretaria === _sessao.secretaria || v.compartilhado === true;
-}
-function _podeVerRegistro(reg) {
-  if(!isSecretario()) return true;
-  if(!_sessao) return false;
-  var minha = (_sessao.secretaria||'').trim().toLowerCase();
-  if(!minha) return true;
-  var s = (reg.sec||reg.secretaria||'').trim().toLowerCase();
-  if(s) return s === minha;
-  if(reg.vid){ var v=getV(reg.vid); if(v) return (v.secretaria||'').trim().toLowerCase()===minha; }
-  return false;
 }
 
 function aplicarPermissoes() {
