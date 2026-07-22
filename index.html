@@ -2870,7 +2870,6 @@
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
       <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
-      <button class="btn-logout" style="background:linear-gradient(135deg,#10b981,#059669)" onclick="window.open('https://vx.app.br/matina/login/','_blank')" title="Controle de Diárias">📋 DIÁRIAS</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -4410,27 +4409,17 @@
   
   // ── SYNC UNIFICADO: frota/dados → combustível ──────────────────
   let _frotaMotoristas = [];
-
   function _normVeiFrota(v, key) {
     const p = (v.placa||'').toUpperCase().replace(/-/g,'');
     const placa = p.length >= 7 ? p.slice(0,3)+'-'+p.slice(3) : p;
-    return {
-      _key: key, id: v.id||key, placa,
-      modelo:       v.descricao || v.modelo || '',
-      motorista:    v.motoristaPadrao || v.motorista || '',
-      cpfMotorista: v.cpfMotoristaPadrao || v.cpfMotorista || '',
-      combustivel:  v.combustivel || 'FLEX',
-      secretaria:   v.secretaria || '',
-      ano:          v.ano || '',
-      foraGaragem:  v.foraGaragem || 0,
-      manutencao:   v.manutencao  || 0,
-      mediaKmL:     v.mediaKmL    || 0,
-      cor:          v.cor || 'branco',
-      tipo:         v.tipo || '🚗'
-    };
+    return { _key:key, id:v.id||key, placa,
+      modelo:v.descricao||v.modelo||'', motorista:v.motoristaPadrao||v.motorista||'',
+      cpfMotorista:v.cpfMotoristaPadrao||v.cpfMotorista||'',
+      combustivel:v.combustivel||'FLEX', secretaria:v.secretaria||'', ano:v.ano||'',
+      foraGaragem:v.foraGaragem||0, manutencao:v.manutencao||0,
+      mediaKmL:v.mediaKmL||0, cor:v.cor||'branco', tipo:v.tipo||'🚗' };
   }
-
-  // Listener principal: frota/dados (veículos + motoristas em tempo real)
+  // Listener principal: frota/dados em tempo real
   db.ref('frota/dados').on('value', function(snap) {
     const frota = snap.val();
     if (!frota) return;
@@ -4447,34 +4436,25 @@
       _syncDatalistMotoristas();
     }
   });
-
-  // Fallback: nó próprio veiculos (caso frota/dados vazio)
+  // Fallback: nó próprio (caso frota/dados vazio)
   db.ref('veiculos').on('value', function(snap) {
     if (veiculos.length > 0) return;
     const tmp = [];
     snap.forEach(function(item) {
-      const v = item.val(); v.id = v.id || item.key;
-      v.modelo = v.modelo || v.descricao || '';
-      tmp.push(v);
+      const v = item.val(); v.id = v.id||item.key; v.modelo = v.modelo||v.descricao||''; tmp.push(v);
     });
     if (tmp.length > 0) veiculos = tmp;
   });
-
-  // Datalist de autocompletar motoristas da frota
   function _syncDatalistMotoristas() {
     let dl = document.getElementById('_dl_mot_frota');
     if (!dl) {
-      dl = document.createElement('datalist');
-      dl.id = '_dl_mot_frota';
+      dl = document.createElement('datalist'); dl.id = '_dl_mot_frota';
       document.body.appendChild(dl);
       ['f-mot','diversas-motorista','vei-motorista','edit-abast-motorista'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.setAttribute('list','_dl_mot_frota');
+        const el = document.getElementById(id); if (el) el.setAttribute('list','_dl_mot_frota');
       });
     }
-    dl.innerHTML = _frotaMotoristas.map(m =>
-      `<option value="${(m.nome||'').toUpperCase()}"></option>`
-    ).join('');
+    dl.innerHTML = _frotaMotoristas.map(m => `<option value="${(m.nome||'').toUpperCase()}"></option>`).join('');
   }
   // ────────────────────────────────────────────────────────────────
   
@@ -5090,7 +5070,7 @@
     }
     
     // Calcular gasto após último reset
-    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    const ultimoReset = _parseReset(usuarioData.ultimoResetLimite);
     
     const gastoAtualPosto = cache
       .filter(x => {
@@ -5314,7 +5294,7 @@
           limite: limiteTotal,
           limiteVictor: limiteVictor,
           limiteMatina: limiteMatina,
-          ultimoResetLimite: user.ultimoResetLimite || 0, // ← CRÍTICO! Estava faltando
+          ultimoResetLimite: _parseReset(user.ultimoResetLimite), // ← CRÍTICO! Estava faltando
           secretariaVinculada: user.secretariaVinculada || "",
           postoVinculado: user.postoVinculado || "",
           postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
@@ -5859,14 +5839,24 @@
         .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO && x.km > 0)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
       if (ultimoAbast && dados.km < ultimoAbast.km) {
-        // Aviso mas NÃO bloqueia — pode ser reset de odômetro ou troca de veículo
-        console.warn(`⚠️ KM menor que o último: ${dados.km} < ${ultimoAbast.km}`);
+        erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
       }
     }
     
     return erros;
   }
   
+  // Normaliza ultimoResetLimite que pode vir como objeto {sec:ts} ou número
+  function _parseReset(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'object') {
+      const vals = Object.values(val).filter(v => typeof v === 'number');
+      return vals.length ? Math.max(...vals) : 0;
+    }
+    return parseInt(val) || 0;
+  }
+
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
     if (userRole !== 'secretarios') return { bloqueado: false };
@@ -6119,7 +6109,7 @@
         console.log('');
         
         // Calcular gasto após último reset
-        const ultimoReset = usuarioData.ultimoResetLimite || 0;
+        const ultimoReset = _parseReset(usuarioData.ultimoResetLimite);
         
         console.log('Último reset:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca');
         
@@ -6267,7 +6257,6 @@
         horario: horario
       });
 
-      // 📊 Atualizar média KM/L na frota (5 últimos abastecimentos)
       if (dados.km > 0 && dados.litro > 0 && status === STATUS.AUTORIZADO) {
         atualizarMediaKmL(dados.placa).catch(() => {});
       }
@@ -6349,7 +6338,7 @@
     console.log('Usuário secretário:', secretarioEncontrado.id);
     
     // ⚠️ CORREÇÃO CRÍTICA: Buscar data do último reset
-    const ultimoReset = secretarioEncontrado.ultimoResetLimite || 0;
+    const ultimoReset = _parseReset(secretarioEncontrado.ultimoResetLimite);
     console.log('Último reset:', ultimoReset ? new Date(ultimoReset).toLocaleString('pt-BR') : 'Nunca');
     console.log('Timestamp reset:', ultimoReset);
     console.log('');
@@ -7667,7 +7656,7 @@
     // GASTOS: Secretários veem após reset, outros veem mês atual
     const hoje = new Date();
     const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    const ultimoReset = _parseReset(usuarioData.ultimoResetLimite);
     
     console.log('═══════════════════════════════════════════════════════════');
     console.log('📊 DEBUG DASHBOARD - atualizarEstatisticas');
@@ -8079,7 +8068,7 @@
     
     if (userRole === 'secretarios') {
       // Calcular gastos após último reset
-      const ultimoReset = usuarioData.ultimoResetLimite || 0;
+      const ultimoReset = _parseReset(usuarioData.ultimoResetLimite);
       
       const gastosMes = cache.filter(x => {
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
@@ -8990,7 +8979,7 @@
   function atualizarGraficos() {
     const hoje = new Date();
     const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    const ultimoReset = _parseReset(usuarioData.ultimoResetLimite);
     
     let dadosGrafico;
     
@@ -9012,7 +9001,7 @@
             const u = userSnap.val();
             if (u.role === 'secretarios' && u.secretariaVinculada) {
               const sec = u.secretariaVinculada;
-              const reset = u.ultimoResetLimite || 0;
+              const reset = _parseReset(u.ultimoResetLimite);
               // Usar o reset mais recente da secretaria
               if (!resetsSecretarias[sec] || reset > resetsSecretarias[sec]) {
                 resetsSecretarias[sec] = reset;
@@ -10460,7 +10449,7 @@
           const userId = userSnap.key;
           
           if (userData.role === 'secretarios') {
-            const ultimoResetAtual = userData.ultimoResetLimite || 0;
+            const ultimoResetAtual = _parseReset(userData.ultimoResetLimite);
             updates[`usuarios/${userId}/ultimoResetLimite`] = dia26Fim;
             totalCorrigidos++;
             
@@ -10716,7 +10705,7 @@
           const userId = userSnap.key;
           
           if (userData.role === 'secretarios') {
-            const ultimoReset = userData.ultimoResetLimite || 0;
+            const ultimoReset = _parseReset(userData.ultimoResetLimite);
             updates[`usuarios/${userId}/ultimoResetLimite`] = fimDeHoje;
             totalSecretarios++;
             
@@ -11203,7 +11192,7 @@
         limite: limiteTotal,
         limiteVictor: limiteVictor,
         limiteMatina: limiteMatina,
-        ultimoResetLimite: user.ultimoResetLimite || 0, // ← CRÍTICO! Estava faltando
+        ultimoResetLimite: _parseReset(user.ultimoResetLimite), // ← CRÍTICO! Estava faltando
         secretariaVinculada: user.secretariaVinculada || "",
         postoVinculado: user.postoVinculado || "",
         postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
@@ -13917,7 +13906,7 @@
           const u = userSnap.val();
           if (u.role === 'secretarios' && u.secretariaVinculada) {
             const sec = u.secretariaVinculada;
-            const reset = u.ultimoResetLimite || 0;
+            const reset = _parseReset(u.ultimoResetLimite);
             // Usar o reset mais recente da secretaria
             if (!resetsSecretarias[sec] || reset > resetsSecretarias[sec]) {
               resetsSecretarias[sec] = reset;
@@ -14123,7 +14112,7 @@
           const sec = u.secretariaVinculada;
           const limV = u.limiteVictor || 0;
           const limM = u.limiteMatina || 0;
-          const ultimoReset = u.ultimoResetLimite || 0;
+          const ultimoReset = _parseReset(u.ultimoResetLimite);
           
           console.log(`  Secretário encontrado: ${sec} (Victor: R$ ${limV}, Matina: R$ ${limM}, Reset: ${ultimoReset > 0 ? new Date(ultimoReset).toLocaleDateString('pt-BR') : 'Nunca'})`);
           
@@ -14546,7 +14535,7 @@
     const limite = vipData.limite;
     
     // Pegar timestamp do último reset (se existir)
-    const timestampReset = vipData.ultimoResetLimite || 0;
+    const timestampReset = _parseReset(vipData.ultimoResetLimite);
     
     console.log('🔍 Verificando limite VIP:');
     console.log('  • Pessoa:', vipData.nome);
@@ -14641,7 +14630,7 @@
       const semLimite = pessoa.semLimite || false;
       
       // Pegar timestamp do último reset (se existir)
-      const timestampReset = pessoa.ultimoResetLimite || 0;
+      const timestampReset = _parseReset(pessoa.ultimoResetLimite);
       
       console.log('');
       console.log('═══════════════════════════════════════════════');
@@ -15255,12 +15244,11 @@
 
 
 
-  // ── ATUALIZAR MÉDIA KM/L nos 5 últimos abastecimentos ──────────
+  // ── ATUALIZAR MÉDIA KM/L (após abastecimento) ──────────────────
   async function atualizarMediaKmL(placa) {
     if (!placa) return;
     try {
-      const snap = await db.ref('abastecimentos')
-        .orderByChild('placa').equalTo(placa).once('value');
+      const snap = await db.ref('abastecimentos').orderByChild('placa').equalTo(placa).once('value');
       const lista = [];
       snap.forEach(s => {
         const a = s.val();
@@ -15278,18 +15266,17 @@
       if (!cnt) return;
       const media = parseFloat((soma/cnt).toFixed(2));
       // Salvar no nó veiculos
-      const vSnap = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
-      vSnap.forEach(v => db.ref('veiculos/'+v.key+'/mediaKmL').set(media));
-      // Salvar também na frota (sync bidirecional)
-      const fSnap = await db.ref('frota/dados/veiculos').once('value');
-      if (fSnap.exists()) {
+      const vs = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
+      vs.forEach(v => db.ref('veiculos/'+v.key+'/mediaKmL').set(media));
+      // Sync com frota
+      const fs = await db.ref('frota/dados/veiculos').once('value');
+      if (fs.exists()) {
         const pn = placa.replace(/-/g,'').toUpperCase();
-        fSnap.forEach(v => {
+        fs.forEach(v => {
           if ((v.val().placa||'').replace(/-/g,'').toUpperCase()===pn)
             db.ref('frota/dados/veiculos/'+v.key+'/mediaKmL').set(media);
         });
       }
-      console.log('📊 Média KM/L:', placa, media);
     } catch(e) { console.warn('⚠️ atualizarMediaKmL:', e); }
   }
   // ────────────────────────────────────────────────────────────────
@@ -15416,7 +15403,7 @@
       let gastoMes = 0;
       
       // Pegar timestamp do último reset (se existir)
-      const timestampReset = vip.ultimoResetLimite || 0;
+      const timestampReset = _parseReset(vip.ultimoResetLimite);
       
       console.log('');
       console.log('═════════════════════════════════════════════════');
