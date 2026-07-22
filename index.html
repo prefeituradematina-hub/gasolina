@@ -2870,6 +2870,7 @@
         <span class="notification-count" id="notification-count" style="display:none;">0</span>
       </div>
       <button id="btn-inicio-portal" class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button class="btn-logout" style="background:linear-gradient(135deg,#10b981,#059669)" onclick="window.open('https://vx.app.br/matina/login/','_blank')" title="Controle de Diárias">📋 DIÁRIAS</button>
       <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
     </div>
   </div>
@@ -4407,18 +4408,29 @@
     }
   });
   
-  // ── SYNC frota ↔ combustível (S10: motoristas + datalist) ─────
+  // ── SYNC UNIFICADO: frota/dados → combustível ──────────────────
   let _frotaMotoristas = [];
+
   function _normVeiFrota(v, key) {
     const p = (v.placa||'').toUpperCase().replace(/-/g,'');
     const placa = p.length >= 7 ? p.slice(0,3)+'-'+p.slice(3) : p;
-    return { _key:key, id:v.id||key, placa,
-      modelo:v.descricao||v.modelo||'', motorista:v.motoristaPadrao||v.motorista||'',
-      cpfMotorista:v.cpfMotoristaPadrao||v.cpfMotorista||'',
-      combustivel:v.combustivel||'FLEX', secretaria:v.secretaria||'', ano:v.ano||'',
-      foraGaragem:v.foraGaragem||0, manutencao:v.manutencao||0,
-      mediaKmL:v.mediaKmL||0, cor:v.cor||'branco', tipo:v.tipo||'🚗' };
+    return {
+      _key: key, id: v.id||key, placa,
+      modelo:       v.descricao || v.modelo || '',
+      motorista:    v.motoristaPadrao || v.motorista || '',
+      cpfMotorista: v.cpfMotoristaPadrao || v.cpfMotorista || '',
+      combustivel:  v.combustivel || 'FLEX',
+      secretaria:   v.secretaria || '',
+      ano:          v.ano || '',
+      foraGaragem:  v.foraGaragem || 0,
+      manutencao:   v.manutencao  || 0,
+      mediaKmL:     v.mediaKmL    || 0,
+      cor:          v.cor || 'branco',
+      tipo:         v.tipo || '🚗'
+    };
   }
+
+  // Listener principal: frota/dados (veículos + motoristas em tempo real)
   db.ref('frota/dados').on('value', function(snap) {
     const frota = snap.val();
     if (!frota) return;
@@ -4426,8 +4438,7 @@
       const raw = Array.isArray(frota.veiculos)
         ? frota.veiculos.map((v,i) => _normVeiFrota(v, v.id||('v'+i)))
         : Object.entries(frota.veiculos).map(([k,v]) => _normVeiFrota(v, k));
-      const lista = raw.filter(v => v.placa);
-      if (lista.length > 0) veiculos = lista;
+      veiculos = raw.filter(v => v.placa);
     }
     if (frota.motoristas) {
       _frotaMotoristas = (Array.isArray(frota.motoristas)
@@ -4436,23 +4447,29 @@
       _syncDatalistMotoristas();
     }
   });
-  // Fallback: nó próprio veiculos
+
+  // Fallback: nó próprio veiculos (caso frota/dados vazio)
   db.ref('veiculos').on('value', function(snap) {
     if (veiculos.length > 0) return;
     const tmp = [];
     snap.forEach(function(item) {
-      const v = item.val(); v.id = v.id||item.key; v.modelo = v.modelo||v.descricao||''; tmp.push(v);
+      const v = item.val(); v.id = v.id || item.key;
+      v.modelo = v.modelo || v.descricao || '';
+      tmp.push(v);
     });
     if (tmp.length > 0) veiculos = tmp;
   });
-  // S10: autocompletar motoristas nos campos de abastecimento
+
+  // Datalist de autocompletar motoristas da frota
   function _syncDatalistMotoristas() {
     let dl = document.getElementById('_dl_mot_frota');
     if (!dl) {
-      dl = document.createElement('datalist'); dl.id = '_dl_mot_frota';
+      dl = document.createElement('datalist');
+      dl.id = '_dl_mot_frota';
       document.body.appendChild(dl);
       ['f-mot','diversas-motorista','vei-motorista','edit-abast-motorista'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.setAttribute('list','_dl_mot_frota');
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('list','_dl_mot_frota');
       });
     }
     dl.innerHTML = _frotaMotoristas.map(m =>
@@ -5842,7 +5859,8 @@
         .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO && x.km > 0)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
       if (ultimoAbast && dados.km < ultimoAbast.km) {
-        erros.push(`❌ KM ATUAL (${dados.km}) NÃO PODE SER MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})`);
+        // Aviso mas NÃO bloqueia — pode ser reset de odômetro ou troca de veículo
+        console.warn(`⚠️ KM menor que o último: ${dados.km} < ${ultimoAbast.km}`);
       }
     }
     
@@ -6248,6 +6266,11 @@
         timestamp: Date.now(),
         horario: horario
       });
+
+      // 📊 Atualizar média KM/L na frota (5 últimos abastecimentos)
+      if (dados.km > 0 && dados.litro > 0 && status === STATUS.AUTORIZADO) {
+        atualizarMediaKmL(dados.placa).catch(() => {});
+      }
   
       mostrarNotificacao(
         status === STATUS.AUTORIZADO
@@ -15230,6 +15253,46 @@
   // ═══════════════════════════════════════════════════════════════════════
 
 
+
+
+  // ── ATUALIZAR MÉDIA KM/L nos 5 últimos abastecimentos ──────────
+  async function atualizarMediaKmL(placa) {
+    if (!placa) return;
+    try {
+      const snap = await db.ref('abastecimentos')
+        .orderByChild('placa').equalTo(placa).once('value');
+      const lista = [];
+      snap.forEach(s => {
+        const a = s.val();
+        if ((a.status==='AUTORIZADO'||a.status==='autorizado') && a.km>0 && a.litro>0)
+          lista.push({km:a.km, litro:a.litro, ts:a.timestamp||0});
+      });
+      if (lista.length < 2) return;
+      lista.sort((a,b) => b.ts - a.ts);
+      const rec = lista.slice(0,6);
+      let soma=0, cnt=0;
+      for (let i=0; i<rec.length-1 && cnt<5; i++) {
+        const kmp = rec[i].km - rec[i+1].km;
+        if (kmp>0 && rec[i].litro>0) { soma += kmp/rec[i].litro; cnt++; }
+      }
+      if (!cnt) return;
+      const media = parseFloat((soma/cnt).toFixed(2));
+      // Salvar no nó veiculos
+      const vSnap = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
+      vSnap.forEach(v => db.ref('veiculos/'+v.key+'/mediaKmL').set(media));
+      // Salvar também na frota (sync bidirecional)
+      const fSnap = await db.ref('frota/dados/veiculos').once('value');
+      if (fSnap.exists()) {
+        const pn = placa.replace(/-/g,'').toUpperCase();
+        fSnap.forEach(v => {
+          if ((v.val().placa||'').replace(/-/g,'').toUpperCase()===pn)
+            db.ref('frota/dados/veiculos/'+v.key+'/mediaKmL').set(media);
+        });
+      }
+      console.log('📊 Média KM/L:', placa, media);
+    } catch(e) { console.warn('⚠️ atualizarMediaKmL:', e); }
+  }
+  // ────────────────────────────────────────────────────────────────
 
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
