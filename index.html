@@ -41,7 +41,8 @@
 <!-- Firebase e Chart.js -->
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js sem referência a source map (evita warning 404 no console) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -4407,59 +4408,16 @@
     }
   });
   
-  // ── SYNC frota ↔ combustível (S10: motoristas + datalist) ─────
-  let _frotaMotoristas = [];
-  function _normVeiFrota(v, key) {
-    const p = (v.placa||'').toUpperCase().replace(/-/g,'');
-    const placa = p.length >= 7 ? p.slice(0,3)+'-'+p.slice(3) : p;
-    return { _key:key, id:v.id||key, placa,
-      modelo:v.descricao||v.modelo||'', motorista:v.motoristaPadrao||v.motorista||'',
-      cpfMotorista:v.cpfMotoristaPadrao||v.cpfMotorista||'',
-      combustivel:v.combustivel||'FLEX', secretaria:v.secretaria||'', ano:v.ano||'',
-      foraGaragem:v.foraGaragem||0, manutencao:v.manutencao||0,
-      mediaKmL:v.mediaKmL||0, cor:v.cor||'branco', tipo:v.tipo||'🚗' };
-  }
-  db.ref('frota/dados').on('value', function(snap) {
-    const frota = snap.val();
-    if (!frota) return;
-    if (frota.veiculos) {
-      const raw = Array.isArray(frota.veiculos)
-        ? frota.veiculos.map((v,i) => _normVeiFrota(v, v.id||('v'+i)))
-        : Object.entries(frota.veiculos).map(([k,v]) => _normVeiFrota(v, k));
-      const lista = raw.filter(v => v.placa);
-      if (lista.length > 0) veiculos = lista;
-    }
-    if (frota.motoristas) {
-      _frotaMotoristas = (Array.isArray(frota.motoristas)
-        ? frota.motoristas : Object.values(frota.motoristas)
-      ).filter(m => m && m.nome);
-      _syncDatalistMotoristas();
-    }
-  });
-  // Fallback: nó próprio veiculos
-  db.ref('veiculos').on('value', function(snap) {
-    if (veiculos.length > 0) return;
-    const tmp = [];
-    snap.forEach(function(item) {
-      const v = item.val(); v.id = v.id||item.key; v.modelo = v.modelo||v.descricao||''; tmp.push(v);
+  db.ref('veiculos').on('value', snap => {
+    veiculos = [];
+    snap.forEach(item => {
+      let v = item.val();
+      v.id = v.id || item.key;
+      // Compatibilidade com o Controle de Frota (que usa "descricao")
+      v.modelo = v.modelo || v.descricao || '';
+      veiculos.push(v);
     });
-    if (tmp.length > 0) veiculos = tmp;
   });
-  // S10: autocompletar motoristas nos campos de abastecimento
-  function _syncDatalistMotoristas() {
-    let dl = document.getElementById('_dl_mot_frota');
-    if (!dl) {
-      dl = document.createElement('datalist'); dl.id = '_dl_mot_frota';
-      document.body.appendChild(dl);
-      ['f-mot','diversas-motorista','vei-motorista','edit-abast-motorista'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.setAttribute('list','_dl_mot_frota');
-      });
-    }
-    dl.innerHTML = _frotaMotoristas.map(m =>
-      `<option value="${(m.nome||'').toUpperCase()}"></option>`
-    ).join('');
-  }
-  // ────────────────────────────────────────────────────────────────
   
   // ── MOTORISTAS COMPARTILHADOS (cadastro feito no Controle de Frota) ──
   db.ref('motoristas').on('value', snap => {
@@ -5851,35 +5809,55 @@
   
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
-    if (userRole !== 'secretarios') return { bloqueado: false };
+
+    // Aceita variações de grafia do perfil (secretario/secretarios/acentuado)
+    const _r = (userRole || '').toLowerCase()
+                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const ehSecretario = _r.indexOf('secretari') === 0;
+    if (!ehSecretario) {
+      console.log('[Garagem] sem bloqueio — perfil "' + userRole + '" nao e secretario');
+      return { bloqueado: false };
+    }
+
+    // Normaliza placa (remove hífen/espaço) — frota e combustível gravam diferente
+    const _norm = p => (p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const placaN = _norm(placa);
 
     try {
-      const [veiSnap, snap] = await Promise.all([
-        db.ref('veiculos').once('value'),
-        db.ref('frota/dados').once('value')
-      ]);
+      const snap  = await db.ref('frota/dados').once('value');
       const frota = snap.val();
-      if (!frota) return { bloqueado: false };
+      if (!frota || !frota.veiculos) return { bloqueado: false };
 
-      // Veículos agora vivem no nó compartilhado; mantém fallback para o blob antigo
-      const veiculosNo    = veiSnap.val() || frota.veiculos || {};
-      const veiculos      = Object.values(veiculosNo);
-      const movimentacoes = Object.values(frota.movimentacoes || {});
-      const placaUp = placa.toUpperCase().trim();
+      // Buscar na FROTA preservando a chave Firebase (movimentações usam esse id)
+      const entradas = Array.isArray(frota.veiculos)
+        ? frota.veiculos.map((v, idx) => [String(idx), v])
+        : Object.entries(frota.veiculos);
 
-      const veiculo = veiculos.find(v => (v.placa||'').toUpperCase().trim() === placaUp);
+      let veiculo = null, chaveFB = null;
+      for (const [k, v] of entradas) {
+        if (v && _norm(v.placa) === placaN) { veiculo = v; chaveFB = k; break; }
+      }
       if (!veiculo) return { bloqueado: false };
 
-      // Veículo em manutenção ou guardado fora → não bloqueia por irregularidade
+      // Em manutenção ou guardado fora da garagem → não bloqueia
       if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
+
+      // Aceita tanto o id interno quanto a chave do Firebase
+      const ids = [veiculo.id, chaveFB].filter(Boolean);
+
+      const movimentacoes = Array.isArray(frota.movimentacoes)
+        ? frota.movimentacoes
+        : Object.values(frota.movimentacoes || {});
 
       const agora = Date.now();
       const irregular = movimentacoes.find(m =>
-        m.vid === veiculo.id &&
+        m && ids.indexOf(m.vid) > -1 &&
         !m.entrada_real &&
         m.retorno &&
         agora > new Date(m.retorno).getTime()
       );
+
+      console.log('[Garagem]', placaN, '| vid:', ids.join('/'), '| irregular:', !!irregular);
 
       if (irregular) {
         return {
@@ -5887,9 +5865,8 @@
           motivo: 'Este veículo está em situação irregular  -  Procure a Garagem Central.'
         };
       }
-
       return { bloqueado: false };
-    } catch(e) {
+    } catch (e) {
       console.warn('⚠️ Erro ao verificar garagem:', e);
       return { bloqueado: false };
     }
