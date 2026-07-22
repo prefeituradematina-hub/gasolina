@@ -914,21 +914,18 @@ const COR   = {guardado:'#1D9E75',trabalhando:'#EF9F27',irregular:'#E24B4A',ause
 
 // ── PADRÃO ÚNICO DE PLACA (igual no Controle de Combustível) ──
 // Armazena canônico: MAIÚSCULO, sem separadores. Ex.: ABC1234 / ABC1D23
-// Exibe formatado: padrão antigo com hífen (ABC-1234), Mercosul sem.
+// Exibicao tambem sem hifen — padrao unico em todo o sistema.
 function normPlaca(p){ return (p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-function fmtPlaca(p){
-  var n = normPlaca(p);
-  return /^[A-Z]{3}[0-9]{4}$/.test(n) ? n.slice(0,3)+'-'+n.slice(3) : n;
-}
+function fmtPlaca(p){ return normPlaca(p); }   // sem hífen em todo o sistema
 function mascaraPlaca(el){ el.value = normPlaca(el.value).slice(0,7); }
 
 // ── DADOS PADRÃO ─────────────────────────────────────────────
 const DEF = {
   veiculos:[
-    {id:'v1',placa:'ABC-1234',descricao:'Fiat Uno Branco',secretaria:'Secretaria Municipal de Saúde',ano:'2020',capacidade:4,combustivel:'Flex',ipva:'2026-12-31',licenc:'2026-12-31',seguro:'2027-01-01',revKm:45000,escalas:[{id:'e1',nome:'Semana',dias:[1,2,3,4,5],ini:'07:00',fim:'17:00',cor:'branco'}]},
-    {id:'v2',placa:'DEF-5678',descricao:'Fiat Strada Prata',secretaria:'Secretaria Municipal de Educação',ano:'2019',capacidade:4,combustivel:'Flex',ipva:'2026-08-30',licenc:'2026-09-15',seguro:'2026-07-01',revKm:68000,escalas:[{id:'e2',nome:'Semana',dias:[1,2,3,4,5],ini:'06:00',fim:'18:00',cor:'branco'}]},
-    {id:'v3',placa:'GHI-9012',descricao:'VW Gol Preto',secretaria:'Secretaria de Infraestrutura e Serviços Públicos',ano:'2021',capacidade:4,combustivel:'Flex',ipva:'2027-01-31',licenc:'2027-01-31',seguro:'2027-02-01',revKm:32000,escalas:[{id:'e3',nome:'Semana',dias:[1,2,3,4,5],ini:'07:00',fim:'17:00',cor:'branco'},{id:'e4',nome:'Sábado',dias:[6],ini:'07:00',fim:'13:00'}]},
-    {id:'v4',placa:'JKL-3456',descricao:'Toyota Hilux Branca',secretaria:'Secretaria Municipal de Administração e Finanças',ano:'2022',capacidade:5,combustivel:'Diesel',ipva:'2026-11-30',licenc:'2026-11-30',seguro:'2026-12-01',revKm:55000,escalas:[{id:'e5',nome:'Semana',dias:[1,2,3,4,5],ini:'08:00',fim:'17:00',cor:'branco'}]}
+    {id:'v1',placa:'ABC1234',descricao:'Fiat Uno Branco',secretaria:'Secretaria Municipal de Saúde',ano:'2020',capacidade:4,combustivel:'Flex',ipva:'2026-12-31',licenc:'2026-12-31',seguro:'2027-01-01',revKm:45000,escalas:[{id:'e1',nome:'Semana',dias:[1,2,3,4,5],ini:'07:00',fim:'17:00',cor:'branco'}]},
+    {id:'v2',placa:'DEF5678',descricao:'Fiat Strada Prata',secretaria:'Secretaria Municipal de Educação',ano:'2019',capacidade:4,combustivel:'Flex',ipva:'2026-08-30',licenc:'2026-09-15',seguro:'2026-07-01',revKm:68000,escalas:[{id:'e2',nome:'Semana',dias:[1,2,3,4,5],ini:'06:00',fim:'18:00',cor:'branco'}]},
+    {id:'v3',placa:'GHI9012',descricao:'VW Gol Preto',secretaria:'Secretaria de Infraestrutura e Serviços Públicos',ano:'2021',capacidade:4,combustivel:'Flex',ipva:'2027-01-31',licenc:'2027-01-31',seguro:'2027-02-01',revKm:32000,escalas:[{id:'e3',nome:'Semana',dias:[1,2,3,4,5],ini:'07:00',fim:'17:00',cor:'branco'},{id:'e4',nome:'Sábado',dias:[6],ini:'07:00',fim:'13:00'}]},
+    {id:'v4',placa:'JKL3456',descricao:'Toyota Hilux Branca',secretaria:'Secretaria Municipal de Administração e Finanças',ano:'2022',capacidade:5,combustivel:'Diesel',ipva:'2026-11-30',licenc:'2026-11-30',seguro:'2026-12-01',revKm:55000,escalas:[{id:'e5',nome:'Semana',dias:[1,2,3,4,5],ini:'08:00',fim:'17:00',cor:'branco'}]}
   ],
   motoristas:[
     {id:'mt1',nome:'Carlos Lima',cpf:'111.222.333-44',cnh:'11122233344',categoria:'B',validade:'2027-06-15',telefone:'(77) 99901-2345'},
@@ -1056,7 +1053,7 @@ function carregar() {
     if(raw) {
       var d = JSON.parse(raw);
       return {
-        veiculos:(d.veiculos||DEF.veiculos).map(function(v){return v.cor?v:Object.assign({},v,{cor:'branco'});}), motoristas:d.motoristas||DEF.motoristas,
+        veiculos:(d.veiculos||DEF.veiculos).map(function(v){return Object.assign({},v,{cor:v.cor||'branco',placa:normPlaca(v.placa)});}), motoristas:d.motoristas||DEF.motoristas,
         movimentacoes:d.movimentacoes||DEF.movimentacoes, agendamentos:d.agendamentos||DEF.agendamentos,
         manutencoes:d.manutencoes||DEF.manutencoes, ausencias:d.ausencias||[],
         abastecimentos:d.abastecimentos||[],
@@ -1123,7 +1120,7 @@ function normalizarFB(d){
     usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
   if(!out.usuarios.length) out.usuarios = DEF.usuarios;
-  out.veiculos.forEach(function(v){ v.escalas=_arrFB(v.escalas); if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; v.mediaKmL=v.mediaKmL||0; });
+  out.veiculos.forEach(function(v){ v.placa=normPlaca(v.placa); v.escalas=_arrFB(v.escalas); if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; v.mediaKmL=v.mediaKmL||0; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
   if(d._salvo_em) out._salvo_em = d._salvo_em;

@@ -2724,7 +2724,7 @@
     <div class="grid-form">
       <div>
         <label>PLACA *</label>
-        <input type="text" id="edit-abast-placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+        <input type="text" id="edit-abast-placa" placeholder="ABC1234" maxlength="7" style="text-transform:uppercase;">
       </div>
       <div>
         <label>MOTORISTA *</label>
@@ -2975,7 +2975,7 @@
           >
           <div id="resultados-busca" style="margin-top: 10px; display: none;"></div>
           <div style="font-size: 11px; color: #64748b; margin-top: 8px;">
-            💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+            💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC1234"
           </div>
         </div>
         
@@ -3157,7 +3157,7 @@
         </div>
         <div>
           <label>PLACA</label>
-          <input type="text" id="rel-placa" placeholder="ABC-1234">
+          <input type="text" id="rel-placa" placeholder="ABC1234">
         </div>
         <div id="container-pessoa-diversas" style="display:none;">
           <label>PESSOA (DIVERSAS) 🌟</label>
@@ -3203,7 +3203,7 @@
       >
       <div id="resultados-busca-diversas" style="margin-top: 10px; display: none;"></div>
       <div style="font-size: 11px; color: #92400e; margin-top: 8px;">
-        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC1234"
       </div>
     </div>
     
@@ -3247,7 +3247,7 @@
           <input 
             type="text" 
             id="diversas-placa" 
-            placeholder="ABC-1234" 
+            placeholder="ABC1234" 
             maxlength="8" 
             style="text-transform:uppercase;"
             onkeyup="sugerirDiversas(this.value)"
@@ -3356,7 +3356,7 @@
       >
       <div id="resultados-busca-autorizador" style="margin-top: 10px; display: none;"></div>
       <div style="font-size: 11px; color: #64748b; margin-top: 8px;">
-        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC-1234"
+        💡 Digite qualquer parte: "GOL", "COROLLA", "JOÃO", "ABC1234"
       </div>
     </div>
     
@@ -3803,7 +3803,7 @@
       <div class="grid-form">
         <div>
           <label>PLACA *</label>
-          <input type="text" id="vei-placa" placeholder="ABC-1234" maxlength="8">
+          <input type="text" id="vei-placa" placeholder="ABC1234" maxlength="7">
         </div>
         <div>
           <label>MODELO</label>
@@ -4415,6 +4415,7 @@
       v.id = v.id || item.key;
       // Compatibilidade com o Controle de Frota (que usa "descricao")
       v.modelo = v.modelo || v.descricao || '';
+      v.placa  = normPlaca(v.placa);   // padrão único: sem hífen
       veiculos.push(v);
     });
   });
@@ -5552,7 +5553,7 @@
       if (labelKm) labelKm.innerHTML = 'KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span>';
       if (labelLitros) labelLitros.innerHTML = 'LITROS *';
       if (inputPlaca) {
-        inputPlaca.placeholder = 'ABC-1234';
+        inputPlaca.placeholder = 'ABC1234';
         inputPlaca.style.borderColor = '';
       }
       if (inputKm) {
@@ -5808,16 +5809,73 @@
   }
   
   // ── PADRÃO ÚNICO DE PLACA (igual ao Controle de Frota) ────────
-  // Canônico: MAIÚSCULO sem separadores. Exibição: hífen só no padrão antigo.
+  // Canonico e exibicao: MAIUSCULO sem separadores, em todo o sistema.
   function normPlaca(p){ return (p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-  function fmtPlaca(p){
-    var n = normPlaca(p);
-    return /^[A-Z]{3}[0-9]{4}$/.test(n) ? n.slice(0,3)+'-'+n.slice(3) : n;
-  }
+  function fmtPlaca(p){ return normPlaca(p); }   // sem hífen em todo o sistema
   function mascaraPlaca(el){ el.value = normPlaca(el.value).slice(0,7); }
   window.normPlaca = normPlaca;
   window.fmtPlaca  = fmtPlaca;
   window.mascaraPlaca = mascaraPlaca;
+
+  // ── SELO DE VERSÃO (prova visual de que o arquivo novo carregou) ──
+  window.VERSAO_COMB = 'BLOQUEIO-v3 · 22/07';
+  setTimeout(function(){
+    if(document.getElementById('selo-versao')) return;
+    var b = document.createElement('div');
+    b.id = 'selo-versao';
+    b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99998;'+
+      'background:#111827;color:#fff;font:600 11px system-ui;padding:6px 10px;'+
+      'border-radius:8px;opacity:.85;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+    b.title = 'Clique para diagnosticar o bloqueio de veículo irregular';
+    b.textContent = '🔧 ' + window.VERSAO_COMB + ' · perfil: ' + (userRole || '—');
+    b.onclick = function(){
+      var p = prompt('Digite a placa do veículo que está VERMELHO na frota:');
+      if(p) window.diagGaragem(p);
+    };
+    document.body.appendChild(b);
+  }, 2500);
+
+  // ── DIAGNÓSTICO: no console digite  diagGaragem('ABC1234')  ────
+  window.diagGaragem = async function(placa){
+    const P = normPlaca(placa||'');
+    console.log('%c=== DIAGNÓSTICO GARAGEM ===','background:#dc2626;color:#fff;padding:3px 8px;font-weight:bold');
+    console.log('Perfil logado      :', userRole, '| bloqueia?', /^secretari/.test((userRole||'').toLowerCase()) ? 'SIM' : 'NÃO — só secretários são bloqueados');
+    console.log('Placa normalizada  :', P);
+    const snap = await db.ref('frota/dados').once('value');
+    const f = snap.val();
+    if(!f || !f.veiculos){ console.log('❌ frota/dados sem veículos'); return; }
+    const ents = Array.isArray(f.veiculos)
+      ? f.veiculos.map((v,i)=>[String(i),v]) : Object.entries(f.veiculos);
+    const achado = ents.find(([k,v]) => v && normPlaca(v.placa) === P);
+    if(!achado){
+      console.log('❌ Placa não existe em frota/dados. Placas cadastradas:');
+      console.log('   ', ents.map(([k,v])=>normPlaca(v && v.placa)).join(', '));
+      return;
+    }
+    const [chave, v] = achado;
+    console.log('✅ Veículo achado   :', {chaveFirebase:chave, id:v.id, placa:v.placa});
+    if(v.manutencao || v.foraGaragem){
+      console.log('⚠️  ISENTO do bloqueio — manutencao:', v.manutencao, '| foraGaragem:', v.foraGaragem);
+    }
+    const ids = [v.id, chave].filter(Boolean);
+    const movs = Array.isArray(f.movimentacoes) ? f.movimentacoes : Object.values(f.movimentacoes||{});
+    const doVei = movs.filter(m => m && ids.indexOf(m.vid) > -1);
+    console.log('Movimentações dele :', doVei.length, '(de', movs.length, 'no total)');
+    if(!doVei.length){
+      console.log('❌ Nenhuma movimentação casa com id/chave. vids existentes:');
+      console.log('   ', [...new Set(movs.map(m=>m&&m.vid))].join(', '));
+      return;
+    }
+    console.table(doVei.map(m => ({
+      vid: m.vid, retorno: m.retorno, entrada_real: m.entrada_real,
+      atrasado: m.retorno ? Date.now() > new Date(m.retorno).getTime() : 'sem retorno',
+      IRREGULAR: (!m.entrada_real && m.retorno && Date.now() > new Date(m.retorno).getTime())
+    })));
+    const r = await verificarPendenciaGaragem(placa);
+    console.log('%cRESULTADO: ' + (r.bloqueado ? 'BLOQUEADO ✅' : 'LIBERADO ❌'),
+      'background:'+(r.bloqueado?'#1D9E75':'#dc2626')+';color:#fff;padding:3px 8px;font-weight:bold');
+    return r;
+  };
 
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
