@@ -5880,14 +5880,8 @@
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
 
-    // Aceita variações de grafia do perfil (secretario/secretarios/acentuado)
-    const _r = (userRole || '').toLowerCase()
-                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const ehSecretario = _r.indexOf('secretari') === 0;
-    if (!ehSecretario) {
-      console.log('[Garagem] sem bloqueio — perfil "' + userRole + '" nao e secretario');
-      return { bloqueado: false };
-    }
+    // REGRA: veiculo irregular nao pode ser abastecido por NINGUEM.
+    // Vale para todos os perfis — a pendencia e do veiculo, nao de quem digita.
 
     // Normaliza placa (remove hífen/espaço) — frota e combustível gravam diferente
     const placaN = normPlaca(placa);
