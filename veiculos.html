@@ -971,9 +971,9 @@ function _ehErroPermissao(e){
 }
 
 function salvar() {
-  // Proteção: nunca salvar se veículos estiver vazio (evita corromper cache)
+  // Nunca gravar se veículos estiver vazio — evita corromper o cache local
   if(!D.veiculos || D.veiculos.length === 0) {
-    console.warn('⚠️ salvar() bloqueado — D.veiculos vazio, aguardando Firebase');
+    console.warn('⚠️ salvar() bloqueado: D.veiculos vazio (aguardando Firebase)');
     return;
   }
   D._salvo_em = new Date().toISOString();
@@ -1126,13 +1126,13 @@ if(fbDB){
     setFbStatus('sincronizado');
     if(D.veiculos.length > 0 && Date.now() - _fbUltimoPush < 4000) return;
     if(window._entradaEmAndamento) return;
-    var novo = normalizarFB(val);
+    var _novo = normalizarFB(val);
     // Nunca substituir D populado por dados vazios (Firebase às vezes retorna incompleto)
-    if(novo.veiculos.length === 0 && D.veiculos.length > 0) {
-      console.warn('⚠️ Firebase retornou veiculos[] vazio — ignorando para preservar cache');
+    if(_novo.veiculos.length === 0 && D.veiculos.length > 0) {
+      console.warn('⚠️ Firebase retornou veiculos[] vazio — ignorando para preservar estado');
       return;
     }
-    D = novo;
+    D = _novo;
     localStorage.setItem('frota_v3', JSON.stringify(D));
     if(_sessao && typeof renderTudo === 'function') renderTudo();
   }, function(err){
@@ -1406,7 +1406,7 @@ function popSecs(ids) {
 
 // ── VISTA ──
 var _viewMode = 'todos';
-var _ordemMode = 'none';
+var _ordemMode = 'status';
 var _filtroStatus = null;
 function toggleFiltro(status) {
   _filtroStatus = _filtroStatus === status ? null : status;
