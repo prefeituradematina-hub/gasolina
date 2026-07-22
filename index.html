@@ -2981,7 +2981,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" placeholder="ABC-1234" maxlength="8" oninput="sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
+          <input type="text" id="f-placa" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -4590,7 +4590,7 @@
   
   // NOVO: Função para verificar média em tempo real no formulário
   function verificarMediaEmTempoReal() {
-    const placa = document.getElementById('f-placa').value.toUpperCase().trim();
+    const placa = normPlaca(document.getElementById('f-placa').value);
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
     const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
@@ -5567,7 +5567,7 @@
   }
   
   function atualizarPrevisaoConsumo() {
-    const placa = document.getElementById('f-placa').value.toUpperCase().trim();
+    const placa = normPlaca(document.getElementById('f-placa').value);
     const tipo = document.getElementById('f-tipo').value;
     const litros = parseFloat(document.getElementById('f-lit').value) || 0;
     const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
@@ -5663,7 +5663,7 @@
   }
   
   function validarKmAtual() {
-    const placa = document.getElementById('f-placa').value.toUpperCase().trim();
+    const placa = normPlaca(document.getElementById('f-placa').value);
     const kmAtual = converterKMParaNumero(document.getElementById('f-km').value) || 0;
     
     if (!placa || kmAtual === 0) return;
@@ -5807,6 +5807,18 @@
     return erros;
   }
   
+  // ── PADRÃO ÚNICO DE PLACA (igual ao Controle de Frota) ────────
+  // Canônico: MAIÚSCULO sem separadores. Exibição: hífen só no padrão antigo.
+  function normPlaca(p){ return (p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+  function fmtPlaca(p){
+    var n = normPlaca(p);
+    return /^[A-Z]{3}[0-9]{4}$/.test(n) ? n.slice(0,3)+'-'+n.slice(3) : n;
+  }
+  function mascaraPlaca(el){ el.value = normPlaca(el.value).slice(0,7); }
+  window.normPlaca = normPlaca;
+  window.fmtPlaca  = fmtPlaca;
+  window.mascaraPlaca = mascaraPlaca;
+
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) return { bloqueado: false };
 
@@ -5820,8 +5832,7 @@
     }
 
     // Normaliza placa (remove hífen/espaço) — frota e combustível gravam diferente
-    const _norm = p => (p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const placaN = _norm(placa);
+    const placaN = normPlaca(placa);
 
     try {
       const snap  = await db.ref('frota/dados').once('value');
@@ -5835,7 +5846,7 @@
 
       let veiculo = null, chaveFB = null;
       for (const [k, v] of entradas) {
-        if (v && _norm(v.placa) === placaN) { veiculo = v; chaveFB = k; break; }
+        if (v && normPlaca(v.placa) === placaN) { veiculo = v; chaveFB = k; break; }
       }
       if (!veiculo) return { bloqueado: false };
 
@@ -5907,7 +5918,7 @@
   
     try {
       const dados = {
-        placa: document.getElementById('f-placa').value.toUpperCase().trim(),
+        placa: normPlaca(document.getElementById('f-placa').value),
         posto: document.getElementById('f-posto').value,
         motorista: document.getElementById('f-mot').value.toUpperCase().trim(),
         cpf: document.getElementById('f-cpf').value.trim(),
@@ -11541,8 +11552,7 @@
     console.log('🔎 Buscando veículo em veiculos[]...');
     console.log('Total de veículos cadastrados:', veiculos.length);
     
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+        const veiculo = veiculos.find(v => normPlaca(v.placa) === normPlaca(placa));
     
     if (veiculo) {
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
@@ -11713,8 +11723,7 @@
     console.log('🔎 Buscando veículo...');
     
     // Primeiro tentar no cadastro de veículos
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+        const veiculo = veiculos.find(v => normPlaca(v.placa) === normPlaca(placa));
     
     if (veiculo) {
       console.log('✅ VEÍCULO ENCONTRADO NO CADASTRO!');
@@ -12133,8 +12142,7 @@
     document.getElementById('resultados-busca-autorizador').style.display = 'none';
     
     // Buscar dados do veículo
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+        const veiculo = veiculos.find(v => normPlaca(v.placa) === normPlaca(placa));
     const ultimoAbast = cache
       .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -12342,8 +12350,7 @@
     document.getElementById('resultados-busca-diversas').style.display = 'none';
     
     // Buscar dados do veículo para preencher motorista
-    const _np = p => (p||'').toUpperCase().replace(/-/g,'');
-    const veiculo = veiculos.find(v => _np(v.placa) === _np(placa));
+        const veiculo = veiculos.find(v => normPlaca(v.placa) === normPlaca(placa));
     if (veiculo) {
       console.log('✅ Veículo encontrado no cadastro:', veiculo);
       console.log('  • Motorista:', veiculo.motorista);
@@ -13289,7 +13296,7 @@
       return;
     }
     
-    const placa = document.getElementById('vei-placa').value.toUpperCase().trim();
+    const placa = normPlaca(document.getElementById('vei-placa').value);
     const modelo = document.getElementById('vei-modelo').value.toUpperCase().trim();
     const secretaria = document.getElementById('vei-sec').value;
     const motorista = document.getElementById('vei-motorista').value.toUpperCase().trim();
