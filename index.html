@@ -4407,7 +4407,7 @@
     }
   });
   
-  // ── SYNC UNIFICADO: frota/dados → combustível ──────────────────
+  // ── SYNC UNIFICADO frota ↔ combustível ─────────────────────────
   let _frotaMotoristas = [];
   function _normVeiFrota(v, key) {
     const p = (v.placa||'').toUpperCase().replace(/-/g,'');
@@ -4419,7 +4419,6 @@
       foraGaragem:v.foraGaragem||0, manutencao:v.manutencao||0,
       mediaKmL:v.mediaKmL||0, cor:v.cor||'branco', tipo:v.tipo||'🚗' };
   }
-  // Listener principal: frota/dados em tempo real
   db.ref('frota/dados').on('value', function(snap) {
     const frota = snap.val();
     if (!frota) return;
@@ -4436,7 +4435,6 @@
       _syncDatalistMotoristas();
     }
   });
-  // Fallback: nó próprio (caso frota/dados vazio)
   db.ref('veiculos').on('value', function(snap) {
     if (veiculos.length > 0) return;
     const tmp = [];
@@ -5846,7 +5844,6 @@
     return erros;
   }
   
-  // Normaliza ultimoResetLimite que pode vir como objeto {sec:ts} ou número
   function _parseReset(val) {
     if (!val) return 0;
     if (typeof val === 'number') return val;
@@ -6256,10 +6253,8 @@
         timestamp: Date.now(),
         horario: horario
       });
-
-      if (dados.km > 0 && dados.litro > 0 && status === STATUS.AUTORIZADO) {
-        atualizarMediaKmL(dados.placa).catch(() => {});
-      }
+      if (dados.km>0 && dados.litro>0 && status===STATUS.AUTORIZADO)
+        atualizarMediaKmL(dados.placa).catch(()=>{});
   
       mostrarNotificacao(
         status === STATUS.AUTORIZADO
@@ -15244,42 +15239,33 @@
 
 
 
-  // ── ATUALIZAR MÉDIA KM/L (após abastecimento) ──────────────────
   async function atualizarMediaKmL(placa) {
     if (!placa) return;
     try {
       const snap = await db.ref('abastecimentos').orderByChild('placa').equalTo(placa).once('value');
       const lista = [];
-      snap.forEach(s => {
-        const a = s.val();
+      snap.forEach(s => { const a=s.val();
         if ((a.status==='AUTORIZADO'||a.status==='autorizado') && a.km>0 && a.litro>0)
-          lista.push({km:a.km, litro:a.litro, ts:a.timestamp||0});
-      });
+          lista.push({km:a.km,litro:a.litro,ts:a.timestamp||0}); });
       if (lista.length < 2) return;
-      lista.sort((a,b) => b.ts - a.ts);
-      const rec = lista.slice(0,6);
-      let soma=0, cnt=0;
+      lista.sort((a,b) => b.ts-a.ts);
+      const rec=lista.slice(0,6); let soma=0,cnt=0;
       for (let i=0; i<rec.length-1 && cnt<5; i++) {
-        const kmp = rec[i].km - rec[i+1].km;
-        if (kmp>0 && rec[i].litro>0) { soma += kmp/rec[i].litro; cnt++; }
+        const kmp=rec[i].km-rec[i+1].km;
+        if (kmp>0 && rec[i].litro>0) { soma+=kmp/rec[i].litro; cnt++; }
       }
       if (!cnt) return;
-      const media = parseFloat((soma/cnt).toFixed(2));
-      // Salvar no nó veiculos
-      const vs = await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
+      const media=parseFloat((soma/cnt).toFixed(2));
+      const vs=await db.ref('veiculos').orderByChild('placa').equalTo(placa).once('value');
       vs.forEach(v => db.ref('veiculos/'+v.key+'/mediaKmL').set(media));
-      // Sync com frota
-      const fs = await db.ref('frota/dados/veiculos').once('value');
+      const fs=await db.ref('frota/dados/veiculos').once('value');
       if (fs.exists()) {
-        const pn = placa.replace(/-/g,'').toUpperCase();
-        fs.forEach(v => {
-          if ((v.val().placa||'').replace(/-/g,'').toUpperCase()===pn)
-            db.ref('frota/dados/veiculos/'+v.key+'/mediaKmL').set(media);
-        });
+        const pn=placa.replace(/-/g,'').toUpperCase();
+        fs.forEach(v => { if((v.val().placa||'').replace(/-/g,'').toUpperCase()===pn)
+          db.ref('frota/dados/veiculos/'+v.key+'/mediaKmL').set(media); });
       }
-    } catch(e) { console.warn('⚠️ atualizarMediaKmL:', e); }
+    } catch(e) { console.warn('atualizarMediaKmL:',e); }
   }
-  // ────────────────────────────────────────────────────────────────
 
   async function calcularMediaKmLVeiculo(placa) {
     const snapshot = await db.ref('abastecimentos')
