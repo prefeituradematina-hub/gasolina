@@ -603,8 +603,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
   <div class="modal">
     <h2>Registrar saída</h2>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><select id="s-vei" onchange="hintVagas('s')"></select></div>
-      <div class="field"><label>Motorista</label><select id="s-mot"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
+      <div class="field"><label>Veículo * <span id="s-vei-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="s-vei-busca" placeholder="🔍 Filtrar por placa ou nome..." oninput="filtrarVeiSelect('s-vei','s-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="s-vei" size="8" onchange="hintVagas('s')" style="height:auto"></select></div>
+      <div class="field"><label>Motorista <span id="s-mot-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="s-mot-busca" placeholder="🔍 Filtrar motorista..." oninput="filtrarMotSelect('s-mot','s-mot-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="s-mot" size="8" style="height:auto"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
       <div class="field"><label>Servidor solicitante</label><input type="text" id="s-solic" placeholder="Nome do servidor"></div>
@@ -676,8 +676,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <h2 id="ag-titulo">Novo agendamento</h2>
     <div id="ag-volta-hint" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E40AF;margin-bottom:12px;line-height:1.5"></div>
     <div class="form-row">
-      <div class="field"><label>Veículo *</label><input type="text" id="ag-vei-busca" placeholder="🔍 Placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" onchange="hintVagas('ag')"></select></div>
-      <div class="field"><label>Motorista</label><select id="ag-mot"></select><button type="button" onclick="toggleMotManual('ag',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="ag-mot-manual" style="display:none;margin-top:5px"><input type="text" id="ag-mot-texto" placeholder="Nome do motorista..."></div></div>
+      <div class="field"><label>Veículo * <span id="ag-vei-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="ag-vei-busca" placeholder="🔍 Filtrar por placa ou nome..." oninput="filtrarVeiSelect('ag-vei','ag-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-vei" size="8" onchange="hintVagas('ag')" style="height:auto"></select></div>
+      <div class="field"><label>Motorista <span id="ag-mot-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="ag-mot-busca" placeholder="🔍 Filtrar motorista..." oninput="filtrarMotSelect('ag-mot','ag-mot-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="ag-mot" size="8" style="height:auto"></select><button type="button" onclick="toggleMotManual('ag',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="ag-mot-manual" style="display:none;margin-top:5px"><input type="text" id="ag-mot-texto" placeholder="Nome do motorista..."></div></div>
     </div>
     <div class="form-row">
       <div class="field"><label>Servidor solicitante</label><input type="text" id="ag-solic" placeholder="Nome do servidor"></div>
@@ -716,12 +716,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>CPF</label><input type="text" id="mt-cpf" placeholder="000.000.000-00"></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>CNH *</label><input type="text" id="mt-cnh" placeholder="Número"></div>
+      <div class="field"><label>CNH <span style="font-weight:400;color:#94A3B8">(opcional)</span></label><input type="text" id="mt-cnh" placeholder="Número"></div>
       <div class="field"><label>Categoria</label><select id="mt-cat"><option>B</option><option>C</option><option>D</option><option>E</option><option>AB</option><option>AD</option><option>AE</option></select></div>
     </div>
     <div class="form-row">
-      <div class="field"><label>Validade CNH *</label><input type="date" id="mt-val"></div>
+      <div class="field"><label>Validade CNH <span style="font-weight:400;color:#94A3B8">(opcional)</span></label><input type="date" id="mt-val"></div>
       <div class="field"><label>Telefone</label><input type="text" id="mt-tel" placeholder="(77) 9xxxx-xxxx"></div>
+    </div>
+    <div class="field">
+      <label>Veículo vinculado <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <input type="text" id="mt-vei-busca" placeholder="🔍 Filtrar por placa, modelo ou secretaria..."
+             oninput="filtrarVeiVinculo('mt-vei','mt-vei-busca')" autocomplete="off"
+             style="margin-bottom:5px;font-size:12px">
+      <select id="mt-vei"></select>
+      <div style="font-size:11px;color:#6B7280;margin-top:4px">
+        Deixe em "Nenhum" se o motorista não tiver veículo fixo.
+      </div>
     </div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarMotorista()">Salvar</button>
@@ -790,6 +800,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="field"><label>Secretaria</label><select id="v-sec"><option value="">— Selecione —</option></select></div>
       <div class="field"><label>Combustível</label><select id="v-comb"><option>Flex</option><option>Gasolina</option><option>Diesel</option><option>GNV</option><option>Elétrico</option></select></div>
     </div>
+    <div class="field">
+      <label>Motorista vinculado <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <input type="text" id="v-mot-busca" placeholder="🔍 Filtrar por nome, CPF ou CNH..."
+             oninput="filtrarMotVinculo('v-mot','v-mot-busca')" autocomplete="off"
+             style="margin-bottom:5px;font-size:12px">
+      <select id="v-mot"></select>
+      <div style="font-size:11px;color:#6B7280;margin-top:4px">
+        Deixe em "Nenhum" se o veículo não tiver motorista fixo.
+      </div>
+    </div>
     <div class="form-row">
       <div class="field"><label>Capacidade passageiros</label><input type="number" id="v-cap" min="0" placeholder="0 = sem passageiros"></div>
       <div class="field"><label>Última revisão (km)</label><input type="number" id="v-revkm" min="0"></div>
@@ -856,6 +876,61 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </div>
 
 <!-- MODAL RESOLVER AUSENTE -->
+<!-- MODAL PRORROGAR RETORNO -->
+<div class="overlay" id="ov-prorrogar">
+  <div class="modal" style="max-width:420px">
+    <h2>⏱️ Prorrogar retorno</h2>
+    <div id="prorr-info" style="font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:9px 12px;margin-bottom:.75rem;line-height:1.6"></div>
+    <div class="field">
+      <label>Adicionar tempo rapidamente</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button class="btn" onclick="prorrogarMin(30)"  style="font-size:13px;padding:8px">+30 min</button>
+        <button class="btn" onclick="prorrogarMin(60)"  style="font-size:13px;padding:8px">+1 hora</button>
+        <button class="btn" onclick="prorrogarMin(120)" style="font-size:13px;padding:8px">+2 horas</button>
+        <button class="btn" onclick="prorrogarMin(240)" style="font-size:13px;padding:8px">+4 horas</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ou defina o novo horário exato</label>
+      <input type="datetime-local" id="prorr-novo-retorno" style="width:100%">
+    </div>
+    <div id="prorr-preview" style="display:none;font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:8px 11px;margin-bottom:.5rem"></div>
+    <div class="field">
+      <label>Motivo <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <textarea id="prorr-obs" placeholder="Ex: Imprevisto na estrada, aguardando peça..." style="min-height:58px"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn success" onclick="confirmarProrrogar()">✅ Confirmar prorrogação</button>
+      <button class="btn" onclick="fechar('ov-prorrogar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GUARDADO DURANTE A NOITE -->
+<div class="overlay" id="ov-guardado-noite">
+  <div class="modal" style="max-width:420px">
+    <h2>🌙 Guardado durante a noite</h2>
+    <div id="gn-info" style="font-size:12px;color:#0369A1;background:#E0F2FE;border-radius:8px;padding:9px 12px;margin-bottom:.75rem;line-height:1.6"></div>
+    <div class="field">
+      <label>Horário em que o veículo chegou</label>
+      <input type="datetime-local" id="gn-hora-entrada" style="width:100%">
+      <div style="font-size:11px;color:#64748b;margin-top:4px">Informe quando o veículo foi recebido pelo guarda</div>
+    </div>
+    <div class="field">
+      <label>KM de chegada <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <input type="number" id="gn-km" placeholder="Ex: 45230" style="width:100%">
+    </div>
+    <div class="field">
+      <label>Observações <span style="font-weight:400;color:#94A3B8">(opcional)</span></label>
+      <textarea id="gn-obs" placeholder="Ex: Chegou às 22h, recebido pelo guarda..." style="min-height:58px"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn success" onclick="confirmarGuardadoNoite()">🌙 Confirmar entrada noturna</button>
+      <button class="btn" onclick="fechar('ov-guardado-noite')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ov-resolver">
   <div class="modal">
     <h2>✅ Veículo retornou</h2>
@@ -1384,6 +1459,7 @@ function docAlerts(v) {
   return a;
 }
 function cnhStatus(m) {
+  if(!m || !m.validade) return 'sem';   // CNH/validade opcionais
   var d = diasAte(m.validade);
   if(d<0) return 'expirada';
   if(d<=60) return 'proxima';
@@ -1434,6 +1510,99 @@ function popSecs(ids) {
     if(el) el.innerHTML = opts;
   });
 }
+
+// ══════════════════════════════════════════════════════════════════
+// VÍNCULO MOTORISTA ↔ VEÍCULO
+// Campos opcionais. Cadastros antigos (sem vínculo) seguem válidos.
+// ══════════════════════════════════════════════════════════════════
+
+// Rótulo padrão de cada registro nas listas de vínculo
+function _labelMot(m){ return (m.nome||'—') + (m.categoria?' (Cat. '+m.categoria+')':''); }
+function _labelVei(v){ return fmtPlaca(v.placa) + (v.descricao?' — '+v.descricao:''); }
+
+// Popula o select de motoristas do vínculo (com filtro opcional)
+function popMotVinculo(selectId, filtro) {
+  var sel = document.getElementById(selectId);
+  if(!sel) return;
+  var q = (filtro||'').toLowerCase().trim();
+  var lista = D.motoristas.filter(function(m){
+    if(!q) return true;
+    return [(m.nome||''),(m.cpf||''),(m.cnh||''),(m.categoria||'')]
+             .join(' ').toLowerCase().indexOf(q) > -1;
+  });
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">— Nenhum motorista vinculado —</option>' +
+    lista.map(function(m){ return '<option value="'+m.id+'">'+_labelMot(m)+'</option>'; }).join('');
+  if(sel.querySelector('[value="'+prev+'"]')) sel.value = prev;
+}
+
+// Popula o select de veículos do vínculo (com filtro opcional)
+function popVeiVinculo(selectId, filtro) {
+  var sel = document.getElementById(selectId);
+  if(!sel) return;
+  var q = (filtro||'').toLowerCase().trim();
+  var qn = normPlaca(q);
+  var lista = D.veiculos.filter(function(v){
+    if(!q) return true;
+    var alvo = [(v.placa||''),(v.descricao||''),(v.secretaria||'')].join(' ').toLowerCase();
+    return alvo.indexOf(q) > -1 || (qn.length>=2 && normPlaca(v.placa).indexOf(qn) > -1);
+  });
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">— Nenhum veículo vinculado —</option>' +
+    lista.map(function(v){ return '<option value="'+v.id+'">'+_labelVei(v)+'</option>'; }).join('');
+  if(sel.querySelector('[value="'+prev+'"]')) sel.value = prev;
+}
+
+// Filtros chamados pelos campos de busca dos modais
+function filtrarMotVinculo(selectId, buscaId) {
+  popMotVinculo(selectId, (document.getElementById(buscaId)||{}).value||'');
+}
+function filtrarVeiVinculo(selectId, buscaId) {
+  popVeiVinculo(selectId, (document.getElementById(buscaId)||{}).value||'');
+}
+
+// Aplica o vínculo nos DOIS cadastros, mantendo a relação consistente.
+// Passar motoristaId vazio desfaz o vínculo do veículo.
+// Libera o veículo associado antes de excluir um motorista
+function desvincularMotorista(motoristaId) {
+  var m = getM(motoristaId);
+  if(m && m.veiculoId){
+    var v = getV(m.veiculoId);
+    if(v && v.motoristaId === motoristaId){ v.motoristaId = null; v.motoristaNome = null; }
+  }
+}
+
+function aplicarVinculo(veiculoId, motoristaId) {
+  var v = getV(veiculoId);
+  if(!v) return;
+  var anterior = v.motoristaId || null;
+
+  // Desfaz o vínculo anterior do lado do motorista antigo
+  if(anterior && anterior !== motoristaId){
+    var mAnt = getM(anterior);
+    if(mAnt && mAnt.veiculoId === veiculoId){ mAnt.veiculoId = null; mAnt.veiculoPlaca = null; }
+  }
+
+  if(!motoristaId){
+    v.motoristaId = null; v.motoristaNome = null;
+    return;
+  }
+
+  var m = getM(motoristaId);
+  if(!m) return;
+
+  // Se esse motorista já estava em outro veículo, libera o anterior
+  if(m.veiculoId && m.veiculoId !== veiculoId){
+    var vAnt = getV(m.veiculoId);
+    if(vAnt && vAnt.motoristaId === motoristaId){ vAnt.motoristaId = null; vAnt.motoristaNome = null; }
+  }
+
+  v.motoristaId   = m.id;
+  v.motoristaNome = m.nome;
+  m.veiculoId     = v.id;
+  m.veiculoPlaca  = normPlaca(v.placa);
+}
+// ══════════════════════════════════════════════════════════════════
 
 // ── VISTA ──
 var _viewMode = 'todos';
@@ -1628,7 +1797,7 @@ function renderPainel() {
   if(au>0) al += '<div class="alerta roxo">❓ '+au+' veículo(s) não está no local</div>';
   var docW2 = D.veiculos.filter(function(v){return docAlerts(v).length;});
   if(docW2.length) al += '<div class="alerta amarelo">⚠ '+docW2.length+' veículo(s) com documentação a vencer</div>';
-  var cnhW = D.motoristas.filter(function(m){return cnhStatus(m)!=='ok';});
+  var cnhW = D.motoristas.filter(function(m){var s=cnhStatus(m); return s==='expirada'||s==='proxima';});
   if(cnhW.length) al += '<div class="alerta amarelo">⚠ '+cnhW.length+' motorista(s) com CNH vencida ou próxima</div>';
   document.getElementById('alertas').innerHTML = al;
 }
@@ -2034,8 +2203,11 @@ function verVeiculo(vid) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
   } else if(s==='trabalhando'||s==='irregular') {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
+    // Entrada noturna: disponível para quem registra entrada (frentista, admin, autorizador)
+    btns += '<button class="btn" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirGuardadoNoite(\''+mov.id+'\')">🌙 Guardado durante a noite</button>';
     if(isAdmin()) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
+      btns += '<button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogar(\''+mov.id+'\')">⏱️ Prorrogar retorno</button>';
     }
   } else {
     if(!isAdmin()) {
@@ -2456,13 +2628,21 @@ function abrirMotorista(id) {
   document.getElementById('mt-cat').value  = m?m.categoria:'B';
   document.getElementById('mt-val').value  = m?m.validade:'';
   document.getElementById('mt-tel').value  = m?m.telefone:'';
+  // Vínculo com veículo (opcional)
+  var buscaVei = document.getElementById('mt-vei-busca');
+  if(buscaVei) buscaVei.value = '';
+  popVeiVinculo('mt-vei','');
+  var selVei = document.getElementById('mt-vei');
+  if(selVei) selVei.value = (m && m.veiculoId) ? m.veiculoId : '';
   abrir('ov-motorista');
 }
 function confirmarMotorista() {
   var nome = document.getElementById('mt-nome').value.trim();
-  var cnh  = document.getElementById('mt-cnh').value.trim();
-  var val  = document.getElementById('mt-val').value;
-  if(!nome||!cnh||!val) { alert('Nome, CNH e validade são obrigatórios.'); return; }
+  var cnh  = document.getElementById('mt-cnh').value.trim();   // opcional
+  var val  = document.getElementById('mt-val').value;          // opcional
+  if(!nome) { alert('Informe o nome do motorista.'); return; }
+  var veiVinc = (document.getElementById('mt-vei')||{}).value || '';
+  var motAlvoId;
   if(_editMotId) {
     var m = getM(_editMotId);
     m.nome=nome; m.cpf=document.getElementById('mt-cpf').value.trim();
@@ -2470,10 +2650,22 @@ function confirmarMotorista() {
     m.validade=val; m.telefone=document.getElementById('mt-tel').value.trim();
     D.movimentacoes.filter(function(mv){return mv.motid===_editMotId;}).forEach(function(mv){mv.motorista=nome;});
     D.agendamentos.filter(function(a){return a.motid===_editMotId;}).forEach(function(a){a.motorista=nome;});
+    motAlvoId = _editMotId;
   } else {
-    D.motoristas.push({id:uid('mt'),nome:nome,cpf:document.getElementById('mt-cpf').value.trim(),
+    var novoMot = {id:uid('mt'),nome:nome,cpf:document.getElementById('mt-cpf').value.trim(),
       cnh:cnh,categoria:document.getElementById('mt-cat').value,validade:val,
-      telefone:document.getElementById('mt-tel').value.trim()});
+      telefone:document.getElementById('mt-tel').value.trim()};
+    D.motoristas.push(novoMot);
+    motAlvoId = novoMot.id;
+  }
+  // Vínculo com veículo — reutiliza aplicarVinculo para manter os dois lados iguais
+  var motObj = getM(motAlvoId);
+  if(veiVinc){
+    aplicarVinculo(veiVinc, motAlvoId);
+  } else if(motObj && motObj.veiculoId){
+    // Desvinculou: libera o veículo que estava associado
+    aplicarVinculo(motObj.veiculoId, '');
+    motObj.veiculoId = null; motObj.veiculoPlaca = null;
   }
   salvar(); fechar('ov-motorista'); toast('Motorista salvo!'); renderTudo();
 }
@@ -2527,6 +2719,12 @@ function abrirVeiculo(id) {
   document.getElementById('v-comb').value   = v?v.combustivel:'Flex';
   document.getElementById('v-cap').value    = v?v.capacidade:'';
   document.getElementById('v-revkm').value  = v&&v.revKm?v.revKm:'';
+  // Vínculo com motorista (opcional)
+  var buscaMot = document.getElementById('v-mot-busca');
+  if(buscaMot) buscaMot.value = '';
+  popMotVinculo('v-mot','');
+  var selMot = document.getElementById('v-mot');
+  if(selMot) selMot.value = (v && v.motoristaId) ? v.motoristaId : '';
   // Fora da garagem
   document.getElementById('v-fora-garagem').checked = !!(v&&v.foraGaragem);
   document.getElementById('v-fora-garagem-obs').value = (v&&v.foraGaraObs)||'';
@@ -2624,14 +2822,24 @@ function confirmarVeiculo() {
     escalas:JSON.parse(JSON.stringify(_escalasTmpEdit)),
     tipo:document.getElementById('v-tipo').value||'🚗',
     cor:(document.getElementById('v-cor')?document.getElementById('v-cor').value:'')||'branco'};
-  if(_editVeiId) { Object.assign(getV(_editVeiId), obj); }
-  else { obj.id=uid('v'); D.veiculos.push(obj); }
+  var motVinc = (document.getElementById('v-mot')||{}).value || '';
+  var alvoId;
+  if(_editVeiId) { Object.assign(getV(_editVeiId), obj); alvoId = _editVeiId; }
+  else { obj.id=uid('v'); D.veiculos.push(obj); alvoId = obj.id; }
+  // Vínculo é aplicado depois do veículo existir (espelha no motorista)
+  aplicarVinculo(alvoId, motVinc);
   salvar(); fechar('ov-veiculo'); toast('Veículo salvo!'); renderTudo();
 }
 
 function removerVeiculo(id) {
   if(!isAdmin()){ toast('🚫 Sem permissão para remover veículos.'); return; }
   confirmarAcao('🗑️','Remover veículo?','Esta ação não pode ser desfeita.',function(){
+    // Libera o vínculo do lado do motorista antes de excluir
+    var _vRem = getV(id);
+    if(_vRem && _vRem.motoristaId){
+      var _mRem = getM(_vRem.motoristaId);
+      if(_mRem && _mRem.veiculoId === id){ _mRem.veiculoId = null; _mRem.veiculoPlaca = null; }
+    }
     D.veiculos = D.veiculos.filter(function(v){return v.id!==id;});
     salvar(); toast('Veículo removido.'); renderTudo();
   });
@@ -2651,6 +2859,106 @@ function confirmarAusente() {
   D.ausencias.push({id:uid('au'),vid:_ausenteVid,obs:obs,abertoEm:nowLocal(),resolvido:false,resolvidoEm:null});
   salvar(); fechar('ov-ausente'); toast('Ocorrência registrada!'); renderTudo();
 }
+// ══════════════════════════════════════════════════════════════════
+// 🌙 GUARDADO DURANTE A NOITE
+// Frentista/guarda registra a chegada retroativa do veículo
+// ══════════════════════════════════════════════════════════════════
+var _guardadoNoiteMovId = null;
+
+function abrirGuardadoNoite(movId) {
+  _guardadoNoiteMovId = movId;
+  var m = getMov(movId);
+  if(!m){ toast('Movimentação não encontrada.'); return; }
+  var v = getV(m.vid);
+  document.getElementById('gn-info').innerHTML =
+    '<strong>'+(v ? fmtPlaca(v.placa)+' — '+v.descricao : '?')+'</strong><br>'+
+    'Motorista: '+(m.motorista||'—')+
+    '<br>Retorno previsto: <strong>'+fmtDT(m.retorno)+'</strong>';
+  document.getElementById('gn-hora-entrada').value = nowLocal();
+  document.getElementById('gn-km').value  = '';
+  document.getElementById('gn-obs').value = '';
+  abrir('ov-guardado-noite');
+}
+
+function confirmarGuardadoNoite() {
+  var hora = document.getElementById('gn-hora-entrada').value;
+  if(!hora){ toast('Informe o horário de chegada.'); return; }
+  var m = getMov(_guardadoNoiteMovId);
+  if(!m){ toast('Movimentação não encontrada.'); fechar('ov-guardado-noite'); return; }
+  m.entrada_real  = hora.length === 16 ? hora + ':00' : hora;
+  m.guardadoNoite = true;
+  m.km_entrada    = parseInt(document.getElementById('gn-km').value)||null;
+  m.obsEntrada    = document.getElementById('gn-obs').value.trim()||null;
+  m.registradoPor = (_sessao && _sessao.login)||'frentista';
+  // Render antes de salvar — evita o listener do Firebase sobrescrever o estado
+  window._entradaEmAndamento = true;
+  renderTudo();
+  fechar('ov-guardado-noite');
+  toast('🌙 Entrada noturna registrada — '+fmtDT(m.entrada_real));
+  salvar();
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ⏱️ PRORROGAR RETORNO (admin e autorizador)
+// Guarda histórico completo em m.prorrogacoes[] para auditoria
+// ══════════════════════════════════════════════════════════════════
+var _prorrogarMovId = null;
+
+function abrirProrrogar(movId) {
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
+  _prorrogarMovId = movId;
+  var m = getMov(movId);
+  if(!m){ toast('Movimentação não encontrada.'); return; }
+  var v = getV(m.vid);
+  var retAtual = new Date(m.retorno);
+  document.getElementById('prorr-info').innerHTML =
+    '<strong>'+(v ? fmtPlaca(v.placa) : movId)+'</strong> — '+(m.motorista||'')+
+    '<br>Retorno atual: <strong>'+fmtDT(m.retorno)+'</strong>'+
+    (m.prorrogacoes && m.prorrogacoes.length
+      ? '<br><span style="color:#0284C7">↻ já prorrogado '+m.prorrogacoes.length+'x</span>' : '');
+  var iso = new Date(retAtual.getTime()-retAtual.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('prorr-novo-retorno').value = iso;
+  document.getElementById('prorr-obs').value = '';
+  document.getElementById('prorr-preview').style.display = 'none';
+  abrir('ov-prorrogar');
+}
+
+function prorrogarMin(min) {
+  var m = getMov(_prorrogarMovId);
+  if(!m) return;
+  var novo = new Date(new Date(m.retorno).getTime() + min*60000);
+  var iso  = new Date(novo.getTime()-novo.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('prorr-novo-retorno').value = iso;
+  var prev = document.getElementById('prorr-preview');
+  prev.style.display = 'block';
+  prev.innerHTML = '⏱️ Novo retorno: <strong>'+fmtDT(novo.toISOString())+'</strong>';
+}
+
+function confirmarProrrogar() {
+  var novoVal = document.getElementById('prorr-novo-retorno').value;
+  if(!novoVal){ toast('Defina o novo horário de retorno.'); return; }
+  var m = getMov(_prorrogarMovId);
+  if(!m){ toast('Movimentação não encontrada.'); return; }
+  var novoRetorno = new Date(novoVal);
+  var retAnterior = m.retorno;
+  m.retorno = novoRetorno.toISOString();
+  // Histórico para auditoria
+  if(!m.prorrogacoes) m.prorrogacoes = [];
+  m.prorrogacoes.push({
+    em:          new Date().toISOString(),
+    retAnterior: retAnterior,
+    retNovo:     m.retorno,
+    obs:         document.getElementById('prorr-obs').value.trim()||null,
+    por:         (_sessao && _sessao.login)||'admin'
+  });
+  salvar();
+  fechar('ov-prorrogar');
+  renderTudo();
+  toast('✅ Retorno prorrogado para '+fmtDT(m.retorno));
+}
+// ══════════════════════════════════════════════════════════════════
+
 function abrirResolver(auId) {
   _resolverAuId = auId;
   var au = getAus(auId); var v = getV(au.vid);
@@ -2775,20 +3083,23 @@ function renderMotoristas() {
     var d = diasAte(m.validade);
     var badge = st==='expirada'?'<span style="background:#FDEAEA;color:#A32D2D;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH VENCIDA</span>'
       :st==='proxima'?'<span style="background:#FEF3E0;color:#854F0B;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">Vence em '+d+'d</span>'
+      :st==='sem'?'<span style="background:#F1F5F9;color:#64748B;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH não informada</span>'
       :'<span style="background:#E0F5EC;color:#0F6E56;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">CNH OK</span>';
     var viagens = D.movimentacoes.filter(function(mv){return mv.motid===m.id;}).length;
     return '<div class="card '+(st==='expirada'?'':'')+'">'+
       '<div class="card-header"><span class="card-title">'+m.nome+'</span>'+badge+'</div>'+
       '<div class="card-meta">'+
-      '<span>CNH: <strong>'+m.cnh+'</strong></span>'+
-      '<span>Categoria: <strong>'+m.categoria+'</strong></span>'+
-      '<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>'+
+      (m.cnh?'<span>CNH: <strong>'+m.cnh+'</strong></span>':'')+
+      '<span>Categoria: <strong>'+(m.categoria||'B')+'</strong></span>'+
+      (m.validade?'<span>Validade: <strong>'+fmtData(m.validade)+'</strong></span>':'')+
       (m.telefone?'<span>Tel: <strong>'+m.telefone+'</strong></span>':'')+
+      (m.veiculoId && getV(m.veiculoId)
+        ? '<span>🚗 Veículo: <strong>'+fmtPlaca(getV(m.veiculoId).placa)+'</strong></span>' : '')+
       '<span>Viagens: <strong>'+viagens+'</strong></span>'+
       '</div>'+
       '<div class="actions">'+
       '<button class="btn" onclick="abrirMotorista(\''+m.id+'\')">✏️ Editar</button>'+
-      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
+      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover motorista?\',\'Esta ação não pode ser desfeita.\',function(){desvincularMotorista(\''+m.id+'\');D.motoristas=D.motoristas.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
       '</div></div>';
   }).join('');
 }
@@ -2836,13 +3147,15 @@ function renderVeiculos() {
       :'<span style="font-size:11px;color:#0F6E56;font-weight:600">🟢 '+cap+' vagas disp.</span>')
       :'';
     return '<div class="card'+(docs.length?' warn-card':'')+'">'+
-      '<div class="card-header"><span class="card-title">'+v.placa+' — '+v.descricao+'</span>'+
-      '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
+      '<div class="card-header"><span class="card-title">'+fmtPlaca(v.placa)+' — '+v.descricao+'</span>'+
+      '<span class="badge '+s+'">'+(LABEL[s]||s||'—')+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
       (cap?'<span>Cap.: <strong>'+cap+' pass.</strong></span>':'')+
       (v.combustivel?'<span>Comb.: <strong>'+v.combustivel+'</strong></span>':'')+
+      (v.motoristaId && getM(v.motoristaId)
+        ? '<span>👤 Motorista: <strong>'+getM(v.motoristaId).nome+'</strong></span>' : '')+
       (v.escalas&&v.escalas.length?'<span>📅 <strong>'+v.escalas.map(function(e){return e.nome;}).join(', ')+'</strong></span>':'')+
       '</div>'+
       (vagasHTML?'<div style="margin-top:6px">'+vagasHTML+'</div>':'')+
@@ -3102,12 +3415,12 @@ function buscar(q) {
                  ].join(' ').toLowerCase();
     if(fields.indexOf(ql) > -1) {
       var st = cnhStatus(m);
-      var stLabel = {ok:'CNH OK',warn:'CNH a vencer',exp:'CNH VENCIDA'}[st];
-      var stColor = {ok:'#0f6e56',warn:'#854f0b',exp:'#a32d2d'}[st];
+      var stLabel = {ok:'CNH OK',proxima:'CNH a vencer',expirada:'CNH VENCIDA',sem:'CNH não informada'}[st]||'—';
+      var stColor = {ok:'#0f6e56',proxima:'#854f0b',expirada:'#a32d2d',sem:'#64748b'}[st]||'#64748b';
       items.push({
         icon: '👤',
         title: hl(m.nome,q),
-        sub: 'CNH: '+hl(m.cnh,q)+' (Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
+        sub: (m.cnh?'CNH: '+hl(m.cnh,q)+' ':'')+'(Cat. '+(m.categoria||'B')+')' + (m.cpf?' · CPF: '+hl(m.cpf,q):'') + (m.telefone?' · '+hl(m.telefone,q):''),
         badge: '<span class="sr-badge motorista" style="color:'+stColor+'">'+stLabel+'</span>',
         action: function(){ aba(document.querySelectorAll('.tab')[3], 'motoristas'); }
       });
