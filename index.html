@@ -36,6 +36,17 @@
   .mbg-sub{font-size:13px;color:#64748b;margin-bottom:24px;line-height:1.6}
   .mbg-btn{width:100%;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s}
   .mbg-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(220,38,38,.4)}
+  /* Variantes do mesmo componente — reutilizadas por outras validações */
+  .mbg-topo.mbg-alerta{background:linear-gradient(135deg,#d97706,#92400e)}
+  .mbg-topo.mbg-info{background:linear-gradient(135deg,#0284c7,#075985)}
+  .mbg-destaque.mbg-alerta{background:#fffbeb;border-color:#fde68a;color:#92400e}
+  .mbg-destaque.mbg-info{background:#f0f9ff;border-color:#bae6fd;color:#075985}
+  .mbg-btn.mbg-alerta{background:linear-gradient(135deg,#d97706,#92400e)}
+  .mbg-btn.mbg-alerta:hover{box-shadow:0 8px 24px rgba(217,119,6,.4)}
+  .mbg-btn.mbg-info{background:linear-gradient(135deg,#0284c7,#075985)}
+  .mbg-btn.mbg-info:hover{box-shadow:0 8px 24px rgba(2,132,199,.4)}
+  .mbg-placa.mbg-info{background:#0c4a6e}
+  .mbg-placa.mbg-alerta{background:#78350f}
 </style>
 
 <!-- Firebase e Chart.js -->
@@ -2652,6 +2663,24 @@
       <div class="mbg-destaque">⚠️ Procure a Garagem Central para regularizar a situação antes de abastecer</div>
       <div class="mbg-sub">O veículo possui retorno em atraso no Controle de Frota.<br>Somente após regularização o abastecimento poderá ser realizado.</div>
       <button class="mbg-btn" onclick="document.getElementById('modal-bloqueio-garagem').style.display='none'">✅ ENTENDIDO — FECHAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL GENÉRICO DE SEGURANÇA (reutiliza o layout do bloqueio de garagem) ── -->
+<div id="modal-seguranca" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);align-items:center;justify-content:center;z-index:99999">
+  <div class="mbg-inner">
+    <div class="mbg-topo" id="mseg-topo">
+      <span class="mbg-icone" id="mseg-icone">⚠️</span>
+      <h2 id="mseg-titulo">—</h2>
+      <p id="mseg-subtitulo">—</p>
+    </div>
+    <div class="mbg-corpo">
+      <div class="mbg-placa" id="mseg-destaque-topo" style="display:none">———</div>
+      <div class="mbg-msg" id="mseg-msg">—</div>
+      <div class="mbg-destaque" id="mseg-alerta">—</div>
+      <div class="mbg-sub" id="mseg-sub">—</div>
+      <button class="mbg-btn" id="mseg-btn">FECHAR</button>
     </div>
   </div>
 </div>
@@ -5817,6 +5846,16 @@
   window.fmtPlaca  = fmtPlaca;
   window.mascaraPlaca = mascaraPlaca;
 
+  // Mostra o ultimo resultado da checagem no selo (sem precisar do console)
+  function _selo(msg){
+    try{
+      var el = document.getElementById('selo-versao');
+      if(el) el.textContent = '🔧 ' + msg;
+      console.log('[Selo]', msg);
+    }catch(e){}
+  }
+  window._selo = _selo;
+
   // ── SELO DE VERSÃO (prova visual de que o arquivo novo carregou) ──
   window.VERSAO_COMB = 'BLOQUEIO-v3 · 22/07';
   setTimeout(function(){
@@ -5877,8 +5916,209 @@
     return r;
   };
 
+  // ══════════════════════════════════════════════════════════════════
+  // MÓDULO DE VALIDAÇÕES DE SEGURANÇA
+  // Componente de modal + helpers reutilizáveis para novas regras.
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Exibe o modal de segurança reutilizando o layout do bloqueio de garagem.
+   * @param {Object} cfg
+   *   icone, titulo, subtitulo, msg, alerta, sub, destaque (opcional),
+   *   variante: 'bloqueio' | 'alerta' | 'info',
+   *   textoBotao
+   * @returns {Promise<void>} resolve quando o usuário fecha/confirma
+   */
+  function mostrarModalSeguranca(cfg) {
+    return new Promise(function(resolve){
+      var el = document.getElementById('modal-seguranca');
+      if(!el){ // fallback: sem o modal, ao menos notifica
+        mostrarNotificacao((cfg.icone||'') + ' ' + (cfg.msg||''), cfg.variante==='info'?'info':'error');
+        return resolve();
+      }
+      var variante = cfg.variante || 'bloqueio';
+      var cls = variante === 'info' ? 'mbg-info' : variante === 'alerta' ? 'mbg-alerta' : '';
+
+      var topo = document.getElementById('mseg-topo');
+      var btn  = document.getElementById('mseg-btn');
+      var dest = document.getElementById('mseg-alerta');
+      var chip = document.getElementById('mseg-destaque-topo');
+
+      topo.className = 'mbg-topo' + (cls?' '+cls:'');
+      btn.className  = 'mbg-btn'  + (cls?' '+cls:'');
+      dest.className = 'mbg-destaque' + (cls?' '+cls:'');
+      chip.className = 'mbg-placa' + (cls?' '+cls:'');
+
+      document.getElementById('mseg-icone').textContent     = cfg.icone || '⚠️';
+      document.getElementById('mseg-titulo').textContent    = cfg.titulo || '';
+      document.getElementById('mseg-subtitulo').textContent = cfg.subtitulo || '';
+      document.getElementById('mseg-msg').textContent       = cfg.msg || '';
+      dest.innerHTML = cfg.alerta || '';
+      document.getElementById('mseg-sub').innerHTML         = cfg.sub || '';
+      btn.textContent = cfg.textoBotao || 'FECHAR';
+
+      if(cfg.destaque){ chip.style.display = 'inline-block'; chip.textContent = cfg.destaque; }
+      else            { chip.style.display = 'none'; }
+
+      function encerrar(){
+        el.style.display = 'none';
+        btn.onclick = null; el.onclick = null;
+        document.removeEventListener('keydown', onEsc);
+        resolve();
+      }
+      function onEsc(e){ if(e.key === 'Escape') encerrar(); }
+
+      btn.onclick = encerrar;
+      el.onclick  = function(e){ if(e.target === el) encerrar(); };
+      document.addEventListener('keydown', onEsc);
+      el.style.display = 'flex';
+    });
+  }
+  window.mostrarModalSeguranca = mostrarModalSeguranca;
+
+  // Normaliza CPF: mantém apenas dígitos (aceita 000.000.000-00 ou 00000000000)
+  function _normCPF(cpf){ return String(cpf||'').replace(/\D/g,''); }
+
+  // Retorna 'AAAA-MM' do registro, priorizando o campo data e caindo no timestamp
+  function _mesDoRegistro(reg){
+    if(reg && reg.data && /^\d{4}-\d{2}/.test(reg.data)) return String(reg.data).slice(0,7);
+    if(reg && reg.timestamp){
+      var d = new Date(reg.timestamp);
+      if(!isNaN(d)) return d.toISOString().slice(0,7);
+    }
+    return '';
+  }
+  function _mesAtual(){ return new Date().toISOString().slice(0,7); }
+
+  // Nome do usuário que registrou o abastecimento (cobre variações de campo)
+  function _autorDoRegistro(reg){
+    return String((reg && (reg.solicitadoPor || reg.registradoPor || reg.aprovadoPor)) || '')
+             .toUpperCase().trim();
+  }
+
+  // CPF do registro: fluxo normal usa "cpf", DIVERSAS usa "cpfBeneficiado"
+  function _cpfDoRegistro(reg){
+    return _normCPF((reg && (reg.cpf || reg.cpfBeneficiado)) || '');
+  }
+
+  /**
+   * REGRA: um CPF só pode abastecer no mês através de um único usuário.
+   * Consulta o Firebase (fonte de verdade) e usa o cache local como fallback.
+   * @returns {Promise<{bloqueado:boolean, outrosUsuarios:string[], qtd:number}>}
+   */
+  async function validarCpfUsuarioUnico(cpf) {
+    var cpfN = _normCPF(cpf);
+    if(cpfN.length < 11) return { bloqueado:false, outrosUsuarios:[], qtd:0 };
+
+    var meuLogin = String(loginUser||'').toUpperCase().trim();
+    var mes = _mesAtual();
+    var registros = [];
+
+    try {
+      var snap = await db.ref('abastecimentos').once('value');
+      snap.forEach(function(item){ var a = item.val(); if(a) registros.push(a); });
+    } catch(e) {
+      console.warn('⚠️ validarCpfUsuarioUnico: Firebase indisponível, usando cache local', e);
+      registros = Array.isArray(cache) ? cache.slice() : [];
+    }
+
+    var outros = {};
+    var qtd = 0;
+    registros.forEach(function(a){
+      if(_cpfDoRegistro(a) !== cpfN) return;      // outro CPF
+      if(_mesDoRegistro(a) !== mes)  return;      // outro mês
+      var autor = _autorDoRegistro(a);
+      if(!autor || autor === meuLogin) return;    // mesmo usuário: permitido
+      outros[autor] = (outros[autor]||0) + 1;
+      qtd++;
+    });
+
+    var lista = Object.keys(outros);
+    console.log('[CPF] ' + cpfN + ' | mês ' + mes + ' | meu login: ' + meuLogin +
+                ' | outros usuários: ' + (lista.length ? lista.join(', ') : 'nenhum'));
+
+    return { bloqueado: lista.length > 0, outrosUsuarios: lista, qtd: qtd };
+  }
+
+  // Procura o CPF no cadastro de motoristas (nó próprio + frota compartilhada)
+  async function buscarMotoristaPorCpf(cpf) {
+    var cpfN = _normCPF(cpf);
+    if(cpfN.length < 11) return null;
+    var achado = null;
+
+    function varrer(lista){
+      (lista||[]).forEach(function(m){
+        if(achado || !m) return;
+        if(_normCPF(m.cpf) === cpfN) achado = m;
+      });
+    }
+
+    try {
+      var s1 = await db.ref('motoristas').once('value');
+      var l1 = []; s1.forEach(function(i){ l1.push(i.val()); });
+      varrer(l1);
+    } catch(e) { console.warn('buscarMotoristaPorCpf (nó motoristas):', e); }
+
+    if(!achado){
+      try {
+        var s2 = await db.ref('frota/dados/motoristas').once('value');
+        var v2 = s2.val();
+        varrer(Array.isArray(v2) ? v2 : Object.values(v2||{}));
+      } catch(e) { console.warn('buscarMotoristaPorCpf (frota):', e); }
+    }
+    return achado;
+  }
+
+  /**
+   * Validação completa de CPF antes de gravar um abastecimento.
+   * Vale para TODOS os perfis (admin, secretário, autorizador, frentista).
+   * @returns {Promise<boolean>} true = pode prosseguir | false = bloqueado
+   */
+  async function validarCpfAntesDeAbastecer(cpf) {
+    var cpfN = _normCPF(cpf);
+    if(cpfN.length < 11) return true;   // sem CPF válido informado: não aplica a regra
+
+    // 1) Bloqueio: mesmo CPF já abasteceu no mês por outro usuário
+    var r = await validarCpfUsuarioUnico(cpfN);
+    if(r.bloqueado){
+      await mostrarModalSeguranca({
+        variante : 'bloqueio',
+        icone    : '⚠️',
+        titulo   : 'CPF BLOQUEADO',
+        subtitulo: 'Abastecimento bloqueado pelo sistema',
+        destaque : cpf,
+        msg      : 'Este CPF já efetuou abastecimentos neste mês utilizando outro usuário do sistema.',
+        alerta   : '🔒 Por questões de segurança e auditoria, cada CPF deve estar vinculado a apenas um usuário para realização de abastecimentos.',
+        sub      : 'O abastecimento foi bloqueado.<br>' +
+                   'Registro(s) encontrado(s) no usuário: <strong>' + r.outrosUsuarios.join(', ') + '</strong>',
+        textoBotao: '✅ ENTENDIDO — FECHAR'
+      });
+      return false;
+    }
+
+    // 2) Aviso não bloqueante: CPF pertence a um motorista cadastrado
+    var mot = await buscarMotoristaPorCpf(cpfN);
+    if(mot){
+      await mostrarModalSeguranca({
+        variante : 'info',
+        icone    : 'ℹ️',
+        titulo   : 'Motorista Identificado',
+        subtitulo: 'Confirme antes de prosseguir',
+        msg      : 'O CPF informado pertence ao motorista:',
+        destaque : String(mot.nome||'—').toUpperCase(),
+        alerta   : '🚗 Verifique se o abastecimento está sendo realizado corretamente.',
+        sub      : (mot.categoria ? 'Categoria: <strong>'+mot.categoria+'</strong>' : '') +
+                   (mot.telefone ? ' · Tel: <strong>'+mot.telefone+'</strong>' : ''),
+        textoBotao: 'Continuar'
+      });
+    }
+    return true;
+  }
+  window.validarCpfAntesDeAbastecer = validarCpfAntesDeAbastecer;
+  // ══════════════════════════════════════════════════════════════════
+
   async function verificarPendenciaGaragem(placa) {
-    if (!placa || placa.length < 7) return { bloqueado: false };
+    if (!placa || placa.length < 7) { _selo('Garagem: placa curta (' + placa + ')'); return { bloqueado: false }; }
 
     // REGRA: veiculo irregular nao pode ser abastecido por NINGUEM.
     // Vale para todos os perfis — a pendencia e do veiculo, nao de quem digita.
@@ -5889,7 +6129,7 @@
     try {
       const snap  = await db.ref('frota/dados').once('value');
       const frota = snap.val();
-      if (!frota || !frota.veiculos) return { bloqueado: false };
+      if (!frota || !frota.veiculos) { _selo('Garagem: frota/dados SEM veiculos'); return { bloqueado: false }; }
 
       // Buscar na FROTA preservando a chave Firebase (movimentações usam esse id)
       const entradas = Array.isArray(frota.veiculos)
@@ -5900,10 +6140,10 @@
       for (const [k, v] of entradas) {
         if (v && normPlaca(v.placa) === placaN) { veiculo = v; chaveFB = k; break; }
       }
-      if (!veiculo) return { bloqueado: false };
+      if (!veiculo) { _selo('Garagem: placa ' + placaN + ' NAO existe na frota'); return { bloqueado: false }; }
 
       // Em manutenção ou guardado fora da garagem → não bloqueia
-      if (veiculo.manutencao || veiculo.foraGaragem) return { bloqueado: false };
+      if (veiculo.manutencao || veiculo.foraGaragem) { _selo('Garagem: ' + placaN + ' ISENTO (manutencao/fora)'); return { bloqueado: false }; }
 
       // Aceita tanto o id interno quanto a chave do Firebase
       const ids = [veiculo.id, chaveFB].filter(Boolean);
@@ -5921,6 +6161,7 @@
       );
 
       console.log('[Garagem]', placaN, '| vid:', ids.join('/'), '| irregular:', !!irregular);
+      _selo('Garagem: ' + placaN + ' → ' + (irregular ? 'IRREGULAR (bloqueia)' : 'regular (libera)'));
 
       if (irregular) {
         return {
@@ -5931,6 +6172,7 @@
       return { bloqueado: false };
     } catch (e) {
       console.warn('⚠️ Erro ao verificar garagem:', e);
+      _selo('Garagem: ERRO ao ler Firebase — ' + (e && e.message ? e.message : e));
       return { bloqueado: false };
     }
   }
@@ -5996,6 +6238,14 @@
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
         abrirModalBloqueioGaragem(dados.placa);
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+
+      // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
+      const cpfLiberado = await validarCpfAntesDeAbastecer(dados.cpf);
+      if (!cpfLiberado) {
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -14886,6 +15136,10 @@
       mostrarNotificacao("❌ CPF DO BENEFICIADO INVÁLIDO! Verifique os números digitados.", "error");
       return;
     }
+
+    // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
+    const cpfLiberadoDiv = await validarCpfAntesDeAbastecer(cpfBeneficiado);
+    if (!cpfLiberadoDiv) return;
     if (!postoId) {
       mostrarNotificacao("❌ SELECIONE O POSTO!", "error");
       return;
