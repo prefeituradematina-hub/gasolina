@@ -6081,6 +6081,31 @@
     // 1) Bloqueio: mesmo CPF já abasteceu no mês por outro usuário
     var r = await validarCpfUsuarioUnico(cpfN);
     if(r.bloqueado){
+      // MASTER tem override: pode prosseguir, mas o caso é registrado em auditoria
+      var ehMaster = String(loginUser||'').toLowerCase() === 'master';
+      if(ehMaster){
+        console.warn('[CPF] OVERRIDE DO MASTER — CPF ' + cpfN +
+                     ' tem registro(s) de: ' + r.outrosUsuarios.join(', '));
+        try {
+          registrarAuditoria('CPF_BLOQUEIO_LIBERADO_MASTER', {
+            cpf: cpf, outrosUsuarios: r.outrosUsuarios, qtdRegistros: r.qtd
+          });
+        } catch(e) {}
+        await mostrarModalSeguranca({
+          variante : 'alerta',
+          icone    : '🔓',
+          titulo   : 'CPF COM RESTRIÇÃO',
+          subtitulo: 'Liberação exclusiva do usuário master',
+          destaque : cpf,
+          msg      : 'Este CPF já efetuou abastecimentos neste mês utilizando outro usuário do sistema.',
+          alerta   : '🔑 Como você está logado como <strong>master</strong>, o abastecimento está liberado.',
+          sub      : 'Registro(s) encontrado(s) no usuário: <strong>' + r.outrosUsuarios.join(', ') + '</strong><br>' +
+                     'Esta liberação ficará registrada na auditoria do sistema.',
+          textoBotao: 'Continuar mesmo assim'
+        });
+        return true;
+      }
+
       await mostrarModalSeguranca({
         variante : 'bloqueio',
         icone    : '⚠️',

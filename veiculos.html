@@ -1493,13 +1493,114 @@ function vagasInfo(vid, pass) {
 }
 
 // ── POPULA SELECTS ───────────────────────────────────────────
-function popVeis(ids) {
-  var opts = D.veiculos.map(function(v){
+// ══════════════════════════════════════════════════════════════════
+// DISPONIBILIDADE DE VEÍCULO PARA VIAGEM
+// Regras: (1) não pode estar em viagem, (2) não pode ter agendamento
+// conflitante no período, (3) tem de ser da secretaria do usuário.
+// Usado tanto para montar as listas quanto para validar ao salvar.
+// ══════════════════════════════════════════════════════════════════
+
+// Período/edição do modal aberto — usado pelos campos de busca dos selects
+var _filtroDispAtual = null;
+
+// Dois períodos se sobrepõem? (aberto nas pontas: encostar não conflita)
+function _periodosConflitam(ini1, fim1, ini2, fim2) {
+  if(!ini1 || !ini2) return false;
+  var a1 = new Date(ini1).getTime();
+  var a2 = new Date(fim1 || ini1).getTime();
+  var b1 = new Date(ini2).getTime();
+  var b2 = new Date(fim2 || ini2).getTime();
+  if(isNaN(a1)||isNaN(b1)) return false;
+  if(isNaN(a2)) a2 = a1;
+  if(isNaN(b2)) b2 = b1;
+  return a1 < b2 && b1 < a2;
+}
+
+/**
+ * Verifica se um veículo pode ser usado numa viagem.
+ * @param {string} vid
+ * @param {Object} [opts]
+ *   inicio, fim      — período pretendido (para checar agendamentos)
+ *   ignorarMovId     — movimentação em edição (não conflita consigo mesma)
+ *   ignorarAgId      — agendamento em edição
+ *   ignorarEmViagem  — true quando a própria viagem em curso está sendo editada
+ * @returns {{disponivel:boolean, motivo:string, detalhe:string}}
+ */
+function veiculoDisponivel(vid, opts) {
+  opts = opts || {};
+  var v = getV(vid);
+  if(!v) return { disponivel:false, motivo:'inexistente', detalhe:'Veículo não encontrado.' };
+
+  // (3) Secretaria — reaproveita a regra que o sistema já usa
+  if(!podeVerVeiculo(v)){
+    return { disponivel:false, motivo:'secretaria',
+      detalhe:'Este veículo pertence à secretaria ' + (v.secretaria||'—') + ' e não pode ser usado por outra secretaria.' };
+  }
+
+  // Bloqueios de estado do próprio veículo
+  if(v.manutencao)  return { disponivel:false, motivo:'manutencao',
+    detalhe:'Veículo em manutenção' + (v.manutencaoObs ? ': ' + v.manutencaoObs : '') + '.' };
+  var aus = getAusAtiva(vid);
+  if(aus) return { disponivel:false, motivo:'ausente', detalhe:'Veículo registrado como fora do local.' };
+
+  // (1) Em viagem
+  if(!opts.ignorarEmViagem){
+    var mov = getMovAtiva(vid);
+    if(mov && mov.id !== opts.ignorarMovId){
+      return { disponivel:false, motivo:'em_viagem',
+        detalhe:'Veículo em viagem desde ' + fmtDT(mov.saida) + ', com retorno previsto para ' + fmtDT(mov.retorno) + '.' };
+    }
+  }
+
+  // (2) Agendamento conflitante no período
+  var ini = opts.inicio, fim = opts.fim;
+  if(ini){
+    var conflito = (D.agendamentos||[]).find(function(a){
+      if(!a || a.cancelado || a.usado) return false;
+      if(a.vid !== vid) return false;
+      if(a.id === opts.ignorarAgId) return false;
+      // agendamento já convertido em viagem não bloqueia
+      if((D.movimentacoes||[]).some(function(m){ return m && m.agid === a.id; })) return false;
+      return _periodosConflitam(ini, fim, a.saida, a.retorno);
+    });
+    if(conflito){
+      return { disponivel:false, motivo:'agendado',
+        detalhe:'Veículo já agendado de ' + fmtDT(conflito.saida) + ' até ' + fmtDT(conflito.retorno) +
+                (conflito.solic ? ' (solicitante: ' + conflito.solic + ')' : '') + '.' };
+    }
+  }
+
+  return { disponivel:true, motivo:'', detalhe:'' };
+}
+
+// Lista de veículos utilizáveis numa viagem, conforme as mesmas regras
+function veiculosDisponiveis(opts) {
+  return D.veiculos.filter(function(v){ return veiculoDisponivel(v.id, opts).disponivel; });
+}
+
+// Bloqueia o salvamento e explica o motivo (usado por todos os confirmar*)
+function bloquearSeIndisponivel(vid, opts, contexto) {
+  var r = veiculoDisponivel(vid, opts);
+  if(r.disponivel) return false;
+  var v = getV(vid);
+  alert('🚫 Veículo não disponível\n\n' +
+        (v ? fmtPlaca(v.placa) + ' — ' + (v.descricao||'') + '\n\n' : '') +
+        r.detalhe +
+        '\n\n' + (contexto || 'Selecione outro veículo.'));
+  return true;
+}
+// ══════════════════════════════════════════════════════════════════
+
+function popVeis(ids, filtro) {
+  // filtro: quando informado, lista só os veículos disponíveis para viagem.
+  // Sem filtro, mantém o comportamento original (usado pela manutenção).
+  var lista = filtro ? veiculosDisponiveis(filtro) : D.veiculos;
+  var opts = lista.map(function(v){
     return '<option value="'+v.id+'">'+fmtPlaca(v.placa)+' — '+v.descricao+(v.capacidade?' ('+v.capacidade+' lug.)':'')+'</option>';
   }).join('');
   ids.forEach(function(id){
     var el = document.getElementById(id);
-    if(el) el.innerHTML = opts||'<option>Sem veículos</option>';
+    if(el) el.innerHTML = opts || '<option value="">Nenhum veículo disponível</option>';
   });
 }
 function popMots(ids) {
@@ -1914,6 +2015,9 @@ function confirmarSaidaRapida() {
   var km      = parseInt(document.getElementById('sr-km').value)||null;
 
   if(!motNome) { alert('Selecione ou digite o motorista.'); return; }
+  // Trava de segurança
+  if(bloquearSeIndisponivel(vid, { inicio:saida, fim:retorno },
+        'Este veículo não pode iniciar uma nova viagem agora.')) return;
 
   D.movimentacoes.push({
     id:uid('m'), vid:vid, motid:motid, motorista:motNome,
@@ -2111,7 +2215,7 @@ function confirmarSaidaLote(){
   if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
   var chks = document.querySelectorAll('#sl-lista .sl-chk:checked');
   if(!chks.length){ alert('Selecione ao menos um veículo.'); return; }
-  var saidaISO = nowLocal(), n = 0, semMot = 0;
+  var saidaISO = nowLocal(), n = 0, semMot = 0, _loteBloqueados = [];
   chks.forEach(function(chk){
     var i = parseInt(chk.getAttribute('data-i'),10);
     var c = _loteCands[i];
@@ -2137,6 +2241,12 @@ function confirmarSaidaLote(){
       var r = new Date(now().getTime() + 10*3600*1000);
       retorno = new Date(r.getTime()-r.getTimezoneOffset()*60000).toISOString().slice(0,16);
     }
+    // Trava de segurança: não registra saída de veículo indisponível
+    var _disp = veiculoDisponivel(c.vid, { inicio:saidaISO, fim:retorno });
+    if(!_disp.disponivel){
+      _loteBloqueados.push((v?fmtPlaca(v.placa):c.vid) + ' — ' + _disp.detalhe);
+      return;
+    }
     D.movimentacoes.push({
       id:uid('m'), vid:c.vid, motid:motid, motorista:motNome,
       solic:'', sec:v.secretaria||'',
@@ -2153,6 +2263,9 @@ function confirmarSaidaLote(){
     n++;
   });
   salvar(); fechar('ov-saida-lote');
+  if(_loteBloqueados.length){
+    alert('🚫 ' + _loteBloqueados.length + ' veículo(s) não puderam sair:\n\n' + _loteBloqueados.join('\n'));
+  }
   toast('⚡ '+n+' saída'+(n>1?'s':'')+' registrada'+(n>1?'s':'')+(semMot?' ('+semMot+' sem motorista)':'')+'!');
   renderTudo();
 }
@@ -2322,7 +2435,10 @@ function preencherMotorista(prefix, motid, motNome) {
 }
 
 function abrirSaida(vid) {
-  popVeis(['s-vei']); popMots(['s-mot']); popSecs(['s-sec']);
+  // Só veículos utilizáveis: da secretaria, fora de viagem e sem agendamento no período
+  _filtroDispAtual = { inicio: nowLocal(), fim: nowLocal(), ignorarMovId: _editMovId||null,
+                       ignorarEmViagem: !!_editMovId };
+  popVeis(['s-vei'], _filtroDispAtual); popMots(['s-mot']); popSecs(['s-sec']);
   document.getElementById('s-saida').value = nowLocal();
   document.getElementById('s-retorno').value = nowLocal();
   document.getElementById('s-solic').value = '';
@@ -2354,6 +2470,8 @@ function abrirSaida(vid) {
   var ag = (!solAp && vid) ? getAgendamentoPendente(vid) : null;
   if(ag){
     document.getElementById('ov-saida').dataset.agid = ag.id;
+    // A saída que executa este agendamento não pode ser bloqueada por ele mesmo
+    if(_filtroDispAtual) _filtroDispAtual.ignorarAgId = ag.id;
     preencherMotorista('s', ag.motid, ag.motorista);
     if(ag.itin) setDestValue('s', ag.itin);
     if(ag.solic) document.getElementById('s-solic').value = ag.solic;
@@ -2455,6 +2573,12 @@ function confirmarSaida() {
   if(!vid||!saida||!ret) { alert('Preencha veículo, saída e retorno.'); return; }
   var dest = getDestValue('s');
   if(!dest) { alert('Informe o destino.'); return; }
+  // Trava de segurança: revalida no salvamento (a lista da tela pode ter sido burlada)
+  var _agidExec = (document.getElementById('ov-saida').dataset.agid)||null;
+  if(bloquearSeIndisponivel(vid, { inicio:saida, fim:ret,
+        ignorarMovId:_editMovId||null, ignorarAgId:_agidExec,
+        ignorarEmViagem:!!_editMovId },
+        'Escolha outro veículo para registrar esta saída.')) return;
   var motid = getMotId('s');
   var motNome = getMotNome('s')||(motid?((getM(motid)||{}).nome||'—'):'—');
   var mot = motid ? getM(motid) : null;
@@ -2536,7 +2660,10 @@ function confirmarEntrada() {
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
 function abrirAgenda(vid) {
-  popVeis(['ag-vei']); popMots(['ag-mot']); popSecs(['ag-sec']);
+  // Agendamento: o conflito é avaliado pelo período pretendido, não pelo "agora"
+  _filtroDispAtual = { inicio: null, fim: null, ignorarAgId: _editAgId||null,
+                       ignorarEmViagem: !!_editAgId };
+  popVeis(['ag-vei'], _filtroDispAtual); popMots(['ag-mot']); popSecs(['ag-sec']);
   // Se o carro está em viagem, o agendamento começa a partir da volta prevista
   var movAtual = vid ? getMovAtiva(vid) : null;
   var inicioAg = (movAtual && movAtual.retorno) ? String(movAtual.retorno).slice(0,16) : nowLocal();
@@ -2599,6 +2726,10 @@ function confirmarAgenda() {
       if(!confirm('⚠️ Este veículo está em viagem e só retorna em '+fmtDT(movEmViagem.retorno)+'.\n\nO agendamento começa ANTES do retorno ('+fmtDT(saida)+'), o que gera conflito de uso.\n\nDeseja agendar mesmo assim?')) return;
     }
   }
+  // Trava de segurança: secretaria e conflito de agendamento no período pretendido
+  if(bloquearSeIndisponivel(vid, { inicio:saida, fim:ret,
+        ignorarAgId:_editAgId||null, ignorarEmViagem:!!_editAgId },
+        'Escolha outro veículo ou outro período para este agendamento.')) return;
   var motid = getMotId('ag');
   var motNomeAg = getMotNome('ag')||(motid?((getM(motid)||{}).nome||'—'):'—');
   var mot = motid ? getM(motid) : null;
@@ -3640,12 +3771,19 @@ function resetMotManual(prefix) {
   var inp = document.getElementById(prefix+'-mot-texto');
   if(inp) inp.value='';
 }
-function filtrarVeiSelect(selectId, searchId) {
+function filtrarVeiSelect(selectId, searchId, filtroDisp) {
   var q = ((document.getElementById(searchId)||{}).value||'').toLowerCase().trim();
   var sel = document.getElementById(selectId);
   if(!sel) return;
   var prev = sel.value;
-  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
+  // Base já restrita aos veículos utilizáveis (secretaria, em viagem, agendamento)
+  var base = filtroDisp ? veiculosDisponiveis(filtroDisp)
+                        : (_filtroDispAtual ? veiculosDisponiveis(_filtroDispAtual) : D.veiculos);
+  var qn = normPlaca(q);
+  var filtered = q ? base.filter(function(v){
+        return (v.placa+' '+v.descricao).toLowerCase().includes(q) ||
+               (qn.length>=2 && normPlaca(v.placa).indexOf(qn)>-1);
+      }) : base;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+fmtPlaca(v.placa)+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
@@ -3657,7 +3795,12 @@ function filtrarVeiSolic(){
   var sel = document.getElementById('sol-vei');
   if(!sel) return;
   var prev = sel.value;
-  var filtered = q ? D.veiculos.filter(function(v){return (v.placa+' '+v.descricao).toLowerCase().includes(q);}) : D.veiculos;
+  var base = veiculosDisponiveis(_filtroDispAtual || {});
+  var qn = normPlaca(q);
+  var filtered = q ? base.filter(function(v){
+        return (v.placa+' '+v.descricao).toLowerCase().includes(q) ||
+               (qn.length>=2 && normPlaca(v.placa).indexOf(qn)>-1);
+      }) : base;
   sel.innerHTML = filtered.map(function(v){
     return '<option value="'+v.id+'">'+fmtPlaca(v.placa)+' — '+v.descricao+'</option>';
   }).join('')||'<option value="">Nenhum encontrado</option>';
@@ -3919,10 +4062,18 @@ function abrirSolicitacao(vid, editId) {
   var sel = document.getElementById('sol-vei');
   var alvoVid = vid || (s?s.vid:'');
   var sb = document.getElementById('sol-vei-busca'); if(sb) sb.value='';
-  var veics = D.veiculos; // busca geral: toda a frota
+  // Só veículos utilizáveis: da secretaria, fora de viagem e sem agendamento no período
+  _filtroDispAtual = { inicio: (s && s.data_viagem) ? s.data_viagem+'T00:00' : null,
+                       fim:    (s && s.data_viagem) ? s.data_viagem+'T23:59' : null,
+                       ignorarEmViagem: !!editId };
+  var veics = veiculosDisponiveis(_filtroDispAtual);
+  // Em edição, mantém o veículo já escolhido na lista mesmo que tenha ficado indisponível
+  if(alvoVid && !veics.some(function(vv){ return vv.id===alvoVid; })){
+    var atual = getV(alvoVid); if(atual) veics = [atual].concat(veics);
+  }
   sel.innerHTML = veics.map(function(vv){
-    return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+vv.placa+' — '+vv.descricao+'</option>';
-  }).join('');
+    return '<option value="'+vv.id+'"'+(vv.id===alvoVid?' selected':'')+'>'+fmtPlaca(vv.placa)+' — '+vv.descricao+'</option>';
+  }).join('') || '<option value="">Nenhum veículo disponível</option>';
   document.getElementById('sol-mot-nome').value = s?(s.motorista||''):'';
   document.getElementById('sol-destino').value = s?(s.destino||''):'';
   document.getElementById('sol-data').value = s?(s.data_viagem||''):'';
