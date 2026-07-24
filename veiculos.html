@@ -1834,10 +1834,15 @@ function makeBtnVeiculo(v) {
   var agendaWarnHTML = '';
   var _agHoje = getAgendaHoje(v.id);
   var _solPend = getSolicitacaoPendente(v.id);
+  var _agPend = getAgendamentoPendente(v.id);   // pendente hoje OU no futuro
   if(s==='liberado') {
     agendaWarnHTML = '<div class="agenda-warn" style="background:rgba(255,255,255,.3)">✅ Aprovado p/ viagem</div>';
   } else if(_agHoje && (s==='guardado'||s==='fora_garagem'||s==='fora_horario')) {
     agendaWarnHTML = '<div class="agenda-warn">📅 Agendado hoje</div>';
+  } else if(_agPend && (s==='guardado'||s==='fora_garagem'||s==='fora_horario')) {
+    // Agendamento futuro: sinaliza no card para o usuário saber que há algo ali
+    var _dAg = _agPend.saida ? _agPend.saida.slice(0,10).split('-').reverse().slice(0,2).join('/') : '';
+    agendaWarnHTML = '<div class="agenda-warn">📅 Agendado ' + _dAg + '</div>';
   }
 
   // Botão saída rápida visível no card
@@ -2386,8 +2391,25 @@ function verVeiculo(vid) {
       '<div style="font-size:11px;color:#888;margin-top:2px">Clique em "Veículo retornou" para resolver</div></div></div>';
   }
 
+  // Agendamento pendente: mostra e dá acesso direto a executar ou cancelar
+  var agPend = getAgendamentoPendente(vid);
+  var agHtml = '';
+  if(agPend){
+    agHtml = '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:.75rem">'+
+      '<div style="font-size:12px;font-weight:700;color:#1E40AF;margin-bottom:4px">📅 Agendamento pendente</div>'+
+      '<div style="font-size:12px;color:#1E3A8A;line-height:1.6">'+
+        'Motorista: <strong>'+(agPend.motorista||'—')+'</strong><br>'+
+        'Saída: <strong>'+fmtDT(agPend.saida)+'</strong> · Retorno: <strong>'+fmtDT(agPend.retorno)+'</strong>'+
+        (agPend.itin?'<br>Itinerário: <strong>'+agPend.itin+'</strong>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
+        '<button class="btn primary" style="font-size:12px;padding:7px 12px" onclick="fechar(\'ov-veiculo-detalhe\');registrarSaidaAgenda(\''+agPend.id+'\')">🚗 Registrar saída</button>'+
+        '<button class="btn danger" style="font-size:12px;padding:7px 12px" onclick="fechar(\'ov-veiculo-detalhe\');cancelarAgenda(\''+agPend.id+'\')">✕ Cancelar agendamento</button>'+
+      '</div></div>';
+  }
+
   document.getElementById('vd-header').innerHTML = header;
-  document.getElementById('vd-body').innerHTML = escHtml+docHTML+movHTML+
+  document.getElementById('vd-body').innerHTML = escHtml+docHTML+agHtml+movHTML+
     '<div class="actions">'+btns+'</div>'+checkAus;
   abrir('ov-veiculo-detalhe');
 }
@@ -2630,7 +2652,8 @@ function confirmarSaida() {
     // Agendamento consumido: nao pre-preenche mais nem duplica
     if(_agid){
       var _ag = getAg(_agid);
-      if(_ag){ _ag.usado = true; _ag.cancelado = true; }
+      // Executado ≠ cancelado. 'usado' já o remove das listas e da disponibilidade.
+      if(_ag){ _ag.usado = true; _ag.usadoEm = new Date().toISOString(); }
       document.getElementById('ov-saida').dataset.agid = '';
     }
   }
@@ -3260,9 +3283,13 @@ function editarSaida(id) {
 function renderAgendamentos() {
   var el = document.getElementById('lista-agendamentos');
   var _agends = D.agendamentos.filter(_podeVerRegistro);
-  var ativos = _agends.filter(function(a){return !a.cancelado;});
-  var canc   = _agends.filter(function(a){return a.cancelado;});
-  if(!ativos.length && !canc.length) { el.innerHTML='<div class="empty">Nenhum agendamento.</div>'; return; }
+  function _agRealizado(a){
+    return a.usado || (D.movimentacoes||[]).some(function(m){ return m && m.agid === a.id; });
+  }
+  var ativos = _agends.filter(function(a){ return !a.cancelado && !_agRealizado(a); });
+  var feitos = _agends.filter(function(a){ return !a.cancelado &&  _agRealizado(a); });
+  var canc   = _agends.filter(function(a){ return  a.cancelado; });
+  if(!ativos.length && !feitos.length && !canc.length) { el.innerHTML='<div class="empty">Nenhum agendamento.</div>'; return; }
   var html = ativos.map(function(a){
     var v = getV(a.vid);
     return '<div class="card">'+
@@ -3283,6 +3310,20 @@ function renderAgendamentos() {
       '<button class="btn danger" onclick="cancelarAgenda(\''+a.id+'\')">✕ Cancelar</button>'+
       '</div></div>';
   }).join('');
+  if(feitos.length) {
+    html += '<div class="section-title" style="margin:1rem 0 .5rem">Realizados</div>';
+    html += feitos.map(function(a){
+      var v = getV(a.vid);
+      return '<div class="card" style="opacity:.7">'+
+        '<div class="card-header"><span class="card-title">'+(v?fmtPlaca(v.placa)+' — '+v.descricao:'?')+'</span>'+
+        '<span class="badge guardado">✓ Realizado</span></div>'+
+        '<div class="card-meta">'+
+        '<span>Motorista: <strong>'+(a.motorista||'—')+'</strong></span>'+
+        '<span>Saída: <strong>'+fmtDT(a.saida)+'</strong></span>'+
+        (a.itin?'<span>Itinerário: <strong>'+a.itin+'</strong></span>':'')+
+        '</div></div>';
+    }).join('');
+  }
   if(canc.length) {
     html += '<div class="section-title" style="margin:1rem 0 .5rem">Cancelados</div>';
     html += canc.map(function(a){
