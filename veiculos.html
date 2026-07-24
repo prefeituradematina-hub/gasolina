@@ -2435,10 +2435,28 @@ function preencherMotorista(prefix, motid, motNome) {
 }
 
 function abrirSaida(vid) {
+  // 1º descobre o agendamento pendente: ele não pode bloquear a própria saída,
+  // senão o veículo some da lista e o usuário precisa selecionar tudo de novo.
+  var _agPre = vid ? getAgendamentoPendente(vid) : null;
   // Só veículos utilizáveis: da secretaria, fora de viagem e sem agendamento no período
   _filtroDispAtual = { inicio: nowLocal(), fim: nowLocal(), ignorarMovId: _editMovId||null,
+                       ignorarAgId: _agPre ? _agPre.id : null,
                        ignorarEmViagem: !!_editMovId };
   popVeis(['s-vei'], _filtroDispAtual); popMots(['s-mot']); popSecs(['s-sec']);
+  // Garante que o veículo indicado esteja na lista (ex.: veio de um agendamento)
+  if(vid){
+    var _selV = document.getElementById('s-vei');
+    if(_selV && !_selV.querySelector('[value="'+vid+'"]')){
+      var _vObj = getV(vid);
+      if(_vObj){
+        var _opt = document.createElement('option');
+        _opt.value = vid;
+        _opt.textContent = fmtPlaca(_vObj.placa) + ' — ' + _vObj.descricao +
+                           (_vObj.capacidade ? ' ('+_vObj.capacidade+' lug.)' : '');
+        _selV.insertBefore(_opt, _selV.firstChild);
+      }
+    }
+  }
   document.getElementById('s-saida').value = nowLocal();
   document.getElementById('s-retorno').value = nowLocal();
   document.getElementById('s-solic').value = '';
@@ -2467,11 +2485,14 @@ function abrirSaida(vid) {
   }
 
   // Sem solicitacao aprovada? Puxa os dados do AGENDAMENTO do secretario
-  var ag = (!solAp && vid) ? getAgendamentoPendente(vid) : null;
+  var ag = (!solAp && vid) ? _agPre : null;
   if(ag){
     document.getElementById('ov-saida').dataset.agid = ag.id;
     // A saída que executa este agendamento não pode ser bloqueada por ele mesmo
     if(_filtroDispAtual) _filtroDispAtual.ignorarAgId = ag.id;
+    // Veículo e motorista do agendamento já vêm preenchidos
+    var _selVei = document.getElementById('s-vei');
+    if(_selVei && _selVei.querySelector('[value="'+ag.vid+'"]')) _selVei.value = ag.vid;
     preencherMotorista('s', ag.motid, ag.motorista);
     if(ag.itin) setDestValue('s', ag.itin);
     if(ag.solic) document.getElementById('s-solic').value = ag.solic;
@@ -2756,10 +2777,48 @@ function confirmarAgenda() {
   salvar(); fechar('ov-agenda'); toast('Agendamento salvo!'); renderTudo();
 }
 
+// Atalho: abre a saída já com os dados do agendamento preenchidos
+function registrarSaidaAgenda(agId) {
+  var a = getAg(agId);
+  if(!a){ toast('Agendamento não encontrado.'); return; }
+  if(a.cancelado){ toast('Este agendamento foi cancelado.'); return; }
+  var jaSaiu = (D.movimentacoes||[]).some(function(m){ return m && m.agid === agId; });
+  if(jaSaiu || a.usado){ toast('A saída deste agendamento já foi registrada.'); return; }
+  abrirSaida(a.vid);
+}
+
 function cancelarAgenda(id) {
-  confirmarAcao('❌','Cancelar agendamento?','Esta ação não pode ser desfeita.',function(){
-    var a = getAg(id); a.cancelado=true; salvar(); toast('Agendamento cancelado.'); renderTudo();
-  });
+  var a = getAg(id);
+  if(!a){ toast('Agendamento não encontrado.'); return; }
+  if(a.cancelado){ toast('Este agendamento já está cancelado.'); return; }
+
+  // VALIDAÇÃO: não cancelar viagem que já saiu
+  var movDoAg = (D.movimentacoes||[]).find(function(m){ return m && m.agid === id; });
+  if(movDoAg || a.usado){
+    alert('🚫 Não é possível cancelar\n\n' +
+          'A saída deste agendamento já foi registrada' +
+          (movDoAg && movDoAg.saida ? ' em ' + fmtDT(movDoAg.saida) : '') + '.\n\n' +
+          'Viagens já iniciadas não podem ser canceladas.');
+    return;
+  }
+
+  var v = getV(a.vid);
+  var resumo = (v ? fmtPlaca(v.placa) + ' — ' + v.descricao : 'Veículo removido') + '\n' +
+               'Motorista: ' + (a.motorista || '—') + '\n' +
+               'Saída: ' + fmtDT(a.saida) + '\n' +
+               'Retorno: ' + fmtDT(a.retorno) +
+               (a.itin ? '\nItinerário: ' + a.itin : '');
+
+  confirmarAcao('❌','Cancelar agendamento?',
+    resumo + '\n\nO veículo e o motorista voltam a ficar disponíveis. O registro é mantido no histórico como cancelado.',
+    function(){
+      a.cancelado    = true;
+      a.canceladoEm  = new Date().toISOString();
+      a.canceladoPor = (_sessao && _sessao.login) || '—';
+      salvar();
+      toast('❌ Agendamento cancelado — veículo liberado.');
+      renderTudo();   // recalcula disponibilidade de veículo e motorista
+    });
 }
 
 // ── MOTORISTA ────────────────────────────────────────────────
@@ -3219,6 +3278,7 @@ function renderAgendamentos() {
       (a.sec?'<span>Secretaria: <strong>'+a.sec+'</strong></span>':'')+
       '</div>'+
       '<div class="actions">'+
+      '<button class="btn primary" onclick="registrarSaidaAgenda(\''+a.id+'\')">🚗 Registrar saída</button>'+
       '<button class="btn" onclick="editarAgenda(\''+a.id+'\')">✏️ Editar</button>'+
       '<button class="btn danger" onclick="cancelarAgenda(\''+a.id+'\')">✕ Cancelar</button>'+
       '</div></div>';
@@ -3230,7 +3290,9 @@ function renderAgendamentos() {
       return '<div class="card" style="opacity:.55">'+
         '<div class="card-header"><span class="card-title" style="text-decoration:line-through">'+(v?fmtPlaca(v.placa)+' — '+v.descricao:'?')+'</span>'+
         '<span class="badge cancelado">Cancelado</span></div>'+
-        '<div class="card-meta"><span>'+fmtDT(a.saida)+'</span>'+(a.itin?'<span>'+a.itin+'</span>':'')+'</div></div>';
+        '<div class="card-meta"><span>'+fmtDT(a.saida)+'</span>'+(a.itin?'<span>'+a.itin+'</span>':'')+
+        (a.canceladoEm?'<span>Cancelado em <strong>'+fmtDT(a.canceladoEm)+'</strong>'+(a.canceladoPor?' por <strong>'+a.canceladoPor+'</strong>':'')+'</span>':'')+
+        '</div></div>';
     }).join('');
   }
   el.innerHTML = html;
