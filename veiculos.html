@@ -2351,12 +2351,16 @@ function verVeiculo(vid) {
         if(isAdmin()) btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirVeiculo('+JSON.stringify(vid)+')" style="margin-top:6px">✏️ Editar veículo</button>';
       } else if(s==='aprovado') {
         var solAp = getSolicitacaoAprovadaFutura(vid);
+        var _sidAp = solAp?solAp.id:'';
         btns = '<div style="font-size:12px;color:#0369A1;font-weight:600;background:#E0F2FE;border-radius:8px;padding:10px 12px">'+
           '✅ Viagem aprovada para '+(solAp&&solAp.data_viagem?fmtData(solAp.data_viagem):'data agendada')+'<br>'+
-          '<span style="font-weight:400;font-size:11px">Aguardando saída — liberado automaticamente no dia da viagem.</span></div>';
-        if(isAdmin()){ var _sid=solAp?solAp.id:''; btns+='<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sid+'\')" style="margin-top:6px">❌ Cancelar aprovação</button>'; }
+          '<span style="font-weight:400;font-size:11px">Aguardando saída — liberado automaticamente no dia da viagem.</span></div>'+
+          '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidAp+'\')" style="margin-top:6px">❌ Cancelar viagem</button>';
       } else if(s==='liberado') {
-        btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>';
+        var solLib = getSolicitacaoLiberada(vid);
+        var _sidLib = solLib?solLib.id:'';
+        btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>'+
+          '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidLib+'\')">❌ Cancelar viagem</button>';
       }
     } else {
       // Verifica se tem escala ativa hoje com destino definido
@@ -2370,8 +2374,15 @@ function verVeiculo(vid) {
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
       }
       if(s==='liberado') {
+        var _solLibAdm = getSolicitacaoLiberada(vid);
+        var _sidLibAdm = _solLibAdm?_solLibAdm.id:'';
         btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSaida(\''+vid+'\')">🚗 Registrar saída no portão</button>'+
-               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>';
+               '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>'+
+               '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidLibAdm+'\')">❌ Cancelar viagem</button>';
+      } else if(s==='aprovado') {
+        var _solApAdm = getSolicitacaoAprovadaFutura(vid);
+        var _sidApAdm = _solApAdm?_solApAdm.id:'';
+        btns += '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidApAdm+'\')">❌ Cancelar viagem</button>';
       }
     }
   }
@@ -4397,6 +4408,43 @@ function recusarSolicitacao(id) {
   salvar(); renderTudo();
   toast('❌ Solicitação recusada.' + (nCaronas?' '+nCaronas+' carona(s) cancelada(s).':''));
 }
+// Cancela uma viagem já aprovada (status 'aprovada' — cobre os cards "Aprovada
+// para Viagem" e "Liberada para Viagem"). Libera veículo e motorista
+// automaticamente e mantém o registro no histórico como cancelado.
+function cancelarSolicitacao(id) {
+  var s = getS(id);
+  if(!s){ toast('Solicitação não encontrada.'); return; }
+  if(s.status === 'cancelada'){ toast('Esta viagem já está cancelada.'); return; }
+  if(s.status === 'recusada'){ toast('Esta solicitação já foi recusada.'); return; }
+
+  // VALIDAÇÃO: não cancelar viagem que já teve a saída registrada/iniciada
+  if(solicitacaoJaSaiu(s)){
+    alert('🚫 Não é possível cancelar\n\n' +
+          'A saída desta viagem já foi registrada.\n\n' +
+          'Viagens já iniciadas não podem ser canceladas.');
+    return;
+  }
+
+  var v = getV(s.vid);
+  var resumo = (v ? fmtPlaca(v.placa) + ' — ' + v.descricao : 'Veículo removido') + '\n' +
+               'Motorista: ' + (s.motorista || '—') + '\n' +
+               'Destino: ' + (s.destino || '—') +
+               (s.data_viagem ? '\nData: ' + fmtData(s.data_viagem) : '');
+
+  confirmarAcao('❌','Cancelar viagem?',
+    resumo + '\n\nO veículo e o motorista voltam a ficar disponíveis. O registro é mantido no histórico como cancelado.',
+    function(){
+      s.status        = 'cancelada';
+      s.cancelado_em  = now().toISOString();
+      s.canceladoPor  = (_sessao && _sessao.login) || '—';
+      var nCaronas = (D.caronas||[]).filter(function(c){return c.solId===id;}).length;
+      if(nCaronas && D.caronas) D.caronas = D.caronas.filter(function(c){return c.solId!==id;});
+      salvar();
+      toast('❌ Viagem cancelada — veículo liberado.' + (nCaronas?' '+nCaronas+' carona(s) cancelada(s).':''));
+      renderTudo();
+    });
+}
+
 function deletarSolicitacao(id) {
   if(!isAdmin()){ toast('🚫 Apenas administradores podem excluir solicitações.'); return; }
   var s = getS(id);
@@ -4424,16 +4472,16 @@ function renderSolicitacoes() {
   if(!sols.length) { el.innerHTML='<div class="empty">Nenhuma solicitação.</div>'; return; }
   el.innerHTML = sols.map(function(s){
     var v = getV(s.vid);
-    var statusLabel = {pendente:'⏳ Aguardando',aprovada:'✅ Aprovada',recusada:'❌ Recusada'}[s.status]||s.status;
-    var cor = {pendente:'#FFFBEB',aprovada:'#F0FDF4',recusada:'#FEF2F2'}[s.status]||'#fff';
-    return '<div class="card" style="background:'+cor+';border-color:'+(s.status==='pendente'?'#FDE68A':s.status==='aprovada'?'#BBF7D0':'#FECACA')+'">'+
+    var statusLabel = {pendente:'⏳ Aguardando',aprovada:'✅ Aprovada',recusada:'❌ Recusada',cancelada:'🚫 Cancelada'}[s.status]||s.status;
+    var cor = {pendente:'#FFFBEB',aprovada:'#F0FDF4',recusada:'#FEF2F2',cancelada:'#F8FAFC'}[s.status]||'#fff';
+    return '<div class="card" style="background:'+cor+';border-color:'+(s.status==='pendente'?'#FDE68A':s.status==='aprovada'?'#BBF7D0':s.status==='cancelada'?'#E2E8F0':'#FECACA')+'">'+
       '<div class="card-header">'+
         '<div class="card-title" style="display:flex;align-items:center;gap:8px">'+
           (isAdmin()&&s.status==='pendente'?'<input type="checkbox" class="sol-chk" data-id="'+s.id+'" onchange="solLoteContador()" style="width:16px;height:16px">':'')+
           (v?v.placa+' — '+v.descricao:'Veículo removido')+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:8px">'+
-          '<span class="badge '+(s.status==='aprovada'?'guardado':s.status==='recusada'?'irregular':'agendado')+'">'+statusLabel+'</span>'+
+          '<span class="badge '+(s.status==='aprovada'?'guardado':s.status==='recusada'?'irregular':s.status==='cancelada'?'cancelado':'agendado')+'">'+statusLabel+'</span>'+
           (isAdmin()?'<button class="btn-trash-sol" data-id="'+s.id+'" title="Excluir solicitação" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px">🗑️</button>':'')+
         '</div>'+
       '</div>'+
