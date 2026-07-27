@@ -6411,16 +6411,8 @@
       erros.push("❌ DESTINO OBRIGATÓRIO PARA SECRETÁRIOS");
     }
     
-    // VEÍCULO DEVE ESTAR CADASTRADO E PERTENCER À SECRETARIA DO SECRETÁRIO (ou ser compartilhado)
-    // Placas não cadastradas NÃO são mais permitidas para secretários.
-    if (userRole === 'secretarios' && !isGas && dados.placa) {
-      const veiculoAbast = (veiculos || []).find(v => normPlaca(v.placa) === normPlaca(dados.placa));
-      if (!veiculoAbast) {
-        erros.push("❌ VEÍCULO NÃO CADASTRADO! Secretários só podem abastecer veículos cadastrados na sua secretaria ou compartilhados.");
-      } else if (veiculoAbast.secretaria && veiculoAbast.secretaria !== dados.secretaria) {
-        erros.push(`❌ ESTE VEÍCULO PERTENCE À SECRETARIA "${veiculoAbast.secretaria}" E NÃO PODE SER ABASTECIDO PELA SUA SECRETARIA`);
-      }
-    }
+    // (Validação de veículo x secretaria movida para o modal grande verificarVeiculoAntesDeAbastecer,
+    // chamado em processar() — mesmo padrão do bloqueio de CPF, evita mensagem pequena duplicada)
     
     // CPF OBRIGATÓRIO APENAS PARA DIVERSAS
     const isDiversas = dados.secretaria === 'DIVERSAS';
