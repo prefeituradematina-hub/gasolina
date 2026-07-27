@@ -6768,6 +6768,52 @@
     return true;
   }
   window.validarCpfAntesDeAbastecer = validarCpfAntesDeAbastecer;
+  
+  /**
+   * Validação de veículo x secretaria antes de gravar um abastecimento.
+   * Vale apenas para o perfil "secretarios" (master/admin/frentista/autorizador não são afetados).
+   * Usa o mesmo modal grande de segurança (mostrarModalSeguranca) usado no bloqueio de CPF.
+   * @returns {Promise<boolean>} true = pode prosseguir | false = bloqueado
+   */
+  async function verificarVeiculoAntesDeAbastecer(placa, minhaSecretaria) {
+    if (userRole !== 'secretarios') return true;   // regra vale só para secretários
+    if (!placa || placa.length < 7) return true;   // sem placa (ex: GÁS) não se aplica
+    
+    const veiculo = (veiculos || []).find(v => normPlaca(v.placa) === normPlaca(placa));
+    
+    if (!veiculo) {
+      await mostrarModalSeguranca({
+        variante : 'bloqueio',
+        icone    : '🚫',
+        titulo   : 'VEÍCULO NÃO CADASTRADO',
+        subtitulo: 'Abastecimento bloqueado pelo sistema',
+        destaque : placa,
+        msg      : 'Este veículo não está cadastrado no sistema.',
+        alerta   : '🔒 Secretários só podem abastecer veículos cadastrados na própria secretaria ou compartilhados.',
+        sub      : 'Solicite a um administrador o cadastro deste veículo antes de prosseguir.',
+        textoBotao: '✅ ENTENDIDO — FECHAR'
+      });
+      return false;
+    }
+    
+    if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+      await mostrarModalSeguranca({
+        variante : 'bloqueio',
+        icone    : '🚫',
+        titulo   : 'VEÍCULO DE OUTRA SECRETARIA',
+        subtitulo: 'Abastecimento bloqueado pelo sistema',
+        destaque : placa,
+        msg      : 'Este veículo está cadastrado para a secretaria "' + veiculo.secretaria + '".',
+        alerta   : '🔒 Secretários só podem abastecer veículos cadastrados na própria secretaria ou compartilhados.',
+        sub      : 'Se isso estiver incorreto, solicite a um administrador que corrija a secretaria do veículo.',
+        textoBotao: '✅ ENTENDIDO — FECHAR'
+      });
+      return false;
+    }
+    
+    return true;
+  }
+  window.verificarVeiculoAntesDeAbastecer = verificarVeiculoAntesDeAbastecer;
   // ══════════════════════════════════════════════════════════════════
 
   async function verificarPendenciaGaragem(placa) {
@@ -6891,6 +6937,14 @@
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
         abrirModalBloqueioGaragem(dados.placa);
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+
+      // 🔒 BLOQUEIO: VEÍCULO DEVE ESTAR CADASTRADO NA SECRETARIA (OU SER COMPARTILHADO) — só para secretários
+      const veiculoLiberado = await verificarVeiculoAntesDeAbastecer(dados.placa, dados.secretaria);
+      if (!veiculoLiberado) {
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
