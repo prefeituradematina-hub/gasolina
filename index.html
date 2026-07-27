@@ -2527,6 +2527,68 @@
   </div>
 </div>
 
+<!-- Modal de Edição de Veículo -->
+<div id="modal-edit-veiculo" class="modal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="fecharModalEditVeiculo()">&times;</span>
+    <h3>✏️ EDITAR VEÍCULO</h3>
+    <input type="hidden" id="edit-vei-id">
+    <div class="grid-form">
+      <div>
+        <label>PLACA</label>
+        <input type="text" id="edit-vei-placa" disabled style="background:#f1f5f9; cursor:not-allowed;">
+        <div style="font-size:10px; color:#64748b; margin-top:3px;">A placa não pode ser alterada (usada no histórico de abastecimentos).</div>
+      </div>
+      <div>
+        <label>MODELO</label>
+        <input type="text" id="edit-vei-modelo" placeholder="EX: GOL, SAVEIRO">
+      </div>
+      <div>
+        <label>SECRETARIA (OPCIONAL)</label>
+        <select id="edit-vei-sec">
+          <option value="">NENHUMA (COMPARTILHADO)</option>
+          <option>ADMINISTRAÇÃO E FINANÇAS</option>
+          <option>AGRICULTURA E MEIO AMBIENTE</option>
+          <option>ASSISTÊNCIA SOCIAL</option>
+          <option>COMUNICAÇÃO</option>
+          <option>CULTURA</option>
+          <option>EDUCAÇÃO</option>
+          <option>ESPORTES</option>
+          <option>GOVERNO</option>
+          <option>INFRAESTRUTURA E SERVIÇOS</option>
+          <option>PLANEJAMENTO</option>
+          <option>SAÚDE</option>
+          <option value="DIVERSAS">DIVERSAS</option>
+        </select>
+      </div>
+      <div>
+        <label>MOTORISTA PADRÃO (OPCIONAL)</label>
+        <input type="text" id="edit-vei-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA">
+      </div>
+      <div>
+        <label>CPF DO MOTORISTA (OPCIONAL)</label>
+        <input type="text" id="edit-vei-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+      </div>
+      <div>
+        <label>TIPO DE COMBUSTÍVEL</label>
+        <select id="edit-vei-combustivel">
+          <option value="GASOLINA">GASOLINA</option>
+          <option value="ALCOOL">ÁLCOOL</option>
+          <option value="DIESEL">DIESEL</option>
+          <option value="DIESEL S10">Diesel S10</option>
+          <option value="GAS">Gás</option>
+          <option value="FLEX">FLEX (GASOLINA/ÁLCOOL)</option>
+        </select>
+      </div>
+      <div>
+        <label>ANO</label>
+        <input type="number" id="edit-vei-ano" placeholder="2020" min="1980" max="2030">
+      </div>
+    </div>
+    <button class="btn-save" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);" onclick="salvarEdicaoVeiculo()">💾 SALVAR ALTERAÇÕES</button>
+  </div>
+</div>
+
 <!-- Modal de Análise de Eficiência -->
 <div id="modal-analise" class="modal">
   <div class="modal-content" style="max-width: 800px;">
@@ -3020,7 +3082,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado()">
+          <input type="text" id="f-placa" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -3856,9 +3918,14 @@
             <option>ADMINISTRAÇÃO E FINANÇAS</option>
             <option>AGRICULTURA E MEIO AMBIENTE</option>
             <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
             <option>EDUCAÇÃO</option>
-            <option>SAÚDE</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
             <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
             <option value="DIVERSAS">DIVERSAS</option>
           </select>
         </div>
@@ -6342,6 +6409,17 @@
     // DESTINO OBRIGATÓRIO PARA SECRETÁRIOS
     if (userRole === 'secretarios' && (!dados.destino || dados.destino.trim() === "")) {
       erros.push("❌ DESTINO OBRIGATÓRIO PARA SECRETÁRIOS");
+    }
+    
+    // VEÍCULO DEVE ESTAR CADASTRADO E PERTENCER À SECRETARIA DO SECRETÁRIO (ou ser compartilhado)
+    // Placas não cadastradas NÃO são mais permitidas para secretários.
+    if (userRole === 'secretarios' && !isGas && dados.placa) {
+      const veiculoAbast = (veiculos || []).find(v => normPlaca(v.placa) === normPlaca(dados.placa));
+      if (!veiculoAbast) {
+        erros.push("❌ VEÍCULO NÃO CADASTRADO! Secretários só podem abastecer veículos cadastrados na sua secretaria ou compartilhados.");
+      } else if (veiculoAbast.secretaria && veiculoAbast.secretaria !== dados.secretaria) {
+        erros.push(`❌ ESTE VEÍCULO PERTENCE À SECRETARIA "${veiculoAbast.secretaria}" E NÃO PODE SER ABASTECIDO PELA SUA SECRETARIA`);
+      }
     }
     
     // CPF OBRIGATÓRIO APENAS PARA DIVERSAS
@@ -14348,8 +14426,7 @@
       placa: placa,
       modelo: modelo,
       descricao: modelo,                // compatibilidade: a frota usa "descricao"
-      // REMOVIDO: secretaria (veículo não tem secretaria fixa)
-      // A secretaria é definida em cada abastecimento
+      secretaria: secretaria,           // usado para restringir o abastecimento à secretaria do veículo
       motorista: motorista,
       cpfMotorista: cpfMotorista,
       combustivel: combustivel,
@@ -14371,6 +14448,80 @@
       listVeiculos();
     }).catch(error => {
       mostrarNotificacao("❌ ERRO AO SALVAR: " + error.message, "error");
+    });
+  }
+  
+  // Abre o modal de edição de um veículo já cadastrado (permite, entre outras coisas,
+  // definir/alterar a secretaria do veículo — necessário para a restrição de abastecimento por secretaria)
+  function editarVeiculo(id) {
+    if (!temPermissao('gerenciar_veiculos')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR VEÍCULOS!", "error");
+      return;
+    }
+    db.ref('veiculos/' + id).once('value', snap => {
+      if (!snap.exists()) {
+        mostrarNotificacao("❌ VEÍCULO NÃO ENCONTRADO!", "error");
+        return;
+      }
+      const v = snap.val();
+      document.getElementById('edit-vei-id').value = id;
+      document.getElementById('edit-vei-placa').value = v.placa || '';
+      document.getElementById('edit-vei-modelo').value = v.modelo || v.descricao || '';
+      document.getElementById('edit-vei-sec').value = v.secretaria || '';
+      document.getElementById('edit-vei-motorista').value = v.motorista || '';
+      document.getElementById('edit-vei-cpf').value = v.cpfMotorista || '';
+      document.getElementById('edit-vei-combustivel').value = v.combustivel || 'GASOLINA';
+      document.getElementById('edit-vei-ano').value = v.ano || '';
+      document.getElementById('modal-edit-veiculo').style.display = 'flex';
+    });
+  }
+  
+  function fecharModalEditVeiculo() {
+    document.getElementById('modal-edit-veiculo').style.display = 'none';
+  }
+  
+  function salvarEdicaoVeiculo() {
+    if (!temPermissao('gerenciar_veiculos')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR VEÍCULOS!", "error");
+      return;
+    }
+    
+    const id = document.getElementById('edit-vei-id').value;
+    const modelo = document.getElementById('edit-vei-modelo').value.toUpperCase().trim();
+    const secretaria = document.getElementById('edit-vei-sec').value;
+    const motorista = document.getElementById('edit-vei-motorista').value.toUpperCase().trim();
+    const cpfMotorista = document.getElementById('edit-vei-cpf').value.trim();
+    const combustivel = document.getElementById('edit-vei-combustivel').value;
+    const ano = document.getElementById('edit-vei-ano').value;
+    
+    if (!id) {
+      mostrarNotificacao("❌ VEÍCULO NÃO ENCONTRADO!", "error");
+      return;
+    }
+    
+    // Validar CPF se foi preenchido
+    if (cpfMotorista && cpfMotorista !== "") {
+      if (!validarCPF(cpfMotorista)) {
+        mostrarNotificacao("❌ CPF DO MOTORISTA INVÁLIDO! Verifique os números.", "error");
+        return;
+      }
+    }
+    
+    db.ref('veiculos/' + id).update({
+      modelo: modelo,
+      descricao: modelo,             // compatibilidade: a frota usa "descricao"
+      secretaria: secretaria,
+      motorista: motorista,
+      cpfMotorista: cpfMotorista,
+      combustivel: combustivel,
+      ano: ano
+    }).then(() => {
+      registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria });
+      mostrarNotificacao("✅ VEÍCULO ATUALIZADO COM SUCESSO!", "success");
+      fecharModalEditVeiculo();
+      listVeiculos();
+    }).catch(error => {
+      mostrarNotificacao("❌ ERRO AO ATUALIZAR: " + error.message, "error");
     });
   }
   
@@ -14672,6 +14823,7 @@
             <td class="no-print">
               <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="gerarQRCodeModal('${v.placa}')">📱 QR CODE</button>
               ${temPermissao('gerenciar_veiculos') ? `
+                <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarVeiculo('${c.key}')">✏️ EDITAR</button>
                 <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR VEÍCULO ${v.placa}?')) { db.ref('veiculos/${c.key}').remove().then(() => { registrarAuditoria('VEICULO_DELETADO', {placa: '${v.placa}'}); mostrarNotificacao('✅ VEÍCULO EXCLUÍDO!', 'success'); listVeiculos(); }); }">
                   🗑️
                 </button>
@@ -15411,6 +15563,7 @@
     const modalEditVIP = document.getElementById('modal-edit-diversas');
     const modalHistoricoVeiculo = document.getElementById('modal-historico-veiculo');
     const modalEditCPFAutorizado = document.getElementById('modal-edit-cpfautorizado');
+    const modalEditVeiculo = document.getElementById('modal-edit-veiculo');
     
     if (event.target === modalEdit) {
       fecharModal();
@@ -15441,6 +15594,9 @@
     }
     if (event.target === modalEditCPFAutorizado) {
       fecharModalEditCPFAutorizado();
+    }
+    if (event.target === modalEditVeiculo) {
+      fecharModalEditVeiculo();
     }
   };
   
@@ -17577,6 +17733,70 @@
   // Wrapper para pegar litros
   function obterLitros() {
     return parseFloat(document.getElementById('f-lit').value) || 0;
+  }
+  
+  // Verifica em tempo real se o veículo digitado está cadastrado e pertence à secretaria do secretário logado
+  // (ou é compartilhado). Placas não cadastradas NÃO são mais permitidas para secretários.
+  // Não afeta master, admin, frentista ou autorizador — só o perfil "secretarios".
+  function verificarVeiculoPermitidoSecretaria() {
+    if (userRole !== 'secretarios') return;
+    
+    const placa = obterPlacaSelecionada();
+    const btnRegistrar = document.getElementById('btn-registrar');
+    const alertaId = 'alerta-veiculo-secretaria';
+    const alertaExistente = document.getElementById(alertaId);
+    if (alertaExistente) alertaExistente.remove();
+    
+    const restaurarBotao = () => {
+      if (btnRegistrar && (btnRegistrar.innerHTML.includes('VEÍCULO DE OUTRA SECRETARIA') || btnRegistrar.innerHTML.includes('VEÍCULO NÃO CADASTRADO'))) {
+        btnRegistrar.disabled = false;
+        btnRegistrar.style.background = '';
+        btnRegistrar.innerHTML = '✔️ REGISTRAR ABASTECIMENTO';
+      }
+    };
+    
+    if (!placa || placa.length < 7) {
+      restaurarBotao();
+      return;
+    }
+    
+    const veiculo = (veiculos || []).find(v => normPlaca(v.placa) === normPlaca(placa));
+    const minhaSecretaria = document.getElementById('f-sec') ? document.getElementById('f-sec').value : userSecretaria;
+    
+    const bloquear = (titulo, mensagem, textoBotao) => {
+      if (btnRegistrar) {
+        btnRegistrar.disabled = true;
+        btnRegistrar.style.background = 'linear-gradient(135deg, var(--danger) 0%, #dc2626 100%)';
+        btnRegistrar.innerHTML = textoBotao;
+      }
+      const alertaDiv = document.createElement('div');
+      alertaDiv.id = alertaId;
+      alertaDiv.style.marginTop = '10px';
+      alertaDiv.style.padding = '10px';
+      alertaDiv.style.background = '#fee2e2';
+      alertaDiv.style.borderRadius = '6px';
+      alertaDiv.style.borderLeft = '4px solid var(--danger)';
+      alertaDiv.style.fontSize = '11px';
+      alertaDiv.innerHTML = `<strong>${titulo}</strong><br>${mensagem}`;
+      const form = document.querySelector('.grid-form');
+      if (form) form.appendChild(alertaDiv);
+    };
+    
+    if (!veiculo) {
+      bloquear(
+        '⚠️ VEÍCULO NÃO CADASTRADO!',
+        'Secretários só podem abastecer veículos cadastrados na sua secretaria ou compartilhados.',
+        '⛔ VEÍCULO NÃO CADASTRADO'
+      );
+    } else if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+      bloquear(
+        '⚠️ VEÍCULO DE OUTRA SECRETARIA!',
+        `Este veículo está cadastrado para <strong>${veiculo.secretaria}</strong> e não pode ser abastecido pela sua secretaria.`,
+        '⛔ VEÍCULO DE OUTRA SECRETARIA'
+      );
+    } else {
+      restaurarBotao();
+    }
   }
   
   // Função adaptada de verificarVeiculoSelecionado
