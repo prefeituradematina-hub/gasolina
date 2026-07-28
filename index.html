@@ -6729,6 +6729,117 @@
   window.validarCpfAntesDeAbastecer = validarCpfAntesDeAbastecer;
   
   /**
+   * Limite de frequência por CPF antes de gravar um abastecimento:
+   * - CPF com autorização ATIVA em "CPF Autorizados": no máximo 1 abastecimento a cada 7 dias.
+   * - CPF SEM autorização: no máximo 1 abastecimento por mês (mês calendário).
+   * Vale para TODOS os perfis. Apenas o usuário master pode liberar mesmo assim (fica em auditoria).
+   * @returns {Promise<boolean>} true = pode prosseguir | false = bloqueado
+   */
+  async function validarFrequenciaCPF(cpf) {
+    var cpfN = _normCPF(cpf);
+    if (cpfN.length < 11) return true; // sem CPF válido informado: não aplica a regra
+    
+    var ehMaster = String(loginUser||'').toLowerCase() === 'master';
+    var autorizado = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
+    
+    // Busca registros existentes desse CPF (Firebase como fonte de verdade, com fallback pro cache local)
+    var registros = [];
+    try {
+      var snap = await db.ref('abastecimentos').once('value');
+      snap.forEach(function(item){ var a = item.val(); if(a) registros.push(a); });
+    } catch(e) {
+      console.warn('⚠️ validarFrequenciaCPF: Firebase indisponível, usando cache local', e);
+      registros = Array.isArray(cache) ? cache.slice() : [];
+    }
+    
+    var doCpf = registros.filter(function(a){ return _cpfDoRegistro(a) === cpfN; });
+    if (doCpf.length === 0) return true; // primeiro abastecimento deste CPF: sempre permitido
+    
+    var ultimo = doCpf.slice().sort(function(a,b){ return (b.timestamp||0) - (a.timestamp||0); })[0];
+    
+    if (autorizado) {
+      // CPF AUTORIZADO: 1 abastecimento a cada 7 dias
+      var diasDesdeUltimo = (Date.now() - (ultimo.timestamp||0)) / 86400000;
+      if (diasDesdeUltimo >= 7) return true;
+      
+      var faltam = (7 - diasDesdeUltimo).toFixed(1);
+      var quandoFoi = ultimo.timestamp ? new Date(ultimo.timestamp).toLocaleString('pt-BR') : '—';
+      
+      if (ehMaster) {
+        await mostrarModalSeguranca({
+          variante : 'alerta',
+          icone    : '🔓',
+          titulo   : 'LIMITE SEMANAL — CPF AUTORIZADO',
+          subtitulo: 'Liberação exclusiva do usuário master',
+          destaque : cpf,
+          msg      : 'Este CPF (autorizado) já abasteceu há menos de 7 dias.',
+          alerta   : '🔑 Como você está logado como <strong>master</strong>, o abastecimento está liberado.',
+          sub      : 'Último abastecimento: <strong>' + quandoFoi + '</strong><br>' +
+                     'Faltam aproximadamente <strong>' + faltam + ' dia(s)</strong> para completar 7 dias.<br>' +
+                     'Esta liberação ficará registrada na auditoria do sistema.',
+          textoBotao: 'Continuar mesmo assim'
+        });
+        try {
+          registrarAuditoria('CPF_LIMITE_SEMANAL_LIBERADO_MASTER', { cpf: cpf, ultimoAbastecimentoEm: ultimo.timestamp||null });
+        } catch(e) {}
+        return true;
+      }
+      
+      await mostrarModalSeguranca({
+        variante : 'bloqueio',
+        icone    : '🚫',
+        titulo   : 'LIMITE SEMANAL ATINGIDO',
+        subtitulo: 'Abastecimento bloqueado pelo sistema',
+        destaque : cpf,
+        msg      : 'Este CPF (autorizado) já abasteceu há menos de 7 dias.',
+        alerta   : '🔒 CPFs autorizados só podem abastecer uma vez a cada 7 dias.',
+        sub      : 'Último abastecimento: <strong>' + quandoFoi + '</strong><br>' +
+                   'Faltam aproximadamente <strong>' + faltam + ' dia(s)</strong> para completar 7 dias.',
+        textoBotao: '✅ ENTENDIDO — FECHAR'
+      });
+      return false;
+      
+    } else {
+      // CPF SEM AUTORIZAÇÃO: 1 abastecimento por mês (mês calendário)
+      var mesAtual = _mesAtual();
+      var jaNoMes = doCpf.some(function(a){ return _mesDoRegistro(a) === mesAtual; });
+      if (!jaNoMes) return true;
+      
+      if (ehMaster) {
+        await mostrarModalSeguranca({
+          variante : 'alerta',
+          icone    : '🔓',
+          titulo   : 'LIMITE MENSAL — CPF NÃO AUTORIZADO',
+          subtitulo: 'Liberação exclusiva do usuário master',
+          destaque : cpf,
+          msg      : 'Este CPF já efetuou um abastecimento neste mês e não possui autorização semanal cadastrada.',
+          alerta   : '🔑 Como você está logado como <strong>master</strong>, o abastecimento está liberado.',
+          sub      : 'Esta liberação ficará registrada na auditoria do sistema.',
+          textoBotao: 'Continuar mesmo assim'
+        });
+        try {
+          registrarAuditoria('CPF_LIMITE_MENSAL_LIBERADO_MASTER', { cpf: cpf });
+        } catch(e) {}
+        return true;
+      }
+      
+      await mostrarModalSeguranca({
+        variante : 'bloqueio',
+        icone    : '🚫',
+        titulo   : 'LIMITE MENSAL ATINGIDO',
+        subtitulo: 'Abastecimento bloqueado pelo sistema',
+        destaque : cpf,
+        msg      : 'Este CPF já efetuou um abastecimento neste mês.',
+        alerta   : '🔒 CPFs sem autorização semanal só podem abastecer uma vez por mês.',
+        sub      : 'Para permitir abastecimentos semanais, cadastre este CPF em "CPF Autorizados" com status Ativo.',
+        textoBotao: '✅ ENTENDIDO — FECHAR'
+      });
+      return false;
+    }
+  }
+  window.validarFrequenciaCPF = validarFrequenciaCPF;
+  
+  /**
    * Validação de veículo x secretaria antes de gravar um abastecimento.
    * Vale apenas para o perfil "secretarios" (master/admin/frentista/autorizador não são afetados).
    * Usa o mesmo modal grande de segurança (mostrarModalSeguranca) usado no bloqueio de CPF.
@@ -6912,6 +7023,14 @@
       // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
       const cpfLiberado = await validarCpfAntesDeAbastecer(dados.cpf);
       if (!cpfLiberado) {
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+      
+      // 🔒 LIMITE DE FREQUÊNCIA POR CPF — semanal para autorizados, mensal para os demais
+      const freqCpfLiberado = await validarFrequenciaCPF(dados.cpf);
+      if (!freqCpfLiberado) {
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -16065,6 +16184,11 @@
     // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
     const cpfLiberadoDiv = await validarCpfAntesDeAbastecer(cpfBeneficiado);
     if (!cpfLiberadoDiv) return;
+    
+    // 🔒 LIMITE DE FREQUÊNCIA POR CPF — semanal para autorizados, mensal para os demais
+    const freqCpfLiberadoDiv = await validarFrequenciaCPF(cpfBeneficiado);
+    if (!freqCpfLiberadoDiv) return;
+    
     if (!postoId) {
       mostrarNotificacao("❌ SELECIONE O POSTO!", "error");
       return;
