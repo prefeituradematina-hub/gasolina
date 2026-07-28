@@ -558,6 +558,9 @@
       .no-print { display: none !important; } 
       .card { box-shadow: none; page-break-inside: avoid; }
       body { background: white; }
+      .only-print { display: block !important; }
+      body.imprimindo-veiculos > *:not(#tab-users) { display: none !important; }
+      body.imprimindo-veiculos #tab-users > *:not(#card-veiculos-cadastrados) { display: none !important; }
   }
   
   @media (max-width: 768px) {
@@ -4156,27 +4159,37 @@
     </div>
     
     <!-- LISTA DE VEÍCULOS -->
-    <div class="card">
-      <h3>🚗 VEÍCULOS CADASTRADOS</h3>
-      <div style="margin-bottom: 15px;">
-        <label>FILTRAR POR SECRETARIA</label>
-        <select id="veiculos-filtro-secretaria" onchange="listVeiculos()">
-          <option value="">TODAS</option>
-          <option value="__COMPARTILHADO__">NENHUMA (COMPARTILHADO)</option>
-          <option value="DIVERSAS">DIVERSAS</option>
-          <option>ADMINISTRAÇÃO E FINANÇAS</option>
-          <option>AGRICULTURA E MEIO AMBIENTE</option>
-          <option>ASSISTÊNCIA SOCIAL</option>
-          <option>COMUNICAÇÃO</option>
-          <option>CULTURA</option>
-          <option>EDUCAÇÃO</option>
-          <option>ESPORTES</option>
-          <option>GOVERNO</option>
-          <option>INFRAESTRUTURA E SERVIÇOS</option>
-          <option>PLANEJAMENTO</option>
-          <option>SAÚDE</option>
-          <option>OUTROS</option>
-        </select>
+    <div class="card" id="card-veiculos-cadastrados">
+      <h3 class="no-print">🚗 VEÍCULOS CADASTRADOS</h3>
+      <div class="no-print" style="display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom: 15px;">
+        <div>
+          <label>BUSCAR (PLACA, MODELO OU MOTORISTA)</label>
+          <input type="text" id="veiculos-busca" placeholder="Digite para buscar..." oninput="listVeiculos()">
+        </div>
+        <div>
+          <label>FILTRAR POR SECRETARIA</label>
+          <select id="veiculos-filtro-secretaria" onchange="listVeiculos()">
+            <option value="">TODAS</option>
+            <option value="__COMPARTILHADO__">NENHUMA (COMPARTILHADO)</option>
+            <option value="DIVERSAS">DIVERSAS</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+      </div>
+      <div class="no-print" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom: 15px;">
+        <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="imprimirVeiculos()">🖨️ IMPRIMIR VEÍCULOS</button>
+        <button class="btn-save" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);" onclick="exportarPDFVeiculos()">📄 EXPORTAR PDF</button>
       </div>
       <div class="table-wrapper">
         <table>
@@ -4194,6 +4207,10 @@
           </thead>
           <tbody id="veiculos-body"></tbody>
         </table>
+      </div>
+      <div id="veiculos-print-titulo" class="only-print" style="display:none; text-align:center; margin-bottom:10px;">
+        <h2>🚗 Veículos Cadastrados — Controle de Gasolina</h2>
+        <p id="veiculos-print-subtitulo"></p>
       </div>
     </div>
   </div>
@@ -10756,6 +10773,46 @@
     }, 600);
   }
   
+  // Prepara a impressão isolada da lista de "Veículos Cadastrados" (esconde as demais
+  // seções de Configurações — Usuários, VIPs, Postos — e mostra um título de impressão).
+  function prepararImpressaoVeiculos() {
+    document.body.classList.add('imprimindo-veiculos');
+    const tituloDiv = document.getElementById('veiculos-print-titulo');
+    if (tituloDiv) tituloDiv.style.display = 'block';
+    const sub = document.getElementById('veiculos-print-subtitulo');
+    if (sub) {
+      const secSelect = document.getElementById('veiculos-filtro-secretaria');
+      const secValor = secSelect ? secSelect.value : '';
+      const busca = (document.getElementById('veiculos-busca') || {}).value || '';
+      let texto = 'Gerado em ' + new Date().toLocaleString('pt-BR');
+      if (secValor) texto += ' — Secretaria: ' + (secValor === '__COMPARTILHADO__' ? 'Compartilhado' : secValor);
+      if (busca) texto += ' — Busca: "' + busca + '"';
+      sub.textContent = texto;
+    }
+  }
+  
+  function finalizarImpressaoVeiculos() {
+    document.body.classList.remove('imprimindo-veiculos');
+    const tituloDiv = document.getElementById('veiculos-print-titulo');
+    if (tituloDiv) tituloDiv.style.display = 'none';
+  }
+  window.addEventListener('afterprint', finalizarImpressaoVeiculos);
+  
+  function imprimirVeiculos() {
+    prepararImpressaoVeiculos();
+    setTimeout(() => { window.print(); }, 50);
+  }
+  
+  function exportarPDFVeiculos() {
+    const tbody = document.getElementById('veiculos-body');
+    if (!tbody || tbody.children.length === 0 || tbody.innerHTML.includes('NENHUM VEÍCULO')) {
+      mostrarNotificacao("❌ NENHUM VEÍCULO PARA EXPORTAR!", "error");
+      return;
+    }
+    mostrarNotificacao("📄 Na janela de impressão, escolha \"Salvar como PDF\" em Destino/Impressora.", "info");
+    setTimeout(() => { imprimirVeiculos(); }, 600);
+  }
+  
   function toggleCombustivelPostoEdit(tipo) {
     const checkbox = document.getElementById(`edit-posto-tem-${tipo}`);
     let inputId;
@@ -15032,6 +15089,8 @@
       
       const filtroSelect = document.getElementById('veiculos-filtro-secretaria');
       const filtroSecretaria = filtroSelect ? filtroSelect.value : '';
+      const buscaInput = document.getElementById('veiculos-busca');
+      const busca = buscaInput ? buscaInput.value.toUpperCase().trim() : '';
       let algumExibido = false;
       
       snap.forEach(c => {
@@ -15044,6 +15103,12 @@
           } else if ((v.secretaria || '') !== filtroSecretaria) {
             return;
           }
+        }
+        
+        // Busca por texto (placa, modelo ou motorista) — aditiva, se vazia mostra todos
+        if (busca) {
+          const alvo = (String(v.placa||'') + ' ' + String(v.modelo||v.descricao||'') + ' ' + String(v.motorista||'')).toUpperCase();
+          if (!alvo.includes(busca)) return;
         }
         
         algumExibido = true;
