@@ -2418,6 +2418,7 @@
           <option>INFRAESTRUTURA E SERVIÇOS</option>
           <option>PLANEJAMENTO</option>
           <option>SAÚDE</option>
+          <option>OUTROS</option>
           <option value="DIVERSAS">DIVERSAS</option>
         </select>
       </div>
@@ -2558,6 +2559,7 @@
           <option>INFRAESTRUTURA E SERVIÇOS</option>
           <option>PLANEJAMENTO</option>
           <option>SAÚDE</option>
+          <option>OUTROS</option>
           <option value="DIVERSAS">DIVERSAS</option>
         </select>
       </div>
@@ -2861,6 +2863,7 @@
           <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
           <option value="MEIO AMBIENTE">MEIO AMBIENTE</option>
           <option value="SAÚDE">SAÚDE</option>
+          <option value="OUTROS">OUTROS</option>
           <option value="AGRICULTURA E MEIO AMBIENTE">AGRICULTURA E MEIO AMBIENTE</option>
           <option value="DIVERSAS">DIVERSAS</option>
         </select>
@@ -3105,6 +3108,7 @@
             <option value="INFRAESTRUTURA E SERVIÇOS">INFRAESTRUTURA E SERVIÇOS</option>
             <option value="PLANEJAMENTO">PLANEJAMENTO</option>
             <option value="SAÚDE">SAÚDE</option>
+            <option value="OUTROS">OUTROS</option>
           </select>
         </div>
         <div>
@@ -3926,6 +3930,7 @@
             <option>INFRAESTRUTURA E SERVIÇOS</option>
             <option>PLANEJAMENTO</option>
             <option>SAÚDE</option>
+            <option>OUTROS</option>
             <option value="DIVERSAS">DIVERSAS</option>
           </select>
         </div>
@@ -4060,6 +4065,7 @@
             <option>INFRAESTRUTURA E SERVIÇOS</option>
             <option>PLANEJAMENTO</option>
             <option>SAÚDE</option>
+            <option>OUTROS</option>
             <option value="DIVERSAS">DIVERSAS</option>
           </select>
         </div>
@@ -4121,6 +4127,21 @@
         onclick="migrarAvulsosParaDiversas()" 
         style="background: white; color: #d97706; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
         🔁 MIGRAR REGISTROS ANTIGOS
+      </button>
+    </div>
+    
+    <!-- Importação de veículos do Controle de Frota (só os que pertencem a alguma secretaria) -->
+    <div class="card" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">📥 IMPORTAR VEÍCULOS DO CONTROLE DE FROTA</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.95;">
+        Importa para o Controle de Gasolina todos os veículos do Controle de Frota que já pertencem
+        a alguma secretaria (veículos sem secretaria na Frota não são importados). Veículos já cadastrados
+        aqui (mesma placa) não são duplicados — se estiverem sem secretaria, ela é preenchida automaticamente.
+      </p>
+      <button 
+        onclick="importarVeiculosDaFrota()" 
+        style="background: white; color: #0e7490; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        📥 IMPORTAR VEÍCULOS DA FROTA
       </button>
     </div>
     
@@ -4222,6 +4243,7 @@
             <option>INFRAESTRUTURA E SERVIÇOS</option>
             <option>PLANEJAMENTO</option>
             <option>SAÚDE</option>
+            <option>OUTROS</option>
           </select>
         </div>
         <div>
@@ -4275,6 +4297,7 @@
             <option>INFRAESTRUTURA E SERVIÇOS</option>
             <option>PLANEJAMENTO</option>
             <option>SAÚDE</option>
+            <option>OUTROS</option>
           </select>
         </div>
         <div>
@@ -4349,6 +4372,7 @@
           <option>INFRAESTRUTURA E SERVIÇOS</option>
           <option>PLANEJAMENTO</option>
           <option>SAÚDE</option>
+          <option>OUTROS</option>
         </select>
       </div>
       <div>
@@ -11670,6 +11694,141 @@
     }
   }
   
+  // Mapeamento das secretarias do Controle de Frota para os nomes usados no Controle de Gasolina
+  const MAPA_SECRETARIA_FROTA = {
+    'Secretaria Municipal de Administração e Finanças': 'ADMINISTRAÇÃO E FINANÇAS',
+    'Secretaria de Infraestrutura e Serviços Públicos': 'INFRAESTRUTURA E SERVIÇOS',
+    'Controlador Interno': 'OUTROS',
+    'Secretaria de Comunicação': 'COMUNICAÇÃO',
+    'Secretaria Municipal de Educação': 'EDUCAÇÃO',
+    'Secretaria Municipal de Saúde': 'SAÚDE',
+    'Secretaria de Agricultura, Abastecimento, Meio Ambiente e Desenvolvimento Econômico': 'AGRICULTURA E MEIO AMBIENTE',
+    'Secretaria de Cultura, Esporte e Lazer': 'CULTURA',
+    'Secretaria de Governo': 'GOVERNO',
+    'Secretaria de Planejamento': 'PLANEJAMENTO',
+    'Secretaria de Assistência Social': 'ASSISTÊNCIA SOCIAL',
+    'Outro': 'OUTROS'
+  };
+  
+  // Mapeamento dos combustíveis do Controle de Frota para os valores usados no Controle de Gasolina
+  const MAPA_COMBUSTIVEL_FROTA = {
+    'Flex': 'FLEX',
+    'Gasolina': 'GASOLINA',
+    'Diesel': 'DIESEL',
+    'GNV': 'GAS',
+    'Elétrico': 'GASOLINA' // sem equivalente direto; pode ser corrigido depois em "Editar Veículo"
+  };
+  
+  // Importa para o Controle de Gasolina os veículos do Controle de Frota que já pertencem a
+  // alguma secretaria. Veículos já cadastrados (mesma placa) não são duplicados — se estiverem
+  // sem secretaria, ela é preenchida; se já tiverem secretaria definida, nada é sobrescrito.
+  async function importarVeiculosDaFrota() {
+    if (loginUser !== 'master' && !temPermissao('gerenciar_usuarios')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXECUTAR ESTA IMPORTAÇÃO!", "error");
+      return;
+    }
+    
+    if (!confirm(
+      "📥 IMPORTAR VEÍCULOS DA FROTA?\n\n" +
+      "Isso vai importar para o Controle de Gasolina todos os veículos do Controle de Frota\n" +
+      "que já pertencem a alguma secretaria (veículos sem secretaria na Frota NÃO são importados).\n\n" +
+      "Veículos já cadastrados na Gasolina (mesma placa) não são duplicados — apenas a\n" +
+      "secretaria é preenchida se estiver vazia.\n\n" +
+      "Deseja continuar?"
+    )) {
+      return;
+    }
+    
+    mostrarNotificacao("🔄 Importando veículos da Frota...", "info");
+    
+    try {
+      const frotaSnap = await db.ref('frota/dados/veiculos').once('value');
+      if (!frotaSnap.exists()) {
+        mostrarNotificacao("ℹ️ NENHUM VEÍCULO ENCONTRADO NO CONTROLE DE FROTA!", "info");
+        return;
+      }
+      
+      const bruto = frotaSnap.val() || [];
+      const listaFrota = Array.isArray(bruto) ? bruto : Object.values(bruto);
+      
+      // Só os veículos que já pertencem a alguma secretaria
+      const comSecretaria = listaFrota.filter(v => v && v.placa && v.secretaria && String(v.secretaria).trim() !== '');
+      
+      if (comSecretaria.length === 0) {
+        mostrarNotificacao("ℹ️ NENHUM VEÍCULO DA FROTA PERTENCE A UMA SECRETARIA! Nada para importar.", "info");
+        return;
+      }
+      
+      const gasolinaSnap = await db.ref('veiculos').once('value');
+      const veiculosGasolina = [];
+      if (gasolinaSnap.exists()) {
+        gasolinaSnap.forEach(c => { const v = c.val(); v._key = c.key; veiculosGasolina.push(v); });
+      }
+      
+      const updates = {};
+      let importados = 0, atualizados = 0, ignorados = 0;
+      const naoMapeadas = new Set();
+      
+      comSecretaria.forEach(vf => {
+        const placaNorm = normPlaca(vf.placa);
+        const secMapeada = MAPA_SECRETARIA_FROTA[vf.secretaria] || '';
+        if (!secMapeada) naoMapeadas.add(vf.secretaria);
+        
+        const combMapeado = MAPA_COMBUSTIVEL_FROTA[vf.combustivel] || 'GASOLINA';
+        const existente = veiculosGasolina.find(v => normPlaca(v.placa) === placaNorm);
+        
+        if (!existente) {
+          const novoRef = db.ref('veiculos').push();
+          updates[`veiculos/${novoRef.key}`] = {
+            id: novoRef.key,
+            placa: placaNorm,
+            modelo: vf.descricao || '',
+            descricao: vf.descricao || '',
+            secretaria: secMapeada,
+            combustivel: combMapeado,
+            ano: vf.ano || '',
+            motorista: '',
+            cpfMotorista: ''
+          };
+          importados++;
+        } else if (!existente.secretaria || String(existente.secretaria).trim() === '') {
+          updates[`veiculos/${existente._key}/secretaria`] = secMapeada;
+          atualizados++;
+        } else {
+          ignorados++;
+        }
+      });
+      
+      if (importados === 0 && atualizados === 0) {
+        mostrarNotificacao(`ℹ️ NADA NOVO PARA IMPORTAR! ${ignorados} veículo(s) já estavam cadastrados com secretaria.`, "info");
+        return;
+      }
+      
+      await db.ref().update(updates);
+      
+      await registrarAuditoria('IMPORTACAO_VEICULOS_FROTA', {
+        realizadoPor: loginUser, importados, atualizados, ignorados,
+        secretariasNaoMapeadas: Array.from(naoMapeadas)
+      });
+      
+      mostrarNotificacao(
+        `✅ IMPORTAÇÃO CONCLUÍDA!\n\n` +
+        `📥 Novos veículos importados: ${importados}\n` +
+        `✏️ Veículos existentes atualizados (secretaria preenchida): ${atualizados}\n` +
+        `⏭️ Já cadastrados corretamente (ignorados): ${ignorados}\n` +
+        (naoMapeadas.size > 0 ? `\n⚠️ Secretarias não reconhecidas (revise manualmente): ${Array.from(naoMapeadas).join(', ')}\n` : ``) +
+        `\nA página será recarregada em 3 segundos...`,
+        "success"
+      );
+      
+      setTimeout(() => { location.reload(true); }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Erro ao importar veículos da Frota:', error);
+      mostrarNotificacao(`❌ ERRO AO IMPORTAR VEÍCULOS!\n\n${error.message}`, "error");
+    }
+  }
+  
   function limparCacheRecarregar() {
     if (!confirm("🗑️ LIMPAR CACHE E RECARREGAR?\n\nIsso vai atualizar todos os dados do Firebase.")) {
       return;
@@ -13678,7 +13837,8 @@
       'GOVERNO',
       'INFRAESTRUTURA E SERVIÇOS',
       'PLANEJAMENTO',
-      'SAÚDE'
+      'SAÚDE',
+      'OUTROS'
     ];
     
     // Limpar e popular select
