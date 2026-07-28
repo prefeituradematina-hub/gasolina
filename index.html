@@ -4115,21 +4115,6 @@
       </div>
     </div>
     
-    <!-- Migração AVULSOS / GERAL → DIVERSAS (opção removida do sistema; unifica registros antigos) -->
-    <div class="card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; text-align: center;">
-      <h3 style="color: white; margin-bottom: 15px;">🔁 MIGRAR "AVULSOS / GERAL" PARA "DIVERSAS"</h3>
-      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.95;">
-        A opção "AVULSOS / GERAL" foi removida do sistema. Use este botão UMA VEZ para atualizar os registros
-        já cadastrados (usuários, veículos, abastecimentos e CPF autorizados) que ainda estejam com essa secretaria,
-        transformando-os em "DIVERSAS".
-      </p>
-      <button 
-        onclick="migrarAvulsosParaDiversas()" 
-        style="background: white; color: #d97706; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-        🔁 MIGRAR REGISTROS ANTIGOS
-      </button>
-    </div>
-    
     <!-- Importação de veículos do Controle de Frota (só os que pertencem a alguma secretaria) -->
     <div class="card" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; text-align: center;">
       <h3 style="color: white; margin-bottom: 15px;">📥 IMPORTAR VEÍCULOS DO CONTROLE DE FROTA</h3>
@@ -11587,112 +11572,6 @@
   
   // ==================== RESETAR LIMITES MENSAIS ====================
   
-  // Migra registros já cadastrados que ainda usam "AVULSOS / GERAL" para "DIVERSAS"
-  // (opção removida do sistema — mantém compatibilidade com dados antigos)
-  async function migrarAvulsosParaDiversas() {
-    if (loginUser !== 'master' && !temPermissao('gerenciar_usuarios')) {
-      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXECUTAR ESTA MIGRAÇÃO!", "error");
-      return;
-    }
-    
-    if (!confirm(
-      "🔁 MIGRAR \"AVULSOS / GERAL\" PARA \"DIVERSAS\"?\n\n" +
-      "Isso vai atualizar TODOS os registros que ainda estiverem com a secretaria\n" +
-      "\"AVULSOS / GERAL\" (usuários, veículos, abastecimentos e CPF autorizados)\n" +
-      "para \"DIVERSAS\".\n\n" +
-      "Deseja continuar?"
-    )) {
-      return;
-    }
-    
-    mostrarNotificacao("🔄 Migrando registros de AVULSOS/GERAL para DIVERSAS...", "info");
-    
-    try {
-      const updates = {};
-      const resumo = { usuarios: 0, veiculos: 0, abastecimentos: 0, cpfAutorizados: 0 };
-      const ALVO = 'AVULSOS / GERAL';
-      
-      // Usuários (secretariaVinculada)
-      const usuariosSnap = await db.ref('usuarios').once('value');
-      if (usuariosSnap.exists()) {
-        usuariosSnap.forEach(u => {
-          const dado = u.val();
-          if (dado.secretariaVinculada === ALVO) {
-            updates[`usuarios/${u.key}/secretariaVinculada`] = 'DIVERSAS';
-            resumo.usuarios++;
-          }
-        });
-      }
-      
-      // Veículos (secretaria opcional)
-      const veiculosSnap = await db.ref('veiculos').once('value');
-      if (veiculosSnap.exists()) {
-        veiculosSnap.forEach(v => {
-          const dado = v.val();
-          if (dado.secretaria === ALVO) {
-            updates[`veiculos/${v.key}/secretaria`] = 'DIVERSAS';
-            resumo.veiculos++;
-          }
-        });
-      }
-      
-      // Abastecimentos
-      const abastSnap = await db.ref('abastecimentos').once('value');
-      if (abastSnap.exists()) {
-        abastSnap.forEach(a => {
-          const dado = a.val();
-          if (dado.secretaria === ALVO) {
-            updates[`abastecimentos/${a.key}/secretaria`] = 'DIVERSAS';
-            resumo.abastecimentos++;
-          }
-        });
-      }
-      
-      // CPF Autorizados
-      const cpfAutSnap = await db.ref('cpfAutorizados').once('value');
-      if (cpfAutSnap.exists()) {
-        cpfAutSnap.forEach(c => {
-          const dado = c.val();
-          if (dado.secretaria === ALVO) {
-            updates[`cpfAutorizados/${c.key}/secretaria`] = 'DIVERSAS';
-            resumo.cpfAutorizados++;
-          }
-        });
-      }
-      
-      const totalAtualizado = resumo.usuarios + resumo.veiculos + resumo.abastecimentos + resumo.cpfAutorizados;
-      
-      if (totalAtualizado === 0) {
-        mostrarNotificacao("ℹ️ NENHUM REGISTRO COM \"AVULSOS / GERAL\" ENCONTRADO! Nada para migrar.", "info");
-        return;
-      }
-      
-      await db.ref().update(updates);
-      
-      await registrarAuditoria('MIGRACAO_AVULSOS_PARA_DIVERSAS', {
-        realizadoPor: loginUser,
-        ...resumo,
-        total: totalAtualizado
-      });
-      
-      mostrarNotificacao(
-        `✅ MIGRAÇÃO CONCLUÍDA!\n\n` +
-        `👤 Usuários: ${resumo.usuarios}\n` +
-        `🚗 Veículos: ${resumo.veiculos}\n` +
-        `⛽ Abastecimentos: ${resumo.abastecimentos}\n` +
-        `🪪 CPF Autorizados: ${resumo.cpfAutorizados}\n\n` +
-        `Total de registros atualizados: ${totalAtualizado}\n\n` +
-        `A página será recarregada em 3 segundos...`,
-        "success"
-      );
-      
-      setTimeout(() => { location.reload(true); }, 3000);
-      
-    } catch (error) {
-      console.error('❌ Erro ao migrar AVULSOS/GERAL para DIVERSAS:', error);
-      mostrarNotificacao(`❌ ERRO AO MIGRAR REGISTROS!\n\n${error.message}`, "error");
-    }
-  }
   
   // Mapeamento das secretarias do Controle de Frota para os nomes usados no Controle de Gasolina
   const MAPA_SECRETARIA_FROTA = {
