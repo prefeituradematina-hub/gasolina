@@ -4190,7 +4190,7 @@
   <div class="card">
     <h3>🪪 CPF AUTORIZADOS PARA ABASTECIMENTO</h3>
     <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
-      Cadastre pessoas autorizadas a abastecer durante um período determinado, usando o CPF como identificador.
+      Cadastre pessoas autorizadas a abastecer usando o CPF como identificador.
       Esta autorização é independente das demais regras do sistema — apenas acrescenta uma nova forma de liberação.
     </p>
 
@@ -4229,14 +4229,6 @@
           <select id="cpfaut-veiculo">
             <option value="">— NENHUM —</option>
           </select>
-        </div>
-        <div>
-          <label>DATA INICIAL *</label>
-          <input type="date" id="cpfaut-data-ini">
-        </div>
-        <div>
-          <label>DATA FINAL *</label>
-          <input type="date" id="cpfaut-data-fim">
         </div>
         <div>
           <label>STATUS</label>
@@ -4289,16 +4281,15 @@
           <label>SITUAÇÃO</label>
           <select id="cpfaut-filtro-situacao" onchange="renderCPFAutorizados()">
             <option value="">TODAS</option>
-            <option value="vigente">✅ VIGENTES (ATIVAS AGORA)</option>
-            <option value="vencida">⌛ VENCIDAS</option>
+            <option value="vigente">✅ ATIVAS</option>
             <option value="inativa">🚫 INATIVAS</option>
           </select>
         </div>
         <div>
-          <label>ORDENAR POR VALIDADE</label>
+          <label>ORDENAR POR</label>
           <select id="cpfaut-ordenacao" onchange="renderCPFAutorizados()">
-            <option value="asc">DATA FINAL (MAIS PRÓXIMA PRIMEIRO)</option>
-            <option value="desc">DATA FINAL (MAIS DISTANTE PRIMEIRO)</option>
+            <option value="asc">NOME (A-Z)</option>
+            <option value="desc">NOME (Z-A)</option>
           </select>
         </div>
       </div>
@@ -4314,13 +4305,12 @@
               <th>NOME</th>
               <th>SECRETARIA</th>
               <th>VEÍCULO</th>
-              <th>PERÍODO</th>
               <th>SITUAÇÃO</th>
               <th class="no-print">AÇÕES</th>
             </tr>
           </thead>
           <tbody id="cpfautorizados-body">
-            <tr><td colspan="7" style="text-align:center; padding:40px;">🪪 NENHUMA AUTORIZAÇÃO CADASTRADA</td></tr>
+            <tr><td colspan="6" style="text-align:center; padding:40px;">🪪 NENHUMA AUTORIZAÇÃO CADASTRADA</td></tr>
           </tbody>
         </table>
       </div>
@@ -4366,14 +4356,6 @@
         <select id="edit-cpfaut-veiculo">
           <option value="">— NENHUM —</option>
         </select>
-      </div>
-      <div>
-        <label>DATA INICIAL *</label>
-        <input type="date" id="edit-cpfaut-data-ini">
-      </div>
-      <div>
-        <label>DATA FINAL *</label>
-        <input type="date" id="edit-cpfaut-data-fim">
       </div>
       <div>
         <label>STATUS</label>
@@ -5139,36 +5121,29 @@
   
   // ==================== AUTORIZAÇÃO SEMANAL DE CPF (nova funcionalidade — nó isolado 'cpfAutorizados') ====================
   
-  // Retorna a autorização vigente para o CPF informado (Status=Ativo e dentro do período), ou null.
+  // Retorna a autorização vigente para o CPF informado (apenas Status=Ativo, sem verificação de datas), ou null.
   function obterAutorizacaoCPFVigente(cpfDigits) {
     if (!cpfDigits || cpfDigits.length !== 11) return null;
-    const hoje = new Date().toISOString().slice(0, 10);
     return cpfAutorizadosCache.find(a => {
       if (!a.cpf) return false;
       if (a.cpf.replace(/\D/g, '') !== cpfDigits) return false;
       if (a.status !== 'Ativo') return false;
-      if (!a.dataInicial || !a.dataFinal) return false;
-      return hoje >= a.dataInicial && hoje <= a.dataFinal;
+      return true;
     }) || null;
   }
   
   // Classifica a situação de uma autorização para exibição na lista.
   function situacaoAutorizacaoCPF(a) {
-    const hoje = new Date().toISOString().slice(0, 10);
-    if (a.status !== 'Ativo') return 'inativa';
-    if (a.dataFinal && hoje > a.dataFinal) return 'vencida';
-    return 'vigente'; // inclui autorizações agendadas para o futuro e as vigentes agora
+    return a.status === 'Ativo' ? 'vigente' : 'inativa';
   }
   
-  // Verifica se já existe autorização ATIVA com período sobreposto para o mesmo CPF (bloqueia duplicidade).
-  function existeAutorizacaoCPFSobreposta(cpfDigits, dataInicial, dataFinal, idIgnorar) {
+  // Verifica se já existe autorização ATIVA para o mesmo CPF (bloqueia duplicidade).
+  function existeAutorizacaoCPFSobreposta(cpfDigits, idIgnorar) {
     return cpfAutorizadosCache.find(a => {
       if (idIgnorar && a.id === idIgnorar) return false;
       if (!a.cpf || a.cpf.replace(/\D/g, '') !== cpfDigits) return false;
       if (a.status !== 'Ativo') return false;
-      if (!a.dataInicial || !a.dataFinal) return false;
-      // Sobreposição de períodos: NÃO há sobreposição só quando um termina antes do outro começar.
-      return !(dataFinal < a.dataInicial || dataInicial > a.dataFinal);
+      return true;
     }) || null;
   }
   
@@ -5220,23 +5195,18 @@
     const nome = document.getElementById('cpfaut-nome').value.trim().toUpperCase();
     const secretaria = document.getElementById('cpfaut-secretaria').value;
     const veiculo = document.getElementById('cpfaut-veiculo').value;
-    const dataInicial = document.getElementById('cpfaut-data-ini').value;
-    const dataFinal = document.getElementById('cpfaut-data-fim').value;
     const status = document.getElementById('cpfaut-status').value;
     const observacao = document.getElementById('cpfaut-obs').value.trim();
     
     if (!nome) { mostrarNotificacao("❌ INFORME O NOME COMPLETO!", "error"); return; }
     if (!cpf || !validarCPF(cpf)) { mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error"); return; }
     if (!secretaria) { mostrarNotificacao("❌ SELECIONE A SECRETARIA!", "error"); return; }
-    if (!dataInicial || !dataFinal) { mostrarNotificacao("❌ INFORME A DATA INICIAL E A DATA FINAL!", "error"); return; }
-    if (dataFinal < dataInicial) { mostrarNotificacao("❌ A DATA FINAL NÃO PODE SER ANTERIOR À DATA INICIAL!", "error"); return; }
     
     const cpfDigits = cpf.replace(/\D/g, '');
     if (status === 'Ativo') {
-      const conflito = existeAutorizacaoCPFSobreposta(cpfDigits, dataInicial, dataFinal, null);
+      const conflito = existeAutorizacaoCPFSobreposta(cpfDigits, null);
       if (conflito) {
-        mostrarNotificacao("❌ JÁ EXISTE UMA AUTORIZAÇÃO ATIVA PARA ESTE CPF NO PERÍODO DE " +
-          conflito.dataInicial.split('-').reverse().join('/') + " A " + conflito.dataFinal.split('-').reverse().join('/') + "!", "error");
+        mostrarNotificacao("❌ JÁ EXISTE UMA AUTORIZAÇÃO ATIVA PARA ESTE CPF! Inative a autorização existente antes de cadastrar outra.", "error");
         return;
       }
     }
@@ -5244,24 +5214,22 @@
     const novoRef = db.ref('cpfAutorizados').push();
     const registro = {
       cpf: cpf, nome: nome, secretaria: secretaria, veiculo: veiculo || '',
-      dataInicial: dataInicial, dataFinal: dataFinal, status: status,
+      status: status,
       observacao: observacao || '', criadoPor: (loginUser || 'SISTEMA').toUpperCase(),
       criadoEm: Date.now()
     };
     novoRef.set(registro).then(() => {
-      registrarAuditoria('CPF_AUTORIZADO_ADICIONADO', { cpf: cpf, nome: nome, dataInicial: dataInicial, dataFinal: dataFinal });
+      registrarAuditoria('CPF_AUTORIZADO_ADICIONADO', { cpf: cpf, nome: nome, status: status });
       mostrarNotificacao("✅ AUTORIZAÇÃO CADASTRADA COM SUCESSO!", "success");
       document.getElementById('cpfaut-cpf').value = '';
       document.getElementById('cpfaut-nome').value = '';
       document.getElementById('cpfaut-secretaria').value = '';
       document.getElementById('cpfaut-veiculo').value = '';
-      document.getElementById('cpfaut-data-ini').value = '';
-      document.getElementById('cpfaut-data-fim').value = '';
       document.getElementById('cpfaut-status').value = 'Ativo';
       document.getElementById('cpfaut-obs').value = '';
     }).catch(err => {
       console.error('Erro ao salvar CPF autorizado:', err);
-      mostrarNotificacao("❌ ERRO AO SALVAR AUTORIZAÇÃO!", "error");
+      mostrarNotificacao("❌ ERRO AO SALVAR AUTORIZAÇÃO! " + (err && err.message ? err.message : ''), "error");
     });
   }
   
@@ -5275,8 +5243,6 @@
     document.getElementById('edit-cpfaut-secretaria').value = a.secretaria || '';
     popularVeiculosCPFAutorizado('edit-cpfaut-veiculo');
     document.getElementById('edit-cpfaut-veiculo').value = a.veiculo || '';
-    document.getElementById('edit-cpfaut-data-ini').value = a.dataInicial || '';
-    document.getElementById('edit-cpfaut-data-fim').value = a.dataFinal || '';
     document.getElementById('edit-cpfaut-status').value = a.status || 'Ativo';
     document.getElementById('edit-cpfaut-obs').value = a.observacao || '';
     document.getElementById('modal-edit-cpfautorizado').style.display = 'flex';
@@ -5297,8 +5263,6 @@
     const nome = document.getElementById('edit-cpfaut-nome').value.trim().toUpperCase();
     const secretaria = document.getElementById('edit-cpfaut-secretaria').value;
     const veiculo = document.getElementById('edit-cpfaut-veiculo').value;
-    const dataInicial = document.getElementById('edit-cpfaut-data-ini').value;
-    const dataFinal = document.getElementById('edit-cpfaut-data-fim').value;
     const status = document.getElementById('edit-cpfaut-status').value;
     const observacao = document.getElementById('edit-cpfaut-obs').value.trim();
     
@@ -5306,30 +5270,27 @@
     if (!nome) { mostrarNotificacao("❌ INFORME O NOME COMPLETO!", "error"); return; }
     if (!cpf || !validarCPF(cpf)) { mostrarNotificacao("❌ CPF INVÁLIDO! Verifique os números digitados.", "error"); return; }
     if (!secretaria) { mostrarNotificacao("❌ SELECIONE A SECRETARIA!", "error"); return; }
-    if (!dataInicial || !dataFinal) { mostrarNotificacao("❌ INFORME A DATA INICIAL E A DATA FINAL!", "error"); return; }
-    if (dataFinal < dataInicial) { mostrarNotificacao("❌ A DATA FINAL NÃO PODE SER ANTERIOR À DATA INICIAL!", "error"); return; }
     
     const cpfDigits = cpf.replace(/\D/g, '');
     if (status === 'Ativo') {
-      const conflito = existeAutorizacaoCPFSobreposta(cpfDigits, dataInicial, dataFinal, id);
+      const conflito = existeAutorizacaoCPFSobreposta(cpfDigits, id);
       if (conflito) {
-        mostrarNotificacao("❌ JÁ EXISTE UMA AUTORIZAÇÃO ATIVA PARA ESTE CPF NO PERÍODO DE " +
-          conflito.dataInicial.split('-').reverse().join('/') + " A " + conflito.dataFinal.split('-').reverse().join('/') + "!", "error");
+        mostrarNotificacao("❌ JÁ EXISTE UMA AUTORIZAÇÃO ATIVA PARA ESTE CPF! Inative a autorização existente antes de ativar outra.", "error");
         return;
       }
     }
     
     db.ref('cpfAutorizados/' + id).update({
       cpf: cpf, nome: nome, secretaria: secretaria, veiculo: veiculo || '',
-      dataInicial: dataInicial, dataFinal: dataFinal, status: status,
+      status: status,
       observacao: observacao || ''
     }).then(() => {
-      registrarAuditoria('CPF_AUTORIZADO_EDITADO', { id: id, cpf: cpf, nome: nome });
+      registrarAuditoria('CPF_AUTORIZADO_EDITADO', { id: id, cpf: cpf, nome: nome, status: status });
       mostrarNotificacao("✅ AUTORIZAÇÃO ATUALIZADA COM SUCESSO!", "success");
       fecharModalEditCPFAutorizado();
     }).catch(err => {
       console.error('Erro ao editar CPF autorizado:', err);
-      mostrarNotificacao("❌ ERRO AO ATUALIZAR AUTORIZAÇÃO!", "error");
+      mostrarNotificacao("❌ ERRO AO ATUALIZAR AUTORIZAÇÃO! " + (err && err.message ? err.message : ''), "error");
     });
   }
   
@@ -5388,29 +5349,26 @@
     if (filtroSituacao) lista = lista.filter(a => situacaoAutorizacaoCPF(a) === filtroSituacao);
     
     lista.sort((a, b) => {
-      const da = a.dataFinal || '', db_ = b.dataFinal || '';
-      return ordenacao === 'desc' ? db_.localeCompare(da) : da.localeCompare(db_);
+      const na = (a.nome || ''), nb = (b.nome || '');
+      return ordenacao === 'desc' ? nb.localeCompare(na) : na.localeCompare(nb);
     });
     
     if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">🪪 NENHUMA AUTORIZAÇÃO ENCONTRADA</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">🪪 NENHUMA AUTORIZAÇÃO ENCONTRADA</td></tr>';
       return;
     }
     
-    const badgeSituacao = { vigente: 'badge-success', vencida: 'badge-warning', inativa: 'badge-danger' };
-    const labelSituacao = { vigente: '✅ VIGENTE', vencida: '⌛ VENCIDA', inativa: '🚫 INATIVA' };
+    const badgeSituacao = { vigente: 'badge-success', inativa: 'badge-danger' };
+    const labelSituacao = { vigente: '✅ ATIVA', inativa: '🚫 INATIVA' };
     
     tbody.innerHTML = lista.map(a => {
       const sit = situacaoAutorizacaoCPF(a);
-      const periodo = (a.dataInicial ? a.dataInicial.split('-').reverse().join('/') : '?') + ' a ' +
-                      (a.dataFinal ? a.dataFinal.split('-').reverse().join('/') : '?');
       return `
         <tr>
           <td>${a.cpf || '---'}</td>
           <td><b>${a.nome || '---'}</b></td>
           <td>${a.secretaria || '---'}</td>
           <td>${a.veiculo || '---'}</td>
-          <td>${periodo}</td>
           <td><span class="badge ${badgeSituacao[sit]}">${labelSituacao[sit]}</span></td>
           <td class="no-print">
             <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarCPFAutorizado('${a.id}')">✏️ EDITAR</button>
