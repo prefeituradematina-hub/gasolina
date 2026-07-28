@@ -2826,7 +2826,7 @@
     <div class="grid-form">
       <div>
         <label>PLACA *</label>
-        <input type="text" id="edit-abast-placa" placeholder="ABC1234" maxlength="7" style="text-transform:uppercase;">
+        <input type="text" id="edit-abast-placa" list="dl-placas" placeholder="ABC1234" maxlength="7" style="text-transform:uppercase;">
       </div>
       <div>
         <label>MOTORISTA *</label>
@@ -2950,7 +2950,7 @@
 <!-- Área Principal do App -->
 <div class="container blurred" id="app">
   <div class="top-bar no-print">
-    <div class="nav-tabs">
+    <div class="nav-tabs no-print">
       <button id="btn-tab-geral" class="tab-btn active" onclick="switchTab('geral')">📊 DASHBOARD</button>
       <button id="btn-tab-executivo" class="tab-btn" style="display:none;" onclick="switchTab('executivo')">👔 EXECUTIVO</button>
       <button id="btn-tab-diversas" class="tab-btn" style="display:none;" onclick="switchTab('diversas')">📋 DIVERSAS</button>
@@ -3085,7 +3085,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
+          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -3278,7 +3278,10 @@
         <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="limparFiltros()">🔄 LIMPAR</button>
         <button class="btn-save" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);" onclick="exportarExcel()">📥 EXPORTAR EXCEL</button>
       </div>
-      <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top:5px;" onclick="window.print()">🖨️ IMPRIMIR</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:5px;">
+        <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="window.print()">🖨️ IMPRIMIR</button>
+        <button class="btn-save" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);" onclick="exportarPDF()">📄 EXPORTAR PDF</button>
+      </div>
     </div>
     
     <!-- ========== SEÇÃO 5: RELATÓRIOS ========== -->
@@ -3353,6 +3356,7 @@
           <input 
             type="text" 
             id="diversas-placa" 
+            list="dl-placas"
             placeholder="ABC1234" 
             maxlength="8" 
             style="text-transform:uppercase;"
@@ -3909,7 +3913,7 @@
       <div class="grid-form">
         <div>
           <label>PLACA *</label>
-          <input type="text" id="vei-placa" placeholder="ABC1234" maxlength="7">
+          <input type="text" id="vei-placa" list="dl-placas" placeholder="ABC1234" maxlength="7">
         </div>
         <div>
           <label>MODELO</label>
@@ -4154,6 +4158,26 @@
     <!-- LISTA DE VEÍCULOS -->
     <div class="card">
       <h3>🚗 VEÍCULOS CADASTRADOS</h3>
+      <div style="margin-bottom: 15px;">
+        <label>FILTRAR POR SECRETARIA</label>
+        <select id="veiculos-filtro-secretaria" onchange="listVeiculos()">
+          <option value="">TODAS</option>
+          <option value="__COMPARTILHADO__">NENHUMA (COMPARTILHADO)</option>
+          <option value="DIVERSAS">DIVERSAS</option>
+          <option>ADMINISTRAÇÃO E FINANÇAS</option>
+          <option>AGRICULTURA E MEIO AMBIENTE</option>
+          <option>ASSISTÊNCIA SOCIAL</option>
+          <option>COMUNICAÇÃO</option>
+          <option>CULTURA</option>
+          <option>EDUCAÇÃO</option>
+          <option>ESPORTES</option>
+          <option>GOVERNO</option>
+          <option>INFRAESTRUTURA E SERVIÇOS</option>
+          <option>PLANEJAMENTO</option>
+          <option>SAÚDE</option>
+          <option>OUTROS</option>
+        </select>
+      </div>
       <div class="table-wrapper">
         <table>
           <thead>
@@ -4740,6 +4764,19 @@
       v.placa  = normPlaca(v.placa);   // padrão único: sem hífen
       veiculos.push(v);
     });
+    
+    // Datalist de busca por placa (usado nos campos que têm list="dl-placas")
+    const dlPlacas = document.getElementById('dl-placas');
+    if (dlPlacas) {
+      dlPlacas.innerHTML = '';
+      veiculos.forEach(v => {
+        if (!v.placa) return;
+        const opt = document.createElement('option');
+        opt.value = v.placa;
+        opt.label = v.modelo ? (v.modelo + (v.secretaria ? ' — ' + v.secretaria : '')) : '';
+        dlPlacas.appendChild(opt);
+      });
+    }
   });
   
   // ── MOTORISTAS COMPARTILHADOS (cadastro feito no Controle de Frota) ──
@@ -10698,6 +10735,27 @@
     });
   }
   
+  // Exporta o relatório atual em PDF, reaproveitando a impressão do navegador
+  // (mesmo mecanismo do botão "🖨️ IMPRIMIR" já existente, com uma dica de como salvar como PDF).
+  function exportarPDF() {
+    if (!temPermissao('exportar_excel')) {
+      mostrarNotificacao("❌ SEM PERMISSÃO PARA EXPORTAR!", "error");
+      return;
+    }
+    
+    const container = document.getElementById('relatorio-container');
+    if (!container || container.innerHTML.trim() === '') {
+      mostrarNotificacao("❌ NENHUM REGISTRO PARA EXPORTAR! Clique em \"📊 GERAR\" primeiro.", "error");
+      return;
+    }
+    
+    mostrarNotificacao("📄 Na janela de impressão, escolha \"Salvar como PDF\" em Destino/Impressora.", "info");
+    
+    setTimeout(() => {
+      window.print();
+    }, 600);
+  }
+  
   function toggleCombustivelPostoEdit(tipo) {
     const checkbox = document.getElementById(`edit-posto-tem-${tipo}`);
     let inputId;
@@ -14971,8 +15029,24 @@
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO CADASTRADO</td></tr>';
         return;
       }
+      
+      const filtroSelect = document.getElementById('veiculos-filtro-secretaria');
+      const filtroSecretaria = filtroSelect ? filtroSelect.value : '';
+      let algumExibido = false;
+      
       snap.forEach(c => {
         const v = c.val();
+        
+        // Filtro por secretaria (aditivo — se não houver filtro selecionado, mostra todos como antes)
+        if (filtroSecretaria) {
+          if (filtroSecretaria === '__COMPARTILHADO__') {
+            if (v.secretaria && String(v.secretaria).trim() !== '') return;
+          } else if ((v.secretaria || '') !== filtroSecretaria) {
+            return;
+          }
+        }
+        
+        algumExibido = true;
         tbody.innerHTML += `
           <tr>
             <td><b>${v.placa}</b></td>
@@ -14994,6 +15068,10 @@
           </tr>
         `;
       });
+      
+      if (!algumExibido) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO ENCONTRADO PARA ESSE FILTRO</td></tr>';
+      }
     });
   }
   
@@ -19666,5 +19744,6 @@ entrar = function(u, role, limit, sec, dadosExtras){
 </script>
 <!-- Motoristas compartilhados com o Controle de Frota (nó "motoristas") -->
 <datalist id="dl-motoristas"></datalist>
+<datalist id="dl-placas"></datalist>
 </body>
 </html>
