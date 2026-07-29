@@ -559,7 +559,8 @@
       .card { box-shadow: none; page-break-inside: avoid; }
       body { background: white; }
       .only-print { display: block !important; }
-      body.imprimindo-veiculos > *:not(#tab-users) { display: none !important; }
+      body.imprimindo-veiculos > *:not(#app) { display: none !important; }
+      body.imprimindo-veiculos #app > *:not(#tab-users) { display: none !important; }
       body.imprimindo-veiculos #tab-users > *:not(#card-veiculos-cadastrados) { display: none !important; }
   }
   
@@ -2829,7 +2830,7 @@
     <div class="grid-form">
       <div>
         <label>PLACA *</label>
-        <input type="text" id="edit-abast-placa" list="dl-placas" placeholder="ABC1234" maxlength="7" style="text-transform:uppercase;">
+        <input type="text" id="edit-abast-placa" list="dl-placas" placeholder="ABC1234" maxlength="8" style="text-transform:uppercase;">
       </div>
       <div>
         <label>MOTORISTA *</label>
@@ -3088,7 +3089,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="7" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
+          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="8" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -3916,7 +3917,7 @@
       <div class="grid-form">
         <div>
           <label>PLACA *</label>
-          <input type="text" id="vei-placa" list="dl-placas" placeholder="ABC1234" maxlength="7">
+          <input type="text" id="vei-placa" list="dl-placas" placeholder="ABC1234" maxlength="8">
         </div>
         <div>
           <label>MODELO</label>
@@ -6482,7 +6483,7 @@
   // Canonico e exibicao: MAIUSCULO sem separadores, em todo o sistema.
   function normPlaca(p){ return (p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
   function fmtPlaca(p){ return normPlaca(p); }   // sem hífen em todo o sistema
-  function mascaraPlaca(el){ el.value = normPlaca(el.value).slice(0,7); }
+  function mascaraPlaca(el){ el.value = normPlaca(el.value).slice(0,8); }
   window.normPlaca = normPlaca;
   window.fmtPlaca  = fmtPlaca;
   window.mascaraPlaca = mascaraPlaca;
