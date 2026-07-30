@@ -6879,12 +6879,19 @@
     var ultimo = doCpf.slice().sort(function(a,b){ return (b.timestamp||0) - (a.timestamp||0); })[0];
     
     if (autorizado) {
-      // CPF AUTORIZADO: 1 abastecimento a cada 7 dias
-      var diasDesdeUltimo = (Date.now() - (ultimo.timestamp||0)) / 86400000;
-      if (diasDesdeUltimo >= 7) return true;
+      // CPF AUTORIZADO: libera novamente a partir das 00:01 do mesmo dia da semana seguinte —
+      // contado pelo DIA de calendário do último abastecimento, independente do horário em que ocorreu.
+      // Ex: abasteceu segunda (qualquer horário) → libera já na segunda seguinte, a partir de 00:01.
+      var dataUltimo = new Date(ultimo.timestamp || 0);
+      var dataUltimoSoData = new Date(dataUltimo.getFullYear(), dataUltimo.getMonth(), dataUltimo.getDate());
+      var dataLiberacao = new Date(dataUltimoSoData.getTime() + 7 * 86400000); // +7 dias corridos, 00:00
+      var agora = new Date();
       
-      var faltam = (7 - diasDesdeUltimo).toFixed(1);
+      if (agora >= dataLiberacao) return true;
+      
+      var diasFaltantes = Math.ceil((dataLiberacao.getTime() - agora.getTime()) / 86400000);
       var quandoFoi = ultimo.timestamp ? new Date(ultimo.timestamp).toLocaleString('pt-BR') : '—';
+      var quandoLibera = dataLiberacao.toLocaleDateString('pt-BR');
       
       if (ehMaster) {
         await mostrarModalSeguranca({
@@ -6893,10 +6900,10 @@
           titulo   : 'LIMITE SEMANAL — CPF AUTORIZADO',
           subtitulo: 'Liberação exclusiva do usuário master',
           destaque : cpf,
-          msg      : 'Este CPF (autorizado) já abasteceu há menos de 7 dias.',
+          msg      : 'Este CPF (autorizado) já abasteceu nesta semana.',
           alerta   : '🔑 Como você está logado como <strong>master</strong>, o abastecimento está liberado.',
           sub      : 'Último abastecimento: <strong>' + quandoFoi + '</strong><br>' +
-                     'Faltam aproximadamente <strong>' + faltam + ' dia(s)</strong> para completar 7 dias.<br>' +
+                     'Libera automaticamente em: <strong>' + quandoLibera + ' às 00:01</strong> (faltam ' + diasFaltantes + ' dia(s)).<br>' +
                      'Esta liberação ficará registrada na auditoria do sistema.',
           textoBotao: 'Continuar mesmo assim'
         });
@@ -6912,10 +6919,10 @@
         titulo   : 'LIMITE SEMANAL ATINGIDO',
         subtitulo: 'Abastecimento bloqueado pelo sistema',
         destaque : cpf,
-        msg      : 'Este CPF (autorizado) já abasteceu há menos de 7 dias.',
-        alerta   : '🔒 CPFs autorizados só podem abastecer uma vez a cada 7 dias.',
+        msg      : 'Este CPF (autorizado) já abasteceu nesta semana.',
+        alerta   : '🔒 CPFs autorizados só podem abastecer uma vez a cada 7 dias, contados a partir do dia do último abastecimento.',
         sub      : 'Último abastecimento: <strong>' + quandoFoi + '</strong><br>' +
-                   'Faltam aproximadamente <strong>' + faltam + ' dia(s)</strong> para completar 7 dias.',
+                   'Libera automaticamente em: <strong>' + quandoLibera + ' às 00:01</strong> (faltam ' + diasFaltantes + ' dia(s)).',
         textoBotao: '✅ ENTENDIDO — FECHAR'
       });
       return false;
