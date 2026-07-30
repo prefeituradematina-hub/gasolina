@@ -2966,6 +2966,7 @@
       <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
       <button id="btn-tab-users" class="tab-btn" style="display:none;" onclick="switchTab('usuarios')">⚙️ CONFIGURAÇÕES</button>
       <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
+      <button id="btn-tab-notas" class="tab-btn" onclick="switchTab('notas')">📝 NOTAS</button>
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -4429,6 +4430,25 @@
 </div>
 
 <!-- ============================================ -->
+<!-- ABA NOTAS (bloco de notas compartilhado com o Controle de Frota) -->
+<!-- ============================================ -->
+<div id="tab-notas" style="display:none;">
+  <div class="card">
+    <h3>📝 NOTAS</h3>
+    <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
+      Bloco de notas simples para anotações do sistema. Compartilhado com o Controle de Frota —
+      qualquer anotação feita aqui aparece lá também, e vice-versa.
+    </p>
+    <textarea id="notas-texto" placeholder="Digite aqui suas anotações..."
+      style="width:100%; min-height:340px; margin-top:15px; padding:12px; border:1px solid #e2e8f0; border-radius:8px; font-family:inherit; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap; gap:8px;">
+      <div id="notas-info" style="font-size:12px; color:#64748b;"></div>
+      <button class="btn-save" style="width:auto; padding:10px 25px;" onclick="salvarNotasCompartilhadas()">💾 SALVAR NOTAS</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
 <!-- ABA DE AUDITORIA E BACKUP -->
 <!-- ============================================ -->
 <div id="tab-auditoria" style="display:none;">
@@ -4851,6 +4871,44 @@
       try { verificarAutorizacaoSemanalCPF(); } catch (e) {}
     }
   });
+  
+  // ── NOTAS COMPARTILHADAS (bloco de notas simples, compartilhado com o Controle de Frota) ──
+  let notasListenerAtivo = false;
+  function carregarNotasCompartilhadas() {
+    const txt = document.getElementById('notas-texto');
+    if (!txt) return; // aba ainda não renderizada
+    if (notasListenerAtivo) return; // já registrado, evita duplicar o listener
+    notasListenerAtivo = true;
+    db.ref('config/notasCompartilhadas').on('value', snap => {
+      const dado = snap.val();
+      const txtEl = document.getElementById('notas-texto');
+      const info = document.getElementById('notas-info');
+      if (!txtEl) return;
+      if (document.activeElement !== txtEl) {
+        txtEl.value = (dado && dado.texto) || '';
+      }
+      if (info) {
+        info.textContent = (dado && dado.atualizadoPor)
+          ? ('Última atualização por ' + dado.atualizadoPor + ' em ' + new Date(dado.atualizadoEm).toLocaleString('pt-BR'))
+          : 'Nenhuma nota salva ainda.';
+      }
+    });
+  }
+  
+  function salvarNotasCompartilhadas() {
+    const txt = document.getElementById('notas-texto');
+    const texto = txt ? txt.value : '';
+    db.ref('config/notasCompartilhadas').set({
+      texto: texto,
+      atualizadoPor: (loginUser || 'desconhecido').toUpperCase(),
+      atualizadoEm: Date.now()
+    }).then(() => {
+      mostrarNotificacao("✅ NOTAS SALVAS!", "success");
+    }).catch(err => {
+      console.error('Erro ao salvar notas:', err);
+      mostrarNotificacao("❌ ERRO AO SALVAR NOTAS!", "error");
+    });
+  }
   
   // Função para alternar modo tanque cheio
   function toggleTanqueCheio() {
@@ -13811,6 +13869,7 @@
     document.getElementById('tab-auditoria').style.display = 'none';
     document.getElementById('tab-users').style.display = 'none';
     document.getElementById('tab-cpfautorizados').style.display = 'none';
+    document.getElementById('tab-notas').style.display = 'none';
     
     if (tab === 'geral') {
       document.getElementById('tab-geral').style.display = 'block';
@@ -13851,6 +13910,10 @@
       popularVeiculosCPFAutorizado('cpfaut-veiculo');
       popularVeiculosCPFAutorizado('edit-cpfaut-veiculo');
       renderCPFAutorizados();
+    } else if (tab === 'notas') {
+      document.getElementById('tab-notas').style.display = 'block';
+      document.getElementById('btn-tab-notas').classList.add('active');
+      carregarNotasCompartilhadas();
     }
   }
   

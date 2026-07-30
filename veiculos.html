@@ -410,6 +410,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <button class="tab" onclick="aba(this,'caronas')">🚐 Caronas <span id="badge-caronas" style="display:none;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-left:5px;background:#0F6E56;color:#fff;font-size:11px;font-weight:800;border-radius:10px;line-height:1;vertical-align:middle">0</span></button>
     <button class="tab" id="tab-usuarios" style="display:none" onclick="aba(this,'usuarios')">👥 Usuários</button>
     <button class="tab" onclick="aba(this,'backup')">💾 Backup</button>
+    <button class="tab" onclick="aba(this,'notas')">📝 Notas</button>
   </div>
 
   <!-- PAINEL -->
@@ -584,6 +585,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       </div>
     </div>
     <div id="bk-status"></div>
+  </div>
+
+  <div class="section" id="aba-notas">
+    <div class="section-hdr"><div class="section-title">📝 Notas</div></div>
+    <div class="backup-card" style="max-width:100%">
+      <h3>Bloco de notas compartilhado</h3>
+      <p>Anotações simples, visíveis para todos que acessam o sistema (compartilhado também com o Controle de Gasolina).</p>
+      <textarea id="notas-texto" placeholder="Digite aqui suas anotações..." style="width:100%;min-height:320px;padding:12px;border:1px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
+        <div id="notas-info" style="font-size:12px;color:#6B7280"></div>
+        <button class="btn primary" onclick="salvarNotasCompartilhadas()">💾 Salvar notas</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1132,6 +1146,42 @@ function testarConexaoBanco(){
       }
     });
 }
+
+// ── NOTAS COMPARTILHADAS (bloco de notas simples, compartilhado com o Controle de Gasolina) ──
+function carregarNotasCompartilhadas() {
+  if(!fbDB) return;
+  fbDB.ref('config/notasCompartilhadas').on('value', function(snap){
+    var dado = snap.val();
+    var txt = document.getElementById('notas-texto');
+    var info = document.getElementById('notas-info');
+    if(!txt) return; // aba ainda não renderizada
+    if(document.activeElement !== txt) {
+      txt.value = (dado && dado.texto) || '';
+    }
+    if(info) {
+      info.textContent = (dado && dado.atualizadoPor)
+        ? ('Última atualização por ' + dado.atualizadoPor + ' em ' + new Date(dado.atualizadoEm).toLocaleString('pt-BR'))
+        : 'Nenhuma nota salva ainda.';
+    }
+  });
+}
+
+function salvarNotasCompartilhadas() {
+  if(!fbDB) { toast('❌ Banco não conectado.'); return; }
+  var txt = document.getElementById('notas-texto');
+  var texto = txt ? txt.value : '';
+  fbDB.ref('config/notasCompartilhadas').set({
+    texto: texto,
+    atualizadoPor: (_sessao && _sessao.login) || 'desconhecido',
+    atualizadoEm: Date.now()
+  }).then(function(){
+    toast('✅ Notas salvas!');
+  }).catch(function(e){
+    console.error('Erro ao salvar notas:', e);
+    toast('❌ Erro ao salvar notas.');
+  });
+}
+
 function carregar() {
   try {
     var raw = localStorage.getItem('frota_v3');
@@ -1219,6 +1269,8 @@ if(fbDB){
     if(_fbConectado){ if(_fbPrimeiraLeitura) setFbStatus('sincronizado'); }
     else setFbStatus('offline', 'Sem conexão com o banco — usando dados locais. As mudanças sincronizam quando a conexão voltar.');
   });
+
+  carregarNotasCompartilhadas();
 
   fbDB.ref('frota/dados').on('value', function(snap){
     _fbPrimeiraLeitura = true;
