@@ -2590,6 +2590,12 @@
         <label>ANO</label>
         <input type="number" id="edit-vei-ano" placeholder="2020" min="1980" max="2030">
       </div>
+      <div style="grid-column: 1/-1;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+          <input type="checkbox" id="edit-vei-terceiros" style="width:16px; height:16px; margin:0;">
+          🚚 Veículo de Terceiros
+        </label>
+      </div>
     </div>
     <button class="btn-save" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);" onclick="salvarEdicaoVeiculo()">💾 SALVAR ALTERAÇÕES</button>
   </div>
@@ -3980,6 +3986,12 @@
           <label>ANO</label>
           <input type="number" id="vei-ano" placeholder="2020" min="1980" max="2030">
         </div>
+        <div style="grid-column: 1/-1;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+            <input type="checkbox" id="vei-terceiros" style="width:16px; height:16px; margin:0;">
+            🚚 Veículo de Terceiros
+          </label>
+        </div>
       </div>
       <button class="btn-save" onclick="salvarVeiculo()" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);">➕ SALVAR VEÍCULO</button>
       
@@ -4167,7 +4179,7 @@
     <!-- LISTA DE VEÍCULOS -->
     <div class="card" id="card-veiculos-cadastrados">
       <h3 class="no-print">🚗 VEÍCULOS CADASTRADOS</h3>
-      <div class="no-print" style="display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom: 15px;">
+      <div class="no-print" style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom: 15px;">
         <div>
           <label>BUSCAR (PLACA, MODELO OU MOTORISTA)</label>
           <input type="text" id="veiculos-busca" placeholder="Digite para buscar..." oninput="listVeiculos()">
@@ -4192,6 +4204,14 @@
             <option>OUTROS</option>
           </select>
         </div>
+        <div>
+          <label>VEÍCULO DE TERCEIROS</label>
+          <select id="veiculos-filtro-terceiros" onchange="listVeiculos()">
+            <option value="">TODOS</option>
+            <option value="sim">🚚 SÓ TERCEIROS</option>
+            <option value="nao">SÓ PRÓPRIOS</option>
+          </select>
+        </div>
       </div>
       <div class="no-print" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom: 15px;">
         <button class="btn-save" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);" onclick="imprimirVeiculos()">🖨️ IMPRIMIR VEÍCULOS</button>
@@ -4208,6 +4228,7 @@
               <th>CPF MOTORISTA</th>
               <th>COMBUSTÍVEL</th>
               <th>ANO</th>
+              <th>TERCEIROS</th>
               <th class="no-print">AÇÕES</th>
             </tr>
           </thead>
@@ -6787,7 +6808,12 @@
     if(cpfN.length < 11) return true;   // sem CPF válido informado: não aplica a regra
 
     // 1) Bloqueio: mesmo CPF já abasteceu no mês por outro usuário
-    var r = await validarCpfUsuarioUnico(cpfN);
+    //    EXCEÇÃO: CPF com autorização ATIVA em "CPF Autorizados" não entra nessa checagem —
+    //    para esse CPF, quem controla a frequência de uso é validarFrequenciaCPF()
+    //    (1x a cada 7 dias, por dia de calendário, independente de qual usuário registrou).
+    //    CPFs sem autorização mantêm a regra geral, sem nenhuma mudança.
+    var autorizadoParaUsoMultiplo = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
+    var r = autorizadoParaUsoMultiplo ? { bloqueado:false, outrosUsuarios:[], qtd:0 } : await validarCpfUsuarioUnico(cpfN);
     if(r.bloqueado){
       // MASTER tem override: pode prosseguir, mas o caso é registrado em auditoria
       var ehMaster = String(loginUser||'').toLowerCase() === 'master';
@@ -14781,6 +14807,7 @@
     const cpfMotorista = document.getElementById('vei-cpf').value.trim();
     const combustivel = document.getElementById('vei-combustivel').value;
     const ano = document.getElementById('vei-ano').value;
+    const terceiros = document.getElementById('vei-terceiros').checked;
     
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ PLACA INVÁLIDA!", "error");
@@ -14807,9 +14834,10 @@
       cpfMotorista: cpfMotorista,
       combustivel: combustivel,
       ano: ano,
+      terceiros: terceiros,
       cadastradoEm: Date.now()
     }).then(() => {
-      registrarAuditoria('VEICULO_CADASTRADO', { placa: placa });
+      registrarAuditoria('VEICULO_CADASTRADO', { placa: placa, terceiros: terceiros });
       mostrarNotificacao("✅ VEÍCULO SALVO COM SUCESSO!", "success");
       
       gerarQRCode(placa);
@@ -14821,6 +14849,7 @@
       document.getElementById('vei-cpf').value = '';
       document.getElementById('vei-combustivel').value = 'GASOLINA';
       document.getElementById('vei-ano').value = '';
+      document.getElementById('vei-terceiros').checked = false;
       listVeiculos();
     }).catch(error => {
       mostrarNotificacao("❌ ERRO AO SALVAR: " + error.message, "error");
@@ -14848,6 +14877,7 @@
       document.getElementById('edit-vei-cpf').value = v.cpfMotorista || '';
       document.getElementById('edit-vei-combustivel').value = v.combustivel || 'GASOLINA';
       document.getElementById('edit-vei-ano').value = v.ano || '';
+      document.getElementById('edit-vei-terceiros').checked = !!v.terceiros;
       document.getElementById('modal-edit-veiculo').style.display = 'flex';
     });
   }
@@ -14869,6 +14899,7 @@
     const cpfMotorista = document.getElementById('edit-vei-cpf').value.trim();
     const combustivel = document.getElementById('edit-vei-combustivel').value;
     const ano = document.getElementById('edit-vei-ano').value;
+    const terceiros = document.getElementById('edit-vei-terceiros').checked;
     
     if (!id) {
       mostrarNotificacao("❌ VEÍCULO NÃO ENCONTRADO!", "error");
@@ -14890,9 +14921,10 @@
       motorista: motorista,
       cpfMotorista: cpfMotorista,
       combustivel: combustivel,
-      ano: ano
+      ano: ano,
+      terceiros: terceiros
     }).then(() => {
-      registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria });
+      registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria, terceiros: terceiros });
       mostrarNotificacao("✅ VEÍCULO ATUALIZADO COM SUCESSO!", "success");
       fecharModalEditVeiculo();
       listVeiculos();
@@ -15182,12 +15214,14 @@
       const tbody = document.getElementById('veiculos-body');
       tbody.innerHTML = "";
       if (!snap.exists()) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO CADASTRADO</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO CADASTRADO</td></tr>';
         return;
       }
       
       const filtroSelect = document.getElementById('veiculos-filtro-secretaria');
       const filtroSecretaria = filtroSelect ? filtroSelect.value : '';
+      const filtroTerceirosSelect = document.getElementById('veiculos-filtro-terceiros');
+      const filtroTerceiros = filtroTerceirosSelect ? filtroTerceirosSelect.value : '';
       const buscaInput = document.getElementById('veiculos-busca');
       const busca = buscaInput ? buscaInput.value.toUpperCase().trim() : '';
       let algumExibido = false;
@@ -15203,6 +15237,10 @@
             return;
           }
         }
+        
+        // Filtro por Veículo de Terceiros (aditivo — se não houver filtro selecionado, mostra todos)
+        if (filtroTerceiros === 'sim' && !v.terceiros) return;
+        if (filtroTerceiros === 'nao' && v.terceiros) return;
         
         // Busca por texto (placa, modelo ou motorista) — aditiva, se vazia mostra todos
         if (busca) {
@@ -15220,6 +15258,7 @@
             <td style="font-size: 11px;">${v.cpfMotorista || '---'}</td>
             <td><span class="badge ${v.combustivel === 'GASOLINA' ? 'badge-danger' : v.combustivel === 'DIESEL' ? 'badge-warning' : 'badge-success'}">${v.combustivel || '---'}</span></td>
             <td>${v.ano || '---'}</td>
+            <td>${v.terceiros ? '<span class="badge badge-warning">🚚 TERCEIROS</span>' : '---'}</td>
             <td class="no-print">
               <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="gerarQRCodeModal('${v.placa}')">📱 QR CODE</button>
               ${temPermissao('gerenciar_veiculos') ? `
@@ -15234,7 +15273,7 @@
       });
       
       if (!algumExibido) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO ENCONTRADO PARA ESSE FILTRO</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">📭 NENHUM VEÍCULO ENCONTRADO PARA ESSE FILTRO</td></tr>';
       }
     });
   }
