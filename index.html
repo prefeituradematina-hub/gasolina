@@ -2966,7 +2966,7 @@
       <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
       <button id="btn-tab-users" class="tab-btn" style="display:none;" onclick="switchTab('usuarios')">⚙️ CONFIGURAÇÕES</button>
       <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
-      <button id="btn-tab-notas" class="tab-btn" onclick="switchTab('notas')">📝 NOTAS</button>
+      <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -4689,6 +4689,7 @@
     'ver_relatorio_secretaria': { nome: 'Ver Relatório Secretaria', descricao: 'Ver apenas sua secretaria', categoria: 'visualizacao' },
     'ver_pendentes': { nome: 'Ver Pendentes', descricao: 'Visualizar abastecimentos pendentes (sem autorizar)', categoria: 'visualizacao' },
     'usar_filtros_relatorio': { nome: 'Usar Filtros de Relatório', descricao: 'Aplicar filtros nos relatórios', categoria: 'visualizacao' },
+    'acessar_notas': { nome: 'Acessar Notas', descricao: 'Ver e editar o bloco de notas compartilhado', categoria: 'visualizacao' },
     'registrar_abastecimento': { nome: 'Registrar Abastecimento', descricao: 'Criar novos registros', categoria: 'operacoes' },
     'registrar_abastecimento_diversas': { nome: 'Registrar Abastecimento VIP', descricao: 'Lançar para Prefeita/Vereadores', categoria: 'operacoes' },
     'abastecer_diversas': { nome: 'Abastecer DIVERSAS', descricao: 'Registrar abastecimentos DIVERSAS', categoria: 'operacoes' },
@@ -4702,7 +4703,7 @@
   
   const PERMISSOES_PADRAO = {
     master: Object.keys(PERMISSOES_DISPONIVEIS),
-    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel'],
+    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel', 'acessar_notas'],
     secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio', 'ver_pendentes'],
   autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_diversas', 'abastecer_diversas']
@@ -6063,6 +6064,9 @@
     
     document.getElementById('btn-tab-cpfautorizados').style.display = 
       (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
+    
+    document.getElementById('btn-tab-notas').style.display = 
+      (temPermissao('acessar_notas')) ? 'block' : 'none';
     
     // Esconder seção de novo abastecimento se não tiver permissão
     const cardNovoAbast = document.getElementById('card-novo-abastecimento');
