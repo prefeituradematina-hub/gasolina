@@ -4020,13 +4020,15 @@ function iniciarSessaoPortal(){
   // Frentistas têm acesso TOTAL ao controle de frota (perfil admin, todas as funções)
   var ehAdmin = (s.u === 'master' || s.role === 'admin' || s.role === 'frentista' || s.role === 'autorizador');
   var secBruta = (s.dados && s.dados.secretariaVinculada) || s.sec || '';
+  var permissoesUsuario = (s.dados && s.dados.permissoes) || [];
   _sessao = {
     id: s.u,
     login: s.u,
     nome: (s.dados && s.dados.nome) || s.u,
     perfil: ehAdmin ? 'admin' : 'secretario',
     roleOrig: s.role,
-    secretaria: ehAdmin ? '' : traduzirSec(secBruta)
+    secretaria: ehAdmin ? '' : traduzirSec(secBruta),
+    acessoNotas: permissoesUsuario.indexOf('acessar_notas') > -1
   };
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = '';
@@ -4079,6 +4081,12 @@ function aplicarPermissoes() {
     if(!match) return;
     var abaId = match[1];
     if(abaId === 'usuarios'){ tab.style.display = 'none'; return; } // gestão central
+    if(abaId === 'notas'){
+      // Frentistas têm acesso total ao restante da Frota, mas NÃO devem ver Notas automaticamente
+      var acessoAutomaticoNotas = _sessao && (_sessao.login === 'master' || _sessao.roleOrig === 'admin' || _sessao.roleOrig === 'autorizador');
+      tab.style.display = (acessoAutomaticoNotas || (_sessao && _sessao.acessoNotas)) ? '' : 'none';
+      return;
+    }
     if(!isAdmin() && tabsAdmin.indexOf(abaId) > -1) {
       tab.style.display = 'none';
     } else {
