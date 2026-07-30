@@ -516,6 +516,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
       <div class="section-title">Frota cadastrada</div>
       <button class="btn primary" onclick="abrirVeiculo(null)">+ Cadastrar</button>
     </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="field"><label>Buscar (placa ou descrição)</label>
+        <input type="text" id="vf-busca" placeholder="Digite para buscar..." oninput="renderVeiculos()">
+      </div>
+      <div class="field"><label>Secretaria</label>
+        <select id="vf-sec" onchange="renderVeiculos()"><option value="">Todas</option></select>
+      </div>
+      <div class="field"><label>Veículo de Terceiros</label>
+        <select id="vf-terceiros" onchange="renderVeiculos()">
+          <option value="">Todos</option>
+          <option value="sim">🚚 Só Terceiros</option>
+          <option value="nao">Só Próprios</option>
+        </select>
+      </div>
+    </div>
     <div id="lista-veiculos"></div>
   </div>
 
@@ -857,6 +872,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <textarea id="v-sem-carona-obs" placeholder="Ex: Caminhão de obras, transporte de equipamentos..." style="width:100%;border:1.5px solid #FECACA;border-radius:8px;padding:9px 11px;font-size:13px;resize:vertical;min-height:64px;font-family:inherit"></textarea>
       </div>
       <div style="font-size:11px;color:#6B7280;margin-top:4px;line-height:1.5">Quando marcado, o veículo <strong>não aparece na aba Caronas</strong> e não aceita novas reservas. A capacidade continua valendo para as viagens da própria secretaria.</div>
+    </div>
+    <div class="field" style="margin-top:4px">
+      <label for="v-terceiros" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:10px;padding:11px 13px">
+        <input type="checkbox" id="v-terceiros" style="width:18px;height:18px;accent-color:#0369A1;cursor:pointer;flex-shrink:0">
+        <span>🚚 Veículo de Terceiros</span>
+      </label>
     </div>
     <div class="divider"></div>
     <div class="section-title" style="margin-bottom:.5rem">Documentação</div>
@@ -3027,6 +3048,8 @@ function abrirVeiculo(id) {
   document.getElementById('v-sem-carona').checked = !!(v&&v.semCarona);
   document.getElementById('v-sem-carona-obs').value = (v&&v.semCaronaObs)||'';
   document.getElementById('v-sem-carona-obs-wrap').style.display = (v&&v.semCarona)?'block':'none';
+  // Veículo de Terceiros
+  document.getElementById('v-terceiros').checked = !!(v&&v.terceiros);
   document.getElementById('v-ipva').value   = v?v.ipva:'';
   document.getElementById('v-licenc').value = v?v.licenc:'';
   document.getElementById('v-seguro').value = v?v.seguro:'';
@@ -3095,6 +3118,25 @@ function addEscala() {
   renderEscalasTmp();
 }
 
+// Sincroniza o campo "Veículo de Terceiros" com o Controle de Gasolina, quando o veículo
+// (mesma placa) também existir lá. Se não existir na Gasolina, não faz nada (não cria registro novo).
+function sincronizarTerceirosComGasolina(placa, terceiros) {
+  if(!fbDB) return;
+  var placaN = normPlaca(placa);
+  fbDB.ref('veiculos').once('value').then(function(snap){
+    snap.forEach(function(child){
+      var vv = child.val();
+      if(vv && normPlaca(vv.placa) === placaN){
+        fbDB.ref('veiculos/' + child.key + '/terceiros').set(!!terceiros).catch(function(e){
+          console.warn('Não foi possível sincronizar "Veículo de Terceiros" com a Gasolina:', e);
+        });
+      }
+    });
+  }).catch(function(e){
+    console.warn('Não foi possível ler veículos da Gasolina para sincronizar:', e);
+  });
+}
+
 function confirmarVeiculo() {
   if(!isAdmin()){ toast('🚫 Sem permissão para salvar veículos.'); return; }
   var placa = normPlaca(document.getElementById('v-placa').value);
@@ -3112,6 +3154,7 @@ function confirmarVeiculo() {
     manutencaoObs:document.getElementById('v-manutencao').checked?(document.getElementById('v-manutencao-obs').value.trim()||null):null,
     semCarona:document.getElementById('v-sem-carona').checked?1:null,
     semCaronaObs:document.getElementById('v-sem-carona').checked?(document.getElementById('v-sem-carona-obs').value.trim()||null):null,
+    terceiros:document.getElementById('v-terceiros').checked?1:null,
     ipva:document.getElementById('v-ipva').value,
     licenc:document.getElementById('v-licenc').value,
     seguro:document.getElementById('v-seguro').value,
@@ -3135,6 +3178,7 @@ function confirmarVeiculo() {
   // Vínculo é aplicado depois do veículo existir (espelha no motorista)
   aplicarVinculo(alvoId, motVinc);
   salvar(); fechar('ov-veiculo'); toast('Veículo salvo!'); renderTudo();
+  sincronizarTerceirosComGasolina(placa, !!obj.terceiros);
 }
 
 function removerVeiculo(id) {
@@ -3462,8 +3506,34 @@ function renderManutencao() {
 
 function renderVeiculos() {
   var el = document.getElementById('lista-veiculos');
+  
+  // Popular o select de secretarias (aditivo — não interfere na renderização)
+  var elSec = document.getElementById('vf-sec');
+  if(elSec && !elSec.dataset.pop) {
+    var secsDisponiveis = [...new Set(D.veiculos.map(function(v){return v.secretaria;}).filter(Boolean))];
+    elSec.innerHTML = '<option value="">Todas</option>'+secsDisponiveis.map(function(s){return '<option>'+s+'</option>';}).join('');
+    elSec.dataset.pop = '1';
+  }
+  
+  var busca = (document.getElementById('vf-busca')||{}).value||'';
+  busca = busca.toUpperCase().trim();
+  var filtroSec = (document.getElementById('vf-sec')||{}).value||'';
+  var filtroTerceiros = (document.getElementById('vf-terceiros')||{}).value||'';
+  
+  var listaFiltrada = D.veiculos.filter(function(v){
+    if(filtroSec && v.secretaria !== filtroSec) return false;
+    if(filtroTerceiros === 'sim' && !v.terceiros) return false;
+    if(filtroTerceiros === 'nao' && v.terceiros) return false;
+    if(busca){
+      var alvo = (String(v.placa||'')+' '+String(v.descricao||'')).toUpperCase();
+      if(alvo.indexOf(busca) === -1) return false;
+    }
+    return true;
+  });
+  
   if(!D.veiculos.length) { el.innerHTML='<div class="empty">Nenhum veículo.</div>'; return; }
-  el.innerHTML = D.veiculos.map(function(v){
+  if(!listaFiltrada.length) { el.innerHTML='<div class="empty">Nenhum veículo encontrado para esse filtro.</div>'; return; }
+  el.innerHTML = listaFiltrada.map(function(v){
     var s = getStatus(v.id);
     var docs = docAlerts(v);
     var mov = getMovAtiva(v.id);
@@ -3485,6 +3555,8 @@ function renderVeiculos() {
         ? '<span>👤 Motorista: <strong>'+getM(v.motoristaId).nome+'</strong></span>' : '')+
       (v.semCarona
         ? '<span style="color:#B91C1C;font-weight:600">🚫 <strong>Não aceita carona</strong></span>' : '')+
+      (v.terceiros
+        ? '<span style="color:#0369A1;font-weight:600">🚚 <strong>Veículo de Terceiros</strong></span>' : '')+
       (v.escalas&&v.escalas.length?'<span>📅 <strong>'+v.escalas.map(function(e){return e.nome;}).join(', ')+'</strong></span>':'')+
       '</div>'+
       (vagasHTML?'<div style="margin-top:6px">'+vagasHTML+'</div>':'')+

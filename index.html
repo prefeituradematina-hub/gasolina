@@ -14839,6 +14839,7 @@
     }).then(() => {
       registrarAuditoria('VEICULO_CADASTRADO', { placa: placa, terceiros: terceiros });
       mostrarNotificacao("✅ VEÍCULO SALVO COM SUCESSO!", "success");
+      sincronizarTerceirosComFrota(placa, terceiros);
       
       gerarQRCode(placa);
       
@@ -14886,6 +14887,24 @@
     document.getElementById('modal-edit-veiculo').style.display = 'none';
   }
   
+  // Sincroniza o campo "Veículo de Terceiros" com o Controle de Frota, quando o veículo
+  // (mesma placa) também existir lá. Se não existir na Frota, não faz nada (não cria registro novo).
+  function sincronizarTerceirosComFrota(placa, terceiros) {
+    const placaN = normPlaca(placa);
+    db.ref('frota/dados/veiculos').once('value').then(snap => {
+      const arr = snap.val();
+      if (!Array.isArray(arr)) return;
+      const idx = arr.findIndex(v => v && normPlaca(v.placa) === placaN);
+      if (idx > -1) {
+        db.ref('frota/dados/veiculos/' + idx + '/terceiros').set(terceiros ? 1 : null).catch(err => {
+          console.warn('Não foi possível sincronizar "Veículo de Terceiros" com a Frota:', err);
+        });
+      }
+    }).catch(err => {
+      console.warn('Não foi possível ler veículos da Frota para sincronizar:', err);
+    });
+  }
+  
   function salvarEdicaoVeiculo() {
     if (!temPermissao('gerenciar_veiculos')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EDITAR VEÍCULOS!", "error");
@@ -14926,6 +14945,8 @@
     }).then(() => {
       registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria, terceiros: terceiros });
       mostrarNotificacao("✅ VEÍCULO ATUALIZADO COM SUCESSO!", "success");
+      const placaEditada = (document.getElementById('edit-vei-placa').value || '').trim();
+      if (placaEditada) sincronizarTerceirosComFrota(placaEditada, terceiros);
       fecharModalEditVeiculo();
       listVeiculos();
     }).catch(error => {
