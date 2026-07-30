@@ -3269,6 +3269,10 @@
           <label>PLACA</label>
           <input type="text" id="rel-placa" placeholder="ABC1234">
         </div>
+        <div>
+          <label>CPF</label>
+          <input type="text" id="rel-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+        </div>
         <div id="container-pessoa-diversas" style="display:none;">
           <label>PESSOA (DIVERSAS) 🌟</label>
           <select id="rel-pessoa">
@@ -10691,6 +10695,7 @@
     const posto = document.getElementById('rel-posto').value;
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
+    const cpf = document.getElementById('rel-cpf').value.replace(/\D/g, '');
     
     let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
     
@@ -10705,6 +10710,7 @@
     if (posto) registros = registros.filter(r => r.posto === posto);
     if (combustivel) registros = registros.filter(r => r.tipo === combustivel);
     if (placa) registros = registros.filter(r => r.placa.includes(placa));
+    if (cpf) registros = registros.filter(r => (r.cpf || r.cpfBeneficiado || '').replace(/\D/g, '') === cpf);
     
     if (registros.length === 0) {
       mostrarNotificacao("❌ NENHUM REGISTRO PARA EXPORTAR!", "error");
@@ -12756,6 +12762,7 @@
     document.getElementById('rel-posto').value = '';
     document.getElementById('rel-combustivel').value = '';
     document.getElementById('rel-placa').value = '';
+    document.getElementById('rel-cpf').value = '';
     document.getElementById('rel-pessoa').value = '';
     atualizarRelatorio();
     mostrarNotificacao("🔄 FILTROS LIMPOS!", "info");
@@ -13985,6 +13992,7 @@
     const posto = document.getElementById('rel-posto').value;
     const combustivel = document.getElementById('rel-combustivel').value;
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
+    const cpf = document.getElementById('rel-cpf').value.replace(/\D/g, '');
     const pessoa = document.getElementById('rel-pessoa').value; // Dropdown já vem padronizado
     
     console.log('🔍 VALORES DOS CAMPOS DE FILTRO:');
@@ -13994,11 +14002,12 @@
     console.log('  • Posto:', posto || '(vazio - TODOS)');
     console.log('  • Combustível:', combustivel || '(vazio - TODOS)');
     console.log('  • Placa:', placa || '(vazio - TODAS)');
+    console.log('  • CPF:', cpf || '(vazio - TODOS)');
     console.log('  • Pessoa (DIVERSAS):', pessoa || '(vazio - TODAS)');
     console.log('');
     
     // Validar se pelo menos um filtro foi aplicado
-    const algumFiltroAplicado = dataInicial || dataFinal || secretaria || posto || combustivel || placa || pessoa;
+    const algumFiltroAplicado = dataInicial || dataFinal || secretaria || posto || combustivel || placa || cpf || pessoa;
     
     if (!algumFiltroAplicado) {
       console.warn('⚠️ NENHUM FILTRO FOI APLICADO!');
@@ -14159,6 +14168,21 @@
       console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
     } else {
       console.log(`6️⃣ FILTRO: Placa - NÃO APLICADO (TODAS)`);
+    }
+    
+    // 6.5. FILTRO DE CPF (identifica em quais abastecimentos um CPF foi usado)
+    if (cpf) {
+      const antes = registros.length;
+      console.log(`6.5️⃣ FILTRO: CPF = "${cpf}"`);
+      
+      registros = registros.filter(r => {
+        const cpfRegistro = (r.cpf || r.cpfBeneficiado || '').replace(/\D/g, '');
+        return cpfRegistro === cpf;
+      });
+      
+      console.log(`   ✂️ ${antes} → ${registros.length} (removidos: ${antes - registros.length})`);
+    } else {
+      console.log(`6.5️⃣ FILTRO: CPF - NÃO APLICADO (TODOS)`);
     }
     
     // 7. FILTRO DE PESSOA (DIVERSAS)
