@@ -3961,7 +3961,7 @@ abrirSaida = function(vid) {
     document.getElementById('justif-outro-box').classList.remove('show');
     // Preenche info do agendamento
     var v = getV(vid);
-    var mot = ag.motid ? getMot(ag.motid) : null;
+    var mot = ag.motid ? getM(ag.motid) : null;
     document.getElementById('justif-agenda-info').innerHTML =
       '<strong>' + (v ? v.placa + ' — ' + v.descricao : '') + '</strong><br>' +
       '📅 Agendamento: <strong>' + fmtDT(ag.saida) + '</strong> → <strong>' + fmtDT(ag.retorno) + '</strong><br>' +
