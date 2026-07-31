@@ -633,7 +633,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <h2>Registrar saída</h2>
     <div class="form-row">
       <div class="field"><label>Veículo * <span id="s-vei-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="s-vei-busca" placeholder="🔍 Filtrar por placa ou nome..." oninput="filtrarVeiSelect('s-vei','s-vei-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="s-vei" size="8" onchange="hintVagas('s')" style="height:auto"></select></div>
-      <div class="field"><label>Motorista <span id="s-mot-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="s-mot-busca" placeholder="🔍 Filtrar motorista..." oninput="filtrarMotSelect('s-mot','s-mot-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="s-mot" size="8" style="height:auto"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
+      <div class="field" id="s-mot-field"><label>Motorista <span id="s-mot-cont" style="font-weight:400;color:#64748B;font-size:11px"></span></label><input type="text" id="s-mot-busca" placeholder="🔍 Filtrar motorista..." oninput="filtrarMotSelect('s-mot','s-mot-busca')" autocomplete="off" style="margin-bottom:5px;font-size:12px"><select id="s-mot" size="8" style="height:auto"></select><button type="button" onclick="toggleMotManual('s',this)" style="font-size:11px;color:#2563EB;background:none;border:none;cursor:pointer;margin-top:4px;font-weight:600;font-family:inherit;display:block">✏️ Digitar nome manualmente</button><div id="s-mot-manual" style="display:none;margin-top:5px"><input type="text" id="s-mot-texto" placeholder="Nome do motorista..."></div></div>
+      <div class="field" id="s-mot-fixo" style="display:none">
+        <label>Motorista</label>
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px;font-weight:600;color:#15803D">
+          👤 <span id="s-mot-fixo-nome"></span>
+          <div style="font-weight:400;font-size:11px;color:#166534;margin-top:2px">Definido no agendamento — não é necessário selecionar novamente.</div>
+        </div>
+      </div>
     </div>
     <div class="form-row">
       <div class="field"><label>Servidor solicitante</label><input type="text" id="s-solic" placeholder="Nome do servidor"></div>
@@ -2574,6 +2581,8 @@ function abrirSaida(vid) {
   document.getElementById('s-pass').value = '';
   document.getElementById('s-pass-row').style.display = 'none';
   document.getElementById('s-hint').style.display = 'none';
+  document.getElementById('s-mot-field').style.display = '';
+  document.getElementById('s-mot-fixo').style.display = 'none';
   _editMovId = null;
   if(vid) document.getElementById('s-vei').value = vid;
   // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados.
@@ -2606,6 +2615,11 @@ function abrirSaida(vid) {
     var _selVei = document.getElementById('s-vei');
     if(_selVei && _selVei.querySelector('[value="'+ag.vid+'"]')) _selVei.value = ag.vid;
     preencherMotorista('s', ag.motid, ag.motorista);
+    if(ag.motorista){
+      document.getElementById('s-mot-field').style.display = 'none';
+      document.getElementById('s-mot-fixo').style.display = '';
+      document.getElementById('s-mot-fixo-nome').textContent = ag.motorista;
+    }
     if(ag.itin) setDestValue('s', ag.itin);
     if(ag.solic) document.getElementById('s-solic').value = ag.solic;
     if(ag.sec){
