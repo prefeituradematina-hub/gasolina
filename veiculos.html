@@ -2576,18 +2576,24 @@ function abrirSaida(vid) {
   document.getElementById('s-hint').style.display = 'none';
   _editMovId = null;
   if(vid) document.getElementById('s-vei').value = vid;
-  // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados
+  // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados.
+  // Protegido com try/catch: mesmo se algo aqui falhar, a tela de saída deve abrir do mesmo jeito
+  // (o usuário pode preencher manualmente), em vez do clique não fazer nada.
   var solAp = vid ? getSolicitacaoLiberada(vid) : null;
   if(solAp) {
-    if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
-    if(solAp.motorista){ preencherMotorista('s', solAp.motid, solAp.motorista); }
-    var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
-    if(qp > 0) {
-      document.getElementById('s-com-pass').value = '1';
-      document.getElementById('s-pass-row').style.display = 'block';
-      document.getElementById('s-pass').value = qp;
+    try {
+      if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
+      if(solAp.motorista){ preencherMotorista('s', solAp.motid, solAp.motorista); }
+      var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
+      if(qp > 0) {
+        document.getElementById('s-com-pass').value = '1';
+        document.getElementById('s-pass-row').style.display = 'block';
+        document.getElementById('s-pass').value = qp;
+      }
+      document.getElementById('s-solic').value = solAp.solicitante || '';
+    } catch(erroPreFill) {
+      console.error('⚠️ Erro ao pré-preencher dados da solicitação liberada (a tela de saída abre normalmente mesmo assim):', erroPreFill);
     }
-    document.getElementById('s-solic').value = solAp.solicitante || '';
   }
 
   // Sem solicitacao aprovada? Puxa os dados do AGENDAMENTO do secretario
