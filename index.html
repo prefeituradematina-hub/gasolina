@@ -13097,18 +13097,18 @@
       
       Object.keys(categorias).forEach(categoria => {
         container.innerHTML += `
-          <div style="margin-bottom:20px;">
-            <h4 style="margin:0 0 10px 0; font-size:14px; color:var(--primary);">${categoria.toUpperCase()}</h4>
+          <div style="margin-bottom:24px;">
+            <h4 style="margin:0 0 12px 0; padding-bottom:6px; font-size:13px; font-weight:700; letter-spacing:.3px; color:var(--primary); border-bottom:2px solid var(--accent);">${categoria.toUpperCase()}</h4>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         `;
         
         categorias[categoria].forEach(perm => {
           const checked = permissoesAtuais.includes(perm.key) ? 'checked' : '';
           container.innerHTML += `
-            <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border-radius:8px;">
-              <input type="checkbox" id="perm_${perm.key}" ${checked}>
-              <label for="perm_${perm.key}" style="text-transform:none; font-weight:normal; font-size:12px;">
-                <strong>${perm.nome}</strong><br>
+            <div style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+              <input type="checkbox" id="perm_${perm.key}" ${checked} style="width:16px; height:16px; margin:2px 0 0 0; flex-shrink:0;">
+              <label for="perm_${perm.key}" style="text-transform:none; font-weight:normal; font-size:12px; line-height:1.5;">
+                <strong style="display:block; color:var(--primary);">${perm.nome}</strong>
                 <span style="color:#64748b; font-size:11px;">${perm.descricao}</span>
               </label>
             </div>
@@ -13178,18 +13178,18 @@
     
     Object.keys(categorias).forEach(categoria => {
       container.innerHTML += `
-        <div style="margin-bottom:20px;">
-          <h4 style="margin:0 0 10px 0; font-size:14px; color:var(--primary);">${categoria.toUpperCase()}</h4>
+        <div style="margin-bottom:24px;">
+          <h4 style="margin:0 0 12px 0; padding-bottom:6px; font-size:13px; font-weight:700; letter-spacing:.3px; color:var(--primary); border-bottom:2px solid var(--accent);">${categoria.toUpperCase()}</h4>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
       `;
       
       categorias[categoria].forEach(perm => {
         const checked = permissoesPadrao.includes(perm.key) ? 'checked' : '';
         container.innerHTML += `
-          <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border-radius:8px;">
-            <input type="checkbox" id="perm_${perm.key}" ${checked} disabled>
-            <label for="perm_${perm.key}" style="text-transform:none; font-weight:normal; font-size:12px;">
-              <strong>${perm.nome}</strong><br>
+          <div style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+            <input type="checkbox" id="perm_${perm.key}" ${checked} disabled style="width:16px; height:16px; margin:2px 0 0 0; flex-shrink:0;">
+            <label for="perm_${perm.key}" style="text-transform:none; font-weight:normal; font-size:12px; line-height:1.5;">
+              <strong style="display:block; color:var(--primary);">${perm.nome}</strong>
               <span style="color:#64748b; font-size:11px;">${perm.descricao}</span>
             </label>
           </div>
