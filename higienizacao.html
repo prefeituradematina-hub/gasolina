@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>Controle de Higienização</title>
+
+<script>
+/* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
+(function(){
+  try{
+    var s = JSON.parse(localStorage.getItem('sessao_global'));
+    if(s && s.exp > Date.now()){
+      window.__SESSAO = s;
+      return;
+    }
+  }catch(e){}
+  location.replace('porta.html');
+})();
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<style>
+  :root {
+      --primary: #0f172a;
+      --accent: #06b6d4;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; }
+  body { background-color: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .top-bar h1 { font-size: 18px; margin: 0; color: var(--primary); }
+  .top-bar h1 small { display:block; font-size:11px; color:#64748b; font-weight:normal; margin-top:2px; }
+
+  .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 8px;
+      border: 1px solid #E5E7EB;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      margin-bottom: 20px;
+  }
+  .tab-btn {
+      flex: 1;
+      min-width: 92px;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+      color: #6B7280;
+      font-weight: 500;
+      font-size: 12px;
+      line-height: 1.3;
+      transition: all 0.15s;
+      white-space: normal;
+      position: relative;
+  }
+  .tab-btn.active { background: var(--accent); color: white; font-weight: 600; box-shadow: 0 1px 4px rgba(6,182,212,.25); }
+  .tab-btn:hover:not(.active) { background: #F3F4F6; color: #111827; }
+
+  .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+  }
+  .card h3 {
+      margin-top: 0;
+      color: var(--primary);
+      font-size: 18px;
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+  }
+
+  .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+  label { font-size: 10px; font-weight: bold; color: #64748b; display: block; margin-bottom: 5px; }
+  input, select, textarea {
+      width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      margin-bottom: 5px; transition: all 0.3s; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+  }
+  textarea { text-transform: none; resize: vertical; min-height: 60px; }
+
+  .btn-save {
+      background: var(--accent); color: white; border: none; padding: 16px; border-radius: 10px;
+      cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: all 0.3s; font-size: 13px;
+  }
+  .btn-save:hover { background: #0891b2; box-shadow: 0 2px 8px rgba(6,182,212,0.25); }
+  .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-logout {
+      background: var(--danger); color: white; padding: 12px 24px; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: bold; transition: all 0.3s;
+  }
+  .btn-logout:hover { background: #dc2626; transform: translateY(-1px); }
+
+  .btn-action { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; margin: 0 3px; font-size: 12px; font-weight:bold; transition: all 0.2s; }
+  .btn-action:hover { transform: scale(1.05); }
+  .btn-aprovar { background: var(--success); color: white; }
+  .btn-rejeitar { background: var(--danger); color: white; }
+  .btn-executar { background: var(--accent); color: white; }
+  .btn-excluir { background: #7c2d12; color: white; }
+
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 11px; }
+  th { background: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; font-weight: bold; }
+  td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
+
+  .status-tag { padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 9px; display: inline-block; }
+  .status-pendente { background: var(--warning); color: #000; }
+  .status-aprovado { background: #3b82f6; color: #fff; }
+  .status-rejeitado { background: var(--danger); color: #fff; }
+  .status-executado { background: var(--success); color: #fff; }
+
+  .checkbox-dias { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .checkbox-dias label { display:flex; align-items:center; gap:6px; font-size:11px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; width:auto; margin:0; }
+  .checkbox-dias input { width:16px; height:16px; margin:0; }
+
+  .bloqueado-acesso { display:flex; align-items:center; justify-content:center; min-height:80vh; text-align:center; }
+  .bloqueado-acesso .card { max-width: 420px; }
+
+  @media (max-width: 768px) {
+      .nav-tabs { flex-wrap: wrap; }
+      .tab-btn { flex: 1 1 45%; min-width: 45%; }
+      table { min-width: 700px; }
+  }
+
+  /* ── MODO ESCURO (mesma chave 'theme' usada no resto do sistema) ── */
+  :root[data-theme="dark"] {
+      --primary: #f8fafc; --accent: #22d3ee; --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+      --bg: #1e293b;
+  }
+  [data-theme="dark"] body { background-color: var(--bg); color: #e2e8f0; }
+  [data-theme="dark"] .card, [data-theme="dark"] .top-bar, [data-theme="dark"] .nav-tabs {
+      background-color: #334155; color: #e2e8f0; border-color: #475569;
+  }
+  [data-theme="dark"] .tab-btn { background: #475569; color: #e2e8f0; }
+  [data-theme="dark"] .tab-btn.active { background: var(--accent); color: #0f172a; }
+  [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+      background-color: #0f172a; color: #e2e8f0; border-color: #475569;
+  }
+  [data-theme="dark"] table { background-color: #334155; }
+  [data-theme="dark"] th { background-color: #0f172a; color:#e2e8f0; }
+  [data-theme="dark"] td { border-color: #475569; }
+  [data-theme="dark"] tr:hover { background-color: #475569; }
+  [data-theme="dark"] .checkbox-dias label { background:#0f172a; border-color:#475569; }
+
+  .theme-toggle { position: relative; display: inline-block; width: 46px; height: 24px; cursor:pointer; }
+  .theme-toggle input { opacity: 0; width: 0; height: 0; }
+  .theme-slider { position:absolute; inset:0; background:#cbd5e1; border-radius:24px; transition:.3s; }
+  .theme-slider:before { content:"☀️"; position:absolute; height:18px; width:18px; left:3px; top:3px; font-size:11px; line-height:18px; text-align:center; background:white; border-radius:50%; transition:.3s; }
+  input:checked + .theme-slider { background:#475569; }
+  input:checked + .theme-slider:before { transform: translateX(22px); content:"🌙"; }
+</style>
+</head>
+<body>
+
+<div id="tela-bloqueada" class="bloqueado-acesso" style="display:none;">
+  <div class="card">
+    <h3>🚫 SEM ACESSO</h3>
+    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Higienização.</p>
+    <button class="btn-save" onclick="location.replace('porta.html')">⬅️ VOLTAR AO PORTAL</button>
+  </div>
+</div>
+
+<div id="app" class="container" style="display:none;">
+
+  <div class="top-bar">
+    <h1>🚿 CONTROLE DE HIGIENIZAÇÃO
+      <small id="top-user-info">—</small>
+    </h1>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <label class="theme-toggle" title="Alternar tema claro/escuro">
+        <input type="checkbox" id="theme-toggle" onchange="toggleDarkMode()">
+        <span class="theme-slider"></span>
+      </label>
+      <button class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button id="btn-tab-solicitar" class="tab-btn" onclick="switchTab('solicitar')">📝 SOLICITAR HIGIENIZAÇÃO</button>
+    <button id="btn-tab-pendentes" class="tab-btn" style="display:none;" onclick="switchTab('pendentes')">⏳ PENDENTES / EM ANDAMENTO</button>
+    <button id="btn-tab-historico" class="tab-btn" onclick="switchTab('historico')">📋 HISTÓRICO</button>
+    <button id="btn-tab-config" class="tab-btn" style="display:none;" onclick="switchTab('config')">⚙️ CONFIGURAÇÕES</button>
+  </div>
+
+  <!-- ========== TAB: SOLICITAR ========== -->
+  <div id="tab-solicitar">
+    <!-- NOVO: painel de limite mensal da secretaria do usuário logado (só aparece se houver limite específico configurado) -->
+    <div class="card" id="card-limite-secretaria" style="display:none;">
+      <h3>📊 LIMITE DE HIGIENIZAÇÕES DA MINHA SECRETARIA</h3>
+      <div class="stats-grid-lavagem" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+        <div style="text-align:center; padding:12px; background:#f8fafc; border-radius:8px;">
+          <div style="font-size:10px; color:#64748b;">LIMITE MENSAL</div>
+          <div id="lim-sec-total" style="font-size:24px; font-weight:bold; color:var(--primary);">—</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:#f8fafc; border-radius:8px;">
+          <div style="font-size:10px; color:#64748b;">UTILIZADAS</div>
+          <div id="lim-sec-usadas" style="font-size:24px; font-weight:bold; color:var(--warning);">—</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:#f8fafc; border-radius:8px;">
+          <div style="font-size:10px; color:#64748b;">DISPONÍVEIS</div>
+          <div id="lim-sec-disponivel" style="font-size:24px; font-weight:bold; color:var(--success);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📝 NOVA SOLICITAÇÃO DE HIGIENIZAÇÃO</h3>
+      <div class="grid-form">
+        <div>
+          <label>VEÍCULO (PLACA) — DIGITE PARA BUSCAR</label>
+          <input type="text" id="lav-placa" list="dl-placas-lavagem" placeholder="Digite a placa ou o modelo..." maxlength="8" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+          <datalist id="dl-placas-lavagem"></datalist>
+        </div>
+        <div>
+          <label>MOTORISTA (OPCIONAL) — DIGITE PARA BUSCAR</label>
+          <input type="text" id="lav-motorista" list="dl-motoristas-lavagem" placeholder="Digite o nome...">
+          <datalist id="dl-motoristas-lavagem"></datalist>
+        </div>
+        <div>
+          <label>SECRETARIA</label>
+          <select id="lav-secretaria">
+            <option value="">SELECIONE...</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:15px;">
+        <label>OBSERVAÇÕES (OPCIONAL)</label>
+        <textarea id="lav-obs" rows="2" placeholder="Ex: lavagem completa, remover barro da lateral..."></textarea>
+      </div>
+      <button class="btn-save" onclick="solicitarLavagem()">✔️ SOLICITAR LAVAGEM</button>
+      <p id="lav-regras-info" style="font-size:11px;color:#64748b;margin-top:10px;text-transform:none;"></p>
+    </div>
+  </div>
+
+  <!-- ========== TAB: PENDENTES / EM ANDAMENTO (master) ========== -->
+  <div id="tab-pendentes" style="display:none;">
+    <div class="card">
+      <h3>⏳ SOLICITAÇÕES PENDENTES</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>PLACA</th><th>MOTORISTA</th><th>SECRETARIA</th><th>SOLICITADO POR</th><th>DATA</th><th>OBS.</th><th>AÇÕES</th></tr>
+          </thead>
+          <tbody id="lav-pendentes-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🧽 APROVADAS — AGUARDANDO EXECUÇÃO</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>PLACA</th><th>MOTORISTA</th><th>SECRETARIA</th><th>APROVADO POR</th><th>DATA APROVAÇÃO</th><th>AÇÕES</th></tr>
+          </thead>
+          <tbody id="lav-aprovadas-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB: HISTÓRICO ========== -->
+  <div id="tab-historico" style="display:none;">
+    <div class="card">
+      <h3>📋 HISTÓRICO DE HIGIENIZAÇÕES</h3>
+      <div class="grid-form" style="margin-bottom:15px;">
+        <div>
+          <label>FILTRAR POR STATUS</label>
+          <select id="hist-filtro-status" onchange="renderHistoricoLavagens()">
+            <option value="">TODOS</option>
+            <option value="pendente">PENDENTE</option>
+            <option value="aprovado">APROVADO</option>
+            <option value="rejeitado">REJEITADO</option>
+            <option value="executado">EXECUTADO</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>PLACA</th><th>MOTORISTA</th><th>SECRETARIA</th><th>SOLICITADO POR</th><th>DATA SOLIC.</th><th>STATUS</th><th>DETALHES</th></tr>
+          </thead>
+          <tbody id="lav-historico-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB: CONFIGURAÇÕES (master) ========== -->
+  <div id="tab-config" style="display:none;">
+    <div class="card">
+      <h3>⚙️ CONFIGURAÇÕES DA HIGIENIZAÇÃO</h3>
+      <div class="grid-form">
+        <div>
+          <label>LIMITE MÁXIMO DE HIGIENIZAÇÕES POR DIA (GERAL)</label>
+          <input type="number" id="cfg-limite-geral" min="0" placeholder="Ex: 20 (0 = sem limite)">
+        </div>
+        <div>
+          <label>LIMITE DIÁRIO POR SECRETARIA</label>
+          <input type="number" id="cfg-limite-secretaria" min="0" placeholder="Ex: 3 (0 = sem limite)">
+        </div>
+        <div>
+          <label>HORÁRIO DE INÍCIO DO EXPEDIENTE</label>
+          <input type="time" id="cfg-horario-inicio">
+        </div>
+        <div>
+          <label>HORÁRIO DE TÉRMINO DO EXPEDIENTE</label>
+          <input type="time" id="cfg-horario-fim">
+        </div>
+      </div>
+      <div style="margin-top:15px;">
+        <label>DIAS PERMITIDOS PARA HIGIENIZAÇÃO</label>
+        <div class="checkbox-dias" id="cfg-dias-permitidos">
+          <label><input type="checkbox" value="dom"> DOM</label>
+          <label><input type="checkbox" value="seg"> SEG</label>
+          <label><input type="checkbox" value="ter"> TER</label>
+          <label><input type="checkbox" value="qua"> QUA</label>
+          <label><input type="checkbox" value="qui"> QUI</label>
+          <label><input type="checkbox" value="sex"> SEX</label>
+          <label><input type="checkbox" value="sab"> SÁB</label>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:10px 14px; background:#fff7ed; border:1.5px solid var(--warning); border-radius:8px; width:fit-content;">
+          <input type="checkbox" id="cfg-permitir-fora-horario" style="width:18px; height:18px; margin:0;">
+          <span style="color:var(--warning); font-weight:bold;">⚠️ PERMITIR SOLICITAÇÕES FORA DO HORÁRIO/DIA CONFIGURADO</span>
+        </label>
+      </div>
+      <button class="btn-save" onclick="salvarConfigLavagem()">💾 SALVAR CONFIGURAÇÕES</button>
+      <p style="font-size:11px;color:#64748b;margin-top:10px;text-transform:none;">
+        Estrutura preparada para novos parâmetros no futuro (ficam salvos em <code>config/lavagem</code> no banco de dados).
+      </p>
+    </div>
+
+    <!-- NOVO: Limites individuais por secretaria (mensal) — aditivo, não substitui o limite geral acima -->
+    <div class="card">
+      <h3>🏛️ LIMITES POR SECRETARIA (MENSAL)</h3>
+      <p style="font-size:11px;color:#64748b;margin-bottom:15px;text-transform:none;">
+        Opcional. Se uma secretaria tiver um limite específico aqui, ele vale no lugar do limite geral (acima) para essa
+        secretaria. Secretarias sem limite definido (ou com valor 0) continuam usando apenas o limite geral, normalmente.
+      </p>
+      <div id="cfg-limites-secretaria" style="display:grid; gap:10px;"></div>
+      <button class="btn-save" onclick="salvarConfigLavagem()">💾 SALVAR LIMITES POR SECRETARIA</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
+    authDomain: "tabela-gasolina.firebaseapp.com",
+    databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
+    projectId: "tabela-gasolina"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ── Sessão (mesmo padrão dos outros módulos) ──
+  const SESSAO = window.__SESSAO;
+  const loginUser = SESSAO.u;
+  const userRole = SESSAO.role;
+  const userSecretaria = SESSAO.sec || '';
+  const isMaster = (loginUser === 'master');
+  const acessoLavagem = isMaster || (SESSAO.dados && SESSAO.dados.acessoLavagem === true);
+  // Quem aprova: master ou usuário com frotaAdmin/role admin (mesmo espírito do "Admin da Frota")
+  const podeAprovar = isMaster || userRole === 'admin';
+
+  if (!acessoLavagem) {
+    document.getElementById('tela-bloqueada').style.display = 'flex';
+  } else {
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('top-user-info').textContent =
+      loginUser.toUpperCase() + (userSecretaria ? ' — ' + userSecretaria : '') + (isMaster ? ' — MASTER' : '');
+    document.getElementById('btn-tab-pendentes').style.display = podeAprovar ? 'block' : 'none';
+    document.getElementById('btn-tab-config').style.display = podeAprovar ? 'block' : 'none';
+    if (userSecretaria) {
+      const selSec = document.getElementById('lav-secretaria');
+      if (selSec) selSec.value = userSecretaria;
+    }
+  }
+
+  function confirmarSair() {
+    if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
+      try { db.ref('auditoria').push({ acao: 'LOGOUT', usuario: loginUser, modulo: 'lavagem', em: new Date().toISOString() }); } catch (e) {}
+      localStorage.removeItem('sessao_global');
+      setTimeout(() => location.replace('porta.html'), 300);
+    }
+  }
+
+  function mostrarNotificacao(texto, tipo) {
+    const cores = { success: "#22c55e", error: "#ef4444", warning: "#f59e0b", info: "#06b6d4" };
+    Toastify({
+      text: texto, duration: 3000, gravity: "top", position: "right",
+      backgroundColor: cores[tipo] || cores.info, stopOnFocus: true,
+      style: { borderRadius: "10px", fontWeight: "bold", fontSize: "12px" }
+    }).showToast();
+  }
+
+  function registrarAuditoria(acao, detalhes) {
+    try {
+      db.ref('auditoria').push(Object.assign({ acao: acao, usuario: loginUser, modulo: 'lavagem', em: new Date().toISOString() }, detalhes || {}));
+    } catch (e) { console.error(e); }
+  }
+
+  // ── MODO ESCURO (mesma chave 'theme' do restante do sistema) ──
+  function initDarkMode() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) toggle.checked = savedTheme === 'dark';
+  }
+  function toggleDarkMode() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const novo = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', novo);
+    localStorage.setItem('theme', novo);
+  }
+  initDarkMode();
+
+  // ── ABAS ──
+  function switchTab(nome) {
+    ['solicitar', 'pendentes', 'historico', 'config'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = (t === nome) ? 'block' : 'none';
+      const btn = document.getElementById('btn-tab-' + t);
+      if (btn) btn.classList.toggle('active', t === nome);
+    });
+    if (nome === 'pendentes' && !podeAprovar) { switchTab('solicitar'); return; }
+    if (nome === 'config' && !podeAprovar) { switchTab('solicitar'); return; }
+  }
+  switchTab('solicitar');
+
+  // ── DADOS COMPARTILHADOS (somente leitura): veículos e motoristas ──
+  let veiculosLav = [];
+  db.ref('veiculos').on('value', snap => {
+    veiculosLav = [];
+    const dl = document.getElementById('dl-placas-lavagem');
+    dl.innerHTML = '';
+    snap.forEach(item => {
+      const v = item.val();
+      if (!v.placa) return;
+      veiculosLav.push(v);
+      const opt = document.createElement('option');
+      opt.value = v.placa;
+      opt.label = (v.modelo || '') + (v.secretaria ? ' — ' + v.secretaria : '');
+      dl.appendChild(opt);
+    });
+  });
+
+  db.ref('motoristas').on('value', snap => {
+    const dl = document.getElementById('dl-motoristas-lavagem');
+    dl.innerHTML = '';
+    snap.forEach(item => {
+      const m = item.val();
+      const nome = (typeof m === 'string') ? m : (m && m.nome);
+      if (!nome) return;
+      const opt = document.createElement('option');
+      opt.value = nome;
+      dl.appendChild(opt);
+    });
+  });
+
+  // ── CONFIGURAÇÕES DA LAVAGEM (config/lavagem) ──
+  const SECRETARIAS_LAVAGEM = [
+    'ADMINISTRAÇÃO E FINANÇAS', 'AGRICULTURA E MEIO AMBIENTE', 'ASSISTÊNCIA SOCIAL',
+    'COMUNICAÇÃO', 'CULTURA', 'EDUCAÇÃO', 'ESPORTES', 'GOVERNO',
+    'INFRAESTRUTURA E SERVIÇOS', 'PLANEJAMENTO', 'SAÚDE', 'OUTROS'
+  ];
+  let configLavagem = {
+    limiteDiarioGeral: 0,
+    limiteDiarioSecretaria: 0,
+    horarioInicio: '',
+    horarioFim: '',
+    diasPermitidos: [],
+    permitirForaHorario: true,
+    limitesPorSecretaria: {}
+  };
+  db.ref('config/lavagem').on('value', snap => {
+    const val = snap.val();
+    if (val) configLavagem = Object.assign(configLavagem, val);
+    if (!configLavagem.limitesPorSecretaria) configLavagem.limitesPorSecretaria = {};
+    atualizarInfoRegras();
+    atualizarPainelLimiteSecretaria();
+    if (podeAprovar) preencherFormConfig();
+  });
+
+  // NOVO: identifica a secretaria do usuário logado e mostra limite mensal / utilizadas / disponíveis.
+  // Só aparece para o perfil Secretário e apenas quando há um limite específico configurado
+  // para a secretaria dele (senão continua valendo só o limite geral, sem um número "mensal" a mostrar).
+  function atualizarPainelLimiteSecretaria() {
+    const card = document.getElementById('card-limite-secretaria');
+    if (!card) return;
+    if (isMaster || podeAprovar || !userSecretaria) { card.style.display = 'none'; return; }
+
+    const limite = (configLavagem.limitesPorSecretaria || {})[userSecretaria] || 0;
+    if (!limite) { card.style.display = 'none'; return; }
+
+    const mesAtual = new Date().toISOString().slice(0, 7); // AAAA-MM
+    const usadas = lavagensCache.filter(l =>
+      l.secretaria === userSecretaria &&
+      l.status !== 'rejeitado' &&
+      (l.dataSolicitacao || '').slice(0, 7) === mesAtual
+    ).length;
+    const disponivel = Math.max(0, limite - usadas);
+
+    document.getElementById('lim-sec-total').textContent = limite;
+    document.getElementById('lim-sec-usadas').textContent = usadas;
+    document.getElementById('lim-sec-disponivel').textContent = disponivel;
+    card.style.display = 'block';
+  }
+
+  function atualizarInfoRegras() {
+    const el = document.getElementById('lav-regras-info');
+    if (!el) return;
+    let partes = [];
+    if (configLavagem.horarioInicio && configLavagem.horarioFim) {
+      partes.push('Horário permitido: ' + configLavagem.horarioInicio + ' às ' + configLavagem.horarioFim);
+    }
+    if (configLavagem.diasPermitidos && configLavagem.diasPermitidos.length) {
+      partes.push('Dias permitidos: ' + configLavagem.diasPermitidos.map(d => d.toUpperCase()).join(', '));
+    }
+    if (configLavagem.limiteDiarioSecretaria) {
+      partes.push('Limite diário por secretaria: ' + configLavagem.limiteDiarioSecretaria);
+    }
+    el.textContent = partes.length ? ('ℹ️ ' + partes.join(' · ')) : '';
+  }
+
+  function preencherFormConfig() {
+    document.getElementById('cfg-limite-geral').value = configLavagem.limiteDiarioGeral || '';
+    document.getElementById('cfg-limite-secretaria').value = configLavagem.limiteDiarioSecretaria || '';
+    document.getElementById('cfg-horario-inicio').value = configLavagem.horarioInicio || '';
+    document.getElementById('cfg-horario-fim').value = configLavagem.horarioFim || '';
+    document.getElementById('cfg-permitir-fora-horario').checked = configLavagem.permitirForaHorario !== false;
+    document.querySelectorAll('#cfg-dias-permitidos input[type=checkbox]').forEach(chk => {
+      chk.checked = (configLavagem.diasPermitidos || []).includes(chk.value);
+    });
+    renderCamposLimitePorSecretaria();
+  }
+
+  // NOVO: monta um campo numérico por secretaria cadastrada, para o limite mensal individual
+  function renderCamposLimitePorSecretaria() {
+    const container = document.getElementById('cfg-limites-secretaria');
+    if (!container) return;
+    const limites = configLavagem.limitesPorSecretaria || {};
+    container.innerHTML = SECRETARIAS_LAVAGEM.map(sec => (
+      '<div style="display:flex; align-items:center; gap:12px;">' +
+        '<label style="flex:1; margin:0; font-size:12px;">' + sec + '</label>' +
+        '<input type="number" min="0" class="cfg-limite-sec-input" data-secretaria="' + sec + '" ' +
+          'value="' + (limites[sec] || '') + '" placeholder="Sem limite específico" style="max-width:180px; margin:0;">' +
+      '</div>'
+    )).join('');
+  }
+
+  async function salvarConfigLavagem() {
+    if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    const dias = Array.from(document.querySelectorAll('#cfg-dias-permitidos input[type=checkbox]:checked')).map(c => c.value);
+    // NOVO: monta o objeto de limites individuais por secretaria (só entra quem tiver valor > 0)
+    const limitesPorSecretaria = {};
+    document.querySelectorAll('.cfg-limite-sec-input').forEach(inp => {
+      const v = parseInt(inp.value) || 0;
+      if (v > 0) limitesPorSecretaria[inp.dataset.secretaria] = v;
+    });
+    const novaConfig = {
+      limiteDiarioGeral: parseInt(document.getElementById('cfg-limite-geral').value) || 0,
+      limiteDiarioSecretaria: parseInt(document.getElementById('cfg-limite-secretaria').value) || 0,
+      horarioInicio: document.getElementById('cfg-horario-inicio').value || '',
+      horarioFim: document.getElementById('cfg-horario-fim').value || '',
+      diasPermitidos: dias,
+      permitirForaHorario: document.getElementById('cfg-permitir-fora-horario').checked,
+      limitesPorSecretaria: limitesPorSecretaria
+    };
+    try {
+      await db.ref('config/lavagem').set(novaConfig);
+      mostrarNotificacao('✅ CONFIGURAÇÕES SALVAS!', 'success');
+      registrarAuditoria('LAVAGEM_CONFIG_ALTERADA', novaConfig);
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO SALVAR: ' + e.message, 'error');
+    }
+  }
+
+  // ── VALIDAÇÃO DE HORÁRIO/DIA/LIMITE ──
+  const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+  function validarRegrasLavagem(secretaria) {
+    if (podeAprovar) return { ok: true }; // admin/master não são limitados pelas regras de horário/limite
+
+    const agora = new Date();
+    const diaAtual = DIAS_SEMANA[agora.getDay()];
+    const horaAtual = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+
+    const foraDoDia = configLavagem.diasPermitidos && configLavagem.diasPermitidos.length && !configLavagem.diasPermitidos.includes(diaAtual);
+    const foraDoHorario = configLavagem.horarioInicio && configLavagem.horarioFim &&
+      (horaAtual < configLavagem.horarioInicio || horaAtual > configLavagem.horarioFim);
+
+    if ((foraDoDia || foraDoHorario) && configLavagem.permitirForaHorario === false) {
+      return { ok: false, motivo: '⛔ Solicitações de higienização só são permitidas dentro do horário/dias configurados (' +
+        (configLavagem.horarioInicio || '—') + ' às ' + (configLavagem.horarioFim || '—') + ', dias: ' +
+        (configLavagem.diasPermitidos || []).join(', ') + ').' };
+    }
+
+    const hojeStr = agora.toISOString().slice(0, 10);
+    const lavagensHoje = lavagensCache.filter(l => (l.dataSolicitacao || '').slice(0, 10) === hojeStr && l.status !== 'rejeitado');
+
+    if (configLavagem.limiteDiarioGeral > 0 && lavagensHoje.length >= configLavagem.limiteDiarioGeral) {
+      return { ok: false, motivo: '⛔ Limite máximo de lavagens do dia (geral) já foi atingido (' + configLavagem.limiteDiarioGeral + ').' };
+    }
+
+    // NOVO — PRIORIDADE DO LIMITE POR SECRETARIA:
+    // 1) Se existir um limite MENSAL específico configurado para esta secretaria, usar ele.
+    // 2) Caso contrário, manter o comportamento antigo (limite diário geral por secretaria).
+    const limiteEspecifico = (configLavagem.limitesPorSecretaria || {})[secretaria] || 0;
+    if (limiteEspecifico > 0) {
+      const mesAtual = agora.toISOString().slice(0, 7);
+      const daSecretariaNoMes = lavagensCache.filter(l =>
+        l.secretaria === secretaria && l.status !== 'rejeitado' && (l.dataSolicitacao || '').slice(0, 7) === mesAtual
+      ).length;
+      if (daSecretariaNoMes >= limiteEspecifico) {
+        return { ok: false, motivo: '⛔ Limite mensal de higienizações da secretaria "' + secretaria + '" já foi atingido (' + limiteEspecifico + ').' };
+      }
+    } else if (configLavagem.limiteDiarioSecretaria > 0) {
+      const daSecretariaHoje = lavagensHoje.filter(l => l.secretaria === secretaria).length;
+      if (daSecretariaHoje >= configLavagem.limiteDiarioSecretaria) {
+        return { ok: false, motivo: '⛔ Limite diário de lavagens da secretaria "' + secretaria + '" já foi atingido (' + configLavagem.limiteDiarioSecretaria + ').' };
+      }
+    }
+    return { ok: true };
+  }
+
+  // ── SOLICITAÇÃO ──
+  async function solicitarLavagem() {
+    const placa = document.getElementById('lav-placa').value.trim().toUpperCase();
+    const motorista = document.getElementById('lav-motorista').value.trim();
+    const secretaria = document.getElementById('lav-secretaria').value;
+    const obs = document.getElementById('lav-obs').value.trim();
+
+    if (!placa) { mostrarNotificacao('⚠️ INFORME A PLACA DO VEÍCULO!', 'error'); return; }
+    if (!secretaria) { mostrarNotificacao('⚠️ SELECIONE A SECRETARIA!', 'error'); return; }
+
+    const validacao = validarRegrasLavagem(secretaria);
+    if (!validacao.ok) { mostrarNotificacao(validacao.motivo, 'error'); return; }
+
+    try {
+      await db.ref('lavagens').push({
+        placa: placa,
+        motorista: motorista || '',
+        secretaria: secretaria,
+        solicitadoPor: loginUser,
+        dataSolicitacao: new Date().toISOString(),
+        status: 'pendente',
+        observacoes: obs || ''
+      });
+      mostrarNotificacao('✅ HIGIENIZAÇÃO SOLICITADA! AGUARDANDO APROVAÇÃO.', 'success');
+      registrarAuditoria('LAVAGEM_SOLICITADA', { placa: placa, secretaria: secretaria });
+      document.getElementById('lav-placa').value = '';
+      document.getElementById('lav-motorista').value = '';
+      document.getElementById('lav-obs').value = '';
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO SOLICITAR: ' + e.message, 'error');
+    }
+  }
+
+  // ── APROVAÇÃO / REJEIÇÃO / EXECUÇÃO ──
+  async function aprovarLavagem(id) {
+    if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    try {
+      await db.ref('lavagens/' + id).update({ status: 'aprovado', analisadoPor: loginUser, dataAnalise: new Date().toISOString() });
+      mostrarNotificacao('✅ HIGIENIZAÇÃO APROVADA!', 'success');
+      registrarAuditoria('LAVAGEM_APROVADA', { id: id });
+    } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
+  }
+
+  async function rejeitarLavagem(id) {
+    if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    const motivo = prompt('Motivo da rejeição:');
+    if (motivo === null) return;
+    try {
+      await db.ref('lavagens/' + id).update({ status: 'rejeitado', analisadoPor: loginUser, dataAnalise: new Date().toISOString(), motivoRejeicao: motivo || '' });
+      mostrarNotificacao('✅ HIGIENIZAÇÃO REJEITADA!', 'success');
+      registrarAuditoria('LAVAGEM_REJEITADA', { id: id, motivo: motivo });
+    } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
+  }
+
+  async function executarLavagem(id) {
+    if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    if (!confirm('Confirmar que a higienização foi executada?')) return;
+    try {
+      await db.ref('lavagens/' + id).update({ status: 'executado', executadoPor: loginUser, dataExecucao: new Date().toISOString() });
+      mostrarNotificacao('✅ HIGIENIZAÇÃO MARCADA COMO EXECUTADA!', 'success');
+      registrarAuditoria('LAVAGEM_EXECUTADA', { id: id });
+    } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
+  }
+
+  // NOVO: exclusão DEFINITIVA da solicitação (diferente de rejeitar, que mantém o histórico).
+  // Não interfere nos botões Aprovar/Rejeitar/Executar já existentes.
+  async function excluirLavagem(id) {
+    if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    const item = lavagensCache.find(l => l.id === id);
+    if (!item) return;
+    if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE a solicitação de higienização do veículo ' + item.placa + ' (' + item.secretaria + ')?\n\nEssa ação NÃO pode ser desfeita.')) return;
+    try {
+      await db.ref('lavagens/' + id).remove();
+      mostrarNotificacao('✅ SOLICITAÇÃO EXCLUÍDA!', 'success');
+      registrarAuditoria('LAVAGEM_EXCLUIDA', { id: id, placa: item.placa, secretaria: item.secretaria, statusAnterior: item.status });
+    } catch (e) { mostrarNotificacao('❌ ERRO AO EXCLUIR: ' + e.message, 'error'); }
+  }
+
+  // ── LISTAGEM EM TEMPO REAL ──
+  let lavagensCache = [];
+  db.ref('lavagens').on('value', snap => {
+    lavagensCache = [];
+    snap.forEach(item => {
+      const l = item.val();
+      l.id = item.key;
+      lavagensCache.push(l);
+    });
+    renderPendentesLavagem();
+    renderHistoricoLavagens();
+    atualizarPainelLimiteSecretaria();
+  });
+
+  function fmtData(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString('pt-BR'); } catch (e) { return iso; }
+  }
+
+  function renderPendentesLavagem() {
+    const bodyPend = document.getElementById('lav-pendentes-body');
+    const bodyAprov = document.getElementById('lav-aprovadas-body');
+    if (!bodyPend || !bodyAprov) return;
+
+    const pendentes = lavagensCache.filter(l => l.status === 'pendente').sort((a, b) => (a.dataSolicitacao || '').localeCompare(b.dataSolicitacao || ''));
+    const aprovadas = lavagensCache.filter(l => l.status === 'aprovado').sort((a, b) => (a.dataAnalise || '').localeCompare(b.dataAnalise || ''));
+
+    bodyPend.innerHTML = pendentes.length ? pendentes.map(l => (
+      '<tr>' +
+        '<td>' + l.placa + '</td>' +
+        '<td>' + (l.motorista || '—') + '</td>' +
+        '<td>' + l.secretaria + '</td>' +
+        '<td>' + l.solicitadoPor + '</td>' +
+        '<td>' + fmtData(l.dataSolicitacao) + '</td>' +
+        '<td style="text-transform:none;">' + (l.observacoes || '—') + '</td>' +
+        '<td>' +
+          '<button class="btn-action btn-aprovar" onclick="aprovarLavagem(\'' + l.id + '\')">✅ APROVAR</button>' +
+          '<button class="btn-action btn-rejeitar" onclick="rejeitarLavagem(\'' + l.id + '\')">❌ REJEITAR</button>' +
+          '<button class="btn-action btn-excluir" onclick="excluirLavagem(\'' + l.id + '\')" title="Excluir definitivamente">🗑️</button>' +
+        '</td>' +
+      '</tr>'
+    )).join('') : '<tr><td colspan="7" style="text-align:center;color:#64748b;">Nenhuma solicitação pendente.</td></tr>';
+
+    bodyAprov.innerHTML = aprovadas.length ? aprovadas.map(l => (
+      '<tr>' +
+        '<td>' + l.placa + '</td>' +
+        '<td>' + (l.motorista || '—') + '</td>' +
+        '<td>' + l.secretaria + '</td>' +
+        '<td>' + (l.analisadoPor || '—') + '</td>' +
+        '<td>' + fmtData(l.dataAnalise) + '</td>' +
+        '<td>' +
+          '<button class="btn-action btn-executar" onclick="executarLavagem(\'' + l.id + '\')">🧽 MARCAR EXECUTADA</button>' +
+          '<button class="btn-action btn-excluir" onclick="excluirLavagem(\'' + l.id + '\')" title="Excluir definitivamente">🗑️</button>' +
+        '</td>' +
+      '</tr>'
+    )).join('') : '<tr><td colspan="6" style="text-align:center;color:#64748b;">Nenhuma higienização aprovada aguardando execução.</td></tr>';
+  }
+
+  function renderHistoricoLavagens() {
+    const body = document.getElementById('lav-historico-body');
+    if (!body) return;
+    const filtro = document.getElementById('hist-filtro-status') ? document.getElementById('hist-filtro-status').value : '';
+
+    let lista = lavagensCache.slice();
+    if (!podeAprovar) lista = lista.filter(l => l.secretaria === userSecretaria || l.solicitadoPor === loginUser);
+    if (filtro) lista = lista.filter(l => l.status === filtro);
+    lista.sort((a, b) => (b.dataSolicitacao || '').localeCompare(a.dataSolicitacao || ''));
+
+    const rotulos = { pendente: '⏳ Pendente', aprovado: '✅ Aprovado', rejeitado: '❌ Rejeitado', executado: '🧽 Executado' };
+
+    body.innerHTML = lista.length ? lista.map(l => {
+      let detalhes = '—';
+      if (l.status === 'rejeitado' && l.motivoRejeicao) detalhes = 'Motivo: ' + l.motivoRejeicao;
+      else if (l.status === 'executado') detalhes = 'Executado por ' + (l.executadoPor || '—') + ' em ' + fmtData(l.dataExecucao);
+      else if (l.status === 'aprovado') detalhes = 'Aprovado por ' + (l.analisadoPor || '—');
+      return '<tr>' +
+        '<td>' + l.placa + '</td>' +
+        '<td>' + (l.motorista || '—') + '</td>' +
+        '<td>' + l.secretaria + '</td>' +
+        '<td>' + l.solicitadoPor + '</td>' +
+        '<td>' + fmtData(l.dataSolicitacao) + '</td>' +
+        '<td><span class="status-tag status-' + l.status + '">' + (rotulos[l.status] || l.status) + '</span></td>' +
+        '<td style="text-transform:none;">' + detalhes + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:#64748b;">Nenhum registro encontrado.</td></tr>';
+  }
+</script>
+</body>
+</html>

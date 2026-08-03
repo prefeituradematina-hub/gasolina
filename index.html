@@ -3835,281 +3835,16 @@
   </div>
   
   <div id="tab-users" style="display:none;">
-    <!-- Gestão de Pessoas Diversas -->
-    <div class="card" id="gestao-vips" style="display:none;">
-      <h3>⭐ GESTÃO DE PESSOAS DIVERSAS</h3>
-      <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
-        Configure as pessoas autorizadas a receber abastecimentos diretos (Prefeita, Vereadores, etc)
-      </p>
-      
-      <!-- Formulário de Nova Pessoa DIVERSAS -->
-      <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
-        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ ADICIONAR NOVA PESSOA DIVERSAS</h4>
-        <div class="grid-form">
-          <div>
-            <label>NOME COMPLETO *</label>
-            <input type="text" id="novo-diversas-nome" placeholder="Ex: Maria da Silva">
-          </div>
-          <div>
-            <label>CPF (OPCIONAL)</label>
-            <input 
-              type="text" 
-              id="novo-diversas-cpf" 
-              placeholder="000.000.000-00" 
-              maxlength="14"
-              oninput="formatarCPF(this)"
-            >
-            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
-              💡 CPF será obrigatório no momento do abastecimento
-            </div>
-          </div>
-          <div>
-            <label>CARGO *</label>
-            <select id="novo-diversas-cargo">
-              <option value="">SELECIONE...</option>
-              <option value="Prefeito(a)">Prefeito(a)</option>
-              <option value="Vice-Prefeito(a)">Vice-Prefeito(a)</option>
-              <option value="Vereador(a)">Vereador(a)</option>
-              <option value="Secretário(a)">Secretário(a)</option>
-              <option value="Diretor(a)">Diretor(a)</option>
-              <option value="Outro">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label>CATEGORIA</label>
-            <select id="novo-diversas-categoria">
-              <option value="executivo">Executivo</option>
-              <option value="legislativo">Legislativo</option>
-              <option value="administrativo">Administrativo</option>
-            </select>
-          </div>
-          <div>
-            <label>LIMITE MENSAL (R$)</label>
-            <input type="number" id="novo-diversas-limite" placeholder="0.00" step="0.01" min="0">
-            <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="novo-diversas-sem-limite" onchange="toggleLimiteDiversas('novo-diversas')">
-              <span>⭐ Sem limite (ilimitado)</span>
-            </label>
-          </div>
-        </div>
-        <button class="btn-save" onclick="adicionarDiversas()" style="margin-top: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-          ⭐ ADICIONAR PESSOA DIVERSAS
-        </button>
-      </div>
-      
-      <!-- Lista de Pessoas DIVERSAS Cadastradas -->
-      <div style="margin-top: 25px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h4 style="margin: 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
-          <button class="btn-save" onclick="resetarTodosDiversas()" 
-            style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 8px 16px; font-size: 12px;"
-            title="Resetar limite de TODAS as pessoas DIVERSAS de uma vez">
-            🔄 RESETAR TODOS
-          </button>
-        </div>
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>NOME</th>
-                <th>CARGO</th>
-                <th>CATEGORIA</th>
-                <th>LIMITE MENSAL</th>
-                <th>GASTO MÊS ATUAL</th>
-                <th>SALDO</th>
-                <th class="no-print">AÇÕES</th>
-              </tr>
-            </thead>
-            <tbody id="vips-body">
-              <tr>
-                <td colspan="7" style="text-align:center; padding:40px;">
-                  ⏳ CARREGANDO PESSOAS DIVERSAS...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <!-- ========== SUB-ABAS DA CONFIGURAÇÃO (aditivo: reorganiza sem remover nenhum campo) ========== -->
+    <div class="nav-tabs no-print" id="config-subtabs" style="margin-bottom:20px;">
+      <button id="btn-cfgsub-usuarios" class="tab-btn active" onclick="switchConfigSubTab('usuarios')">👥 USUÁRIOS</button>
+      <button id="btn-cfgsub-frota" class="tab-btn" onclick="switchConfigSubTab('frota')">🚗 FROTA</button>
+      <button id="btn-cfgsub-postos" class="tab-btn" onclick="switchConfigSubTab('postos')">⛽ POSTOS</button>
+      <button id="btn-cfgsub-diversas" class="tab-btn" onclick="switchConfigSubTab('diversas')">⭐ DIVERSAS</button>
     </div>
-    
-    <div class="card">
-      <h3>⛽ CADASTRO DE POSTOS</h3>
-      <div class="grid-form">
-        <div style="grid-column: 1/-1;">
-          <label>NOME DO POSTO *</label>
-          <input type="text" id="posto-nome" placeholder="EX: POSTO MATINA">
-        </div>
-      </div>
-      
-      <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px;">
-        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">COMBUSTÍVEIS FORNECIDOS PELO POSTO</h4>
-        <p style="font-size: 11px; color: #64748b; margin-bottom: 15px;">Selecione os combustíveis que este posto oferece e informe o preço de cada um:</p>
-        
-        <div style="display: grid; gap: 15px;">
-          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
-              <input type="checkbox" id="posto-tem-gasolina" onchange="toggleCombustivelPosto('gasolina')">
-              <span style="font-weight: bold; color: var(--danger);">GASOLINA</span>
-            </label>
-            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-              <input type="number" id="posto-gas" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
-            </div>
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
-              <input type="checkbox" id="posto-tem-alcool" onchange="toggleCombustivelPosto('alcool')">
-              <span style="font-weight: bold; color: var(--success);">ÁLCOOL</span>
-            </label>
-            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-              <input type="number" id="posto-alc" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
-            </div>
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
-              <input type="checkbox" id="posto-tem-diesel" onchange="toggleCombustivelPosto('diesel')">
-              <span style="font-weight: bold; color: var(--warning);">DIESEL</span>
-            </label>
-            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-              <input type="number" id="posto-die" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
-            </div>
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
-              <input type="checkbox" id="posto-tem-diesels10" onchange="toggleCombustivelPosto('diesels10')">
-              <span style="font-weight: bold; color: #ea580c;">DIESEL S10</span>
-            </label>
-            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
-              <input type="number" id="posto-diesels10" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
-            </div>
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
-              <input type="checkbox" id="posto-tem-gas" onchange="toggleCombustivelPosto('gas')">
-              <span style="font-weight: bold; color: #0891b2;">GÁS</span>
-            </label>
-            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/UNIDADE):</label>
-              <input type="number" id="posto-gas-gnv" placeholder="Ex: 95.00" step="0.01" min="0" disabled style="flex: 1;">
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <button class="btn-save" onclick="salvarPosto()" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);">➕ SALVAR POSTO</button>
-    </div>
-    
-    <div class="card">
-      <h3>⛽ POSTOS CADASTRADOS</h3>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>POSTO</th>
-              <th>COMBUSTÍVEIS DISPONÍVEIS</th>
-              <th class="no-print">AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody id="postos-body"></tbody>
-        </table>
-      </div>
-    </div>
-    
-    <div class="card">
-      <h3>🚗 CADASTRO DE VEÍCULOS</h3>
-      <div class="grid-form">
-        <div>
-          <label>PLACA *</label>
-          <input type="text" id="vei-placa" list="dl-placas" placeholder="ABC1234" maxlength="8">
-        </div>
-        <div>
-          <label>MODELO</label>
-          <input type="text" id="vei-modelo" placeholder="EX: GOL, SAVEIRO">
-        </div>
-        <div>
-          <label>SECRETARIA (OPCIONAL)</label>
-          <select id="vei-sec">
-            <option value="">NENHUMA (COMPARTILHADO)</option>
-            <option>ADMINISTRAÇÃO E FINANÇAS</option>
-            <option>AGRICULTURA E MEIO AMBIENTE</option>
-            <option>ASSISTÊNCIA SOCIAL</option>
-            <option>COMUNICAÇÃO</option>
-            <option>CULTURA</option>
-            <option>EDUCAÇÃO</option>
-            <option>ESPORTES</option>
-            <option>GOVERNO</option>
-            <option>INFRAESTRUTURA E SERVIÇOS</option>
-            <option>PLANEJAMENTO</option>
-            <option>SAÚDE</option>
-            <option>OUTROS</option>
-            <option value="DIVERSAS">DIVERSAS</option>
-          </select>
-        </div>
-        <div>
-          <label>MOTORISTA PADRÃO (OPCIONAL)</label>
-          <input type="text" id="vei-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA">
-        </div>
-        <div>
-          <label>CPF DO MOTORISTA (OPCIONAL)</label>
-          <input 
-            type="text" 
-            id="vei-cpf" 
-            placeholder="000.000.000-00" 
-            maxlength="14"
-            oninput="formatarCPF(this)"
-          >
-          <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
-            💡 CPF do motorista padrão deste veículo
-          </div>
-        </div>
-        <div>
-          <label>TIPO DE COMBUSTÍVEL</label>
-          <select id="vei-combustivel">
-            <option value="GASOLINA">GASOLINA</option>
-            <option value="ALCOOL">ÁLCOOL</option>
-            <option value="DIESEL">DIESEL</option>
-<option value='GAS'>Gás</option>
-<option value='DIESEL S10'>Diesel S10</option>
-<option value='GAS'>Gás</option>
-            <option value="FLEX">FLEX (GASOLINA/ÁLCOOL)</option>
-          </select>
-        </div>
-        <div>
-          <label>ANO</label>
-          <input type="number" id="vei-ano" placeholder="2020" min="1980" max="2030">
-        </div>
-        <div style="grid-column: 1/-1;">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
-            <input type="checkbox" id="vei-terceiros" style="width:16px; height:16px; margin:0;">
-            🚚 Veículo de Terceiros
-          </label>
-        </div>
-      </div>
-      <button class="btn-save" onclick="salvarVeiculo()" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);">➕ SALVAR VEÍCULO</button>
-      
-      <!-- Gerador de QR Code -->
-      <div class="qr-code-display" id="qr-display" style="display:none;">
-        <h4>📱 QR CODE GERADO</h4>
-        <p style="font-size:12px; color:#64748b;">IMPRIMA E COLE NO VEÍCULO</p>
-        <div id="qrcode"></div>
-        <p style="margin-top:10px;"><strong>PLACA:</strong> <span id="qr-placa-text"></span></p>
-        <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="baixarQRCode()">💾 BAIXAR QR CODE</button>
-      </div>
-    </div>
-    
-    <div class="card" style="border:1.5px solid #FCA5A5;background:#FEF6F6">
-      <h3>🔧 MANUTENÇÃO DE DADOS</h3>
-      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Reinicia a contagem de quilometragem de <b>todos os veículos</b>. Útil quando foram registrados KM inconsistentes. Os valores, litros, datas e CPFs dos abastecimentos são <b>preservados</b> — apenas o KM é zerado, e a eficiência (km/l) recomeça a ser calculada a partir dos próximos abastecimentos. Um backup é baixado automaticamente antes.</p>
-      <button class="btn-save" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="zerarTodosKm()">🔄 ZERAR KM DE TODOS OS VEÍCULOS</button>
-    </div>
-    
+
+    <div id="cfgsub-usuarios">
+
     <div class="card">
       <h3>👥 GESTÃO DE USUÁRIOS</h3>
       <div class="grid-form">
@@ -4222,41 +3957,6 @@
     </div>
     
     <!-- Botão de Resetar Limites -->
-    <div class="card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; text-align: center;">
-      <h3 style="color: white; margin-bottom: 15px;">⚠️ RESETAR LIMITES MENSAIS</h3>
-      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.9;">
-        Esta ação zerará todos os gastos mensais de TODOS os secretários.<br>
-        Use apenas no início do mês ou em caso de necessidade urgente.
-      </p>
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button 
-          onclick="confirmarResetLimites()" 
-          style="background: white; color: #dc2626; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-          🔄 RESETAR TODOS OS LIMITES
-        </button>
-        <button 
-          onclick="limparCacheRecarregar()" 
-          style="background: rgba(255,255,255,0.2); color: white; padding: 12px 20px; border: 2px solid white; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer;">
-          🗑️ LIMPAR CACHE
-        </button>
-      </div>
-    </div>
-    
-    <!-- Importação de veículos do Controle de Frota (só os que pertencem a alguma secretaria) -->
-    <div class="card" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; text-align: center;">
-      <h3 style="color: white; margin-bottom: 15px;">📥 IMPORTAR VEÍCULOS DO CONTROLE DE FROTA</h3>
-      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.95;">
-        Importa para o Controle de Gasolina todos os veículos do Controle de Frota que já pertencem
-        a alguma secretaria (veículos sem secretaria na Frota não são importados). Veículos já cadastrados
-        aqui (mesma placa) não são duplicados — se estiverem sem secretaria, ela é preenchida automaticamente.
-      </p>
-      <button 
-        onclick="importarVeiculosDaFrota()" 
-        style="background: white; color: #0e7490; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-        📥 IMPORTAR VEÍCULOS DA FROTA
-      </button>
-    </div>
-    
     <div class="card">
       <h3>📋 USUÁRIOS CADASTRADOS</h3>
       <div class="table-wrapper">
@@ -4279,6 +3979,111 @@
     </div>
     
     <!-- LISTA DE VEÍCULOS -->
+    <div class="card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">⚠️ RESETAR LIMITES MENSAIS</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.9;">
+        Esta ação zerará todos os gastos mensais de TODOS os secretários.<br>
+        Use apenas no início do mês ou em caso de necessidade urgente.
+      </p>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button 
+          onclick="confirmarResetLimites()" 
+          style="background: white; color: #dc2626; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+          🔄 RESETAR TODOS OS LIMITES
+        </button>
+        <button 
+          onclick="limparCacheRecarregar()" 
+          style="background: rgba(255,255,255,0.2); color: white; padding: 12px 20px; border: 2px solid white; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer;">
+          🗑️ LIMPAR CACHE
+        </button>
+      </div>
+    </div>
+    </div>
+
+    <div id="cfgsub-frota" style="display:none;">
+
+    <div class="card">
+      <h3>🚗 CADASTRO DE VEÍCULOS</h3>
+      <div class="grid-form">
+        <div>
+          <label>PLACA *</label>
+          <input type="text" id="vei-placa" list="dl-placas" placeholder="ABC1234" maxlength="8">
+        </div>
+        <div>
+          <label>MODELO</label>
+          <input type="text" id="vei-modelo" placeholder="EX: GOL, SAVEIRO">
+        </div>
+        <div>
+          <label>SECRETARIA (OPCIONAL)</label>
+          <select id="vei-sec">
+            <option value="">NENHUMA (COMPARTILHADO)</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+            <option value="DIVERSAS">DIVERSAS</option>
+          </select>
+        </div>
+        <div>
+          <label>MOTORISTA PADRÃO (OPCIONAL)</label>
+          <input type="text" id="vei-motorista" list="dl-motoristas" placeholder="NOME DO MOTORISTA">
+        </div>
+        <div>
+          <label>CPF DO MOTORISTA (OPCIONAL)</label>
+          <input 
+            type="text" 
+            id="vei-cpf" 
+            placeholder="000.000.000-00" 
+            maxlength="14"
+            oninput="formatarCPF(this)"
+          >
+          <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
+            💡 CPF do motorista padrão deste veículo
+          </div>
+        </div>
+        <div>
+          <label>TIPO DE COMBUSTÍVEL</label>
+          <select id="vei-combustivel">
+            <option value="GASOLINA">GASOLINA</option>
+            <option value="ALCOOL">ÁLCOOL</option>
+            <option value="DIESEL">DIESEL</option>
+<option value='GAS'>Gás</option>
+<option value='DIESEL S10'>Diesel S10</option>
+<option value='GAS'>Gás</option>
+            <option value="FLEX">FLEX (GASOLINA/ÁLCOOL)</option>
+          </select>
+        </div>
+        <div>
+          <label>ANO</label>
+          <input type="number" id="vei-ano" placeholder="2020" min="1980" max="2030">
+        </div>
+        <div style="grid-column: 1/-1;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400;">
+            <input type="checkbox" id="vei-terceiros" style="width:16px; height:16px; margin:0;">
+            🚚 Veículo de Terceiros
+          </label>
+        </div>
+      </div>
+      <button class="btn-save" onclick="salvarVeiculo()" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);">➕ SALVAR VEÍCULO</button>
+      
+      <!-- Gerador de QR Code -->
+      <div class="qr-code-display" id="qr-display" style="display:none;">
+        <h4>📱 QR CODE GERADO</h4>
+        <p style="font-size:12px; color:#64748b;">IMPRIMA E COLE NO VEÍCULO</p>
+        <div id="qrcode"></div>
+        <p style="margin-top:10px;"><strong>PLACA:</strong> <span id="qr-placa-text"></span></p>
+        <button class="btn-save" style="background: linear-gradient(135deg, var(--accent) 0%, #667eea 100%);" onclick="baixarQRCode()">💾 BAIXAR QR CODE</button>
+      </div>
+    </div>
+    
     <div class="card" id="card-veiculos-cadastrados">
       <h3 class="no-print">🚗 VEÍCULOS CADASTRADOS</h3>
       <div class="no-print" style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom: 15px;">
@@ -4343,7 +4148,221 @@
       </div>
     </div>
   </div>
-</div>
+    <!-- Importação de veículos do Controle de Frota (só os que pertencem a alguma secretaria) -->
+    <div class="card" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: white; text-align: center;">
+      <h3 style="color: white; margin-bottom: 15px;">📥 IMPORTAR VEÍCULOS DO CONTROLE DE FROTA</h3>
+      <p style="font-size: 13px; margin-bottom: 15px; opacity: 0.95;">
+        Importa para o Controle de Gasolina todos os veículos do Controle de Frota que já pertencem
+        a alguma secretaria (veículos sem secretaria na Frota não são importados). Veículos já cadastrados
+        aqui (mesma placa) não são duplicados — se estiverem sem secretaria, ela é preenchida automaticamente.
+      </p>
+      <button 
+        onclick="importarVeiculosDaFrota()" 
+        style="background: white; color: #0e7490; padding: 12px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        📥 IMPORTAR VEÍCULOS DA FROTA
+      </button>
+    </div>
+    
+    <div class="card" style="border:1.5px solid #FCA5A5;background:#FEF6F6">
+      <h3>🔧 MANUTENÇÃO DE DADOS</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Reinicia a contagem de quilometragem de <b>todos os veículos</b>. Útil quando foram registrados KM inconsistentes. Os valores, litros, datas e CPFs dos abastecimentos são <b>preservados</b> — apenas o KM é zerado, e a eficiência (km/l) recomeça a ser calculada a partir dos próximos abastecimentos. Um backup é baixado automaticamente antes.</p>
+      <button class="btn-save" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="zerarTodosKm()">🔄 ZERAR KM DE TODOS OS VEÍCULOS</button>
+    </div>
+        </div>
+
+    <div id="cfgsub-postos" style="display:none;">
+
+    <div class="card">
+      <h3>⛽ CADASTRO DE POSTOS</h3>
+      <div class="grid-form">
+        <div style="grid-column: 1/-1;">
+          <label>NOME DO POSTO *</label>
+          <input type="text" id="posto-nome" placeholder="EX: POSTO MATINA">
+        </div>
+      </div>
+      
+      <div style="margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px;">
+        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">COMBUSTÍVEIS FORNECIDOS PELO POSTO</h4>
+        <p style="font-size: 11px; color: #64748b; margin-bottom: 15px;">Selecione os combustíveis que este posto oferece e informe o preço de cada um:</p>
+        
+        <div style="display: grid; gap: 15px;">
+          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
+              <input type="checkbox" id="posto-tem-gasolina" onchange="toggleCombustivelPosto('gasolina')">
+              <span style="font-weight: bold; color: var(--danger);">GASOLINA</span>
+            </label>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
+              <input type="number" id="posto-gas" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
+              <input type="checkbox" id="posto-tem-alcool" onchange="toggleCombustivelPosto('alcool')">
+              <span style="font-weight: bold; color: var(--success);">ÁLCOOL</span>
+            </label>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
+              <input type="number" id="posto-alc" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
+              <input type="checkbox" id="posto-tem-diesel" onchange="toggleCombustivelPosto('diesel')">
+              <span style="font-weight: bold; color: var(--warning);">DIESEL</span>
+            </label>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
+              <input type="number" id="posto-die" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
+              <input type="checkbox" id="posto-tem-diesels10" onchange="toggleCombustivelPosto('diesels10')">
+              <span style="font-weight: bold; color: #ea580c;">DIESEL S10</span>
+            </label>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/L):</label>
+              <input type="number" id="posto-diesels10" placeholder="0.00" step="0.01" min="0" disabled style="flex: 1;">
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 0 0 auto;">
+              <input type="checkbox" id="posto-tem-gas" onchange="toggleCombustivelPosto('gas')">
+              <span style="font-weight: bold; color: #0891b2;">GÁS</span>
+            </label>
+            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+              <label style="font-size: 12px; white-space: nowrap;">PREÇO (R$/UNIDADE):</label>
+              <input type="number" id="posto-gas-gnv" placeholder="Ex: 95.00" step="0.01" min="0" disabled style="flex: 1;">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn-save" onclick="salvarPosto()" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);">➕ SALVAR POSTO</button>
+    </div>
+    
+    <div class="card">
+      <h3>⛽ POSTOS CADASTRADOS</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>POSTO</th>
+              <th>COMBUSTÍVEIS DISPONÍVEIS</th>
+              <th class="no-print">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="postos-body"></tbody>
+        </table>
+      </div>
+    </div>
+        </div>
+
+    <div id="cfgsub-diversas" style="display:none;">
+
+    <!-- Gestão de Pessoas Diversas -->
+    <div class="card" id="gestao-vips" style="display:none;">
+      <h3>⭐ GESTÃO DE PESSOAS DIVERSAS</h3>
+      <p style="color: #64748b; font-size: 13px; margin-top: 10px;">
+        Configure as pessoas autorizadas a receber abastecimentos diretos (Prefeita, Vereadores, etc)
+      </p>
+      
+      <!-- Formulário de Nova Pessoa DIVERSAS -->
+      <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
+        <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ ADICIONAR NOVA PESSOA DIVERSAS</h4>
+        <div class="grid-form">
+          <div>
+            <label>NOME COMPLETO *</label>
+            <input type="text" id="novo-diversas-nome" placeholder="Ex: Maria da Silva">
+          </div>
+          <div>
+            <label>CPF (OPCIONAL)</label>
+            <input 
+              type="text" 
+              id="novo-diversas-cpf" 
+              placeholder="000.000.000-00" 
+              maxlength="14"
+              oninput="formatarCPF(this)"
+            >
+            <div style="font-size: 10px; color: #64748b; margin-top: 3px;">
+              💡 CPF será obrigatório no momento do abastecimento
+            </div>
+          </div>
+          <div>
+            <label>CARGO *</label>
+            <select id="novo-diversas-cargo">
+              <option value="">SELECIONE...</option>
+              <option value="Prefeito(a)">Prefeito(a)</option>
+              <option value="Vice-Prefeito(a)">Vice-Prefeito(a)</option>
+              <option value="Vereador(a)">Vereador(a)</option>
+              <option value="Secretário(a)">Secretário(a)</option>
+              <option value="Diretor(a)">Diretor(a)</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label>CATEGORIA</label>
+            <select id="novo-diversas-categoria">
+              <option value="executivo">Executivo</option>
+              <option value="legislativo">Legislativo</option>
+              <option value="administrativo">Administrativo</option>
+            </select>
+          </div>
+          <div>
+            <label>LIMITE MENSAL (R$)</label>
+            <input type="number" id="novo-diversas-limite" placeholder="0.00" step="0.01" min="0">
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="novo-diversas-sem-limite" onchange="toggleLimiteDiversas('novo-diversas')">
+              <span>⭐ Sem limite (ilimitado)</span>
+            </label>
+          </div>
+        </div>
+        <button class="btn-save" onclick="adicionarDiversas()" style="margin-top: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          ⭐ ADICIONAR PESSOA DIVERSAS
+        </button>
+      </div>
+      
+      <!-- Lista de Pessoas DIVERSAS Cadastradas -->
+      <div style="margin-top: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h4 style="margin: 0; font-size: 14px; color: var(--primary);">📋 PESSOAS DIVERSAS CADASTRADAS</h4>
+          <button class="btn-save" onclick="resetarTodosDiversas()" 
+            style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 8px 16px; font-size: 12px;"
+            title="Resetar limite de TODAS as pessoas DIVERSAS de uma vez">
+            🔄 RESETAR TODOS
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>NOME</th>
+                <th>CARGO</th>
+                <th>CATEGORIA</th>
+                <th>LIMITE MENSAL</th>
+                <th>GASTO MÊS ATUAL</th>
+                <th>SALDO</th>
+                <th class="no-print">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="vips-body">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:40px;">
+                  ⏳ CARREGANDO PESSOAS DIVERSAS...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+        </div>
+  </div>
 
 <!-- Modal QR Code Global -->
 <div id="modal-qr" class="modal">
@@ -14350,6 +14369,18 @@
       }
     }
   }
+  
+  // NOVO: sub-abas dentro de "⚙️ CONFIGURAÇÕES" (Usuários / Frota / Postos / Diversas).
+  // Não interfere no switchTab principal — só alterna o que já estava tudo junto antes.
+  function switchConfigSubTab(sub) {
+    ['usuarios', 'frota', 'postos', 'diversas'].forEach(function(s) {
+      const div = document.getElementById('cfgsub-' + s);
+      const btn = document.getElementById('btn-cfgsub-' + s);
+      if (div) div.style.display = (s === sub) ? 'block' : 'none';
+      if (btn) btn.classList.toggle('active', s === sub);
+    });
+  }
+  window.switchConfigSubTab = switchConfigSubTab;
   
   // ==================== CONTROLAR VISIBILIDADE DO CAMPO PESSOA DIVERSAS ====================
   
