@@ -3841,6 +3841,7 @@
       <button id="btn-cfgsub-frota" class="tab-btn" onclick="switchConfigSubTab('frota')">🚗 FROTA</button>
       <button id="btn-cfgsub-postos" class="tab-btn" onclick="switchConfigSubTab('postos')">⛽ POSTOS</button>
       <button id="btn-cfgsub-diversas" class="tab-btn" onclick="switchConfigSubTab('diversas')">⭐ DIVERSAS</button>
+      <button id="btn-cfgsub-regras" class="tab-btn" onclick="switchConfigSubTab('regras')">📐 REGRAS DE NEGÓCIO</button>
     </div>
 
     <div id="cfgsub-usuarios">
@@ -4362,6 +4363,73 @@
       </div>
     </div>
         </div>
+
+    <!-- NOVO (Fase 2): sub-aba Regras de Negócio — aditivo -->
+    <div id="cfgsub-regras" style="display:none;">
+      <div class="card">
+        <h3>📐 REGRAS DE NEGÓCIO</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:20px;">
+          Ative, desative ou ajuste os parâmetros de cada regra abaixo. Se você não mexer em nada aqui,
+          o sistema continua funcionando exatamente como sempre funcionou.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+            <input type="checkbox" id="regra-cpf-unico" style="width:18px; height:18px; margin-top:2px;">
+            <span>
+              <strong style="display:block; font-weight:600;">CPF só pode ser usado por um único usuário</strong>
+              <span style="font-size:11px; color:#64748b; text-transform:none;">Bloqueia abastecimento se o CPF informado já tiver registros feitos por outro usuário do sistema no mês.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+            <input type="checkbox" id="regra-frequencia-cpf" style="width:18px; height:18px; margin-top:2px;">
+            <span>
+              <strong style="display:block; font-weight:600;">Limitar frequência de uso do mesmo CPF</strong>
+              <span style="font-size:11px; color:#64748b; text-transform:none;">CPFs sem autorização: 1 abastecimento por mês. CPFs com autorização ativa em "CPF Autorizados": 1 a cada 7 dias.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+            <input type="checkbox" id="regra-secretario-proprio-veiculo" style="width:18px; height:18px; margin-top:2px;">
+            <span>
+              <strong style="display:block; font-weight:600;">Secretário só abastece veículo da própria secretaria</strong>
+              <span style="font-size:11px; color:#64748b; text-transform:none;">Vale também para veículos compartilhados (sem secretaria) ou emprestados temporariamente.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+            <input type="checkbox" id="regra-validar-km" style="width:18px; height:18px; margin-top:2px;">
+            <span>
+              <strong style="display:block; font-weight:600;">Validar quilometragem</strong>
+              <span style="font-size:11px; color:#64748b; text-transform:none;">Bloqueia o abastecimento se o KM digitado for menor que o último KM registrado do veículo.</span>
+            </span>
+          </label>
+        </div>
+
+        <div style="margin-top:20px; padding:16px; background:#fff7ed; border:1.5px solid var(--warning); border-radius:8px;">
+          <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="regra-horario-expediente" style="width:18px; height:18px; margin-top:2px;" onchange="document.getElementById('regra-horario-campos').style.display = this.checked ? 'grid' : 'none'">
+            <span>
+              <strong style="display:block; font-weight:600; color:var(--warning);">Bloquear abastecimento fora do horário de expediente</strong>
+              <span style="font-size:11px; color:#92400e; text-transform:none;">NOVA regra — hoje não existe nenhum limite de horário. Fica desligada até você ativar e configurar abaixo. O usuário master nunca é bloqueado por esta regra.</span>
+            </span>
+          </label>
+          <div id="regra-horario-campos" class="grid-form" style="display:none; margin-top:14px;">
+            <div>
+              <label>HORÁRIO DE INÍCIO</label>
+              <input type="time" id="regra-horario-inicio">
+            </div>
+            <div>
+              <label>HORÁRIO DE TÉRMINO</label>
+              <input type="time" id="regra-horario-fim">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-save" onclick="salvarRegrasNegocio()" style="margin-top:20px;">💾 SALVAR REGRAS DE NEGÓCIO</button>
+      </div>
+    </div>
   </div>
 
 <!-- Modal QR Code Global -->
@@ -4725,6 +4793,55 @@
     const cfg = snap.val();
     if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Combustível';
   }).catch(function(){});
+
+  // ── FASE 2 — REGRAS DE NEGÓCIO CONFIGURÁVEIS (aditivo) ──────────────────────
+  // Todo valor "default" abaixo reproduz EXATAMENTE o comportamento atual do sistema.
+  // Se nada estiver salvo em config/regras, tudo continua funcionando como sempre funcionou.
+  let regrasNegocio = {
+    cpfUnico: true,                 // CPF só pode ser usado por um usuário
+    frequenciaCpf: true,            // limite de frequência de uso do mesmo CPF (mensal/semanal)
+    secretarioProprioVeiculo: true, // secretário só abastece veículo da própria secretaria
+    validarKm: true,                // avisar/bloquear quando o KM digitado é menor que o último
+    horarioExpedienteAtivo: false,  // hoje NÃO existe bloqueio de horário — fica desligado por padrão
+    horarioInicio: '',
+    horarioFim: ''
+  };
+  db.ref('config/regras').on('value', function(snap) {
+    const val = snap.val();
+    if (val) regrasNegocio = Object.assign(regrasNegocio, val);
+  });
+
+  function preencherFormRegrasNegocio() {
+    document.getElementById('regra-cpf-unico').checked = regrasNegocio.cpfUnico !== false;
+    document.getElementById('regra-frequencia-cpf').checked = regrasNegocio.frequenciaCpf !== false;
+    document.getElementById('regra-secretario-proprio-veiculo').checked = regrasNegocio.secretarioProprioVeiculo !== false;
+    document.getElementById('regra-validar-km').checked = regrasNegocio.validarKm !== false;
+    document.getElementById('regra-horario-expediente').checked = regrasNegocio.horarioExpedienteAtivo === true;
+    document.getElementById('regra-horario-inicio').value = regrasNegocio.horarioInicio || '';
+    document.getElementById('regra-horario-fim').value = regrasNegocio.horarioFim || '';
+    document.getElementById('regra-horario-campos').style.display = regrasNegocio.horarioExpedienteAtivo === true ? 'grid' : 'none';
+  }
+  window.preencherFormRegrasNegocio = preencherFormRegrasNegocio;
+
+  async function salvarRegrasNegocio() {
+    const novasRegras = {
+      cpfUnico: document.getElementById('regra-cpf-unico').checked,
+      frequenciaCpf: document.getElementById('regra-frequencia-cpf').checked,
+      secretarioProprioVeiculo: document.getElementById('regra-secretario-proprio-veiculo').checked,
+      validarKm: document.getElementById('regra-validar-km').checked,
+      horarioExpedienteAtivo: document.getElementById('regra-horario-expediente').checked,
+      horarioInicio: document.getElementById('regra-horario-inicio').value || '',
+      horarioFim: document.getElementById('regra-horario-fim').value || ''
+    };
+    try {
+      await db.ref('config/regras').set(novasRegras);
+      mostrarNotificacao('✅ REGRAS DE NEGÓCIO SALVAS!', 'success');
+      registrarAuditoria('REGRAS_NEGOCIO_ALTERADAS', novasRegras);
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO SALVAR: ' + e.message, 'error');
+    }
+  }
+  window.salvarRegrasNegocio = salvarRegrasNegocio;
   
   console.log("Firebase inicializado");
   console.log("Database:", db);
@@ -6803,7 +6920,7 @@
       .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO && x.km > 0)
       .sort((a, b) => b.timestamp - a.timestamp)[0];
     
-    if (ultimoAbast && kmAtual < ultimoAbast.km) {
+    if (regrasNegocio.validarKm !== false && ultimoAbast && kmAtual < ultimoAbast.km) {
       mostrarNotificacao(`⚠️ ATENÇÃO: KM ATUAL (${kmAtual}) É MENOR QUE O ÚLTIMO REGISTRADO (${ultimoAbast.km})!`, "warning");
     }
     
@@ -6913,6 +7030,18 @@
       erros.push("❌ DESTINO OBRIGATÓRIO PARA SECRETÁRIOS");
     }
     
+    // NOVO (Fase 2): bloqueio opcional de abastecimento fora do horário de expediente.
+    // Desligado por padrão — só passa a valer se o master ativar em Configurações → Regras de Negócio.
+    // Master nunca é bloqueado por esta regra (mesmo padrão de override já usado nas outras regras).
+    if (regrasNegocio.horarioExpedienteAtivo === true && regrasNegocio.horarioInicio && regrasNegocio.horarioFim &&
+        String(loginUser||'').toLowerCase() !== 'master') {
+      const agora = new Date();
+      const horaAtual = String(agora.getHours()).padStart(2,'0') + ':' + String(agora.getMinutes()).padStart(2,'0');
+      if (horaAtual < regrasNegocio.horarioInicio || horaAtual > regrasNegocio.horarioFim) {
+        erros.push(`❌ ABASTECIMENTO FORA DO HORÁRIO DE EXPEDIENTE PERMITIDO (${regrasNegocio.horarioInicio} às ${regrasNegocio.horarioFim})`);
+      }
+    }
+    
     // (Validação de veículo x secretaria movida para o modal grande verificarVeiculoAntesDeAbastecer,
     // chamado em processar() — mesmo padrão do bloqueio de CPF, evita mensagem pequena duplicada)
     
@@ -6947,7 +7076,7 @@
     }
     
     // Validar KM apenas se foi informado e não for GÁS
-    if (!isGas && (!isAvulso || (isAvulso && dados.km > 0))) {
+    if (regrasNegocio.validarKm !== false && !isGas && (!isAvulso || (isAvulso && dados.km > 0))) {
       const ultimoAbast = cache
         .filter(x => x.placa === dados.placa && x.status === STATUS.AUTORIZADO && x.km > 0)
         .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -7205,6 +7334,8 @@
     //    para esse CPF, quem controla a frequência de uso é validarFrequenciaCPF()
     //    (1x a cada 7 dias, por dia de calendário, independente de qual usuário registrou).
     //    CPFs sem autorização mantêm a regra geral, sem nenhuma mudança.
+    // NOVO (Fase 2): regra pode ser desativada em Configurações → Regras de Negócio.
+    if (regrasNegocio.cpfUnico !== false) {
     var autorizadoParaUsoMultiplo = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
     var r = autorizadoParaUsoMultiplo ? { bloqueado:false, outrosUsuarios:[], qtd:0 } : await validarCpfUsuarioUnico(cpfN);
     if(r.bloqueado){
@@ -7247,6 +7378,7 @@
       });
       return false;
     }
+    } // fim if regrasNegocio.cpfUnico
 
     // 2) Aviso não bloqueante: CPF pertence a um motorista cadastrado
     var mot = await buscarMotoristaPorCpf(cpfN);
@@ -7278,6 +7410,7 @@
   async function validarFrequenciaCPF(cpf) {
     var cpfN = _normCPF(cpf);
     if (cpfN.length < 11) return true; // sem CPF válido informado: não aplica a regra
+    if (regrasNegocio.frequenciaCpf === false) return true; // NOVO (Fase 2): regra desativada em Configurações
     
     var ehMaster = String(loginUser||'').toLowerCase() === 'master';
     var autorizado = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
@@ -7413,7 +7546,7 @@
       return false;
     }
     
-    if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+    if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria && regrasNegocio.secretarioProprioVeiculo !== false) {
       // ── EXCEÇÃO ADITIVA: veículo emprestado para a secretaria do usuário atual ──
       if (emprestimoAtivoPara(placa, minhaSecretaria)) {
         return true;
@@ -14380,12 +14513,13 @@
   // NOVO: sub-abas dentro de "⚙️ CONFIGURAÇÕES" (Usuários / Frota / Postos / Diversas).
   // Não interfere no switchTab principal — só alterna o que já estava tudo junto antes.
   function switchConfigSubTab(sub) {
-    ['usuarios', 'frota', 'postos', 'diversas'].forEach(function(s) {
+    ['usuarios', 'frota', 'postos', 'diversas', 'regras'].forEach(function(s) {
       const div = document.getElementById('cfgsub-' + s);
       const btn = document.getElementById('btn-cfgsub-' + s);
       if (div) div.style.display = (s === sub) ? 'block' : 'none';
       if (btn) btn.classList.toggle('active', s === sub);
     });
+    if (sub === 'regras') preencherFormRegrasNegocio();
   }
   window.switchConfigSubTab = switchConfigSubTab;
   
