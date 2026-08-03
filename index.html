@@ -4957,6 +4957,21 @@
   }
   window.emprestimoAtivoPara = emprestimoAtivoPara;
 
+  // Retorna o empréstimo ATIVO (dentro do prazo) de uma placa, para QUALQUER secretaria
+  // destino. Usada para impedir que o mesmo veículo seja emprestado para duas secretarias
+  // ao mesmo tempo — só pode haver um empréstimo ativo por veículo por vez.
+  function emprestimoAtivoDaPlaca(placa) {
+    const p = normPlaca(placa);
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    return emprestimosVeiculos.find(e => {
+      if (!e.ativo) return false;
+      if (e.placa !== p) return false;
+      if (e.dataFimPrevista && e.dataFimPrevista < hojeStr) return false; // prazo já vencido
+      return true;
+    }) || null;
+  }
+  window.emprestimoAtivoDaPlaca = emprestimoAtivoDaPlaca;
+
   // Preenche o datalist de busca de placas do card de empréstimo:
   // secretário só vê os veículos da PRÓPRIA secretaria (só ele pode emprestar o que é seu);
   // admin/master veem todos os veículos que pertencem a alguma secretaria.
@@ -5006,13 +5021,23 @@
       mostrarNotificacao('⚠️ A secretaria destino é a mesma dona do veículo.', 'error');
       return;
     }
+    // NOVO: um veículo só pode estar emprestado para UMA secretaria por vez.
+    const emprestimoExistente = emprestimoAtivoDaPlaca(placa);
+    if (emprestimoExistente) {
+      mostrarNotificacao(
+        '❌ ESTE VEÍCULO JÁ ESTÁ EMPRESTADO PARA ' + emprestimoExistente.secretariaDestino +
+        '! Cancele o empréstimo atual antes de registrar um novo.',
+        'error'
+      );
+      return;
+    }
     if (dataFimPrevista && dataFimPrevista < dataInicio) {
       mostrarNotificacao('⚠️ A data de devolução prevista não pode ser antes da data de início.', 'error');
       return;
     }
 
     try {
-      await db.ref('emprestimos_veiculos').push({
+      const novoRegistro = {
         placa: placa,
         secretariaOrigem: veiculo.secretaria || '',
         secretariaDestino: secretariaDestino,
@@ -5021,7 +5046,15 @@
         ativo: true,
         criadoPor: loginUser,
         criadoEm: Date.now()
-      });
+      };
+      const novoRef = await db.ref('emprestimos_veiculos').push(novoRegistro);
+      // Atualização otimista: garante que a lista apareça na hora, sem depender
+      // só do listener em tempo real do Firebase (ex.: latência de rede).
+      novoRegistro.id = novoRef.key;
+      if (!emprestimosVeiculos.some(e => e.id === novoRegistro.id)) {
+        emprestimosVeiculos.push(novoRegistro);
+      }
+      if (typeof renderEmprestimosVeiculos === 'function') renderEmprestimosVeiculos();
       mostrarNotificacao('✅ EMPRÉSTIMO REGISTRADO! ' + placa + ' liberado para ' + secretariaDestino, 'success');
       document.getElementById('emp-placa').value = '';
       document.getElementById('emp-sec-destino').value = '';
@@ -5049,6 +5082,10 @@
         canceladoPor: loginUser,
         canceladoEm: Date.now()
       });
+      emp.ativo = false;
+      emp.canceladoPor = loginUser;
+      emp.canceladoEm = Date.now();
+      if (typeof renderEmprestimosVeiculos === 'function') renderEmprestimosVeiculos();
       mostrarNotificacao('✅ EMPRÉSTIMO CANCELADO!', 'success');
     } catch (e) {
       mostrarNotificacao('❌ ERRO AO CANCELAR: ' + e.message, 'error');
