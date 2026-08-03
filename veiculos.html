@@ -1257,6 +1257,11 @@ try {
     projectId: "tabela-gasolina"
   });
   fbDB = firebase.database();
+  // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento dos outros módulos
+  fbDB.ref('config/personalizacao').once('value').then(function(snap) {
+    var cfg = snap.val();
+    if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Frota';
+  }).catch(function(){});
 } catch(e) { console.error('Firebase indisponível — operando somente com cache local:', e); }
 
 // RTDB remove arrays vazios e pode devolver objetos no lugar de arrays — normaliza tudo

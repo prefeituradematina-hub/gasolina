@@ -401,6 +401,12 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  
+  // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento do index.html
+  db.ref('config/personalizacao').once('value').then(function(snap) {
+    const cfg = snap.val();
+    if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Higienização';
+  }).catch(function(){});
 
   // ── Sessão (mesmo padrão dos outros módulos) ──
   const SESSAO = window.__SESSAO;

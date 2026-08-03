@@ -128,6 +128,37 @@ body{
   .modulos{grid-template-columns:1fr}
   .hub-card{padding:30px 22px 36px}
 }
+
+/* ── CONFIGURAÇÕES GERAIS (Fase 1: identidade/marca — aditivo) ── */
+.btn-config-geral{
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;
+  padding:9px 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;
+  margin-right:10px;transition:.2s;
+}
+.btn-config-geral:hover{background:rgba(255,255,255,.28)}
+.modal-cfg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:999;
+  align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto}
+.modal-cfg.aberto{display:flex}
+.modal-cfg-content{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:30px;
+  animation:fadeUp .3s ease;position:relative}
+.modal-cfg-close{position:absolute;top:18px;right:22px;font-size:22px;cursor:pointer;color:var(--muted)}
+.modal-cfg h2{font-size:18px;margin-bottom:4px;color:var(--ink)}
+.modal-cfg .cfg-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+.cfg-secao{margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #e2e8f0}
+.cfg-secao:last-of-type{border-bottom:none}
+.cfg-secao h3{font-size:13px;color:var(--grad-a);text-transform:uppercase;letter-spacing:.3px;margin-bottom:12px}
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cfg-grid label{font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
+.cfg-grid input[type=text],.cfg-grid input[type=email],.cfg-grid input[type=url],.cfg-grid input[type=color]{
+  width:100%;padding:10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;
+}
+.cfg-logo-preview{width:90px;height:90px;border-radius:12px;border:1.5px dashed #cbd5e1;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;margin-bottom:10px}
+.cfg-logo-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.btn-cfg-salvar{background:linear-gradient(135deg,var(--grad-a),var(--grad-b));color:#fff;border:none;
+  padding:13px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;width:100%;margin-top:6px}
+.btn-cfg-secundario{background:#f1f5f9;color:var(--ink);border:none;padding:9px 14px;border-radius:8px;
+  font-size:11px;font-weight:700;cursor:pointer;margin-right:8px}
 </style>
 </head>
 <body>
@@ -164,7 +195,10 @@ body{
           <small id="hub-role">—</small>
         </div>
       </div>
-      <button class="btn-sair" onclick="sair()">🚪 Sair</button>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="btn-config-geral" id="btn-config-geral" style="display:none; margin-right:0;" onclick="abrirModalConfigGeral()">⚙️ Configurações Gerais</button>
+        <button class="btn-sair" onclick="sair()">🚪 Sair</button>
+      </div>
     </div>
     <h1>O que você quer acessar?</h1>
     <div class="hub-sub">Escolha um dos sistemas abaixo</div>
@@ -198,7 +232,55 @@ body{
       </a>
     </div>
   </div>
-  <div class="hub-rodape">Sessão válida por 12 horas · Os dois sistemas compartilham o mesmo banco de dados</div>
+  <div class="hub-rodape" id="hub-rodape">Sessão válida por 12 horas · Os dois sistemas compartilham o mesmo banco de dados</div>
+</div>
+
+<!-- ── MODAL: CONFIGURAÇÕES GERAIS (Fase 1 — aditivo, só master) ── -->
+<div class="modal-cfg" id="modal-config-geral">
+  <div class="modal-cfg-content">
+    <span class="modal-cfg-close" onclick="fecharModalConfigGeral()">&times;</span>
+    <h2>⚙️ Configurações Gerais</h2>
+    <p class="cfg-sub">Identidade da prefeitura e personalização visual do sistema. Se um campo ficar vazio, o sistema usa o valor atual normalmente.</p>
+
+    <div class="cfg-secao">
+      <h3>🏛️ Dados da Prefeitura</h3>
+      <div class="cfg-grid">
+        <div><label>NOME DA PREFEITURA</label><input type="text" id="cfg-nome-prefeitura" placeholder="Prefeitura Municipal de Matina"></div>
+        <div><label>MUNICÍPIO</label><input type="text" id="cfg-municipio" placeholder="Matina"></div>
+        <div><label>UF</label><input type="text" id="cfg-uf" placeholder="BA" maxlength="2" style="text-transform:uppercase"></div>
+        <div><label>CNPJ</label><input type="text" id="cfg-cnpj" placeholder="00.000.000/0000-00"></div>
+        <div style="grid-column:1/-1"><label>ENDEREÇO</label><input type="text" id="cfg-endereco" placeholder="Rua, número, bairro"></div>
+        <div><label>TELEFONE(S)</label><input type="text" id="cfg-telefones" placeholder="(00) 0000-0000"></div>
+        <div><label>E-MAIL INSTITUCIONAL</label><input type="email" id="cfg-email" placeholder="contato@prefeitura.gov.br"></div>
+        <div><label>SITE OFICIAL</label><input type="url" id="cfg-site" placeholder="https://..."></div>
+        <div><label>ADMINISTRADOR DO SISTEMA</label><input type="text" id="cfg-admin-sistema" placeholder="Nome do responsável"></div>
+      </div>
+    </div>
+
+    <div class="cfg-secao">
+      <h3>🖼️ Logotipo</h3>
+      <div class="cfg-logo-preview" id="cfg-logo-preview"><span style="font-size:11px;color:#94a3b8;">Sem logo</span></div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;">ENVIAR IMAGEM (PNG/JPG, até ~300KB)</label>
+        <input type="file" id="cfg-logo-arquivo" accept="image/*" onchange="prevalizarLogoConfig(this)">
+      </div>
+      <button type="button" class="btn-cfg-secundario" style="margin-top:10px;" onclick="removerLogoConfig()">🗑️ Remover logo</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Quando houver um logo salvo, ele substitui automaticamente a logomarca padrão nas telas do sistema.</p>
+    </div>
+
+    <div class="cfg-secao">
+      <h3>🎨 Personalização</h3>
+      <div class="cfg-grid">
+        <div><label>NOME DO SISTEMA</label><input type="text" id="cfg-nome-sistema" placeholder="Portal de Sistemas"></div>
+        <div><label>NOME EXIBIDO NAS IMPRESSÕES</label><input type="text" id="cfg-nome-impressao" placeholder="Prefeitura Municipal de Matina"></div>
+        <div><label>COR PRINCIPAL</label><input type="color" id="cfg-cor-principal" value="#667eea"></div>
+        <div><label>COR SECUNDÁRIA</label><input type="color" id="cfg-cor-secundaria" value="#764ba2"></div>
+        <div style="grid-column:1/-1"><label>TEXTO DO RODAPÉ</label><input type="text" id="cfg-texto-rodape" placeholder="Ex: Secretaria de Administração — 2026"></div>
+      </div>
+    </div>
+
+    <button class="btn-cfg-salvar" onclick="salvarConfigGeral()">💾 SALVAR CONFIGURAÇÕES</button>
+  </div>
 </div>
 
 <script>
@@ -212,6 +294,136 @@ firebase.initializeApp({
 var db = firebase.database();
 var SESSAO_KEY = 'sessao_global';
 var SESSAO_DURACAO = 12 * 60 * 60 * 1000; // 12 horas
+
+// ── CONFIGURAÇÕES GERAIS (Fase 1: identidade/marca — aditivo) ──────────────
+// Se não existir nada salvo no Firebase, o sistema continua exatamente como está hoje.
+var configPrefeituraAtual = {};
+var configPersonalizacaoAtual = {};
+var logoTemporarioBase64 = undefined; // undefined = não mexeu; null = remover; string = novo logo
+
+function aplicarConfigGeralNaTela(prefeitura, personalizacao) {
+  prefeitura = prefeitura || {};
+  personalizacao = personalizacao || {};
+
+  if (personalizacao.nomeSistema) {
+    document.title = personalizacao.nomeSistema + (prefeitura.municipio ? ' — ' + prefeitura.municipio + (prefeitura.uf ? ' ' + prefeitura.uf : '') : '');
+    var h1Login = document.querySelector('.login-left h1');
+    if (h1Login) h1Login.textContent = personalizacao.nomeSistema.toUpperCase();
+  }
+  if (prefeitura.nomePrefeitura) {
+    var pLogin = document.querySelector('.login-left p');
+    if (pLogin) {
+      pLogin.innerHTML = prefeitura.nomePrefeitura + (prefeitura.uf ? ' — ' + prefeitura.uf : '') +
+        '<br>Gestão integrada de combustível, frota e diárias';
+    }
+  }
+  if (personalizacao.logoBase64) {
+    var imgLogin = document.querySelector('.login-logo');
+    if (imgLogin) imgLogin.src = personalizacao.logoBase64;
+  }
+  if (personalizacao.corPrincipal) document.documentElement.style.setProperty('--grad-a', personalizacao.corPrincipal);
+  if (personalizacao.corSecundaria) document.documentElement.style.setProperty('--grad-b', personalizacao.corSecundaria);
+  if (personalizacao.textoRodape) {
+    var rodape = document.getElementById('hub-rodape');
+    if (rodape) rodape.innerHTML += ' · ' + personalizacao.textoRodape;
+  }
+}
+
+function carregarConfigGeral() {
+  db.ref('config/prefeitura').once('value').then(function(snap) {
+    configPrefeituraAtual = snap.val() || {};
+    db.ref('config/personalizacao').once('value').then(function(snap2) {
+      configPersonalizacaoAtual = snap2.val() || {};
+      aplicarConfigGeralNaTela(configPrefeituraAtual, configPersonalizacaoAtual);
+    });
+  }).catch(function(e) { console.error('Config geral: erro ao carregar', e); });
+}
+carregarConfigGeral();
+
+function abrirModalConfigGeral() {
+  var p = configPrefeituraAtual, z = configPersonalizacaoAtual;
+  document.getElementById('cfg-nome-prefeitura').value = p.nomePrefeitura || '';
+  document.getElementById('cfg-municipio').value = p.municipio || '';
+  document.getElementById('cfg-uf').value = p.uf || '';
+  document.getElementById('cfg-cnpj').value = p.cnpj || '';
+  document.getElementById('cfg-endereco').value = p.endereco || '';
+  document.getElementById('cfg-telefones').value = p.telefones || '';
+  document.getElementById('cfg-email').value = p.email || '';
+  document.getElementById('cfg-site').value = p.site || '';
+  document.getElementById('cfg-admin-sistema').value = p.adminSistema || '';
+
+  document.getElementById('cfg-nome-sistema').value = z.nomeSistema || '';
+  document.getElementById('cfg-nome-impressao').value = z.nomeImpressao || '';
+  document.getElementById('cfg-cor-principal').value = z.corPrincipal || '#667eea';
+  document.getElementById('cfg-cor-secundaria').value = z.corSecundaria || '#764ba2';
+  document.getElementById('cfg-texto-rodape').value = z.textoRodape || '';
+
+  logoTemporarioBase64 = undefined;
+  var preview = document.getElementById('cfg-logo-preview');
+  preview.innerHTML = z.logoBase64
+    ? '<img src="' + z.logoBase64 + '">'
+    : '<span style="font-size:11px;color:#94a3b8;">Sem logo</span>';
+
+  document.getElementById('modal-config-geral').classList.add('aberto');
+}
+function fecharModalConfigGeral() {
+  document.getElementById('modal-config-geral').classList.remove('aberto');
+}
+
+function prevalizarLogoConfig(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 400 * 1024) {
+    alert('⚠️ Imagem muito grande (máx. ~300KB). Escolha um arquivo menor.');
+    input.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    logoTemporarioBase64 = e.target.result;
+    document.getElementById('cfg-logo-preview').innerHTML = '<img src="' + logoTemporarioBase64 + '">';
+  };
+  reader.readAsDataURL(file);
+}
+function removerLogoConfig() {
+  logoTemporarioBase64 = null;
+  document.getElementById('cfg-logo-arquivo').value = '';
+  document.getElementById('cfg-logo-preview').innerHTML = '<span style="font-size:11px;color:#94a3b8;">Sem logo</span>';
+}
+
+function salvarConfigGeral() {
+  var novaPrefeitura = {
+    nomePrefeitura: document.getElementById('cfg-nome-prefeitura').value.trim(),
+    municipio: document.getElementById('cfg-municipio').value.trim(),
+    uf: document.getElementById('cfg-uf').value.trim().toUpperCase(),
+    cnpj: document.getElementById('cfg-cnpj').value.trim(),
+    endereco: document.getElementById('cfg-endereco').value.trim(),
+    telefones: document.getElementById('cfg-telefones').value.trim(),
+    email: document.getElementById('cfg-email').value.trim(),
+    site: document.getElementById('cfg-site').value.trim(),
+    adminSistema: document.getElementById('cfg-admin-sistema').value.trim()
+  };
+  var novaPersonalizacao = {
+    nomeSistema: document.getElementById('cfg-nome-sistema').value.trim(),
+    nomeImpressao: document.getElementById('cfg-nome-impressao').value.trim(),
+    corPrincipal: document.getElementById('cfg-cor-principal').value,
+    corSecundaria: document.getElementById('cfg-cor-secundaria').value,
+    textoRodape: document.getElementById('cfg-texto-rodape').value.trim(),
+    logoBase64: logoTemporarioBase64 === undefined ? (configPersonalizacaoAtual.logoBase64 || null) : logoTemporarioBase64
+  };
+
+  db.ref('config/prefeitura').set(novaPrefeitura)
+    .then(function() { return db.ref('config/personalizacao').set(novaPersonalizacao); })
+    .then(function() {
+      configPrefeituraAtual = novaPrefeitura;
+      configPersonalizacaoAtual = novaPersonalizacao;
+      fecharModalConfigGeral();
+      alert('✅ Configurações salvas! Algumas mudanças (como cores e nome) já aparecem agora; outras aparecem ao recarregar a página.');
+    })
+    .catch(function(e) {
+      alert('❌ Erro ao salvar: ' + e.message);
+    });
+}
 
 function getSessao(){
   try{
@@ -325,6 +537,8 @@ function mostrarHub(s){
   hub.style.display = 'block';
   document.getElementById('hub-nome').textContent = (s.u||'').toUpperCase();
   document.getElementById('hub-role').textContent = ROLES[s.role] || s.role || '';
+  var btnCfgGeral = document.getElementById('btn-config-geral');
+  if (btnCfgGeral) btnCfgGeral.style.display = (s.u === 'master') ? 'inline-block' : 'none';
   document.getElementById('hub-avatar').textContent = (s.u||'?').charAt(0).toUpperCase();
 
   // Acesso por usuário (master sempre tem os dois). Padrão: liberado se não definido.

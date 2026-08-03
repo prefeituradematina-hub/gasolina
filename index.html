@@ -4719,6 +4719,13 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
   
+  // Fase 1 — Configurações Gerais (aditivo): se houver nome de sistema configurado, usa no título da aba.
+  // Se não existir nada salvo, o título continua exatamente como está hoje.
+  db.ref('config/personalizacao').once('value').then(function(snap) {
+    const cfg = snap.val();
+    if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Combustível';
+  }).catch(function(){});
+  
   console.log("Firebase inicializado");
   console.log("Database:", db);
   console.log("==================");
