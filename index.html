@@ -3234,6 +3234,66 @@
       </div>
     </div>
     
+    <!-- ========== EMPRÉSTIMO DE VEÍCULO ENTRE SECRETARIAS (aditivo) ========== -->
+    <div class="card no-print" id="card-emprestimo-veiculo" style="display:none;">
+      <h3>🔁 EMPRÉSTIMO DE VEÍCULO ENTRE SECRETARIAS</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:15px;">
+        Quando uma secretaria empresta um veículo para outra, o secretário que pegou o veículo emprestado
+        passa a poder abastecê-lo usando a <b>cota mensal da sua própria secretaria</b> — sem precisar de
+        um administrador liberar cada abastecimento.
+      </p>
+      <div class="grid-form">
+        <div>
+          <label>VEÍCULO (PLACA)</label>
+          <select id="emp-placa"><option value="">SELECIONE...</option></select>
+        </div>
+        <div>
+          <label>SECRETARIA QUE VAI USAR (DESTINO)</label>
+          <select id="emp-sec-destino">
+            <option value="">SELECIONE...</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+        <div>
+          <label>DATA INÍCIO</label>
+          <input type="date" id="emp-data-inicio">
+        </div>
+        <div>
+          <label>DATA PREVISTA DE DEVOLUÇÃO (OPCIONAL)</label>
+          <input type="date" id="emp-data-fim">
+        </div>
+      </div>
+      <button class="btn-save" onclick="registrarEmprestimoVeiculo()" style="margin-top:10px;">➕ REGISTRAR EMPRÉSTIMO</button>
+
+      <div class="table-wrapper" style="margin-top:20px;">
+        <table>
+          <thead>
+            <tr>
+              <th>PLACA</th>
+              <th>ORIGEM</th>
+              <th>DESTINO</th>
+              <th>INÍCIO</th>
+              <th>DEVOLUÇÃO PREVISTA</th>
+              <th>STATUS</th>
+              <th class="no-print">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="emprestimos-body"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- NOVO: Widget de Eficiência da Frota -->
     <div class="card no-print" id="widget-eficiencia-frota">
       <h3>⚡ EFICIÊNCIA DA FROTA — RESUMO</h3>
@@ -4733,13 +4793,14 @@
     'gerenciar_veiculos': { nome: 'Gerenciar Veículos', descricao: 'Cadastrar veículos', categoria: 'gestao' },
     'gerenciar_postos': { nome: 'Gerenciar Postos', descricao: 'Cadastrar postos', categoria: 'gestao' },
     'gerenciar_usuarios': { nome: 'Gerenciar Usuários', descricao: 'CRUD de usuários', categoria: 'gestao' },
+    'emprestar_veiculo': { nome: 'Emprestar Veículo', descricao: 'Emprestar veículo da própria secretaria para outra e cancelar empréstimos', categoria: 'gestao' },
     'exportar_excel': { nome: 'Exportar Excel', descricao: 'Baixar relatórios', categoria: 'exportacao' }
   };
   
   const PERMISSOES_PADRAO = {
     master: Object.keys(PERMISSOES_DISPONIVEIS),
-    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel', 'acessar_notas'],
-    secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel'],
+    admin: ['ver_dashboard', 'ver_relatorio_geral', 'usar_filtros_relatorio', 'registrar_abastecimento', 'registrar_abastecimento_diversas', 'autorizar_abastecimento', 'deletar_abastecimento', 'gerenciar_veiculos', 'gerenciar_postos', 'exportar_excel', 'acessar_notas', 'emprestar_veiculo'],
+    secretarios: ['ver_dashboard', 'ver_relatorio_secretaria', 'usar_filtros_relatorio', 'registrar_abastecimento', 'exportar_excel', 'emprestar_veiculo'],
     frentista: ['ver_relatorio_geral', 'usar_filtros_relatorio', 'ver_pendentes'],
   autorizador: ['autorizar_abastecimento', 'registrar_abastecimento_diversas', 'abastecer_diversas']
 };
@@ -4768,6 +4829,7 @@
   let cache = [];
   let veiculos = [];
   let postos = [];
+  let emprestimosVeiculos = []; // Empréstimos de veículo entre secretarias (aditivo)
   let userLimit = 0;
   let userRole = "";
   let loginUser = "";
@@ -4857,6 +4919,164 @@
     }
   });
   
+  // ── EMPRÉSTIMOS DE VEÍCULO ENTRE SECRETARIAS (aditivo) ──
+  // Permite que um veículo cadastrado na secretaria A seja abastecido, temporariamente,
+  // pela secretaria B (que pega o veículo emprestado), usando a cota mensal da secretaria B.
+  // Não altera o cadastro do veículo (veiculo.secretaria continua sendo o "dono" original).
+  db.ref('emprestimos_veiculos').on('value', snap => {
+    emprestimosVeiculos = [];
+    snap.forEach(item => {
+      let e = item.val();
+      e.id = item.key;
+      e.placa = normPlaca(e.placa);
+      emprestimosVeiculos.push(e);
+    });
+    if (typeof renderEmprestimosVeiculos === 'function') renderEmprestimosVeiculos();
+  });
+
+  // Retorna o empréstimo ATIVO (dentro do prazo, se houver) de uma placa para uma secretaria destino,
+  // ou null se não houver empréstimo válido. Não interfere em nada além da checagem de bloqueio.
+  function emprestimoAtivoPara(placa, secretariaDestino) {
+    const p = normPlaca(placa);
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    return emprestimosVeiculos.find(e => {
+      if (!e.ativo) return false;
+      if (e.placa !== p) return false;
+      if ((e.secretariaDestino || '') !== (secretariaDestino || '')) return false;
+      if (e.dataFimPrevista && e.dataFimPrevista < hojeStr) return false; // prazo já vencido
+      return true;
+    }) || null;
+  }
+  window.emprestimoAtivoPara = emprestimoAtivoPara;
+
+  // Preenche o select de placas do card de empréstimo:
+  // secretário só vê os veículos da PRÓPRIA secretaria (só ele pode emprestar o que é seu);
+  // admin/master veem todos os veículos que pertencem a alguma secretaria.
+  function popularSelectPlacasEmprestimo() {
+    const sel = document.getElementById('emp-placa');
+    if (!sel) return;
+    const valorAtual = sel.value;
+    const lista = (veiculos || []).filter(v => {
+      if (!v.secretaria) return false; // sem secretaria = compartilhado, não faz sentido "emprestar"
+      if (userRole === 'secretarios') return v.secretaria === userSecretaria;
+      return true; // admin/master
+    });
+    sel.innerHTML = '<option value="">SELECIONE...</option>' + lista.map(v =>
+      `<option value="${v.placa}">${v.placa} — ${v.modelo || ''}${userRole !== 'secretarios' ? ' (' + v.secretaria + ')' : ''}</option>`
+    ).join('');
+    if (lista.some(v => v.placa === valorAtual)) sel.value = valorAtual;
+  }
+  window.popularSelectPlacasEmprestimo = popularSelectPlacasEmprestimo;
+
+  async function registrarEmprestimoVeiculo() {
+    if (!(loginUser === 'master' || temPermissao('emprestar_veiculo'))) {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA EMPRESTAR VEÍCULO!', 'error');
+      return;
+    }
+    const placa = normPlaca(document.getElementById('emp-placa').value);
+    const secretariaDestino = document.getElementById('emp-sec-destino').value;
+    const dataInicio = document.getElementById('emp-data-inicio').value || new Date().toISOString().slice(0, 10);
+    const dataFimPrevista = document.getElementById('emp-data-fim').value || null;
+
+    if (!placa) { mostrarNotificacao('⚠️ Selecione o veículo a ser emprestado.', 'error'); return; }
+    if (!secretariaDestino) { mostrarNotificacao('⚠️ Selecione a secretaria destino.', 'error'); return; }
+
+    const veiculo = (veiculos || []).find(v => normPlaca(v.placa) === placa);
+    if (!veiculo) { mostrarNotificacao('❌ Veículo não encontrado.', 'error'); return; }
+
+    // Só a secretaria dona do veículo (ou admin/master) pode emprestá-lo
+    if (userRole === 'secretarios' && veiculo.secretaria !== userSecretaria) {
+      mostrarNotificacao('❌ Você só pode emprestar veículos da sua própria secretaria.', 'error');
+      return;
+    }
+    if (secretariaDestino === veiculo.secretaria) {
+      mostrarNotificacao('⚠️ A secretaria destino é a mesma dona do veículo.', 'error');
+      return;
+    }
+    if (dataFimPrevista && dataFimPrevista < dataInicio) {
+      mostrarNotificacao('⚠️ A data de devolução prevista não pode ser antes da data de início.', 'error');
+      return;
+    }
+
+    try {
+      await db.ref('emprestimos_veiculos').push({
+        placa: placa,
+        secretariaOrigem: veiculo.secretaria || '',
+        secretariaDestino: secretariaDestino,
+        dataInicio: dataInicio,
+        dataFimPrevista: dataFimPrevista,
+        ativo: true,
+        criadoPor: loginUser,
+        criadoEm: Date.now()
+      });
+      mostrarNotificacao('✅ EMPRÉSTIMO REGISTRADO! ' + placa + ' liberado para ' + secretariaDestino, 'success');
+      document.getElementById('emp-placa').value = '';
+      document.getElementById('emp-sec-destino').value = '';
+      document.getElementById('emp-data-inicio').value = '';
+      document.getElementById('emp-data-fim').value = '';
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO REGISTRAR EMPRÉSTIMO: ' + e.message, 'error');
+    }
+  }
+  window.registrarEmprestimoVeiculo = registrarEmprestimoVeiculo;
+
+  async function cancelarEmprestimoVeiculo(id) {
+    const emp = emprestimosVeiculos.find(e => e.id === id);
+    if (!emp) return;
+    const podeCancelar = loginUser === 'master' || userRole === 'admin' ||
+      (userRole === 'secretarios' && emp.secretariaOrigem === userSecretaria);
+    if (!podeCancelar) {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA CANCELAR ESTE EMPRÉSTIMO!', 'error');
+      return;
+    }
+    if (!confirm('Cancelar o empréstimo do veículo ' + emp.placa + ' para ' + emp.secretariaDestino + '?')) return;
+    try {
+      await db.ref('emprestimos_veiculos/' + id).update({
+        ativo: false,
+        canceladoPor: loginUser,
+        canceladoEm: Date.now()
+      });
+      mostrarNotificacao('✅ EMPRÉSTIMO CANCELADO!', 'success');
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO CANCELAR: ' + e.message, 'error');
+    }
+  }
+  window.cancelarEmprestimoVeiculo = cancelarEmprestimoVeiculo;
+
+  function renderEmprestimosVeiculos() {
+    const tbody = document.getElementById('emprestimos-body');
+    if (!tbody) return;
+    const hojeStr = new Date().toISOString().slice(0, 10);
+
+    let lista = emprestimosVeiculos || [];
+    if (userRole === 'secretarios') {
+      lista = lista.filter(e => e.secretariaOrigem === userSecretaria || e.secretariaDestino === userSecretaria);
+    }
+    lista = lista.slice().sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;">Nenhum empréstimo registrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = lista.map(e => {
+      const expirado = e.ativo && e.dataFimPrevista && e.dataFimPrevista < hojeStr;
+      const status = !e.ativo ? '⛔ Cancelado' : (expirado ? '⏰ Prazo vencido' : '✅ Ativo');
+      const podeCancelar = e.ativo && (loginUser === 'master' || userRole === 'admin' ||
+        (userRole === 'secretarios' && e.secretariaOrigem === userSecretaria));
+      return '<tr>' +
+        '<td>' + e.placa + '</td>' +
+        '<td>' + (e.secretariaOrigem || '—') + '</td>' +
+        '<td>' + (e.secretariaDestino || '—') + '</td>' +
+        '<td>' + (e.dataInicio || '—') + '</td>' +
+        '<td>' + (e.dataFimPrevista || 'Sem prazo') + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td class="no-print">' + (podeCancelar ? '<button class="btn-save" style="background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);padding:6px 12px;font-size:11px;" onclick="cancelarEmprestimoVeiculo(\'' + e.id + '\')">🗑️ CANCELAR</button>' : '—') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+  window.renderEmprestimosVeiculos = renderEmprestimosVeiculos;
+
   // ── MOTORISTAS COMPARTILHADOS (cadastro feito no Controle de Frota) ──
   db.ref('motoristas').on('value', snap => {
     const dl = document.getElementById('dl-motoristas');
@@ -6088,6 +6308,13 @@
       displayDiversas: document.getElementById('btn-tab-diversas').style.display
     });
     
+    const cardEmprestimoVeiculo = document.getElementById('card-emprestimo-veiculo');
+    if (cardEmprestimoVeiculo) {
+      cardEmprestimoVeiculo.style.display = (loginUser === 'master' || temPermissao('emprestar_veiculo')) ? 'block' : 'none';
+      if (typeof popularSelectPlacasEmprestimo === 'function') popularSelectPlacasEmprestimo();
+      if (typeof renderEmprestimosVeiculos === 'function') renderEmprestimosVeiculos();
+    }
+    
     document.getElementById('btn-tab-executivo').style.display = 
       (temPermissao('ver_dashboard')) ? 'block' : 'none';
     
@@ -7035,6 +7262,10 @@
     }
     
     if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+      // ── EXCEÇÃO ADITIVA: veículo emprestado para a secretaria do usuário atual ──
+      if (emprestimoAtivoPara(placa, minhaSecretaria)) {
+        return true;
+      }
       await mostrarModalSeguranca({
         variante : 'bloqueio',
         icone    : '🚫',
@@ -7042,8 +7273,8 @@
         subtitulo: 'Abastecimento bloqueado pelo sistema',
         destaque : placa,
         msg      : 'Este veículo está cadastrado para a secretaria "' + veiculo.secretaria + '".',
-        alerta   : '🔒 Secretários só podem abastecer veículos cadastrados na própria secretaria ou compartilhados.',
-        sub      : 'Se isso estiver incorreto, solicite a um administrador que corrija a secretaria do veículo.',
+        alerta   : '🔒 Secretários só podem abastecer veículos cadastrados na própria secretaria, compartilhados, ou emprestados para a sua secretaria.',
+        sub      : 'Se isso estiver incorreto, solicite a um administrador que corrija a secretaria do veículo, ou peça para a secretaria dona registrar o empréstimo.',
         textoBotao: '✅ ENTENDIDO — FECHAR'
       });
       return false;
@@ -18271,7 +18502,7 @@
         'Secretários só podem abastecer veículos cadastrados na sua secretaria ou compartilhados.',
         '⛔ VEÍCULO NÃO CADASTRADO'
       );
-    } else if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+    } else if (veiculo.secretaria && veiculo.secretaria !== minhaSecretaria && !emprestimoAtivoPara(placa, minhaSecretaria)) {
       bloquear(
         '⚠️ VEÍCULO DE OUTRA SECRETARIA!',
         `Este veículo está cadastrado para <strong>${veiculo.secretaria}</strong> e não pode ser abastecido pela sua secretaria.`,
