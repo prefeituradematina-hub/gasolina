@@ -2389,7 +2389,7 @@
       </div>
       <div>
         <label>SISTEMAS QUE PODE ACESSAR</label>
-        <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
           <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
             <input type="checkbox" id="edit-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
           </label>
@@ -3126,7 +3126,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="8" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria()">
+          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="8" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria(); mostrarUltimoKmVeiculo()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -3191,6 +3191,7 @@
         <div>
           <label>KM ATUAL * <span style="font-size:9px; color:#64748b;">(Opcional para avulsos)</span></label>
           <input type="text" id="f-km" placeholder="12345,6" inputmode="decimal" oninput="aplicarMascaraKmVirgula(this); validarKmAtual(); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); calcularMediaKmL()">
+          <div id="f-km-ultimo-info" style="font-size:9px; color:#94a3b8; margin-top:-2px; margin-bottom:5px;"></div>
         </div>
         <div>
           <label>LITROS *</label>
@@ -4126,7 +4127,7 @@
         </div>
         <div>
           <label>SISTEMAS QUE PODE ACESSAR</label>
-          <div style="display:flex; gap:18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+          <div style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
             <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
               <input type="checkbox" id="new-acesso-gasolina" checked style="width:18px; height:18px; cursor:pointer;"> ⛽ Combustível
             </label>
@@ -6774,6 +6775,24 @@
     
     atualizarPrevisaoConsumo();
   }
+
+  // NOVO: mostra, de forma bem discreta, o último KM registrado deste veículo — só orientação,
+  // não bloqueia nem altera nenhuma validação existente.
+  function mostrarUltimoKmVeiculo() {
+    const info = document.getElementById('f-km-ultimo-info');
+    if (!info) return;
+    const placa = normPlaca(document.getElementById('f-placa').value);
+    if (!placa) { info.textContent = ''; return; }
+    
+    const ultimoAbast = cache
+      .filter(x => x.placa === placa && x.status === STATUS.AUTORIZADO && x.km > 0)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    
+    info.textContent = ultimoAbast
+      ? `Último KM registrado deste veículo: ${ultimoAbast.km}`
+      : '';
+  }
+  window.mostrarUltimoKmVeiculo = mostrarUltimoKmVeiculo;
   
   function calcularMediaAvancada(placa, combustivel) {
     const historico = cache
@@ -13196,6 +13215,8 @@
     document.getElementById('tanque-cheio-info').style.display = 'none';
     document.getElementById('previsao-consumo').style.display = 'none';
     document.getElementById('f-lit').disabled = false;
+    const infoUltimoKm = document.getElementById('f-km-ultimo-info');
+    if (infoUltimoKm) infoUltimoKm.textContent = '';
     
     // Remover alertas de limite
     const alerta = document.getElementById('alerta-limite');
