@@ -2421,13 +2421,13 @@
       </div>
       <div id="edit-field-postos-secretario" style="display:none;">
         <label>POSTOS PERMITIDOS</label>
-        <div id="lista-postos-secretario-edit" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+        <div id="lista-postos-secretario-edit" style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
           <p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>
         </div>
       </div>
       <div id="edit-field-combustiveis-secretario" style="display:none;">
         <label>COMBUSTÍVEIS PERMITIDOS</label>
-        <div id="lista-combustiveis-secretario-edit" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+        <div id="lista-combustiveis-secretario-edit" style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
           <p style="color:#64748b; font-size:11px; margin:0;">Selecione os postos primeiro</p>
         </div>
       </div>
@@ -2993,6 +2993,7 @@
         <span id="pendentes-badge" class="notification-badge" style="display:none;">0</span>
       </button>
       <button id="btn-tab-analytics" class="tab-btn" onclick="switchTab('analytics')">📈 ANÁLISES</button>
+      <button id="btn-tab-relatorios" class="tab-btn" style="display:none;" onclick="switchTab('relatorios')">📑 RELATÓRIOS</button>
       <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
       <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
       <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
@@ -3301,27 +3302,11 @@
     <!-- Alertas e Notificações -->
     <div id="alertas-container"></div>
     
-    <div class="charts-row no-print">
-      <div class="card">
-        <h3>💰 GASTOS POR SECRETARIA</h3>
-        <div style="height:280px;"><canvas id="chartSec"></canvas></div>
-      </div>
-      <div class="card">
-        <h3>🚛 TOP 5 VEÍCULOS</h3>
-        <div style="height:280px;"><canvas id="chartVec"></canvas></div>
-      </div>
-    </div>
-    
-    <!-- ========== EMPRÉSTIMO DE VEÍCULO ENTRE SECRETARIAS (aditivo) — MOVIDO PARA LOGO ABAIXO DO ABASTECIMENTO ========== -->
-
-    <!-- NOVO: Widget de Eficiência da Frota -->
-    <div class="card no-print" id="widget-eficiencia-frota">
-      <h3>⚡ EFICIÊNCIA DA FROTA — RESUMO</h3>
-      <div id="widget-eficiencia-content">
-        <div style="text-align:center; padding:20px; color:#64748b;">⏳ Carregando...</div>
-      </div>
-    </div>
-    
+    <!-- ========== GRÁFICOS E EFICIÊNCIA DA FROTA MOVIDOS PARA A ABA "👔 EXECUTIVO" ========== -->
+    <!-- ========== SEÇÃO 4 E 5 (FILTROS + RELATÓRIOS) MOVIDAS PARA A ABA "📑 RELATÓRIOS" ========== -->
+  </div>
+  
+  <div id="tab-relatorios" style="display:none;">
     <!-- ========== SEÇÃO 4: FILTROS DE RELATÓRIO ========== -->
     <!-- Filtro de Relatório -->
     <div class="card no-print" id="card-filtros-relatorio">
@@ -3711,6 +3696,26 @@
     <div class="executive-card">
       <h2>👔 DASHBOARD EXECUTIVO</h2>
       <div class="executive-metrics" id="executive-metrics"></div>
+    </div>
+    
+    <!-- ========== MOVIDO DA TELA INICIAL: GASTOS POR SECRETARIA / TOP 5 VEÍCULOS ========== -->
+    <div class="charts-row no-print">
+      <div class="card">
+        <h3>💰 GASTOS POR SECRETARIA</h3>
+        <div style="height:280px;"><canvas id="chartSec"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>🚛 TOP 5 VEÍCULOS</h3>
+        <div style="height:280px;"><canvas id="chartVec"></canvas></div>
+      </div>
+    </div>
+    
+    <!-- ========== MOVIDO DA TELA INICIAL: EFICIÊNCIA DA FROTA ========== -->
+    <div class="card no-print" id="widget-eficiencia-frota">
+      <h3>⚡ EFICIÊNCIA DA FROTA — RESUMO</h3>
+      <div id="widget-eficiencia-content">
+        <div style="text-align:center; padding:20px; color:#64748b;">⏳ Carregando...</div>
+      </div>
     </div>
     
     <div class="card">
@@ -4162,13 +4167,13 @@
         </div>
         <div id="field-postos-secretario" style="display:none;">
           <label>POSTOS PERMITIDOS</label>
-          <div id="lista-postos-secretario-new" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+          <div id="lista-postos-secretario-new" style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
             <p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>
           </div>
         </div>
         <div id="field-combustiveis-secretario" style="display:none;">
           <label>COMBUSTÍVEIS PERMITIDOS</label>
-          <div id="lista-combustiveis-secretario-new" style="display:grid; gap:8px; padding:10px; background:#f8fafc; border-radius:8px;">
+          <div id="lista-combustiveis-secretario-new" style="display:flex; flex-wrap:wrap; gap:10px 18px; padding:11px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
             <p style="color:#64748b; font-size:11px; margin:0;">Selecione os postos primeiro</p>
           </div>
         </div>
@@ -6429,6 +6434,9 @@
     
     document.getElementById('btn-tab-notas').style.display = 
       (temPermissao('acessar_notas')) ? 'block' : 'none';
+    
+    document.getElementById('btn-tab-relatorios').style.display = 
+      (temPermissao('usar_filtros_relatorio')) ? 'block' : 'none';
     
     // Esconder seção de novo abastecimento se não tiver permissão
     const cardNovoAbast = document.getElementById('card-novo-abastecimento');
@@ -11827,7 +11835,7 @@
         const combs = Object.keys(p.precos || {});
         const checked = postosJaSelecionados && postosJaSelecionados.includes(p.id) ? 'checked' : '';
         return `
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
             <input type="checkbox" class="posto-secretario-edit" value="${p.id}" 
               data-nome="${p.nome}"
               data-combs="${combs.join('|')}"
@@ -11864,7 +11872,7 @@
     const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
     
     containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
-      <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+      <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
         <input type="checkbox" class="comb-secretario-edit" value="${comb}"
           ${presSel.includes(comb) ? 'checked' : ''}>
         🛢️ ${comb}
@@ -11896,7 +11904,7 @@
         const combs = Object.keys(p.precos || {});
         const checked = postosJaSelecionados && postosJaSelecionados.includes(p.id) ? 'checked' : '';
         return `
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
             <input type="checkbox" class="posto-secretario-new" value="${p.id}"
               data-nome="${p.nome}"
               data-combs="${combs.join('|')}"
@@ -11932,7 +11940,7 @@
     const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
     
     containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
-      <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
+      <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
         <input type="checkbox" class="comb-secretario-new" value="${comb}"
           ${presSel.includes(comb) ? 'checked' : ''}>
         🛢️ ${comb}
@@ -14288,6 +14296,8 @@
     document.getElementById('tab-users').style.display = 'none';
     document.getElementById('tab-cpfautorizados').style.display = 'none';
     document.getElementById('tab-notas').style.display = 'none';
+    const tabRelatoriosEl = document.getElementById('tab-relatorios');
+    if (tabRelatoriosEl) tabRelatoriosEl.style.display = 'none';
     
     if (tab === 'geral') {
       document.getElementById('tab-geral').style.display = 'block';
@@ -14332,6 +14342,12 @@
       document.getElementById('tab-notas').style.display = 'block';
       document.getElementById('btn-tab-notas').classList.add('active');
       carregarNotasCompartilhadas();
+    } else if (tab === 'relatorios') {
+      const tabRel = document.getElementById('tab-relatorios');
+      if (tabRel) {
+        tabRel.style.display = 'block';
+        document.getElementById('btn-tab-relatorios').classList.add('active');
+      }
     }
   }
   
