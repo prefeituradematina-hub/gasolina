@@ -5093,6 +5093,27 @@
   }
   window.cancelarEmprestimoVeiculo = cancelarEmprestimoVeiculo;
 
+  // NOVO: exclusão DEFINITIVA do registro de empréstimo (diferente de cancelar,
+  // que só marca ativo:false e mantém o histórico). Restrita ao master.
+  async function excluirEmprestimoVeiculo(id) {
+    if (loginUser !== 'master') {
+      mostrarNotificacao('❌ SOMENTE O MASTER PODE EXCLUIR DEFINITIVAMENTE UM EMPRÉSTIMO!', 'error');
+      return;
+    }
+    const emp = emprestimosVeiculos.find(e => e.id === id);
+    if (!emp) return;
+    if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE o empréstimo do veículo ' + emp.placa + ' (' + (emp.secretariaOrigem || '—') + ' → ' + (emp.secretariaDestino || '—') + ')?\n\nEssa ação NÃO pode ser desfeita — diferente de "Cancelar", o registro será apagado do histórico.')) return;
+    try {
+      await db.ref('emprestimos_veiculos/' + id).remove();
+      emprestimosVeiculos = emprestimosVeiculos.filter(e => e.id !== id);
+      if (typeof renderEmprestimosVeiculos === 'function') renderEmprestimosVeiculos();
+      mostrarNotificacao('✅ EMPRÉSTIMO EXCLUÍDO DEFINITIVAMENTE!', 'success');
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO EXCLUIR: ' + e.message, 'error');
+    }
+  }
+  window.excluirEmprestimoVeiculo = excluirEmprestimoVeiculo;
+
   function renderEmprestimosVeiculos() {
     const tbody = document.getElementById('emprestimos-body');
     if (!tbody) return;
@@ -5121,7 +5142,11 @@
         '<td>' + (e.dataInicio || '—') + '</td>' +
         '<td>' + (e.dataFimPrevista || 'Sem prazo') + '</td>' +
         '<td>' + status + '</td>' +
-        '<td class="no-print">' + (podeCancelar ? '<button class="btn-save" style="background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);padding:6px 12px;font-size:11px;" onclick="cancelarEmprestimoVeiculo(\'' + e.id + '\')">🗑️ CANCELAR</button>' : '—') + '</td>' +
+        '<td class="no-print">' +
+          (podeCancelar ? '<button class="btn-save" style="background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);padding:6px 10px;font-size:11px;margin-right:4px;" onclick="cancelarEmprestimoVeiculo(\'' + e.id + '\')">❌ CANCELAR</button>' : '') +
+          (loginUser === 'master' ? '<button class="btn-save" style="background:linear-gradient(135deg,#7c2d12 0%,#431407 100%);padding:6px 10px;font-size:11px;" title="Excluir definitivamente (somente master)" onclick="excluirEmprestimoVeiculo(\'' + e.id + '\')">🗑️</button>' : '') +
+          (!podeCancelar && loginUser !== 'master' ? '—' : '') +
+        '</td>' +
         '</tr>';
     }).join('');
   }
