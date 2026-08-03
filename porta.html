@@ -82,30 +82,30 @@ body{
 .btn-sair:hover{background:#fef2f2;transform:translateY(-1px)}
 .hub h1{font-size:26px;text-align:center;margin:26px 0 6px}
 .hub-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:36px}
-.modulos{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}
+.modulos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
 .modulo{
-  border:2px solid #e2e8f0;border-radius:20px;padding:38px 26px;text-align:center;
+  border:2px solid #e2e8f0;border-radius:18px;padding:22px 14px;text-align:center;
   cursor:pointer;text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
   transition:transform .3s,box-shadow .3s,border-color .3s;background:#fff;
 }
 .modulo::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:5px;
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
   background:linear-gradient(90deg,var(--ma),var(--mb));
   transform:scaleX(0);transform-origin:left;transition:transform .35s;
 }
 .modulo:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(0,0,0,.12);border-color:var(--ma)}
 .modulo:hover::before{transform:scaleX(1)}
 .mod-icone{
-  width:96px;height:96px;margin:0 auto 20px;border-radius:26px;font-size:46px;
+  width:56px;height:56px;margin:0 auto 14px;border-radius:16px;font-size:26px;
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,var(--ma),var(--mb));
-  box-shadow:0 10px 24px -6px var(--mb);transition:transform .35s;
+  box-shadow:0 8px 18px -6px var(--mb);transition:transform .35s;
 }
 .modulo:hover .mod-icone{transform:scale(1.08) rotate(-3deg)}
-.modulo h2{font-size:18px;margin-bottom:8px}
-.modulo p{font-size:13px;color:var(--muted);line-height:1.6}
+.modulo h2{font-size:14px;margin-bottom:6px}
+.modulo p{font-size:11px;color:var(--muted);line-height:1.5}
 .mod-entrar{
-  display:inline-block;margin-top:18px;font-size:13px;font-weight:700;
+  display:inline-block;margin-top:12px;font-size:11px;font-weight:700;
   color:var(--ma);letter-spacing:.3px;
 }
 .modulo.gas{--ma:var(--gas-a);--mb:var(--gas-b)}
@@ -185,7 +185,7 @@ body{
       </a>
       <a class="modulo lavagem" id="card-lavagem" href="lavagem.html">
         <div class="mod-icone">🚿</div>
-        <h2>Controle de Lavagem</h2>
+        <h2>Controle de Higienização</h2>
         <p>Solicitação, aprovação e controle das lavagens dos veículos da frota municipal.</p>
         <span class="mod-entrar">ACESSAR →</span>
         <span class="mod-cadeado">🔒 SEM ACESSO</span>
@@ -339,7 +339,7 @@ function mostrarHub(s){
   configurarCardHub(document.getElementById('card-frota'), podeFrota, 'veiculos.html',
     'Acesso ao Controle de Frota não liberado para o seu usuário.');
   configurarCardHub(document.getElementById('card-lavagem'), podeLavagem, 'lavagem.html',
-    'Acesso ao Controle de Lavagem não liberado para o seu usuário.');
+    'Acesso ao Controle de Higienização não liberado para o seu usuário.');
 }
 
 // Habilita ou bloqueia visualmente um card do hub

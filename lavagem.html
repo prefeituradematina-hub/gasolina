@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<title>Controle de Lavagem</title>
+<title>Controle de Higienização</title>
 
 <script>
 /* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
@@ -188,7 +188,7 @@
 <div id="tela-bloqueada" class="bloqueado-acesso" style="display:none;">
   <div class="card">
     <h3>🚫 SEM ACESSO</h3>
-    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Lavagem.</p>
+    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Higienização.</p>
     <button class="btn-save" onclick="location.replace('porta.html')">⬅️ VOLTAR AO PORTAL</button>
   </div>
 </div>
@@ -196,7 +196,7 @@
 <div id="app" class="container" style="display:none;">
 
   <div class="top-bar">
-    <h1>🚿 CONTROLE DE LAVAGEM
+    <h1>🚿 CONTROLE DE HIGIENIZAÇÃO
       <small id="top-user-info">—</small>
     </h1>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -210,7 +210,7 @@
   </div>
 
   <div class="nav-tabs">
-    <button id="btn-tab-solicitar" class="tab-btn" onclick="switchTab('solicitar')">📝 SOLICITAR LAVAGEM</button>
+    <button id="btn-tab-solicitar" class="tab-btn" onclick="switchTab('solicitar')">📝 SOLICITAR HIGIENIZAÇÃO</button>
     <button id="btn-tab-pendentes" class="tab-btn" style="display:none;" onclick="switchTab('pendentes')">⏳ PENDENTES / EM ANDAMENTO</button>
     <button id="btn-tab-historico" class="tab-btn" onclick="switchTab('historico')">📋 HISTÓRICO</button>
     <button id="btn-tab-config" class="tab-btn" style="display:none;" onclick="switchTab('config')">⚙️ CONFIGURAÇÕES</button>
@@ -219,7 +219,7 @@
   <!-- ========== TAB: SOLICITAR ========== -->
   <div id="tab-solicitar">
     <div class="card">
-      <h3>📝 NOVA SOLICITAÇÃO DE LAVAGEM</h3>
+      <h3>📝 NOVA SOLICITAÇÃO DE HIGIENIZAÇÃO</h3>
       <div class="grid-form">
         <div>
           <label>VEÍCULO (PLACA) — DIGITE PARA BUSCAR</label>
@@ -288,7 +288,7 @@
   <!-- ========== TAB: HISTÓRICO ========== -->
   <div id="tab-historico" style="display:none;">
     <div class="card">
-      <h3>📋 HISTÓRICO DE LAVAGENS</h3>
+      <h3>📋 HISTÓRICO DE HIGIENIZAÇÕES</h3>
       <div class="grid-form" style="margin-bottom:15px;">
         <div>
           <label>FILTRAR POR STATUS</label>
@@ -315,10 +315,10 @@
   <!-- ========== TAB: CONFIGURAÇÕES (master) ========== -->
   <div id="tab-config" style="display:none;">
     <div class="card">
-      <h3>⚙️ CONFIGURAÇÕES DA LAVAGEM</h3>
+      <h3>⚙️ CONFIGURAÇÕES DA HIGIENIZAÇÃO</h3>
       <div class="grid-form">
         <div>
-          <label>LIMITE MÁXIMO DE LAVAGENS POR DIA (GERAL)</label>
+          <label>LIMITE MÁXIMO DE HIGIENIZAÇÕES POR DIA (GERAL)</label>
           <input type="number" id="cfg-limite-geral" min="0" placeholder="Ex: 20 (0 = sem limite)">
         </div>
         <div>
@@ -335,7 +335,7 @@
         </div>
       </div>
       <div style="margin-top:15px;">
-        <label>DIAS PERMITIDOS PARA LAVAGEM</label>
+        <label>DIAS PERMITIDOS PARA HIGIENIZAÇÃO</label>
         <div class="checkbox-dias" id="cfg-dias-permitidos">
           <label><input type="checkbox" value="dom"> DOM</label>
           <label><input type="checkbox" value="seg"> SEG</label>
@@ -553,7 +553,7 @@
       (horaAtual < configLavagem.horarioInicio || horaAtual > configLavagem.horarioFim);
 
     if ((foraDoDia || foraDoHorario) && configLavagem.permitirForaHorario === false) {
-      return { ok: false, motivo: '⛔ Solicitações de lavagem só são permitidas dentro do horário/dias configurados (' +
+      return { ok: false, motivo: '⛔ Solicitações de higienização só são permitidas dentro do horário/dias configurados (' +
         (configLavagem.horarioInicio || '—') + ' às ' + (configLavagem.horarioFim || '—') + ', dias: ' +
         (configLavagem.diasPermitidos || []).join(', ') + ').' };
     }
@@ -596,7 +596,7 @@
         status: 'pendente',
         observacoes: obs || ''
       });
-      mostrarNotificacao('✅ LAVAGEM SOLICITADA! AGUARDANDO APROVAÇÃO.', 'success');
+      mostrarNotificacao('✅ HIGIENIZAÇÃO SOLICITADA! AGUARDANDO APROVAÇÃO.', 'success');
       registrarAuditoria('LAVAGEM_SOLICITADA', { placa: placa, secretaria: secretaria });
       document.getElementById('lav-placa').value = '';
       document.getElementById('lav-motorista').value = '';
@@ -611,7 +611,7 @@
     if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
     try {
       await db.ref('lavagens/' + id).update({ status: 'aprovado', analisadoPor: loginUser, dataAnalise: new Date().toISOString() });
-      mostrarNotificacao('✅ LAVAGEM APROVADA!', 'success');
+      mostrarNotificacao('✅ HIGIENIZAÇÃO APROVADA!', 'success');
       registrarAuditoria('LAVAGEM_APROVADA', { id: id });
     } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
   }
@@ -622,17 +622,17 @@
     if (motivo === null) return;
     try {
       await db.ref('lavagens/' + id).update({ status: 'rejeitado', analisadoPor: loginUser, dataAnalise: new Date().toISOString(), motivoRejeicao: motivo || '' });
-      mostrarNotificacao('✅ LAVAGEM REJEITADA!', 'success');
+      mostrarNotificacao('✅ HIGIENIZAÇÃO REJEITADA!', 'success');
       registrarAuditoria('LAVAGEM_REJEITADA', { id: id, motivo: motivo });
     } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
   }
 
   async function executarLavagem(id) {
     if (!podeAprovar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
-    if (!confirm('Confirmar que a lavagem foi executada?')) return;
+    if (!confirm('Confirmar que a higienização foi executada?')) return;
     try {
       await db.ref('lavagens/' + id).update({ status: 'executado', executadoPor: loginUser, dataExecucao: new Date().toISOString() });
-      mostrarNotificacao('✅ LAVAGEM MARCADA COMO EXECUTADA!', 'success');
+      mostrarNotificacao('✅ HIGIENIZAÇÃO MARCADA COMO EXECUTADA!', 'success');
       registrarAuditoria('LAVAGEM_EXECUTADA', { id: id });
     } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
   }
@@ -687,7 +687,7 @@
         '<td>' + fmtData(l.dataAnalise) + '</td>' +
         '<td><button class="btn-action btn-executar" onclick="executarLavagem(\'' + l.id + '\')">🧽 MARCAR EXECUTADA</button></td>' +
       '</tr>'
-    )).join('') : '<tr><td colspan="6" style="text-align:center;color:#64748b;">Nenhuma lavagem aprovada aguardando execução.</td></tr>';
+    )).join('') : '<tr><td colspan="6" style="text-align:center;color:#64748b;">Nenhuma higienização aprovada aguardando execução.</td></tr>';
   }
 
   function renderHistoricoLavagens() {
