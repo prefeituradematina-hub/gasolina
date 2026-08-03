@@ -2989,12 +2989,18 @@
       </button>
       <button id="btn-tab-analytics" class="tab-btn" onclick="switchTab('analytics')">📈 ANÁLISES</button>
       <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
-      <button id="btn-tab-users" class="tab-btn" style="display:none;" onclick="switchTab('usuarios')">⚙️ CONFIGURAÇÕES</button>
       <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
       <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
+      <button id="btn-tab-users" class="tab-btn" style="display:none; font-size:22px; padding:8px 14px; line-height:1;" onclick="switchTab('usuarios')" title="Configurações">
+        ⚙️
+      </button>
+      <label class="theme-toggle" title="Alternar tema claro/escuro">
+        <input type="checkbox" id="theme-toggle" onchange="toggleDarkMode()">
+        <span class="theme-slider"></span>
+      </label>
       <button id="btn-toggle-som" class="tab-btn" onclick="toggleSomNotificacao()" 
               style="font-size: 18px; padding: 8px 12px;" 
               title="Ativar/Desativar som de notificações">
