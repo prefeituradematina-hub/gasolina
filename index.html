@@ -2399,6 +2399,9 @@
           <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;" title="Com esta opção marcada, o usuário tem TODAS as funções de administrador dentro do Controle de Frota (todas as secretarias, entradas de atrasados, prorrogações, importação, saída em lote).">
             <input type="checkbox" id="edit-frota-admin" style="width:18px; height:18px; cursor:pointer;"> 👑 Admin da Frota
           </label>
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-lavagem" style="width:18px; height:18px; cursor:pointer;"> 🚿 Controle de Lavagem
+          </label>
         </div>
       </div>
       <div id="edit-field-limit">
@@ -4132,6 +4135,9 @@
             </label>
             <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;" title="Com esta opção marcada, o usuário tem TODAS as funções de administrador dentro do Controle de Frota (todas as secretarias, entradas de atrasados, prorrogações, importação, saída em lote).">
               <input type="checkbox" id="new-frota-admin" style="width:18px; height:18px; cursor:pointer;"> 👑 Admin da Frota
+            </label>
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-lavagem" style="width:18px; height:18px; cursor:pointer;"> 🚿 Controle de Lavagem
             </label>
           </div>
         </div>
@@ -11956,6 +11962,8 @@
     const acessoFrota    = document.getElementById('new-acesso-frota').checked;
     const _nfa = document.getElementById('new-frota-admin');
     const frotaAdmin     = _nfa ? _nfa.checked : false;
+    const _nal = document.getElementById('new-acesso-lavagem');
+    const acessoLavagem  = _nal ? _nal.checked : false;
     
     // dadosUsuario declarado ANTES dos blocos que o modificam
     const dadosUsuario = {
@@ -11969,6 +11977,7 @@
       acessoGasolina: acessoGasolina,
       acessoFrota:    acessoFrota,
       frotaAdmin:     frotaAdmin,
+      acessoLavagem:  acessoLavagem,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
@@ -12035,6 +12044,7 @@
       var _ag = document.getElementById('new-acesso-gasolina'); if(_ag) _ag.checked = true;
       var _af = document.getElementById('new-acesso-frota'); if(_af) _af.checked = true;
       var _fa = document.getElementById('new-frota-admin'); if(_fa) _fa.checked = false;
+      var _al = document.getElementById('new-acesso-lavagem'); if(_al) _al.checked = false;
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -12779,6 +12789,7 @@
       // (frentista e autorizador entravam como admin na frota)
       var _efa = document.getElementById('edit-frota-admin');
       if(_efa) _efa.checked = (u.frotaAdmin === true) || (u.frotaAdmin == null && (u.role === 'frentista' || u.role === 'autorizador'));
+      var _eal = document.getElementById('edit-acesso-lavagem'); if(_eal) _eal.checked = (u.acessoLavagem === true);
       
       // Carregar dados de frentista se aplicável
       if (u.role === 'frentista') {
@@ -12871,9 +12882,11 @@
     var _sag = document.getElementById('edit-acesso-gasolina');
     var _saf = document.getElementById('edit-acesso-frota');
     var _sfa = document.getElementById('edit-frota-admin');
+    var _sal = document.getElementById('edit-acesso-lavagem');
     dadosAtualizados.acessoGasolina = _sag ? _sag.checked : true;
     dadosAtualizados.acessoFrota = _saf ? _saf.checked : true;
     dadosAtualizados.frotaAdmin = _sfa ? _sfa.checked : false;
+    dadosAtualizados.acessoLavagem = _sal ? _sal.checked : false;
     
     if (role === 'frentista') {
       const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;

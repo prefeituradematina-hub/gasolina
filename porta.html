@@ -13,6 +13,7 @@
   --ink:#1e293b; --muted:#64748b;
   --gas-a:#f59e0b; --gas-b:#ef4444;
   --car-a:#3b82f6; --car-b:#667eea;
+  --wash-a:#06b6d4; --wash-b:#0891b2;
 }
 body{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -81,7 +82,7 @@ body{
 .btn-sair:hover{background:#fef2f2;transform:translateY(-1px)}
 .hub h1{font-size:26px;text-align:center;margin:26px 0 6px}
 .hub-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:36px}
-.modulos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px}
+.modulos{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}
 .modulo{
   border:2px solid #e2e8f0;border-radius:20px;padding:38px 26px;text-align:center;
   cursor:pointer;text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
@@ -109,6 +110,7 @@ body{
 }
 .modulo.gas{--ma:var(--gas-a);--mb:var(--gas-b)}
 .modulo.frota{--ma:var(--car-a);--mb:var(--car-b)}
+.modulo.lavagem{--ma:var(--wash-a);--mb:var(--wash-b)}
 .modulo.diarias{--ma:#10b981;--mb:#059669}
 .modulo.bloqueado{cursor:not-allowed;opacity:.55;filter:grayscale(.7)}
 .modulo.bloqueado:hover{transform:none;box-shadow:none;border-color:#e2e8f0}
@@ -178,6 +180,13 @@ body{
         <div class="mod-icone">🚗</div>
         <h2>Controle de Frota</h2>
         <p>Entradas e saídas de veículos, agendamentos, motoristas e manutenções.</p>
+        <span class="mod-entrar">ACESSAR →</span>
+        <span class="mod-cadeado">🔒 SEM ACESSO</span>
+      </a>
+      <a class="modulo lavagem" id="card-lavagem" href="lavagem.html">
+        <div class="mod-icone">🚿</div>
+        <h2>Controle de Lavagem</h2>
+        <p>Solicitação, aprovação e controle das lavagens dos veículos da frota municipal.</p>
         <span class="mod-entrar">ACESSAR →</span>
         <span class="mod-cadeado">🔒 SEM ACESSO</span>
       </a>
@@ -292,6 +301,7 @@ function logar(){
         postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
         acessoGasolina: user.acessoGasolina !== false,
         acessoFrota: user.acessoFrota !== false,
+        acessoLavagem: user.acessoLavagem === true,
         frotaAdmin: (user.frotaAdmin === undefined ? null : user.frotaAdmin),
         permissoes: user.permissoes || null
       };
@@ -322,11 +332,14 @@ function mostrarHub(s){
   var d = s.dados || {};
   var podeGas = ehMaster || (d.acessoGasolina !== false);
   var podeFrota = ehMaster || (d.acessoFrota !== false);
+  var podeLavagem = ehMaster || (d.acessoLavagem === true);
 
   configurarCardHub(document.getElementById('card-gasolina'), podeGas, 'index.html',
     'Acesso ao Controle de Combustível não liberado para o seu usuário.');
   configurarCardHub(document.getElementById('card-frota'), podeFrota, 'veiculos.html',
     'Acesso ao Controle de Frota não liberado para o seu usuário.');
+  configurarCardHub(document.getElementById('card-lavagem'), podeLavagem, 'lavagem.html',
+    'Acesso ao Controle de Lavagem não liberado para o seu usuário.');
 }
 
 // Habilita ou bloqueia visualmente um card do hub
