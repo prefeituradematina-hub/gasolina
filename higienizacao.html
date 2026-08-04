@@ -342,7 +342,7 @@
           <input type="number" id="cfg-limite-geral" min="0" placeholder="Ex: 20 (0 = sem limite)">
         </div>
         <div>
-          <label>LIMITE DIÁRIO POR SECRETARIA</label>
+          <label>LIMITE DIÁRIO POR SECRETARIA (PADRÃO)</label>
           <input type="number" id="cfg-limite-secretaria" min="0" placeholder="Ex: 3 (0 = sem limite)">
         </div>
         <div>
@@ -387,6 +387,18 @@
       </p>
       <div id="cfg-limites-secretaria" style="display:grid; gap:10px;"></div>
       <button class="btn-save" onclick="salvarConfigLavagem()">💾 SALVAR LIMITES POR SECRETARIA</button>
+    </div>
+
+    <!-- NOVO: Limites DIÁRIOS individuais por secretaria — aditivo, substitui o "LIMITE DIÁRIO POR SECRETARIA" geral -->
+    <div class="card">
+      <h3>📆 LIMITE DIÁRIO POR SECRETARIA (INDIVIDUALIZADO)</h3>
+      <p style="font-size:11px;color:#64748b;margin-bottom:15px;text-transform:none;">
+        Opcional. Se uma secretaria tiver um limite diário específico aqui, ele vale no lugar do "LIMITE DIÁRIO POR
+        SECRETARIA" geral (configurado acima) para essa secretaria. Secretarias sem limite definido (ou com valor 0)
+        continuam usando o limite geral, normalmente.
+      </p>
+      <div id="cfg-limites-diarios-secretaria" style="display:grid; gap:10px;"></div>
+      <button class="btn-save" onclick="salvarConfigLavagem()">💾 SALVAR LIMITES DIÁRIOS POR SECRETARIA</button>
     </div>
   </div>
 
@@ -547,12 +559,14 @@
     horarioFim: '',
     diasPermitidos: [],
     permitirForaHorario: true,
-    limitesPorSecretaria: {}
+    limitesPorSecretaria: {},
+    limitesDiariosPorSecretaria: {}
   };
   db.ref('config/lavagem').on('value', snap => {
     const val = snap.val();
     if (val) configLavagem = Object.assign(configLavagem, val);
     if (!configLavagem.limitesPorSecretaria) configLavagem.limitesPorSecretaria = {};
+    if (!configLavagem.limitesDiariosPorSecretaria) configLavagem.limitesDiariosPorSecretaria = {};
     atualizarInfoRegras();
     atualizarPainelLimiteSecretaria();
     if (podeAprovar) preencherFormConfig();
@@ -609,6 +623,21 @@
       chk.checked = (configLavagem.diasPermitidos || []).includes(chk.value);
     });
     renderCamposLimitePorSecretaria();
+    renderCamposLimiteDiarioPorSecretaria();
+  }
+
+  // NOVO: monta um campo numérico por secretaria cadastrada, para o limite DIÁRIO individual
+  function renderCamposLimiteDiarioPorSecretaria() {
+    const container = document.getElementById('cfg-limites-diarios-secretaria');
+    if (!container) return;
+    const limites = configLavagem.limitesDiariosPorSecretaria || {};
+    container.innerHTML = SECRETARIAS_LAVAGEM.map(sec => (
+      '<div style="display:flex; align-items:center; gap:12px;">' +
+        '<label style="flex:1; margin:0; font-size:12px;">' + sec + '</label>' +
+        '<input type="number" min="0" class="cfg-limite-diario-sec-input" data-secretaria="' + sec + '" ' +
+          'value="' + (limites[sec] || '') + '" placeholder="Usa o limite geral" style="max-width:180px; margin:0;">' +
+      '</div>'
+    )).join('');
   }
 
   // NOVO: monta um campo numérico por secretaria cadastrada, para o limite mensal individual
@@ -634,6 +663,12 @@
       const v = parseInt(inp.value) || 0;
       if (v > 0) limitesPorSecretaria[inp.dataset.secretaria] = v;
     });
+    // NOVO: limites diários individualizados por secretaria
+    const limitesDiariosPorSecretaria = {};
+    document.querySelectorAll('.cfg-limite-diario-sec-input').forEach(inp => {
+      const v = parseInt(inp.value) || 0;
+      if (v > 0) limitesDiariosPorSecretaria[inp.dataset.secretaria] = v;
+    });
     const novaConfig = {
       limiteDiarioGeral: parseInt(document.getElementById('cfg-limite-geral').value) || 0,
       limiteDiarioSecretaria: parseInt(document.getElementById('cfg-limite-secretaria').value) || 0,
@@ -641,7 +676,8 @@
       horarioFim: document.getElementById('cfg-horario-fim').value || '',
       diasPermitidos: dias,
       permitirForaHorario: document.getElementById('cfg-permitir-fora-horario').checked,
-      limitesPorSecretaria: limitesPorSecretaria
+      limitesPorSecretaria: limitesPorSecretaria,
+      limitesDiariosPorSecretaria: limitesDiariosPorSecretaria
     };
     try {
       await db.ref('config/lavagem').set(novaConfig);
@@ -691,10 +727,14 @@
       if (daSecretariaNoMes >= limiteEspecifico) {
         return { ok: false, motivo: '⛔ Limite mensal de higienizações da secretaria "' + secretaria + '" já foi atingido (' + limiteEspecifico + ').' };
       }
-    } else if (configLavagem.limiteDiarioSecretaria > 0) {
+    } else if (configLavagem.limiteDiarioSecretaria > 0 || (configLavagem.limitesDiariosPorSecretaria || {})[secretaria] > 0) {
+      // NOVO: limite diário também pode ser individualizado por secretaria.
+      // Prioridade: limite diário específico da secretaria > limite diário geral (comportamento antigo).
+      const limiteDiarioEspecifico = (configLavagem.limitesDiariosPorSecretaria || {})[secretaria] || 0;
+      const limiteDiarioAplicado = limiteDiarioEspecifico > 0 ? limiteDiarioEspecifico : configLavagem.limiteDiarioSecretaria;
       const daSecretariaHoje = lavagensHoje.filter(l => l.secretaria === secretaria).length;
-      if (daSecretariaHoje >= configLavagem.limiteDiarioSecretaria) {
-        return { ok: false, motivo: '⛔ Limite diário de lavagens da secretaria "' + secretaria + '" já foi atingido (' + configLavagem.limiteDiarioSecretaria + ').' };
+      if (daSecretariaHoje >= limiteDiarioAplicado) {
+        return { ok: false, motivo: '⛔ Limite diário de lavagens da secretaria "' + secretaria + '" já foi atingido (' + limiteDiarioAplicado + ').' };
       }
     }
     return { ok: true };
