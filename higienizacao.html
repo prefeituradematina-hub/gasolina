@@ -393,12 +393,29 @@
 </div>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
-    authDomain: "tabela-gasolina.firebaseapp.com",
-    databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
-    projectId: "tabela-gasolina"
-  };
+  // Fase 3: configuração do Firebase vem de firebase-config.json (se existir), com fallback
+  // total pro valor de sempre.
+  function carregarFirebaseConfig(){
+    var fallback = {
+      apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
+      authDomain: "tabela-gasolina.firebaseapp.com",
+      databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
+      projectId: "tabela-gasolina"
+    };
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'firebase-config.json', false);
+      xhr.send(null);
+      if (xhr.status === 200 && xhr.responseText) {
+        var cfg = JSON.parse(xhr.responseText);
+        if (cfg && cfg.apiKey && cfg.databaseURL) return cfg;
+      }
+    } catch(e) {
+      console.warn('firebase-config.json não encontrado/inválido — usando configuração padrão embutida.', e);
+    }
+    return fallback;
+  }
+  const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
   
@@ -406,6 +423,11 @@
   db.ref('config/personalizacao').once('value').then(function(snap) {
     const cfg = snap.val();
     if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Higienização';
+    if (cfg && cfg.faviconBase64) {
+      let linkFav = document.querySelector('link[rel="icon"]');
+      if (!linkFav) { linkFav = document.createElement('link'); linkFav.rel = 'icon'; document.head.appendChild(linkFav); }
+      linkFav.href = cfg.faviconBase64;
+    }
   }).catch(function(){});
 
   // ── Sessão (mesmo padrão dos outros módulos) ──

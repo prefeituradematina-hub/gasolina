@@ -269,6 +269,17 @@ body{
     </div>
 
     <div class="cfg-secao">
+      <h3>🔖 Favicon</h3>
+      <div class="cfg-logo-preview" id="cfg-favicon-preview" style="width:48px;height:48px;"><span style="font-size:9px;color:#94a3b8;">Padrão</span></div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;">ENVIAR ÍCONE (PNG quadrado, até ~100KB)</label>
+        <input type="file" id="cfg-favicon-arquivo" accept="image/*" onchange="prevalizarFaviconConfig(this)">
+      </div>
+      <button type="button" class="btn-cfg-secundario" style="margin-top:10px;" onclick="removerFaviconConfig()">🗑️ Remover favicon</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Aparece automaticamente na aba do navegador em todas as telas do sistema (portal e os 3 módulos).</p>
+    </div>
+
+    <div class="cfg-secao">
       <h3>🎨 Personalização</h3>
       <div class="cfg-grid">
         <div><label>NOME DO SISTEMA</label><input type="text" id="cfg-nome-sistema" placeholder="Portal de Sistemas"></div>
@@ -285,12 +296,30 @@ body{
 
 <script>
 // ── FIREBASE (mesmo banco dos dois sistemas) ─────────────────
-firebase.initializeApp({
-  apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
-  authDomain: "tabela-gasolina.firebaseapp.com",
-  databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
-  projectId: "tabela-gasolina"
-});
+// Fase 3: a configuração agora vem de firebase-config.json (se existir), para permitir
+// instalar o sistema em outra prefeitura só trocando esse arquivo — sem mexer no código.
+// Se o arquivo não existir/estiver inválido, usa exatamente a configuração de sempre.
+function carregarFirebaseConfig(){
+  var fallback = {
+    apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
+    authDomain: "tabela-gasolina.firebaseapp.com",
+    databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
+    projectId: "tabela-gasolina"
+  };
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'firebase-config.json', false); // síncrono, de propósito — precisa estar pronto antes do resto do script
+    xhr.send(null);
+    if (xhr.status === 200 && xhr.responseText) {
+      var cfg = JSON.parse(xhr.responseText);
+      if (cfg && cfg.apiKey && cfg.databaseURL) return cfg;
+    }
+  } catch(e) {
+    console.warn('firebase-config.json não encontrado/ inválido — usando configuração padrão embutida.', e);
+  }
+  return fallback;
+}
+firebase.initializeApp(carregarFirebaseConfig());
 var db = firebase.database();
 var SESSAO_KEY = 'sessao_global';
 var SESSAO_DURACAO = 12 * 60 * 60 * 1000; // 12 horas
@@ -300,6 +329,7 @@ var SESSAO_DURACAO = 12 * 60 * 60 * 1000; // 12 horas
 var configPrefeituraAtual = {};
 var configPersonalizacaoAtual = {};
 var logoTemporarioBase64 = undefined; // undefined = não mexeu; null = remover; string = novo logo
+var faviconTemporarioBase64 = undefined; // idem, para o favicon
 
 function aplicarConfigGeralNaTela(prefeitura, personalizacao) {
   prefeitura = prefeitura || {};
@@ -320,6 +350,15 @@ function aplicarConfigGeralNaTela(prefeitura, personalizacao) {
   if (personalizacao.logoBase64) {
     var imgLogin = document.querySelector('.login-logo');
     if (imgLogin) imgLogin.src = personalizacao.logoBase64;
+  }
+  if (personalizacao.faviconBase64) {
+    var linkFavicon = document.querySelector('link[rel="icon"]');
+    if (!linkFavicon) {
+      linkFavicon = document.createElement('link');
+      linkFavicon.rel = 'icon';
+      document.head.appendChild(linkFavicon);
+    }
+    linkFavicon.href = personalizacao.faviconBase64;
   }
   if (personalizacao.corPrincipal) document.documentElement.style.setProperty('--grad-a', personalizacao.corPrincipal);
   if (personalizacao.corSecundaria) document.documentElement.style.setProperty('--grad-b', personalizacao.corSecundaria);
@@ -364,6 +403,12 @@ function abrirModalConfigGeral() {
     ? '<img src="' + z.logoBase64 + '">'
     : '<span style="font-size:11px;color:#94a3b8;">Sem logo</span>';
 
+  faviconTemporarioBase64 = undefined;
+  var previewFavicon = document.getElementById('cfg-favicon-preview');
+  previewFavicon.innerHTML = z.faviconBase64
+    ? '<img src="' + z.faviconBase64 + '">'
+    : '<span style="font-size:9px;color:#94a3b8;">Padrão</span>';
+
   document.getElementById('modal-config-geral').classList.add('aberto');
 }
 function fecharModalConfigGeral() {
@@ -391,6 +436,27 @@ function removerLogoConfig() {
   document.getElementById('cfg-logo-preview').innerHTML = '<span style="font-size:11px;color:#94a3b8;">Sem logo</span>';
 }
 
+function prevalizarFaviconConfig(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 120 * 1024) {
+    alert('⚠️ Ícone muito grande (máx. ~100KB). Escolha um arquivo menor.');
+    input.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    faviconTemporarioBase64 = e.target.result;
+    document.getElementById('cfg-favicon-preview').innerHTML = '<img src="' + faviconTemporarioBase64 + '">';
+  };
+  reader.readAsDataURL(file);
+}
+function removerFaviconConfig() {
+  faviconTemporarioBase64 = null;
+  document.getElementById('cfg-favicon-arquivo').value = '';
+  document.getElementById('cfg-favicon-preview').innerHTML = '<span style="font-size:9px;color:#94a3b8;">Padrão</span>';
+}
+
 function salvarConfigGeral() {
   var novaPrefeitura = {
     nomePrefeitura: document.getElementById('cfg-nome-prefeitura').value.trim(),
@@ -409,7 +475,8 @@ function salvarConfigGeral() {
     corPrincipal: document.getElementById('cfg-cor-principal').value,
     corSecundaria: document.getElementById('cfg-cor-secundaria').value,
     textoRodape: document.getElementById('cfg-texto-rodape').value.trim(),
-    logoBase64: logoTemporarioBase64 === undefined ? (configPersonalizacaoAtual.logoBase64 || null) : logoTemporarioBase64
+    logoBase64: logoTemporarioBase64 === undefined ? (configPersonalizacaoAtual.logoBase64 || null) : logoTemporarioBase64,
+    faviconBase64: faviconTemporarioBase64 === undefined ? (configPersonalizacaoAtual.faviconBase64 || null) : faviconTemporarioBase64
   };
 
   db.ref('config/prefeitura').set(novaPrefeitura)
