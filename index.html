@@ -2619,6 +2619,10 @@
           <input type="checkbox" id="edit-vei-terceiros" style="width:16px; height:16px; margin:0;">
           🚚 Veículo de Terceiros
         </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400; margin-top:8px;">
+          <input type="checkbox" id="edit-vei-ativo" checked style="width:16px; height:16px; margin:0;">
+          ✅ Veículo Ativo (desmarque para bloquear abastecimentos deste veículo)
+        </label>
       </div>
     </div>
     <button class="btn-save" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);" onclick="salvarEdicaoVeiculo()">💾 SALVAR ALTERAÇÕES</button>
@@ -4071,6 +4075,10 @@
             <input type="checkbox" id="vei-terceiros" style="width:16px; height:16px; margin:0;">
             🚚 Veículo de Terceiros
           </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:400; margin-top:8px;">
+            <input type="checkbox" id="vei-ativo" checked style="width:16px; height:16px; margin:0;">
+            ✅ Veículo Ativo (desmarque para bloquear abastecimentos deste veículo)
+          </label>
         </div>
       </div>
       <button class="btn-save" onclick="salvarVeiculo()" style="background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);">➕ SALVAR VEÍCULO</button>
@@ -4403,6 +4411,14 @@
             <span>
               <strong style="display:block; font-weight:600;">Validar quilometragem</strong>
               <span style="font-size:11px; color:#64748b; text-transform:none;">Bloqueia o abastecimento se o KM digitado for menor que o último KM registrado do veículo.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+            <input type="checkbox" id="regra-veiculo-inativo" style="width:18px; height:18px; margin-top:2px;">
+            <span>
+              <strong style="display:block; font-weight:600;">Bloquear veículos marcados como inativos</strong>
+              <span style="font-size:11px; color:#64748b; text-transform:none;">Impede abastecimento de qualquer veículo desmarcado como "Ativo" no cadastro (Configurações → Frota). Vale para todos os perfis, inclusive admin.</span>
             </span>
           </label>
         </div>
@@ -4802,6 +4818,7 @@
     frequenciaCpf: true,            // limite de frequência de uso do mesmo CPF (mensal/semanal)
     secretarioProprioVeiculo: true, // secretário só abastece veículo da própria secretaria
     validarKm: true,                // avisar/bloquear quando o KM digitado é menor que o último
+    bloquearVeiculoInativo: true,   // NOVO: bloquear abastecimento de veículo marcado como inativo
     horarioExpedienteAtivo: false,  // hoje NÃO existe bloqueio de horário — fica desligado por padrão
     horarioInicio: '',
     horarioFim: ''
@@ -4816,6 +4833,7 @@
     document.getElementById('regra-frequencia-cpf').checked = regrasNegocio.frequenciaCpf !== false;
     document.getElementById('regra-secretario-proprio-veiculo').checked = regrasNegocio.secretarioProprioVeiculo !== false;
     document.getElementById('regra-validar-km').checked = regrasNegocio.validarKm !== false;
+    document.getElementById('regra-veiculo-inativo').checked = regrasNegocio.bloquearVeiculoInativo !== false;
     document.getElementById('regra-horario-expediente').checked = regrasNegocio.horarioExpedienteAtivo === true;
     document.getElementById('regra-horario-inicio').value = regrasNegocio.horarioInicio || '';
     document.getElementById('regra-horario-fim').value = regrasNegocio.horarioFim || '';
@@ -4829,6 +4847,7 @@
       frequenciaCpf: document.getElementById('regra-frequencia-cpf').checked,
       secretarioProprioVeiculo: document.getElementById('regra-secretario-proprio-veiculo').checked,
       validarKm: document.getElementById('regra-validar-km').checked,
+      bloquearVeiculoInativo: document.getElementById('regra-veiculo-inativo').checked,
       horarioExpedienteAtivo: document.getElementById('regra-horario-expediente').checked,
       horarioInicio: document.getElementById('regra-horario-inicio').value || '',
       horarioFim: document.getElementById('regra-horario-fim').value || ''
@@ -7017,6 +7036,15 @@
     
     if (!isGas && (!dados.placa || dados.placa.length < 7)) {
       erros.push("❌ PLACA INVÁLIDA");
+    }
+    // NOVO (Fase 2): bloquear veículo marcado como inativo. Vale pra todos os perfis
+    // (não só secretário) — se o veículo não existir no cadastro, essa checagem não se aplica
+    // (isso já é tratado em verificarVeiculoAntesDeAbastecer / veiculoNaoCadastrado).
+    if (regrasNegocio.bloquearVeiculoInativo !== false && !isGas && dados.placa) {
+      const veiculoCad = (veiculos || []).find(v => normPlaca(v.placa) === normPlaca(dados.placa));
+      if (veiculoCad && veiculoCad.ativo === false) {
+        erros.push("❌ ESTE VEÍCULO ESTÁ MARCADO COMO INATIVO — ABASTECIMENTO BLOQUEADO");
+      }
     }
     if (!dados.posto || dados.posto === "") {
       erros.push("❌ SELECIONE O POSTO");
@@ -15377,6 +15405,7 @@
     const combustivel = document.getElementById('vei-combustivel').value;
     const ano = document.getElementById('vei-ano').value;
     const terceiros = document.getElementById('vei-terceiros').checked;
+    const ativo = document.getElementById('vei-ativo').checked;
     
     if (!placa || placa.length < 7) {
       mostrarNotificacao("❌ PLACA INVÁLIDA!", "error");
@@ -15404,6 +15433,7 @@
       combustivel: combustivel,
       ano: ano,
       terceiros: terceiros,
+      ativo: ativo,
       cadastradoEm: Date.now()
     }).then(() => {
       registrarAuditoria('VEICULO_CADASTRADO', { placa: placa, terceiros: terceiros });
@@ -15420,6 +15450,7 @@
       document.getElementById('vei-combustivel').value = 'GASOLINA';
       document.getElementById('vei-ano').value = '';
       document.getElementById('vei-terceiros').checked = false;
+      document.getElementById('vei-ativo').checked = true;
       listVeiculos();
     }).catch(error => {
       mostrarNotificacao("❌ ERRO AO SALVAR: " + error.message, "error");
@@ -15448,6 +15479,7 @@
       document.getElementById('edit-vei-combustivel').value = v.combustivel || 'GASOLINA';
       document.getElementById('edit-vei-ano').value = v.ano || '';
       document.getElementById('edit-vei-terceiros').checked = !!v.terceiros;
+      document.getElementById('edit-vei-ativo').checked = v.ativo !== false;
       document.getElementById('modal-edit-veiculo').style.display = 'flex';
     });
   }
@@ -15488,6 +15520,7 @@
     const combustivel = document.getElementById('edit-vei-combustivel').value;
     const ano = document.getElementById('edit-vei-ano').value;
     const terceiros = document.getElementById('edit-vei-terceiros').checked;
+    const ativo = document.getElementById('edit-vei-ativo').checked;
     
     if (!id) {
       mostrarNotificacao("❌ VEÍCULO NÃO ENCONTRADO!", "error");
@@ -15510,9 +15543,10 @@
       cpfMotorista: cpfMotorista,
       combustivel: combustivel,
       ano: ano,
-      terceiros: terceiros
+      terceiros: terceiros,
+      ativo: ativo
     }).then(() => {
-      registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria, terceiros: terceiros });
+      registrarAuditoria('VEICULO_EDITADO', { id: id, secretaria: secretaria, terceiros: terceiros, ativo: ativo });
       mostrarNotificacao("✅ VEÍCULO ATUALIZADO COM SUCESSO!", "success");
       const placaEditada = (document.getElementById('edit-vei-placa').value || '').trim();
       if (placaEditada) sincronizarTerceirosComFrota(placaEditada, terceiros);
@@ -15841,7 +15875,7 @@
         algumExibido = true;
         tbody.innerHTML += `
           <tr>
-            <td><b>${v.placa}</b></td>
+            <td><b>${v.placa}</b>${v.ativo === false ? ' <span class="badge badge-danger" title="Abastecimento bloqueado enquanto estiver inativo">⛔ INATIVO</span>' : ''}</td>
             <td>${v.modelo || v.descricao || '---'}</td>
             <td>${v.secretaria || 'COMPARTILHADO'}</td>
             <td>${v.motorista || 'VÁRIOS'}</td>
