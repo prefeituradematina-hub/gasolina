@@ -3683,6 +3683,8 @@
     
     <div class="card">
       <h3>⏳ SOLICITAÇÕES PENDENTES DE APROVAÇÃO</h3>
+      <!-- NOVO: sub-abas por posto — só aparecem quando o usuário tem acesso a mais de um posto -->
+      <div class="nav-tabs no-print" id="pendentes-subtabs-posto" style="display:none; margin-bottom:15px;"></div>
       <div class="table-wrapper">
         <table>
           <thead>
@@ -7451,9 +7453,23 @@
    * Vale para TODOS os perfis (admin, secretário, autorizador, frentista).
    * @returns {Promise<boolean>} true = pode prosseguir | false = bloqueado
    */
-  async function validarCpfAntesDeAbastecer(cpf) {
+  async function validarCpfAntesDeAbastecer(cpf, ehDiversas) {
     var cpfN = _normCPF(cpf);
     if(cpfN.length < 11) return true;   // sem CPF válido informado: não aplica a regra
+
+    // NOVO: se o CPF pertence a um MOTORISTA CADASTRADO, ele fica isento do limite mensal —
+    // motorista abastece normalmente, quantas vezes for necessário.
+    // EXCEÇÃO: em abastecimento pela cota DIVERSAS, a regra continua valendo normalmente,
+    // mesmo que o CPF seja de motorista cadastrado.
+    if (!ehDiversas) {
+      try {
+        var motoristaCad = await buscarMotoristaPorCpf(cpfN);
+        if (motoristaCad) {
+          console.log('[CPF] ' + cpfN + ' é de motorista cadastrado — isento do limite mensal (abastecimento comum).');
+          return true;
+        }
+      } catch(e) { console.warn('[CPF] falha ao consultar motoristas, aplicando regra padrão:', e); }
+    }
 
     // 1) Bloqueio: mesmo CPF já abasteceu no mês por outro usuário
     //    EXCEÇÃO: CPF com autorização ATIVA em "CPF Autorizados" não entra nessa checagem —
@@ -7533,10 +7549,22 @@
    * Vale para TODOS os perfis. Apenas o usuário master pode liberar mesmo assim (fica em auditoria).
    * @returns {Promise<boolean>} true = pode prosseguir | false = bloqueado
    */
-  async function validarFrequenciaCPF(cpf) {
+  async function validarFrequenciaCPF(cpf, ehDiversas) {
     var cpfN = _normCPF(cpf);
     if (cpfN.length < 11) return true; // sem CPF válido informado: não aplica a regra
     if (regrasNegocio.frequenciaCpf === false) return true; // NOVO (Fase 2): regra desativada em Configurações
+
+    // NOVO: CPF de MOTORISTA CADASTRADO é isento do limite de frequência em abastecimento comum.
+    // Na cota DIVERSAS a regra continua valendo normalmente, mesmo para motorista cadastrado.
+    if (!ehDiversas) {
+      try {
+        var motoristaCadFreq = await buscarMotoristaPorCpf(cpfN);
+        if (motoristaCadFreq) {
+          console.log('[CPF] ' + cpfN + ' é de motorista cadastrado — isento do limite de frequência (abastecimento comum).');
+          return true;
+        }
+      } catch(e) { console.warn('[CPF] falha ao consultar motoristas (frequência), aplicando regra padrão:', e); }
+    }
     
     var ehMaster = String(loginUser||'').toLowerCase() === 'master';
     var autorizado = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
@@ -7831,7 +7859,10 @@
       }
 
       // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
-      const cpfLiberado = await validarCpfAntesDeAbastecer(dados.cpf);
+      // NOVO: motorista cadastrado é isento do limite mensal, EXCETO quando o abastecimento
+      // usa a cota DIVERSAS — aí a regra continua valendo normalmente.
+      const usaCotaDiversas = (dados.secretaria === 'DIVERSAS');
+      const cpfLiberado = await validarCpfAntesDeAbastecer(dados.cpf, usaCotaDiversas);
       if (!cpfLiberado) {
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
@@ -7839,7 +7870,7 @@
       }
       
       // 🔒 LIMITE DE FREQUÊNCIA POR CPF — semanal para autorizados, mensal para os demais
-      const freqCpfLiberado = await validarFrequenciaCPF(dados.cpf);
+      const freqCpfLiberado = await validarFrequenciaCPF(dados.cpf, usaCotaDiversas);
       if (!freqCpfLiberado) {
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
@@ -10656,8 +10687,71 @@
     }, 5000);
   }
   
+  // NOVO: sub-abas de posto na tela de pendentes. Guarda qual posto está selecionado
+  // ('' = todos). Só tem efeito visual para quem enxerga mais de um posto; para quem só
+  // tem um posto (ou nenhum vínculo), a tela continua exatamente como sempre foi.
+  let filtroPostoPendentes = '';
+
+  function selecionarPostoPendentes(nomePosto) {
+    filtroPostoPendentes = nomePosto;
+    atualizarPendentes();
+  }
+  window.selecionarPostoPendentes = selecionarPostoPendentes;
+
+  // Monta as sub-abas com os postos que o usuário efetivamente enxerga nos pendentes.
+  function montarSubtabsPostoPendentes(pendentesDoUsuario) {
+    const barra = document.getElementById('pendentes-subtabs-posto');
+    if (!barra) return;
+
+    // Postos que o usuário pode ver: usa o vínculo quando existir; senão, deduz do que está na tela.
+    let nomesPostos = [];
+    if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
+      nomesPostos = userPostosVinculados.map(v => {
+        const p = postos.find(p => p.id === v || _postoMatch(p.nome, v));
+        return p ? p.nome : v;
+      });
+    } else if (userRole === 'frentista' && userPostoVinculado) {
+      nomesPostos = []; // frentista só tem um posto — não faz sentido abas
+    } else {
+      // admin/master: mostra abas dos postos que aparecem nas pendências atuais
+      nomesPostos = Array.from(new Set(pendentesDoUsuario.map(x => x.posto).filter(Boolean)));
+    }
+    nomesPostos = Array.from(new Set(nomesPostos.filter(Boolean)));
+
+    // Menos de 2 postos: não faz sentido separar em abas — mantém a tela original
+    if (nomesPostos.length < 2) {
+      barra.style.display = 'none';
+      barra.innerHTML = '';
+      filtroPostoPendentes = '';
+      return;
+    }
+
+    const contar = nome => pendentesDoUsuario.filter(x => _postoMatch(x.posto, nome)).length;
+
+    barra.style.display = 'flex';
+    barra.innerHTML =
+      `<button class="tab-btn ${filtroPostoPendentes === '' ? 'active' : ''}" onclick="selecionarPostoPendentes('')">
+         📋 TODOS (${pendentesDoUsuario.length})
+       </button>` +
+      nomesPostos.map(nome => `
+        <button class="tab-btn ${filtroPostoPendentes === nome ? 'active' : ''}"
+                onclick="selecionarPostoPendentes('${String(nome).replace(/'/g, "\\'")}')">
+          ⛽ ${nome} (${contar(nome)})
+        </button>
+      `).join('');
+  }
+
   function atualizarPendentes() {
-    let pendentes = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
+    const pendentesTotais = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
+
+    // NOVO: monta as sub-abas de posto (usa a lista completa, para os contadores ficarem certos)
+    montarSubtabsPostoPendentes(pendentesTotais);
+
+    // NOVO: a tabela mostra só o posto da aba selecionada; o badge e as notificações
+    // continuam usando o TOTAL, exatamente como antes (para não perder avisos do outro posto).
+    let pendentes = filtroPostoPendentes
+      ? pendentesTotais.filter(x => _postoMatch(x.posto, filtroPostoPendentes))
+      : pendentesTotais;
     
     const tbody = document.getElementById('pendentes-body');
     const badge = document.getElementById('pendentes-badge');
@@ -10668,16 +10762,16 @@
     }
     
     // Detectar novas pendências e notificar
-    if (pendentes.length > ultimoTotalPendentes && ultimoTotalPendentes > 0) {
-      const novasPendencias = pendentes.length - ultimoTotalPendentes;
+    if (pendentesTotais.length > ultimoTotalPendentes && ultimoTotalPendentes > 0) {
+      const novasPendencias = pendentesTotais.length - ultimoTotalPendentes;
       tocarSomNotificacao();
       mostrarNotificacaoVisual(novasPendencias);
     }
-    ultimoTotalPendentes = pendentes.length;
+    ultimoTotalPendentes = pendentesTotais.length;
     
-    if (pendentes.length > 0 && badge) {
+    if (pendentesTotais.length > 0 && badge) {
       badge.style.display = 'flex';
-      badge.textContent = pendentes.length;
+      badge.textContent = pendentesTotais.length;
       
       // Fazer o badge piscar se houver pendências
       badge.style.animation = 'pulse-badge 2s infinite';
@@ -10686,7 +10780,9 @@
     }
     
     if (pendentes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
+      tbody.innerHTML = filtroPostoPendentes
+        ? `<tr><td colspan="13" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE EM ${filtroPostoPendentes}</td></tr>`
+        : '<tr><td colspan="12" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
       return;
     }
     tbody.innerHTML = pendentes.map(d => `
@@ -10717,6 +10813,9 @@
           ` : `
             <span style="color: #64748b; font-size: 11px; font-style: italic;">👁️ Visualização</span>
           `}
+          ${temPermissao('deletar_abastecimento') ? `
+            <button class="btn-action" style="background:#7c2d12; color:#fff;" title="Excluir definitivamente esta solicitação" onclick="deletar('${d.id}')">🗑️ EXCLUIR</button>
+          ` : ''}
         </td>
       </tr>
     `).join('');
@@ -17200,11 +17299,12 @@
     }
 
     // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
-    const cpfLiberadoDiv = await validarCpfAntesDeAbastecer(cpfBeneficiado);
+    // (true = cota DIVERSAS: motorista cadastrado NÃO fica isento aqui)
+    const cpfLiberadoDiv = await validarCpfAntesDeAbastecer(cpfBeneficiado, true);
     if (!cpfLiberadoDiv) return;
     
     // 🔒 LIMITE DE FREQUÊNCIA POR CPF — semanal para autorizados, mensal para os demais
-    const freqCpfLiberadoDiv = await validarFrequenciaCPF(cpfBeneficiado);
+    const freqCpfLiberadoDiv = await validarFrequenciaCPF(cpfBeneficiado, true);
     if (!freqCpfLiberadoDiv) return;
     
     if (!postoId) {
