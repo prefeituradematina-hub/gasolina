@@ -14,6 +14,8 @@
   --gas-a:#f59e0b; --gas-b:#ef4444;
   --car-a:#3b82f6; --car-b:#667eea;
   --wash-a:#06b6d4; --wash-b:#0891b2;
+  --doc-a:#6366f1; --doc-b:#4338ca;
+  --folder-a:#f59e0b; --folder-b:#d97706;
 }
 body{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -111,6 +113,8 @@ body{
 .modulo.gas{--ma:var(--gas-a);--mb:var(--gas-b)}
 .modulo.frota{--ma:var(--car-a);--mb:var(--car-b)}
 .modulo.lavagem{--ma:var(--wash-a);--mb:var(--wash-b)}
+.modulo.oficios{--ma:var(--doc-a);--mb:var(--doc-b)}
+.modulo.logos{--ma:var(--folder-a);--mb:var(--folder-b)}
 .modulo.diarias{--ma:#10b981;--mb:#059669}
 .modulo.bloqueado{cursor:not-allowed;opacity:.55;filter:grayscale(.7)}
 .modulo.bloqueado:hover{transform:none;box-shadow:none;border-color:#e2e8f0}
@@ -224,10 +228,23 @@ body{
         <span class="mod-entrar">ACESSAR →</span>
         <span class="mod-cadeado">🔒 SEM ACESSO</span>
       </a>
+      <a class="modulo oficios" id="card-oficios" href="oficios.html">
+        <div class="mod-icone">📄</div>
+        <h2>Controle de Ofícios</h2>
+        <p>Numeração automática de ofícios, com sequência própria por secretaria e por ano.</p>
+        <span class="mod-entrar">ACESSAR →</span>
+        <span class="mod-cadeado">🔒 SEM ACESSO</span>
+      </a>
       <a class="modulo diarias" id="card-diarias" href="https://vx.app.br/matina/login/" target="_blank" rel="noopener">
         <div class="mod-icone">📋</div>
         <h2>Controle de Diárias</h2>
         <p>Solicitação, aprovação e controle de diárias dos servidores municipais.</p>
+        <span class="mod-entrar">ACESSAR →</span>
+      </a>
+      <a class="modulo logos" id="card-logos" href="https://1drv.ms/f/c/edc4e20996ce63ac/IgAE2gJPGe7CRYBOSL13vh1TAUCOT9dGgWxISEeEJeyrVxE?e=2ZmAeW" target="_blank" rel="noopener">
+        <div class="mod-icone">📁</div>
+        <h2>Logos Oficiais</h2>
+        <p>Pasta compartilhada com as logomarcas oficiais da prefeitura e das secretarias.</p>
         <span class="mod-entrar">ACESSAR →</span>
       </a>
     </div>
@@ -581,6 +598,7 @@ function logar(){
         acessoGasolina: user.acessoGasolina !== false,
         acessoFrota: user.acessoFrota !== false,
         acessoLavagem: user.acessoLavagem === true,
+        acessoOficios: user.acessoOficios === true,
         frotaAdmin: (user.frotaAdmin === undefined ? null : user.frotaAdmin),
         permissoes: user.permissoes || null
       };
@@ -614,6 +632,7 @@ function mostrarHub(s){
   var podeGas = ehMaster || (d.acessoGasolina !== false);
   var podeFrota = ehMaster || (d.acessoFrota !== false);
   var podeLavagem = ehMaster || (d.acessoLavagem === true);
+  var podeOficios = ehMaster || (d.acessoOficios === true);
 
   configurarCardHub(document.getElementById('card-gasolina'), podeGas, 'index.html',
     'Acesso ao Controle de Combustível não liberado para o seu usuário.');
@@ -621,6 +640,8 @@ function mostrarHub(s){
     'Acesso ao Controle de Frota não liberado para o seu usuário.');
   configurarCardHub(document.getElementById('card-lavagem'), podeLavagem, 'higienizacao.html',
     'Acesso ao Controle de Higienização não liberado para o seu usuário.');
+  configurarCardHub(document.getElementById('card-oficios'), podeOficios, 'oficios.html',
+    'Acesso ao Controle de Ofícios não liberado para o seu usuário.');
 }
 
 // Habilita ou bloqueia visualmente um card do hub
