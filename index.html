@@ -3137,7 +3137,7 @@
         </div>
         <div>
           <label>POSTO *</label>
-          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal()">
+          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal(); aplicarFiltroCombustivelPorPosto()">
             <option value="">SELECIONE O POSTO</option>
           </select>
         </div>
@@ -5670,6 +5670,10 @@
     }
   }
   
+  // NOVO: guarda a última restrição buscada (postos/combustíveis do secretário), pra não
+  // precisar buscar de novo no Firebase toda vez que o usuário só troca o posto escolhido.
+  let _restricaoSecretarioCache = null;
+
   // Aplica restrições de posto e combustível com base na secretaria selecionada
   function aplicarRestricoesSecretaria() {
     const secretariaSelecionada = document.getElementById('f-sec').value;
@@ -5722,6 +5726,7 @@
       if (!secretario || !secretario.postosPermitidos || secretario.postosPermitidos.length === 0) {
         console.log('  ℹ️ Secretário não encontrado ou sem restrições configuradas');
         console.log('  • Restaurando todos os postos e combustíveis...');
+        _restricaoSecretarioCache = null;
         
         // Restaurar todos os postos
         Array.from(selectPosto.options).forEach(opt => opt.style.display = '');
@@ -5733,9 +5738,14 @@
 
       const postosPermitidos = secretario.postosPermitidos || [];
       const combustiveisPermitidos = secretario.combustiveisPermitidos || [];
+      const combustiveisPorPosto = secretario.combustiveisPorPosto || null;
 
       console.log('  • Postos permitidos:', postosPermitidos);
-      console.log('  • Combustíveis permitidos:', combustiveisPermitidos);
+      console.log('  • Combustíveis permitidos (união):', combustiveisPermitidos);
+
+      // Guarda pra reaplicar o filtro de combustível sempre que o posto escolhido mudar,
+      // sem precisar buscar o usuário de novo no Firebase.
+      _restricaoSecretarioCache = { postosPermitidos, combustiveisPermitidos, combustiveisPorPosto };
 
       // Filtrar opções de posto
       let algumPostoVisivel = false;
@@ -5754,22 +5764,49 @@
         selectPosto.value = '';
       }
 
-      // Filtrar combustíveis
-      Array.from(selectTipo.options).forEach(opt => {
-        if (!opt.value) { opt.style.display = ''; return; }
-        const permitido = combustiveisPermitidos.length === 0 || combustiveisPermitidos.includes(opt.value);
-        opt.style.display = permitido ? '' : 'none';
-      });
-
-      // Se combustível atual não é permitido, selecionar o primeiro permitido
-      const tipoAtual = selectTipo.value;
-      if (!combustiveisPermitidos.includes(tipoAtual) && combustiveisPermitidos.length > 0) {
-        selectTipo.value = combustiveisPermitidos[0];
-      }
+      // NOVO: o filtro de combustível agora considera o posto específico escolhido
+      // (se houver combustiveisPorPosto configurado); veja aplicarFiltroCombustivelPorPosto().
+      aplicarFiltroCombustivelPorPosto();
       
       console.log('  ✅ Restrições aplicadas');
       console.log('');
     });
+  }
+
+  // NOVO: filtra o select de combustível considerando o POSTO especificamente escolhido
+  // no momento (não apenas a união de todos os postos permitidos). Chamada tanto quando a
+  // secretaria muda quanto quando o posto muda, reaproveitando o cache já buscado.
+  // Retrocompatível: se o secretário não tiver combustiveisPorPosto configurado (cadastro
+  // antigo), cai automaticamente na lista plana combustiveisPermitidos, como já era.
+  function aplicarFiltroCombustivelPorPosto() {
+    const selectPosto = document.getElementById('f-posto');
+    const selectTipo = document.getElementById('f-tipo');
+    if (!selectPosto || !selectTipo) return;
+    if (userRole !== 'secretarios') return; // master/admin não têm restrição, já tratado antes
+    if (!_restricaoSecretarioCache) return; // sem restrição configurada, nada a filtrar
+
+    const { combustiveisPermitidos, combustiveisPorPosto } = _restricaoSecretarioCache;
+
+    const postoAtual = selectPosto.value;
+    const postoAtualObj = postos.find(p => p.nome === postoAtual);
+    const combustiveisDoPostoAtual = (postoAtualObj && combustiveisPorPosto && combustiveisPorPosto[postoAtualObj.id])
+      ? combustiveisPorPosto[postoAtualObj.id]
+      : null;
+
+    // Se o posto escolhido tem lista própria configurada, usa ela; senão cai na união (antigo).
+    const combustiveisParaFiltrar = combustiveisDoPostoAtual || combustiveisPermitidos;
+
+    Array.from(selectTipo.options).forEach(opt => {
+      if (!opt.value) { opt.style.display = ''; return; }
+      const permitido = combustiveisParaFiltrar.length === 0 || combustiveisParaFiltrar.includes(opt.value);
+      opt.style.display = permitido ? '' : 'none';
+    });
+
+    // Se combustível atual não é permitido, seleciona o primeiro permitido
+    const tipoAtual = selectTipo.value;
+    if (!combustiveisParaFiltrar.includes(tipoAtual) && combustiveisParaFiltrar.length > 0) {
+      selectTipo.value = combustiveisParaFiltrar[0];
+    }
   }
 
   // ==================== SISTEMA DE CPF PARA AVULSOS E VIPS ====================
@@ -11840,42 +11877,44 @@
     }
   }
   
-  function carregarCombustiveisPostoAutorizador() {
-    const postosSelecionados = Array.from(document.querySelectorAll('.posto-autorizador-novo:checked')).map(cb => cb.value);
+  // NOVO: combustíveis agrupados por posto (cada posto marcado tem sua própria lista),
+  // usando os dados já embutidos no checkbox (data-combs) — sem nova busca ao Firebase.
+  function carregarCombustiveisPostoAutorizador(combsPorPostoPreSelecionados) {
+    const checkboxesPostos = document.querySelectorAll('.posto-autorizador-novo:checked');
     const container = document.getElementById('lista-combustiveis-autorizador');
     
-    if (postosSelecionados.length === 0) {
+    if (checkboxesPostos.length === 0) {
       container.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">⬆️ Selecione ao menos um posto acima para ver os combustíveis disponíveis</p>';
       return;
     }
     
-    container.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">⏳ Carregando combustíveis dos postos...</p>';
+    const presSelPorPosto = combsPorPostoPreSelecionados || {};
     
-    Promise.all(postosSelecionados.map(id => db.ref('postos/' + id).once('value'))).then(snapshots => {
-      const combustiveisUnicos = new Set();
-      snapshots.forEach(snap => {
-        if (snap.exists()) Object.keys(snap.val().precos || {}).forEach(c => combustiveisUnicos.add(c));
-      });
+    container.innerHTML = Array.from(checkboxesPostos).map(cb => {
+      const postoId = cb.value;
+      const postoNome = cb.dataset.nome;
+      const combsDoPosto = (cb.dataset.combs || '').split('|').filter(Boolean);
+      const jaSelecionados = presSelPorPosto[postoId] || [];
       
-      if (combustiveisUnicos.size === 0) {
-        container.innerHTML = '<p style="color: #ef4444; font-size: 11px; margin: 0;">❌ Nenhum combustível cadastrado nos postos selecionados</p>';
-        return;
+      if (combsDoPosto.length === 0) {
+        return `<div style="margin-bottom:10px;"><strong style="font-size:11px;">⛽ ${postoNome}</strong>
+          <p style="color:#94a3b8; font-size:10px; margin:4px 0 0;">Nenhum combustível cadastrado neste posto</p></div>`;
       }
-      
-      let html = '<p style="color: #22c55e; font-size: 11px; margin: 0 0 10px 0;">✅ Combustíveis disponíveis nos postos selecionados:</p>';
-      Array.from(combustiveisUnicos).sort().forEach(comb => {
-        html += `
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
-            <input type="checkbox" class="comb-autorizador-novo" value="${comb}"> 
-            <strong>${comb}</strong>
-          </label>
-        `;
-      });
-      container.innerHTML = html;
-    }).catch(error => {
-      console.error("❌ Erro ao buscar postos:", error);
-      container.innerHTML = '<p style="color: #ef4444; font-size: 11px; margin: 0;">❌ Erro ao carregar combustíveis</p>';
-    });
+      return `
+        <div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+          <strong style="font-size:11px; display:block; margin-bottom:6px;">⛽ ${postoNome}</strong>
+          <div style="display:flex; flex-wrap:wrap; gap:8px 16px;">
+            ${combsDoPosto.map(comb => `
+              <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
+                <input type="checkbox" class="comb-autorizador-novo" value="${comb}" data-posto="${postoId}"
+                  ${jaSelecionados.includes(comb) ? 'checked' : ''}>
+                🛢️ ${comb}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
   
   function carregarPostosParaAutorizador() {
@@ -11893,14 +11932,19 @@
         p.id = c.key;
         todosPostos.push(p);
       });
-      container.innerHTML = todosPostos.map(p => `
-        <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
-          <input type="checkbox" class="posto-autorizador-novo" value="${p.id}">
-          ⛽ ${p.nome}
-        </label>
-      `).join('');
+      container.innerHTML = todosPostos.map(p => {
+        const combs = Object.keys(p.precos || {});
+        return `
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
+            <input type="checkbox" class="posto-autorizador-novo" value="${p.id}"
+              data-nome="${p.nome}"
+              data-combs="${combs.join('|')}">
+            ⛽ ${p.nome}
+          </label>
+        `;
+      }).join('');
       document.querySelectorAll('.posto-autorizador-novo').forEach(cb => {
-        cb.addEventListener('change', carregarCombustiveisPostoAutorizador);
+        cb.addEventListener('change', () => carregarCombustiveisPostoAutorizador());
       });
     });
   }
@@ -11908,7 +11952,7 @@
   // NOVO: mesma lógica "tudo de uma vez" já usada em carregarPostosSecretarioEdit —
   // busca os postos, já marca os salvos e liga os listeners, sem risco de uma parte
   // rodar depois da outra e apagar a seleção (era exatamente o bug de antes).
-  function carregarPostosAutorizadorEdit(postosVinculados, combustiveisJaSelecionados) {
+  function carregarPostosAutorizadorEdit(postosVinculados, combustiveisPorPostoJaSelecionados) {
     const container = document.getElementById('lista-postos-autorizador-edit');
     container.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>';
     db.ref('postos').once('value', snap => {
@@ -11923,84 +11967,63 @@
         todosPostos.push(p);
       });
       container.innerHTML = todosPostos.map(p => {
+        const combs = Object.keys(p.precos || {});
         const checked = postosVinculados && postosVinculados.includes(p.id) ? 'checked' : '';
         return `
           <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
-            <input type="checkbox" class="posto-autorizador-edit" value="${p.id}" ${checked}>
+            <input type="checkbox" class="posto-autorizador-edit" value="${p.id}"
+              data-nome="${p.nome}"
+              data-combs="${combs.join('|')}"
+              ${checked}>
             ⛽ ${p.nome}
           </label>
         `;
       }).join('');
       document.querySelectorAll('.posto-autorizador-edit').forEach(cb => {
-        cb.addEventListener('change', carregarCombustiveisPostoAutorizadorEdit);
+        cb.addEventListener('change', () => carregarCombustiveisPostoAutorizadorEdit());
       });
-      if (postosVinculados && postosVinculados.length > 0) {
-        carregarCombustiveisPostoAutorizadorEditComPreSelecao(combustiveisJaSelecionados || []);
-      }
+      carregarCombustiveisPostoAutorizadorEdit(combustiveisPorPostoJaSelecionados || {});
     });
   }
 
-  // Variante que, depois de buscar os combustíveis dos postos marcados, já vem com os
-  // combustíveis salvos anteriormente marcados também (usada só na abertura da edição).
-  function carregarCombustiveisPostoAutorizadorEditComPreSelecao(combustiveisJaSelecionados) {
-    const postosSelecionados = Array.from(document.querySelectorAll('.posto-autorizador-edit:checked')).map(cb => cb.value);
-    const container = document.getElementById('lista-combustiveis-autorizador-edit');
-    if (postosSelecionados.length === 0) return;
-
-    Promise.all(postosSelecionados.map(id => db.ref('postos/' + id).once('value'))).then(snapshots => {
-      const combustiveisUnicos = new Set();
-      snapshots.forEach(snap => {
-        if (snap.exists()) Object.keys(snap.val().precos || {}).forEach(c => combustiveisUnicos.add(c));
-      });
-      let html = '';
-      Array.from(combustiveisUnicos).sort().forEach(comb => {
-        const checked = combustiveisJaSelecionados.includes(comb) ? 'checked' : '';
-        html += `
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
-            <input type="checkbox" class="comb-autorizador-edit" value="${comb}" ${checked}> ${comb}
-          </label>
-        `;
-      });
-      container.innerHTML = html || '<p style="color: #64748b; font-size: 11px; margin: 0;">Nenhum combustível disponível</p>';
-    });
-  }
-
-  function carregarCombustiveisPostoAutorizadorEdit() {
-    const postosSelecionados = Array.from(document.querySelectorAll('.posto-autorizador-edit:checked')).map(cb => cb.value);
+  // NOVO: combustíveis agrupados por posto — mesmo padrão do secretário, sem busca extra
+  // ao Firebase (usa os dados já embutidos no checkbox via data-combs).
+  function carregarCombustiveisPostoAutorizadorEdit(combsPorPostoPreSelecionados) {
+    const checkboxesPostos = document.querySelectorAll('.posto-autorizador-edit:checked');
     const container = document.getElementById('lista-combustiveis-autorizador-edit');
     
-    if (postosSelecionados.length === 0) {
+    if (checkboxesPostos.length === 0) {
       container.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">⬆️ Selecione ao menos um posto acima para ver os combustíveis disponíveis</p>';
       return;
     }
     
-    container.innerHTML = '<p style="color: #64748b; font-size: 11px; margin: 0;">⏳ Carregando combustíveis dos postos...</p>';
+    const presSelPorPosto = combsPorPostoPreSelecionados || {};
     
-    Promise.all(postosSelecionados.map(id => db.ref('postos/' + id).once('value'))).then(snapshots => {
-      const combustiveisUnicos = new Set();
-      snapshots.forEach(snap => {
-        if (snap.exists()) Object.keys(snap.val().precos || {}).forEach(c => combustiveisUnicos.add(c));
-      });
+    container.innerHTML = Array.from(checkboxesPostos).map(cb => {
+      const postoId = cb.value;
+      const postoNome = cb.dataset.nome;
+      const combsDoPosto = (cb.dataset.combs || '').split('|').filter(Boolean);
+      const jaSelecionados = presSelPorPosto[postoId] || [];
       
-      if (combustiveisUnicos.size === 0) {
-        container.innerHTML = '<p style="color: #ef4444; font-size: 11px; margin: 0;">❌ Nenhum combustível cadastrado nos postos selecionados</p>';
-        return;
+      if (combsDoPosto.length === 0) {
+        return `<div style="margin-bottom:10px;"><strong style="font-size:11px;">⛽ ${postoNome}</strong>
+          <p style="color:#94a3b8; font-size:10px; margin:4px 0 0;">Nenhum combustível cadastrado neste posto</p></div>`;
       }
-      
-      let html = '<p style="color: #22c55e; font-size: 11px; margin: 0 0 10px 0;">✅ Combustíveis disponíveis nos postos selecionados:</p>';
-      Array.from(combustiveisUnicos).sort().forEach(comb => {
-        html += `
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
-            <input type="checkbox" class="comb-autorizador-edit" value="${comb}"> 
-            <strong>${comb}</strong>
-          </label>
-        `;
-      });
-      container.innerHTML = html;
-    }).catch(error => {
-      console.error("❌ Erro ao buscar postos (edit):", error);
-      container.innerHTML = '<p style="color: #ef4444; font-size: 11px; margin: 0;">❌ Erro ao carregar combustíveis</p>';
-    });
+      return `
+        <div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+          <strong style="font-size:11px; display:block; margin-bottom:6px;">⛽ ${postoNome}</strong>
+          <div style="display:flex; flex-wrap:wrap; gap:8px 16px;">
+            ${combsDoPosto.map(comb => `
+              <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
+                <input type="checkbox" class="comb-autorizador-edit" value="${comb}" data-posto="${postoId}"
+                  ${jaSelecionados.includes(comb) ? 'checked' : ''}>
+                🛢️ ${comb}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
   
   function toggleEditFields(skipCarregarPostosSecretario) {
@@ -12047,29 +12070,7 @@
     // Carregar postos quando selecionar autorizador
     // (só carrega do zero se não vier do editarUsuario, que já popula com os dados salvos)
     if (isAutorizador && !skipCarregarPostosSecretario) {
-      const container = document.getElementById('lista-postos-autorizador-edit');
-      container.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Carregando postos...</p>';
-      db.ref('postos').once('value', snap => {
-        if (!snap.exists()) {
-          container.innerHTML = '<p style="color:#64748b; font-size:11px; margin:0;">Nenhum posto cadastrado</p>';
-          return;
-        }
-        const todosPostos = [];
-        snap.forEach(c => {
-          const p = c.val();
-          p.id = c.key;
-          todosPostos.push(p);
-        });
-        container.innerHTML = todosPostos.map(p => `
-          <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
-            <input type="checkbox" class="posto-autorizador-edit" value="${p.id}">
-            ⛽ ${p.nome}
-          </label>
-        `).join('');
-        document.querySelectorAll('.posto-autorizador-edit').forEach(cb => {
-          cb.addEventListener('change', carregarCombustiveisPostoAutorizadorEdit);
-        });
-      });
+      carregarPostosAutorizadorEdit([], {});
     } else if (!isAutorizador) {
       const postoSelectFrentista = document.getElementById('edit-posto-vinc-frentista');
       if (postoSelectFrentista) postoSelectFrentista.value = '';
@@ -12118,11 +12119,14 @@
         cb.addEventListener('change', () => atualizarCombustiveisSecretarioEdit(window._combsEditPreSel));
       });
       
-      atualizarCombustiveisSecretarioEdit(combsJaSelecionados || []);
+      atualizarCombustiveisSecretarioEdit(combsJaSelecionados || {});
     });
   }
 
-  function atualizarCombustiveisSecretarioEdit(combsPreSelecionados) {
+  // NOVO: agora mostra os combustíveis AGRUPADOS POR POSTO — cada posto marcado ganha
+  // sua própria lista de combustíveis, em vez de uma lista única somando tudo.
+  // combsPorPostoPreSelecionados: { [idDoPosto]: ['GASOLINA', ...] }
+  function atualizarCombustiveisSecretarioEdit(combsPorPostoPreSelecionados) {
     const checkboxesPostos = document.querySelectorAll('.posto-secretario-edit:checked');
     const containerCombs = document.getElementById('lista-combustiveis-secretario-edit');
     
@@ -12131,23 +12135,34 @@
       return;
     }
     
-    const combsDisponiveis = new Set();
-    checkboxesPostos.forEach(cb => {
-      const combs = (cb.dataset.combs || '').split('|').filter(Boolean);
-      combs.forEach(c => combsDisponiveis.add(c));
-    });
+    const presSelPorPosto = combsPorPostoPreSelecionados || {};
     
-    const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
-    
-    containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
-      <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
-        <input type="checkbox" class="comb-secretario-edit" value="${comb}"
-          ${presSel.includes(comb) ? 'checked' : ''}>
-        🛢️ ${comb}
-      </label>
-    `).join('');
-    // Após primeiro render, limpar os pré-selecionados para não interferir
-    window._combsEditPreSel = [];
+    containerCombs.innerHTML = Array.from(checkboxesPostos).map(cb => {
+      const postoId = cb.value;
+      const postoNome = cb.dataset.nome;
+      const combsDoPosto = (cb.dataset.combs || '').split('|').filter(Boolean);
+      const jaSelecionados = presSelPorPosto[postoId] || [];
+      
+      if (combsDoPosto.length === 0) {
+        return `<div style="margin-bottom:10px;"><strong style="font-size:11px;">⛽ ${postoNome}</strong>
+          <p style="color:#94a3b8; font-size:10px; margin:4px 0 0;">Nenhum combustível cadastrado neste posto</p></div>`;
+      }
+      return `
+        <div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+          <strong style="font-size:11px; display:block; margin-bottom:6px;">⛽ ${postoNome}</strong>
+          <div style="display:flex; flex-wrap:wrap; gap:8px 16px;">
+            ${combsDoPosto.map(comb => `
+              <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
+                <input type="checkbox" class="comb-secretario-edit" value="${comb}" data-posto="${postoId}"
+                  ${jaSelecionados.includes(comb) ? 'checked' : ''}>
+                🛢️ ${comb}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+    window._combsEditPreSel = {};
   }
 
   function carregarPostosSecretarioNew(postosJaSelecionados, combsJaSelecionados) {
@@ -12186,11 +12201,12 @@
         cb.addEventListener('change', () => atualizarCombustiveisSecretarioNew(window._combsNewPreSel));
       });
       
-      atualizarCombustiveisSecretarioNew(combsJaSelecionados || []);
+      atualizarCombustiveisSecretarioNew(combsJaSelecionados || {});
     });
   }
 
-  function atualizarCombustiveisSecretarioNew(combsPreSelecionados) {
+  // NOVO: combustíveis agrupados por posto — mesmo padrão da versão de edição.
+  function atualizarCombustiveisSecretarioNew(combsPorPostoPreSelecionados) {
     const checkboxesPostos = document.querySelectorAll('.posto-secretario-new:checked');
     const containerCombs = document.getElementById('lista-combustiveis-secretario-new');
     
@@ -12199,24 +12215,49 @@
       return;
     }
     
-    const combsDisponiveis = new Set();
-    checkboxesPostos.forEach(cb => {
-      const combs = (cb.dataset.combs || '').split('|').filter(Boolean);
-      combs.forEach(c => combsDisponiveis.add(c));
-    });
+    const presSelPorPosto = combsPorPostoPreSelecionados || {};
     
-    const presSel = Array.isArray(combsPreSelecionados) ? combsPreSelecionados : (combsPreSelecionados || '').split(',').filter(Boolean);
-    
-    containerCombs.innerHTML = Array.from(combsDisponiveis).sort().map(comb => `
-      <label style="display:flex; align-items:center; gap:7px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
-        <input type="checkbox" class="comb-secretario-new" value="${comb}"
-          ${presSel.includes(comb) ? 'checked' : ''}>
-        🛢️ ${comb}
-      </label>
-    `).join('');
-    window._combsNewPreSel = [];
+    containerCombs.innerHTML = Array.from(checkboxesPostos).map(cb => {
+      const postoId = cb.value;
+      const postoNome = cb.dataset.nome;
+      const combsDoPosto = (cb.dataset.combs || '').split('|').filter(Boolean);
+      const jaSelecionados = presSelPorPosto[postoId] || [];
+      
+      if (combsDoPosto.length === 0) {
+        return `<div style="margin-bottom:10px;"><strong style="font-size:11px;">⛽ ${postoNome}</strong>
+          <p style="color:#94a3b8; font-size:10px; margin:4px 0 0;">Nenhum combustível cadastrado neste posto</p></div>`;
+      }
+      return `
+        <div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+          <strong style="font-size:11px; display:block; margin-bottom:6px;">⛽ ${postoNome}</strong>
+          <div style="display:flex; flex-wrap:wrap; gap:8px 16px;">
+            ${combsDoPosto.map(comb => `
+              <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; cursor:pointer; margin:0;">
+                <input type="checkbox" class="comb-secretario-new" value="${comb}" data-posto="${postoId}"
+                  ${jaSelecionados.includes(comb) ? 'checked' : ''}>
+                🛢️ ${comb}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+    window._combsNewPreSel = {};
   }
   
+  // NOVO: agrupa checkboxes de combustível marcados (com data-posto) em { idDoPosto: [combustiveis] }.
+  // Reaproveitada tanto pelo Secretário quanto pelo Autorizador, no cadastro e na edição.
+  function agruparCombustiveisPorPosto(seletorClasse) {
+    const porPosto = {};
+    document.querySelectorAll(seletorClasse + ':checked').forEach(cb => {
+      const postoId = cb.dataset.posto;
+      if (!postoId) return;
+      if (!porPosto[postoId]) porPosto[postoId] = [];
+      porPosto[postoId].push(cb.value);
+    });
+    return porPosto;
+  }
+
   function addUsuario() {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA CRIAR USUÁRIOS!", "error");
@@ -12281,6 +12322,7 @@
     
     if (role === 'secretarios') {
       const postosPermitidos = Array.from(document.querySelectorAll('.posto-secretario-new:checked')).map(cb => cb.value);
+      const combustiveisPorPosto = agruparCombustiveisPorPosto('.comb-secretario-new');
       const combustiveisPermitidos = Array.from(document.querySelectorAll('.comb-secretario-new:checked')).map(cb => cb.value);
       if (postosPermitidos.length === 0) {
         mostrarNotificacao("❌ SELECIONE PELO MENOS UM POSTO PERMITIDO!", "error");
@@ -12291,7 +12333,8 @@
         return;
       }
       dadosUsuario.postosPermitidos = postosPermitidos;
-      dadosUsuario.combustiveisPermitidos = combustiveisPermitidos;
+      dadosUsuario.combustiveisPermitidos = combustiveisPermitidos; // mantido: união de todos os postos (compatibilidade)
+      dadosUsuario.combustiveisPorPosto = combustiveisPorPosto; // NOVO: combustível específico por posto
     }
     
     // Se for frentista, incluir posto vinculado
@@ -12318,6 +12361,7 @@
       document.querySelectorAll('.comb-autorizador-novo:checked').forEach(cb => {
         combustiveisAutorizados.push(cb.value);
       });
+      const combustiveisPorPosto = agruparCombustiveisPorPosto('.comb-autorizador-novo');
       
       if (combustiveisAutorizados.length === 0) {
         mostrarNotificacao("❌ SELECIONE PELO MENOS UM COMBUSTÍVEL QUE O AUTORIZADOR PODE LIBERAR!", "error");
@@ -12325,7 +12369,8 @@
       }
       
       dadosUsuario.postosVinculados = postosSelecionados; // Array de IDs
-      dadosUsuario.combustiveisAutorizados = combustiveisAutorizados;
+      dadosUsuario.combustiveisAutorizados = combustiveisAutorizados; // mantido: união de todos os postos (compatibilidade)
+      dadosUsuario.combustiveisPorPosto = combustiveisPorPosto; // NOVO: combustível específico por posto
     }
     
     db.ref('usuarios/' + usuario).set(dadosUsuario).then(() => {
@@ -13100,14 +13145,28 @@
       // Se for secretário, carregar postos e combustíveis já salvos
       if (u.role === 'secretarios') {
         const postosPermitidos = u.postosPermitidos || [];
-        const combustiveisPermitidos = u.combustiveisPermitidos || [];
-        carregarPostosSecretarioEdit(postosPermitidos, combustiveisPermitidos);
+        // NOVO: usa combustiveisPorPosto se já existir; se o usuário é antigo (só tem a lista
+        // plana combustiveisPermitidos), aplica essa mesma lista a cada posto como ponto de partida —
+        // o admin pode então separar por posto manualmente, sem perder o que já estava configurado.
+        let combustiveisPorPosto = u.combustiveisPorPosto || null;
+        if (!combustiveisPorPosto && u.combustiveisPermitidos) {
+          combustiveisPorPosto = {};
+          postosPermitidos.forEach(pid => { combustiveisPorPosto[pid] = u.combustiveisPermitidos; });
+        }
+        carregarPostosSecretarioEdit(postosPermitidos, combustiveisPorPosto || {});
       }
 
       // Se for autorizador, carregar postos e combustíveis já salvos (suporta múltiplos postos)
       if (u.role === 'autorizador') {
         const postosVinculados = u.postosVinculados || (u.postoVinculado ? [u.postoVinculado] : []);
-        carregarPostosAutorizadorEdit(postosVinculados, u.combustiveisAutorizados || []);
+        // NOVO: mesmo fallback do secretário — usuário antigo (só com a lista plana
+        // combustiveisAutorizados) recebe essa lista aplicada a cada posto como ponto de partida.
+        let combustiveisPorPosto = u.combustiveisPorPosto || null;
+        if (!combustiveisPorPosto && u.combustiveisAutorizados) {
+          combustiveisPorPosto = {};
+          postosVinculados.forEach(pid => { combustiveisPorPosto[pid] = u.combustiveisAutorizados; });
+        }
+        carregarPostosAutorizadorEdit(postosVinculados, combustiveisPorPosto || {});
       }
 
       document.getElementById('modal-edit').style.display = 'flex';
@@ -13173,6 +13232,7 @@
         return;
       }
       const postosPermitidos = Array.from(document.querySelectorAll('.posto-secretario-edit:checked')).map(cb => cb.value);
+      const combustiveisPorPosto = agruparCombustiveisPorPosto('.comb-secretario-edit');
       const combustiveisPermitidos = Array.from(document.querySelectorAll('.comb-secretario-edit:checked')).map(cb => cb.value);
       
       dadosAtualizados.limiteVictor = limiteVictor;
@@ -13182,7 +13242,8 @@
       dadosAtualizados.adicionalMatina = adicionalMatina;
       dadosAtualizados.secretariaVinculada = secretaria;
       dadosAtualizados.postosPermitidos = postosPermitidos;
-      dadosAtualizados.combustiveisPermitidos = combustiveisPermitidos;
+      dadosAtualizados.combustiveisPermitidos = combustiveisPermitidos; // mantido: união de todos os postos (compatibilidade)
+      dadosAtualizados.combustiveisPorPosto = combustiveisPorPosto; // NOVO: combustível específico por posto
       dadosAtualizados.postoVinculado = "";
       dadosAtualizados.combustiveisAutorizados = [];
     } else if (role === 'autorizador') {
@@ -13198,6 +13259,7 @@
       document.querySelectorAll('.comb-autorizador-edit:checked').forEach(cb => {
         combustiveisAutorizados.push(cb.value);
       });
+      const combustiveisPorPosto = agruparCombustiveisPorPosto('.comb-autorizador-edit');
       
       if (combustiveisAutorizados.length === 0) {
         mostrarNotificacao("❌ SELECIONE PELO MENOS UM COMBUSTÍVEL QUE O AUTORIZADOR PODE LIBERAR!", "error");
@@ -13207,7 +13269,8 @@
       // CORREÇÃO: Salvar array de postos
       dadosAtualizados.postosVinculados = postosSelecionados;
       dadosAtualizados.postoVinculado = ""; // Limpar campo antigo
-      dadosAtualizados.combustiveisAutorizados = combustiveisAutorizados;
+      dadosAtualizados.combustiveisAutorizados = combustiveisAutorizados; // mantido: união (compatibilidade)
+      dadosAtualizados.combustiveisPorPosto = combustiveisPorPosto; // NOVO: combustível específico por posto
       dadosAtualizados.limite = 0;
       dadosAtualizados.secretariaVinculada = "";
     } else {
