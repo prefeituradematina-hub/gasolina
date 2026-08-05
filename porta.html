@@ -84,7 +84,8 @@ body{
 .btn-sair:hover{background:#fef2f2;transform:translateY(-1px)}
 .hub h1{font-size:26px;text-align:center;margin:26px 0 6px}
 .hub-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:36px}
-.modulos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.modulos{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}
+.modulos .modulo{flex:0 1 150px}
 .modulo{
   border:2px solid #e2e8f0;border-radius:18px;padding:22px 14px;text-align:center;
   cursor:pointer;text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
@@ -129,7 +130,7 @@ body{
   .login-container{flex-direction:column}
   .login-left{padding:36px 20px}
   .login-box{padding:36px 26px}
-  .modulos{grid-template-columns:1fr}
+  .modulos .modulo{flex-basis:100%}
   .hub-card{padding:30px 22px 36px}
 }
 

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>Controle de Ofícios</title>
+
+<script>
+/* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
+(function(){
+  try{
+    var s = JSON.parse(localStorage.getItem('sessao_global'));
+    if(s && s.exp > Date.now()){
+      window.__SESSAO = s;
+      return;
+    }
+  }catch(e){}
+  location.replace('porta.html');
+})();
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<style>
+  :root {
+      --primary: #0f172a;
+      --accent: #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; }
+  body { background-color: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .top-bar h1 { font-size: 18px; margin: 0; color: var(--primary); }
+  .top-bar h1 small { display:block; font-size:11px; color:#64748b; font-weight:normal; margin-top:2px; }
+
+  .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 8px;
+      border: 1px solid #E5E7EB;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      margin-bottom: 20px;
+  }
+  .tab-btn {
+      flex: 1;
+      min-width: 92px;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+      color: #6B7280;
+      font-weight: 500;
+      font-size: 12px;
+      line-height: 1.3;
+      transition: all 0.15s;
+      white-space: normal;
+      position: relative;
+  }
+  .tab-btn.active { background: var(--accent); color: white; font-weight: 600; box-shadow: 0 1px 4px rgba(99,102,241,.25); }
+  .tab-btn:hover:not(.active) { background: #F3F4F6; color: #111827; }
+
+  .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+  }
+  .card h3 {
+      margin-top: 0;
+      color: var(--primary);
+      font-size: 18px;
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+  }
+
+  .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+  label { font-size: 10px; font-weight: bold; color: #64748b; display: block; margin-bottom: 5px; }
+  input, select, textarea {
+      width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      margin-bottom: 5px; transition: all 0.3s; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  }
+  textarea { text-transform: none; resize: vertical; min-height: 70px; }
+
+  .btn-save {
+      background: var(--accent); color: white; border: none; padding: 16px; border-radius: 10px;
+      cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: all 0.3s; font-size: 13px;
+  }
+  .btn-save:hover { background: #4f46e5; box-shadow: 0 2px 8px rgba(99,102,241,0.25); }
+  .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-logout {
+      background: var(--danger); color: white; padding: 12px 24px; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: bold; transition: all 0.3s;
+  }
+  .btn-logout:hover { background: #dc2626; transform: translateY(-1px); }
+
+  .btn-action { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; margin: 0 3px; font-size: 12px; font-weight:bold; transition: all 0.2s; }
+  .btn-action:hover { transform: scale(1.05); }
+  .btn-anular { background: var(--danger); color: white; }
+  .btn-excluir { background: #7c2d12; color: white; }
+
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 11px; }
+  th { background: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; font-weight: bold; }
+  td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
+
+  .status-tag { padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 9px; display: inline-block; }
+  .status-ativo { background: var(--success); color: #fff; }
+  .status-anulado { background: var(--danger); color: #fff; }
+
+  .numero-oficio-destaque {
+      text-align: center; padding: 24px; background: linear-gradient(135deg, var(--accent), #4f46e5);
+      color: white; border-radius: 12px; margin-bottom: 20px; display: none;
+  }
+  .numero-oficio-destaque .numero { font-size: 32px; font-weight: 900; letter-spacing: 1px; }
+  .numero-oficio-destaque .detalhe { font-size: 12px; opacity: .9; margin-top: 6px; }
+
+  .bloqueado-acesso { display:flex; align-items:center; justify-content:center; min-height:80vh; text-align:center; }
+  .bloqueado-acesso .card { max-width: 420px; }
+
+  @media (max-width: 768px) {
+      .nav-tabs { flex-wrap: wrap; }
+      .tab-btn { flex: 1 1 45%; min-width: 45%; }
+      table { min-width: 700px; }
+      input, select, textarea { font-size: 16px !important; }
+  }
+
+  /* ── MODO ESCURO (mesma chave 'theme' usada no resto do sistema) ── */
+  :root[data-theme="dark"] {
+      --primary: #f8fafc; --accent: #818cf8; --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+      --bg: #1e293b;
+  }
+  [data-theme="dark"] body { background-color: var(--bg); color: #e2e8f0; }
+  [data-theme="dark"] .card, [data-theme="dark"] .top-bar, [data-theme="dark"] .nav-tabs {
+      background-color: #334155; color: #e2e8f0; border-color: #475569;
+  }
+  [data-theme="dark"] .tab-btn { background: #475569; color: #e2e8f0; }
+  [data-theme="dark"] .tab-btn.active { background: var(--accent); color: #0f172a; }
+  [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+      background-color: #0f172a; color: #e2e8f0; border-color: #475569;
+  }
+  [data-theme="dark"] table { background-color: #334155; }
+  [data-theme="dark"] th { background-color: #0f172a; color:#e2e8f0; }
+  [data-theme="dark"] td { border-color: #475569; }
+  [data-theme="dark"] tr:hover { background-color: #475569; }
+
+  .theme-toggle { position: relative; display: inline-block; width: 46px; height: 24px; cursor:pointer; }
+  .theme-toggle input { opacity: 0; width: 0; height: 0; }
+  .theme-slider { position:absolute; inset:0; background:#cbd5e1; border-radius:24px; transition:.3s; }
+  .theme-slider:before { content:"☀️"; position:absolute; height:18px; width:18px; left:3px; top:3px; font-size:11px; line-height:18px; text-align:center; background:white; border-radius:50%; transition:.3s; }
+  input:checked + .theme-slider { background:#475569; }
+  input:checked + .theme-slider:before { transform: translateX(22px); content:"🌙"; }
+</style>
+</head>
+<body>
+
+<div id="tela-bloqueada" class="bloqueado-acesso" style="display:none;">
+  <div class="card">
+    <h3>🚫 SEM ACESSO</h3>
+    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Ofícios.</p>
+    <button class="btn-save" onclick="location.replace('porta.html')">⬅️ VOLTAR AO PORTAL</button>
+  </div>
+</div>
+
+<div id="app" class="container" style="display:none;">
+
+  <div class="top-bar">
+    <h1>📄 CONTROLE DE OFÍCIOS
+      <small id="top-user-info">—</small>
+    </h1>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+      <label class="theme-toggle" title="Alternar tema claro/escuro">
+        <input type="checkbox" id="theme-toggle" onchange="toggleDarkMode()">
+        <span class="theme-slider"></span>
+      </label>
+      <button class="btn-logout" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="location.href='porta.html'" title="Voltar ao painel inicial">🏠 INÍCIO</button>
+      <button class="btn-logout" onclick="confirmarSair()">🚪 SAIR</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button id="btn-tab-novo" class="tab-btn" onclick="switchTab('novo')">📝 NOVO OFÍCIO</button>
+    <button id="btn-tab-historico" class="tab-btn" onclick="switchTab('historico')">📋 OFÍCIOS REGISTRADOS</button>
+    <button id="btn-tab-contadores" class="tab-btn" style="display:none;" onclick="switchTab('contadores')">🔢 AJUSTAR CONTADORES</button>
+  </div>
+
+  <!-- ========== TAB: NOVO OFÍCIO ========== -->
+  <div id="tab-novo">
+    <div class="numero-oficio-destaque" id="numero-gerado-destaque">
+      <div class="numero" id="numero-gerado-texto"></div>
+      <div class="detalhe" id="numero-gerado-detalhe"></div>
+    </div>
+
+    <div class="card">
+      <h3>📝 NOVA SOLICITAÇÃO DE NÚMERO DE OFÍCIO</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:15px;text-transform:none;">
+        A numeração é automática e sequencial — <b>separada por secretaria e por ano</b>. Ao registrar, o sistema
+        gera o próximo número disponível para a sua secretaria naquele ano (ex: Nº 007/2026 — SAÚDE), sem risco de
+        repetir um número já usado, mesmo se dois usuários registrarem ao mesmo tempo.
+      </p>
+      <div class="grid-form">
+        <div>
+          <label>SECRETARIA</label>
+          <select id="of-secretaria">
+            <option value="">SELECIONE...</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+        <div>
+          <label>DATA DE EMISSÃO</label>
+          <input type="date" id="of-data">
+        </div>
+        <div>
+          <label>DESTINATÁRIO</label>
+          <input type="text" id="of-destinatario" placeholder="Ex: Câmara Municipal, Secretaria de Saúde do Estado...">
+        </div>
+      </div>
+      <div style="margin-top:15px;">
+        <label>ASSUNTO</label>
+        <textarea id="of-assunto" rows="3" placeholder="Resumo do assunto do ofício..."></textarea>
+      </div>
+      <button class="btn-save" onclick="gerarNumeroOficio()">🔢 GERAR NÚMERO E REGISTRAR</button>
+    </div>
+  </div>
+
+  <!-- ========== TAB: HISTÓRICO ========== -->
+  <div id="tab-historico" style="display:none;">
+    <div class="card">
+      <h3>📋 OFÍCIOS REGISTRADOS</h3>
+      <div class="grid-form" style="margin-bottom:15px;">
+        <div id="hist-filtro-secretaria-container" style="display:none;">
+          <label>FILTRAR POR SECRETARIA</label>
+          <select id="hist-filtro-secretaria" onchange="renderHistoricoOficios()">
+            <option value="">TODAS</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+        <div>
+          <label>ANO</label>
+          <select id="hist-filtro-ano" onchange="renderHistoricoOficios()"></select>
+        </div>
+        <div>
+          <label>STATUS</label>
+          <select id="hist-filtro-status" onchange="renderHistoricoOficios()">
+            <option value="">TODOS</option>
+            <option value="ativo">ATIVO</option>
+            <option value="anulado">ANULADO</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Nº / ANO</th><th>SECRETARIA</th><th>DATA</th><th>DESTINATÁRIO</th><th>ASSUNTO</th><th>REGISTRADO POR</th><th>STATUS</th><th class="no-print">AÇÕES</th></tr>
+          </thead>
+          <tbody id="oficios-historico-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB: AJUSTAR CONTADORES (master) ========== -->
+  <div id="tab-contadores" style="display:none;">
+    <div class="card">
+      <h3>🔢 AJUSTAR CONTADOR MANUALMENTE</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:15px;text-transform:none;">
+        Use isto só para alinhar o sistema com uma numeração que já vinha sendo usada em papel/planilha antes de
+        começar a usar aqui (ex: a secretaria já estava no ofício 042 e você quer que o próximo gerado seja o 043).
+        Mexer aqui não cria nem apaga nenhum ofício — só ajusta de qual número o próximo registro vai continuar.
+      </p>
+      <div class="grid-form">
+        <div>
+          <label>SECRETARIA</label>
+          <select id="cnt-secretaria">
+            <option value="">SELECIONE...</option>
+            <option>ADMINISTRAÇÃO E FINANÇAS</option>
+            <option>AGRICULTURA E MEIO AMBIENTE</option>
+            <option>ASSISTÊNCIA SOCIAL</option>
+            <option>COMUNICAÇÃO</option>
+            <option>CULTURA</option>
+            <option>EDUCAÇÃO</option>
+            <option>ESPORTES</option>
+            <option>GOVERNO</option>
+            <option>INFRAESTRUTURA E SERVIÇOS</option>
+            <option>PLANEJAMENTO</option>
+            <option>SAÚDE</option>
+            <option>OUTROS</option>
+          </select>
+        </div>
+        <div>
+          <label>ANO</label>
+          <input type="number" id="cnt-ano" min="2000" max="2100">
+        </div>
+        <div>
+          <label>ÚLTIMO NÚMERO JÁ UTILIZADO (o próximo gerado será este + 1)</label>
+          <input type="number" id="cnt-valor" min="0">
+        </div>
+      </div>
+      <button class="btn-save" onclick="ajustarContadorManual()">💾 AJUSTAR CONTADOR</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Fase 3: configuração do Firebase vem de firebase-config.json (se existir), com fallback total.
+  function carregarFirebaseConfig(){
+    var fallback = {
+      apiKey: "AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",
+      authDomain: "tabela-gasolina.firebaseapp.com",
+      databaseURL: "https://tabela-gasolina-default-rtdb.firebaseio.com",
+      projectId: "tabela-gasolina"
+    };
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'firebase-config.json', false);
+      xhr.send(null);
+      if (xhr.status === 200 && xhr.responseText) {
+        var cfg = JSON.parse(xhr.responseText);
+        if (cfg && cfg.apiKey && cfg.databaseURL) return cfg;
+      }
+    } catch(e) {
+      console.warn('firebase-config.json não encontrado/inválido — usando configuração padrão embutida.', e);
+    }
+    return fallback;
+  }
+  const firebaseConfig = carregarFirebaseConfig();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  db.ref('config/personalizacao').once('value').then(function(snap) {
+    const cfg = snap.val();
+    if (cfg && cfg.nomeSistema) document.title = cfg.nomeSistema + ' — Ofícios';
+    if (cfg && cfg.faviconBase64) {
+      let linkFav = document.querySelector('link[rel="icon"]');
+      if (!linkFav) { linkFav = document.createElement('link'); linkFav.rel = 'icon'; document.head.appendChild(linkFav); }
+      linkFav.href = cfg.faviconBase64;
+    }
+  }).catch(function(){});
+
+  // ── Sessão (mesmo padrão dos outros módulos) ──
+  const SESSAO = window.__SESSAO;
+  const loginUser = SESSAO.u;
+  const userRole = SESSAO.role;
+  const userSecretaria = SESSAO.sec || '';
+  const isMaster = (loginUser === 'master');
+  const acessoOficios = isMaster || (SESSAO.dados && SESSAO.dados.acessoOficios === true);
+  const podeAdministrar = isMaster || userRole === 'admin';
+
+  if (!acessoOficios) {
+    document.getElementById('tela-bloqueada').style.display = 'flex';
+  } else {
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('top-user-info').textContent =
+      loginUser.toUpperCase() + (userSecretaria ? ' — ' + userSecretaria : '') + (isMaster ? ' — MASTER' : '');
+    document.getElementById('btn-tab-contadores').style.display = podeAdministrar ? 'block' : 'none';
+    document.getElementById('hist-filtro-secretaria-container').style.display = podeAdministrar ? 'block' : 'none';
+    if (userSecretaria) {
+      const selSec = document.getElementById('of-secretaria');
+      if (selSec) { selSec.value = userSecretaria; selSec.disabled = (userRole === 'secretarios'); }
+    }
+    const dataInput = document.getElementById('of-data');
+    if (dataInput) dataInput.value = new Date().toISOString().slice(0, 10);
+  }
+
+  function confirmarSair() {
+    if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
+      try { db.ref('auditoria').push({ acao: 'LOGOUT', usuario: loginUser, modulo: 'oficios', em: new Date().toISOString() }); } catch (e) {}
+      localStorage.removeItem('sessao_global');
+      setTimeout(() => location.replace('porta.html'), 300);
+    }
+  }
+
+  function mostrarNotificacao(texto, tipo) {
+    const cores = { success: "#22c55e", error: "#ef4444", warning: "#f59e0b", info: "#6366f1" };
+    Toastify({
+      text: texto, duration: 3500, gravity: "top", position: "right",
+      backgroundColor: cores[tipo] || cores.info, stopOnFocus: true,
+      style: { borderRadius: "10px", fontWeight: "bold", fontSize: "12px" }
+    }).showToast();
+  }
+
+  function registrarAuditoria(acao, detalhes) {
+    try {
+      db.ref('auditoria').push(Object.assign({ acao: acao, usuario: loginUser, modulo: 'oficios', em: new Date().toISOString() }, detalhes || {}));
+    } catch (e) { console.error(e); }
+  }
+
+  // ── MODO ESCURO (mesma chave 'theme' do restante do sistema) ──
+  function initDarkMode() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) toggle.checked = savedTheme === 'dark';
+  }
+  function toggleDarkMode() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const novo = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', novo);
+    localStorage.setItem('theme', novo);
+  }
+  initDarkMode();
+
+  // ── ABAS ──
+  function switchTab(nome) {
+    ['novo', 'historico', 'contadores'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = (t === nome) ? 'block' : 'none';
+      const btn = document.getElementById('btn-tab-' + t);
+      if (btn) btn.classList.toggle('active', t === nome);
+    });
+    if (nome === 'contadores' && !podeAdministrar) { switchTab('novo'); return; }
+    if (nome === 'historico') renderHistoricoOficios();
+  }
+  switchTab('novo');
+
+  // Chave segura para o contador no Firebase (secretaria + ano)
+  function chaveContador(secretaria, ano) {
+    return secretaria.replace(/[.#$\[\]\/]/g, '_') + '_' + ano;
+  }
+
+  // ── GERAÇÃO DO NÚMERO (transação atômica — evita número repetido mesmo com 2 pessoas ao mesmo tempo) ──
+  async function gerarNumeroOficio() {
+    const secretaria = document.getElementById('of-secretaria').value;
+    const dataEmissao = document.getElementById('of-data').value || new Date().toISOString().slice(0, 10);
+    const destinatario = document.getElementById('of-destinatario').value.trim();
+    const assunto = document.getElementById('of-assunto').value.trim();
+
+    if (!secretaria) { mostrarNotificacao('⚠️ SELECIONE A SECRETARIA!', 'error'); return; }
+    if (!assunto) { mostrarNotificacao('⚠️ INFORME O ASSUNTO DO OFÍCIO!', 'error'); return; }
+
+    const ano = parseInt(dataEmissao.slice(0, 4));
+    const chave = chaveContador(secretaria, ano);
+
+    try {
+      const resultado = await db.ref('contadores_oficios/' + chave).transaction(function(atual) {
+        return (atual || 0) + 1;
+      });
+      if (!resultado.committed) {
+        mostrarNotificacao('❌ NÃO FOI POSSÍVEL GERAR O NÚMERO. TENTE NOVAMENTE.', 'error');
+        return;
+      }
+      const numero = resultado.snapshot.val();
+
+      await db.ref('oficios').push({
+        numero: numero,
+        ano: ano,
+        secretaria: secretaria,
+        assunto: assunto,
+        destinatario: destinatario || '',
+        dataEmissao: dataEmissao,
+        registradoPor: loginUser,
+        criadoEm: Date.now(),
+        cancelado: false
+      });
+
+      const numeroFormatado = String(numero).padStart(3, '0');
+      document.getElementById('numero-gerado-texto').textContent = 'OFÍCIO Nº ' + numeroFormatado + '/' + ano;
+      document.getElementById('numero-gerado-detalhe').textContent = secretaria + ' — ' + assunto;
+      document.getElementById('numero-gerado-destaque').style.display = 'block';
+
+      mostrarNotificacao('✅ OFÍCIO Nº ' + numeroFormatado + '/' + ano + ' REGISTRADO!', 'success');
+      registrarAuditoria('OFICIO_REGISTRADO', { numero: numero, ano: ano, secretaria: secretaria });
+
+      document.getElementById('of-destinatario').value = '';
+      document.getElementById('of-assunto').value = '';
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO GERAR NÚMERO: ' + e.message, 'error');
+    }
+  }
+  window.gerarNumeroOficio = gerarNumeroOficio;
+
+  // ── LISTAGEM EM TEMPO REAL ──
+  let oficiosCache = [];
+  db.ref('oficios').on('value', snap => {
+    oficiosCache = [];
+    snap.forEach(item => {
+      const o = item.val();
+      o.id = item.key;
+      oficiosCache.push(o);
+    });
+    popularFiltroAnos();
+    renderHistoricoOficios();
+  });
+
+  function popularFiltroAnos() {
+    const sel = document.getElementById('hist-filtro-ano');
+    if (!sel) return;
+    const valorAtual = sel.value;
+    const anoAtual = new Date().getFullYear();
+    const anos = Array.from(new Set(oficiosCache.map(o => o.ano).concat([anoAtual]))).sort((a, b) => b - a);
+    sel.innerHTML = '<option value="">TODOS</option>' + anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+    sel.value = anos.includes(parseInt(valorAtual)) ? valorAtual : String(anoAtual);
+  }
+
+  function fmtData(iso) {
+    if (!iso) return '—';
+    try {
+      const [y, m, d] = iso.split('-');
+      return d + '/' + m + '/' + y;
+    } catch (e) { return iso; }
+  }
+
+  async function anularOficio(id) {
+    const item = oficiosCache.find(o => o.id === id);
+    if (!item) return;
+    const podeAnular = podeAdministrar || item.registradoPor === loginUser;
+    if (!podeAnular) { mostrarNotificacao('❌ SEM PERMISSÃO PARA ANULAR ESTE OFÍCIO!', 'error'); return; }
+    const motivo = prompt('Motivo da anulação (o número NÃO será reaproveitado):');
+    if (motivo === null) return;
+    try {
+      await db.ref('oficios/' + id).update({
+        cancelado: true, motivoCancelamento: motivo || '', canceladoPor: loginUser, canceladoEm: Date.now()
+      });
+      mostrarNotificacao('✅ OFÍCIO ANULADO!', 'success');
+      registrarAuditoria('OFICIO_ANULADO', { id: id, motivo: motivo });
+    } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
+  }
+  window.anularOficio = anularOficio;
+
+  async function excluirOficio(id) {
+    if (!isMaster) { mostrarNotificacao('❌ SOMENTE O MASTER PODE EXCLUIR DEFINITIVAMENTE!', 'error'); return; }
+    const item = oficiosCache.find(o => o.id === id);
+    if (!item) return;
+    if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE o registro do Ofício Nº ' + String(item.numero).padStart(3,'0') + '/' + item.ano + '?\n\nEssa ação NÃO pode ser desfeita. O número já usado não poderá ser reaproveitado automaticamente.')) return;
+    try {
+      await db.ref('oficios/' + id).remove();
+      mostrarNotificacao('✅ REGISTRO EXCLUÍDO!', 'success');
+      registrarAuditoria('OFICIO_EXCLUIDO', { id: id, numero: item.numero, ano: item.ano, secretaria: item.secretaria });
+    } catch (e) { mostrarNotificacao('❌ ERRO AO EXCLUIR: ' + e.message, 'error'); }
+  }
+  window.excluirOficio = excluirOficio;
+
+  function renderHistoricoOficios() {
+    const body = document.getElementById('oficios-historico-body');
+    if (!body) return;
+    const filtroSec = podeAdministrar && document.getElementById('hist-filtro-secretaria') ? document.getElementById('hist-filtro-secretaria').value : '';
+    const filtroAno = document.getElementById('hist-filtro-ano') ? document.getElementById('hist-filtro-ano').value : '';
+    const filtroStatus = document.getElementById('hist-filtro-status') ? document.getElementById('hist-filtro-status').value : '';
+
+    let lista = oficiosCache.slice();
+    if (!podeAdministrar) lista = lista.filter(o => o.secretaria === userSecretaria);
+    if (filtroSec) lista = lista.filter(o => o.secretaria === filtroSec);
+    if (filtroAno) lista = lista.filter(o => String(o.ano) === filtroAno);
+    if (filtroStatus === 'ativo') lista = lista.filter(o => !o.cancelado);
+    if (filtroStatus === 'anulado') lista = lista.filter(o => o.cancelado);
+
+    lista.sort((a, b) => (b.ano - a.ano) || (b.numero - a.numero));
+
+    body.innerHTML = lista.length ? lista.map(o => {
+      const podeAnular = !o.cancelado && (podeAdministrar || o.registradoPor === loginUser);
+      return '<tr>' +
+        '<td><b>' + String(o.numero).padStart(3, '0') + '/' + o.ano + '</b></td>' +
+        '<td>' + o.secretaria + '</td>' +
+        '<td>' + fmtData(o.dataEmissao) + '</td>' +
+        '<td style="text-transform:none;">' + (o.destinatario || '—') + '</td>' +
+        '<td style="text-transform:none;">' + (o.assunto || '—') + '</td>' +
+        '<td>' + o.registradoPor + '</td>' +
+        '<td><span class="status-tag ' + (o.cancelado ? 'status-anulado' : 'status-ativo') + '">' + (o.cancelado ? '❌ ANULADO' : '✅ ATIVO') + '</span></td>' +
+        '<td class="no-print">' +
+          (podeAnular ? '<button class="btn-action btn-anular" onclick="anularOficio(\'' + o.id + '\')">❌ ANULAR</button>' : '') +
+          (isMaster ? '<button class="btn-action btn-excluir" onclick="excluirOficio(\'' + o.id + '\')" title="Excluir definitivamente">🗑️</button>' : '') +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#64748b;">Nenhum ofício encontrado.</td></tr>';
+  }
+
+  // ── AJUSTE MANUAL DE CONTADOR (master/admin) ──
+  async function ajustarContadorManual() {
+    if (!podeAdministrar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    const secretaria = document.getElementById('cnt-secretaria').value;
+    const ano = parseInt(document.getElementById('cnt-ano').value);
+    const valor = parseInt(document.getElementById('cnt-valor').value);
+    if (!secretaria) { mostrarNotificacao('⚠️ SELECIONE A SECRETARIA!', 'error'); return; }
+    if (!ano) { mostrarNotificacao('⚠️ INFORME O ANO!', 'error'); return; }
+    if (isNaN(valor) || valor < 0) { mostrarNotificacao('⚠️ INFORME UM NÚMERO VÁLIDO!', 'error'); return; }
+    if (!confirm('Ajustar o contador de ' + secretaria + '/' + ano + ' para ' + valor + '?\nO próximo ofício gerado será o Nº ' + String(valor + 1).padStart(3, '0') + '.')) return;
+    try {
+      await db.ref('contadores_oficios/' + chaveContador(secretaria, ano)).set(valor);
+      mostrarNotificacao('✅ CONTADOR AJUSTADO!', 'success');
+      registrarAuditoria('OFICIO_CONTADOR_AJUSTADO', { secretaria: secretaria, ano: ano, valor: valor });
+    } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
+  }
+  window.ajustarContadorManual = ajustarContadorManual;
+</script>
+</body>
+</html>

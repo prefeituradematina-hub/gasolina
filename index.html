@@ -2350,6 +2350,43 @@
           transform: translateY(-10px);
       }
   }
+
+  /* ============================================================
+     MELHORIAS DE VISUALIZAÇÃO EM CELULAR (aditivo — não remove
+     nenhuma regra mobile já existente, só corrige pontos reais
+     que estavam faltando ou que usavam classes que não existem
+     no HTML deste sistema).
+  ============================================================ */
+  @media (max-width: 768px) {
+      /* Evita o zoom automático que Safari/Chrome no celular fazem
+         quando o campo de formulário tem letra menor que 16px —
+         isso "empurrava" a tela toda vez que o secretário tocava
+         num campo pra digitar o abastecimento. */
+      input, select, textarea {
+          font-size: 16px !important;
+      }
+
+      /* Card do Novo Abastecimento em evidência: título maior e
+         borda de destaque, já que é a função mais usada. */
+      #card-novo-abastecimento h3 {
+          font-size: 19px;
+      }
+      #card-novo-abastecimento {
+          border-left: 4px solid var(--success);
+      }
+
+      /* Botão principal de registrar abastecimento maior e mais fácil de tocar */
+      #btn-registrar {
+          padding: 18px;
+          font-size: 15px;
+      }
+
+      /* Espaçamento um pouco maior entre campos do formulário no celular,
+         pra não ficar tudo grudado uma vez que os campos empilham em 1 coluna */
+      .grid-form {
+          gap: 16px;
+      }
+  }
 </style>
 
 <!-- Modal para Edição de Usuários -->
@@ -2401,6 +2438,9 @@
           </label>
           <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
             <input type="checkbox" id="edit-acesso-lavagem" style="width:18px; height:18px; cursor:pointer;"> 🚿 Controle de Higienização
+          </label>
+          <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+            <input type="checkbox" id="edit-acesso-oficios" style="width:18px; height:18px; cursor:pointer;"> 📄 Controle de Ofícios
           </label>
         </div>
       </div>
@@ -3003,7 +3043,7 @@
       <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
       <button class="tab-btn" onclick="abrirAlterarSenha()">🔑 SENHA</button>
     </div>
-    <div style="display:flex; gap:10px; align-items:center;">
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
       <label class="theme-toggle" title="Alternar tema claro/escuro">
         <input type="checkbox" id="theme-toggle" onchange="toggleDarkMode()">
         <span class="theme-slider"></span>
@@ -3051,43 +3091,8 @@
   </div>
   
   <div id="tab-geral">
-    <!-- ========== SEÇÃO 1: BUSCA GERAL (TOPO) ========== -->
-    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6;">
-      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 300px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e40af;">
-            🔍 BUSCA GERAL
-          </label>
-          <input 
-            type="text" 
-            id="busca-geral" 
-            placeholder="Digite: NOME, PLACA, CPF, MOTORISTA..." 
-            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px;"
-            oninput="aplicarBuscaGeral()"
-          >
-          <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
-            💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
-          </div>
-          <div id="aviso-busca-secretaria" style="display: none; font-size: 11px; color: #f59e0b; margin-top: 5px; font-weight: bold;">
-            ⚠️ Busca restrita aos abastecimentos da sua secretaria
-          </div>
-        </div>
-        <div>
-          <button 
-            class="btn-save" 
-            onclick="limparBuscaGeral()" 
-            style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top: 20px;"
-          >
-            🔄 LIMPAR BUSCA
-          </button>
-        </div>
-      </div>
-      <div id="busca-resultado" style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; display: none;">
-        <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">📊 RESULTADOS:</div>
-        <div id="busca-resultado-texto" style="font-size: 13px; color: #64748b;"></div>
-      </div>
-    </div>
-    
+    <!-- ATENDENDO SOLICITAÇÃO: abastecimento é a função mais usada pelo secretário,
+         então fica em evidência logo no topo da tela (antes até da busca geral). -->
     <!-- ========== SEÇÃO 2: NOVO ABASTECIMENTO (LOGO ABAIXO) ========== -->
     
     <!-- ========== SEÇÃO 2: NOVO ABASTECIMENTO (LOGO ABAIXO) ========== -->
@@ -3292,6 +3297,43 @@
           </thead>
           <tbody id="emprestimos-body"></tbody>
         </table>
+      </div>
+    </div>
+    
+    <!-- ========== SEÇÃO 1: BUSCA GERAL (TOPO) ========== -->
+    <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6;">
+      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1e40af;">
+            🔍 BUSCA GERAL
+          </label>
+          <input 
+            type="text" 
+            id="busca-geral" 
+            placeholder="Digite: NOME, PLACA, CPF, MOTORISTA..." 
+            style="width: 100%; padding: 12px; border: 2px solid #3b82f6; border-radius: 8px; font-size: 14px;"
+            oninput="aplicarBuscaGeral()"
+          >
+          <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
+            💡 Busca parcial: digite qualquer parte (ex: "ABC", "MARIA", "123.456")
+          </div>
+          <div id="aviso-busca-secretaria" style="display: none; font-size: 11px; color: #f59e0b; margin-top: 5px; font-weight: bold;">
+            ⚠️ Busca restrita aos abastecimentos da sua secretaria
+          </div>
+        </div>
+        <div>
+          <button 
+            class="btn-save" 
+            onclick="limparBuscaGeral()" 
+            style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); margin-top: 20px;"
+          >
+            🔄 LIMPAR BUSCA
+          </button>
+        </div>
+      </div>
+      <div id="busca-resultado" style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; display: none;">
+        <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">📊 RESULTADOS:</div>
+        <div id="busca-resultado-texto" style="font-size: 13px; color: #64748b;"></div>
       </div>
     </div>
     
@@ -3884,6 +3926,9 @@
             </label>
             <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
               <input type="checkbox" id="new-acesso-lavagem" style="width:18px; height:18px; cursor:pointer;"> 🚿 Controle de Higienização
+            </label>
+            <label style="display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer; margin:0;">
+              <input type="checkbox" id="new-acesso-oficios" style="width:18px; height:18px; cursor:pointer;"> 📄 Controle de Ofícios
             </label>
           </div>
         </div>
@@ -12200,6 +12245,8 @@
     const frotaAdmin     = _nfa ? _nfa.checked : false;
     const _nal = document.getElementById('new-acesso-lavagem');
     const acessoLavagem  = _nal ? _nal.checked : false;
+    const _nao = document.getElementById('new-acesso-oficios');
+    const acessoOficios  = _nao ? _nao.checked : false;
     
     // dadosUsuario declarado ANTES dos blocos que o modificam
     const dadosUsuario = {
@@ -12214,6 +12261,7 @@
       acessoFrota:    acessoFrota,
       frotaAdmin:     frotaAdmin,
       acessoLavagem:  acessoLavagem,
+      acessoOficios:  acessoOficios,
       permissoes: PERMISSOES_PADRAO[role] || []
     };
     
@@ -12281,6 +12329,7 @@
       var _af = document.getElementById('new-acesso-frota'); if(_af) _af.checked = true;
       var _fa = document.getElementById('new-frota-admin'); if(_fa) _fa.checked = false;
       var _al = document.getElementById('new-acesso-lavagem'); if(_al) _al.checked = false;
+      var _ao = document.getElementById('new-acesso-oficios'); if(_ao) _ao.checked = false;
       document.querySelectorAll('.comb-autorizador-novo').forEach(cb => cb.checked = false);
       listUsuarios();
     });
@@ -13026,6 +13075,7 @@
       var _efa = document.getElementById('edit-frota-admin');
       if(_efa) _efa.checked = (u.frotaAdmin === true) || (u.frotaAdmin == null && (u.role === 'frentista' || u.role === 'autorizador'));
       var _eal = document.getElementById('edit-acesso-lavagem'); if(_eal) _eal.checked = (u.acessoLavagem === true);
+      var _eao = document.getElementById('edit-acesso-oficios'); if(_eao) _eao.checked = (u.acessoOficios === true);
       
       // Carregar dados de frentista se aplicável
       if (u.role === 'frentista') {
@@ -13119,10 +13169,12 @@
     var _saf = document.getElementById('edit-acesso-frota');
     var _sfa = document.getElementById('edit-frota-admin');
     var _sal = document.getElementById('edit-acesso-lavagem');
+    var _sao = document.getElementById('edit-acesso-oficios');
     dadosAtualizados.acessoGasolina = _sag ? _sag.checked : true;
     dadosAtualizados.acessoFrota = _saf ? _saf.checked : true;
     dadosAtualizados.frotaAdmin = _sfa ? _sfa.checked : false;
     dadosAtualizados.acessoLavagem = _sal ? _sal.checked : false;
+    dadosAtualizados.acessoOficios = _sao ? _sao.checked : false;
     
     if (role === 'frentista') {
       const postoVinculado = document.getElementById('edit-posto-vinc-frentista').value;
