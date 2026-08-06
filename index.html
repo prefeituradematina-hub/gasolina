@@ -3273,8 +3273,16 @@
           <input type="date" id="emp-data-inicio">
         </div>
         <div>
+          <label>HORÁRIO DE INÍCIO (OPCIONAL)</label>
+          <input type="time" id="emp-hora-inicio">
+        </div>
+        <div>
           <label>DATA PREVISTA DE DEVOLUÇÃO (OPCIONAL)</label>
           <input type="date" id="emp-data-fim">
+        </div>
+        <div>
+          <label>HORÁRIO PREVISTO DE DEVOLUÇÃO (OPCIONAL)</label>
+          <input type="time" id="emp-hora-fim">
         </div>
       </div>
       <button class="btn-save" onclick="registrarEmprestimoVeiculo()" style="margin-top:10px;">➕ REGISTRAR EMPRÉSTIMO</button>
@@ -5250,6 +5258,8 @@
     const secretariaDestino = document.getElementById('emp-sec-destino').value;
     const dataInicio = document.getElementById('emp-data-inicio').value || new Date().toISOString().slice(0, 10);
     const dataFimPrevista = document.getElementById('emp-data-fim').value || null;
+    const horaInicio = document.getElementById('emp-hora-inicio').value || '';
+    const horaFimPrevista = document.getElementById('emp-hora-fim').value || '';
 
     if (!placa) { mostrarNotificacao('⚠️ Selecione o veículo a ser emprestado.', 'error'); return; }
     if (!secretariaDestino) { mostrarNotificacao('⚠️ Selecione a secretaria destino.', 'error'); return; }
@@ -5280,6 +5290,11 @@
       mostrarNotificacao('⚠️ A data de devolução prevista não pode ser antes da data de início.', 'error');
       return;
     }
+    // NOVO: se a devolução for no MESMO dia, o horário previsto não pode ser antes do de início
+    if (dataFimPrevista && dataFimPrevista === dataInicio && horaInicio && horaFimPrevista && horaFimPrevista < horaInicio) {
+      mostrarNotificacao('⚠️ No mesmo dia, o horário de devolução não pode ser antes do horário de início.', 'error');
+      return;
+    }
 
     try {
       const novoRegistro = {
@@ -5288,6 +5303,8 @@
         secretariaDestino: secretariaDestino,
         dataInicio: dataInicio,
         dataFimPrevista: dataFimPrevista,
+        horaInicio: horaInicio,
+        horaFimPrevista: horaFimPrevista,
         ativo: true,
         criadoPor: loginUser,
         criadoEm: Date.now()
@@ -5305,6 +5322,8 @@
       document.getElementById('emp-sec-destino').value = '';
       document.getElementById('emp-data-inicio').value = '';
       document.getElementById('emp-data-fim').value = '';
+      document.getElementById('emp-hora-inicio').value = '';
+      document.getElementById('emp-hora-fim').value = '';
     } catch (e) {
       mostrarNotificacao('❌ ERRO AO REGISTRAR EMPRÉSTIMO: ' + e.message, 'error');
     }
@@ -5384,8 +5403,8 @@
         '<td>' + e.placa + '</td>' +
         '<td>' + (e.secretariaOrigem || '—') + '</td>' +
         '<td>' + (e.secretariaDestino || '—') + '</td>' +
-        '<td>' + (e.dataInicio || '—') + '</td>' +
-        '<td>' + (e.dataFimPrevista || 'Sem prazo') + '</td>' +
+        '<td>' + (e.dataInicio || '—') + (e.horaInicio ? ' <span style="color:#64748b;font-size:10px;">🕐 ' + e.horaInicio + '</span>' : '') + '</td>' +
+        '<td>' + (e.dataFimPrevista || 'Sem prazo') + (e.horaFimPrevista ? ' <span style="color:#64748b;font-size:10px;">🕐 ' + e.horaFimPrevista + '</span>' : '') + '</td>' +
         '<td>' + status + '</td>' +
         '<td class="no-print">' +
           (podeCancelar ? '<button class="btn-save" style="background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);padding:6px 10px;font-size:11px;margin-right:4px;" onclick="cancelarEmprestimoVeiculo(\'' + e.id + '\')">❌ CANCELAR</button>' : '') +
