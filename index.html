@@ -2352,48 +2352,6 @@
   }
 
   /* ============================================================
-     MENU PRINCIPAL AGRUPADO (Indicadores / Registros / Administração)
-     — aditivo: os botões de aba originais continuam existindo com os
-     mesmos IDs e onclick, apenas passaram a morar dentro dos grupos.
-  ============================================================ */
-  .grupo-menu { position: relative; display: inline-block; }
-  .grupo-menu .btn-grupo { white-space: nowrap; }
-  .grupo-dropdown {
-      display: none;
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      min-width: 210px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      box-shadow: 0 6px 20px rgba(0,0,0,.10);
-      padding: 6px;
-      z-index: 200;
-  }
-  .grupo-menu.aberto .grupo-dropdown { display: block; }
-  .grupo-dropdown .tab-btn {
-      display: block;
-      width: 100%;
-      text-align: left;
-      flex: none;
-      margin: 2px 0;
-  }
-  .grupo-menu.grupo-ativo > .btn-grupo {
-      background: var(--accent);
-      color: #fff;
-      font-weight: 600;
-  }
-  [data-theme="dark"] .grupo-dropdown { background: #334155; border-color: #475569; }
-
-  @media (max-width: 768px) {
-      /* No celular o grupo ocupa a largura toda e a lista abre logo abaixo */
-      .grupo-menu { display: block; width: 100%; }
-      .grupo-menu .btn-grupo { width: 100%; }
-      .grupo-dropdown { position: static; min-width: 0; box-shadow: none; margin-top: 4px; }
-  }
-
-  /* ============================================================
      MELHORIAS DE VISUALIZAÇÃO EM CELULAR (aditivo — não remove
      nenhuma regra mobile já existente, só corrige pontos reais
      que estavam faltando ou que usavam classes que não existem
@@ -3068,43 +3026,18 @@
 <div class="container blurred" id="app">
   <div class="top-bar no-print">
     <div class="nav-tabs no-print" id="nav-principal">
-      <!-- Início continua solto: é a tela mais usada -->
-      <button id="btn-tab-geral" class="tab-btn active" onclick="switchTab('geral')">📊 INÍCIO</button>
-
-      <!-- PENDENTES fica FIXO e fora dos grupos de propósito: é o único com badge de alerta
-           em tempo real, e escondê-lo dentro de um menu faria o autorizador perder o aviso. -->
+      <button id="btn-tab-geral" class="tab-btn active" onclick="switchTab('geral')">📊 HOME</button>
       <button id="btn-tab-pendentes" class="tab-btn" style="display:none;" onclick="switchTab('pendentes')">
         ⏳ PENDENTES
         <span id="pendentes-badge" class="notification-badge" style="display:none;">0</span>
       </button>
-
-      <!-- Grupo: Indicadores -->
-      <div class="grupo-menu" id="grupo-indicadores">
-        <button class="tab-btn btn-grupo" onclick="toggleGrupoMenu('indicadores')">📈 INDICADORES ▾</button>
-        <div class="grupo-dropdown" id="dd-indicadores">
-          <button id="btn-tab-executivo" class="tab-btn" style="display:none;" onclick="switchTab('executivo')">👔 VISÃO GERAL</button>
-          <button id="btn-tab-analytics" class="tab-btn" onclick="switchTab('analytics')">📈 GRÁFICOS</button>
-        </div>
-      </div>
-
-      <!-- Grupo: Registros -->
-      <div class="grupo-menu" id="grupo-registros">
-        <button class="tab-btn btn-grupo" onclick="toggleGrupoMenu('registros')">📋 REGISTROS ▾</button>
-        <div class="grupo-dropdown" id="dd-registros">
-          <button id="btn-tab-diversas" class="tab-btn" style="display:none;" onclick="switchTab('diversas')">📋 DIVERSAS</button>
-          <button id="btn-tab-relatorios" class="tab-btn" style="display:none;" onclick="switchTab('relatorios')">📑 RELATÓRIOS</button>
-          <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
-        </div>
-      </div>
-
-      <!-- Grupo: Administração -->
-      <div class="grupo-menu" id="grupo-admin">
-        <button class="tab-btn btn-grupo" onclick="toggleGrupoMenu('admin')">🛡️ ADMINISTRAÇÃO ▾</button>
-        <div class="grupo-dropdown" id="dd-admin">
-          <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
-          <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
-        </div>
-      </div>
+      <button id="btn-tab-executivo" class="tab-btn" style="display:none;" onclick="switchTab('executivo')">👔 VISÃO GERAL</button>
+      <button id="btn-tab-analytics" class="tab-btn" onclick="switchTab('analytics')">📈 GRÁFICOS</button>
+      <button id="btn-tab-diversas" class="tab-btn" style="display:none;" onclick="switchTab('diversas')">📋 DIVERSAS</button>
+      <button id="btn-tab-relatorios" class="tab-btn" style="display:none;" onclick="switchTab('relatorios')">📑 RELATÓRIOS</button>
+      <button id="btn-tab-notas" class="tab-btn" style="display:none;" onclick="switchTab('notas')">📝 NOTAS</button>
+      <button id="btn-tab-auditoria" class="tab-btn" style="display:none;" onclick="switchTab('auditoria')">🔍 AUDITORIA</button>
+      <button id="btn-tab-cpfautorizados" class="tab-btn" style="display:none;" onclick="switchTab('cpfautorizados')">🪪 CPF AUTORIZADOS</button>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
       <label class="theme-toggle" title="Alternar tema claro/escuro">
@@ -6785,10 +6718,6 @@
     
     document.getElementById('btn-tab-relatorios').style.display = 
       (temPermissao('usar_filtros_relatorio')) ? 'block' : 'none';
-    
-    // NOVO: some com os grupos do menu cujos itens estejam todos indisponíveis
-    // para este perfil (ex.: secretário não vê o grupo "Administração").
-    try { sincronizarGruposMenu(); } catch(e) {}
     
     // Esconder seção de novo abastecimento se não tiver permissão
     const cardNovoAbast = document.getElementById('card-novo-abastecimento');
@@ -14770,60 +14699,7 @@
   
   // ==================== FIM BUSCA DIVERSAS ====================
   
-  // ============================================================
-  // MENU PRINCIPAL AGRUPADO — aditivo. Não altera switchTab nem os
-  // botões de aba; só controla a abertura/fechamento dos grupos.
-  // ============================================================
-  const GRUPOS_MENU = {
-    indicadores: ['btn-tab-executivo', 'btn-tab-analytics'],
-    registros:   ['btn-tab-diversas', 'btn-tab-relatorios', 'btn-tab-notas'],
-    admin:       ['btn-tab-auditoria', 'btn-tab-cpfautorizados']
-  };
-
-  function toggleGrupoMenu(nome) {
-    const alvo = document.getElementById('grupo-' + nome);
-    const jaAberto = alvo && alvo.classList.contains('aberto');
-    fecharTodosGruposMenu();
-    if (alvo && !jaAberto) alvo.classList.add('aberto');
-  }
-  window.toggleGrupoMenu = toggleGrupoMenu;
-
-  function fecharTodosGruposMenu() {
-    document.querySelectorAll('.grupo-menu').forEach(g => g.classList.remove('aberto'));
-  }
-  window.fecharTodosGruposMenu = fecharTodosGruposMenu;
-
-  // Fecha os menus ao clicar fora deles
-  document.addEventListener('click', function(ev) {
-    if (!ev.target.closest('.grupo-menu')) fecharTodosGruposMenu();
-  });
-
-  // Marca visualmente qual grupo contém a aba aberta, e esconde grupos
-  // cujos itens estejam todos indisponíveis para o perfil do usuário.
-  function sincronizarGruposMenu() {
-    Object.keys(GRUPOS_MENU).forEach(function(nome) {
-      const grupo = document.getElementById('grupo-' + nome);
-      if (!grupo) return;
-
-      const ids = GRUPOS_MENU[nome];
-      const visiveis = ids.filter(function(id) {
-        const b = document.getElementById(id);
-        return b && b.style.display !== 'none';
-      });
-      // Se nenhum item do grupo está disponível, o grupo inteiro some da barra
-      grupo.style.display = visiveis.length > 0 ? '' : 'none';
-
-      const temAtivo = ids.some(function(id) {
-        const b = document.getElementById(id);
-        return b && b.classList.contains('active');
-      });
-      grupo.classList.toggle('grupo-ativo', temAtivo);
-    });
-  }
-  window.sincronizarGruposMenu = sincronizarGruposMenu;
-
   function switchTab(tab) {
-    fecharTodosGruposMenu(); // NOVO: fecha o menu suspenso ao escolher uma aba
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('tab-geral').style.display = 'none';
     document.getElementById('tab-pendentes').style.display = 'none';
@@ -14891,8 +14767,6 @@
         document.getElementById('btn-tab-relatorios').classList.add('active');
       }
     }
-    // NOVO: destaca o grupo do menu que contém a aba recém-aberta
-    try { sincronizarGruposMenu(); } catch(e) {}
   }
   
   // NOVO: sub-abas dentro de "⚙️ CONFIGURAÇÕES" (Usuários / Frota / Postos / Diversas).
