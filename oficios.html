@@ -127,6 +127,7 @@
   .btn-action { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; margin: 0 3px; font-size: 12px; font-weight:bold; transition: all 0.2s; }
   .btn-action:hover { transform: scale(1.05); }
   .btn-anular { background: var(--danger); color: white; }
+  .btn-editar { background: var(--warning); color: #422006; }
   .btn-excluir { background: #7c2d12; color: white; }
 
   .table-wrapper { overflow-x: auto; }
@@ -355,6 +356,34 @@
 
 </div>
 
+<!-- ── MODAL: EDITAR OFÍCIO (corrige dados sem alterar o número) ── -->
+<div id="modal-edit-oficio" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); z-index:999; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto;">
+  <div class="card" style="max-width:560px; width:100%; margin:0;">
+    <h3>✏️ EDITAR OFÍCIO <span id="edit-of-numero-label" style="color:var(--accent);"></span></h3>
+    <p style="font-size:11px;color:#64748b;margin-bottom:15px;text-transform:none;">
+      O número e o ano do ofício <b>não mudam</b> — a numeração já foi registrada. Aqui você corrige
+      apenas os dados preenchidos por engano.
+    </p>
+    <input type="hidden" id="edit-of-id">
+    <div class="grid-form">
+      <div>
+        <label>DATA DE EMISSÃO</label>
+        <input type="date" id="edit-of-data">
+      </div>
+      <div>
+        <label>DESTINATÁRIO</label>
+        <input type="text" id="edit-of-destinatario" placeholder="Ex: Câmara Municipal...">
+      </div>
+    </div>
+    <div style="margin-top:15px;">
+      <label>ASSUNTO</label>
+      <textarea id="edit-of-assunto" rows="3" placeholder="Resumo do assunto do ofício..."></textarea>
+    </div>
+    <button class="btn-save" onclick="salvarEdicaoOficio()">💾 SALVAR ALTERAÇÕES</button>
+    <button class="btn-save" style="background:#64748b; margin-top:8px;" onclick="fecharModalEditarOficio()">✖️ CANCELAR</button>
+  </div>
+</div>
+
 <script>
   // Fase 3: configuração do Firebase vem de firebase-config.json (se existir), com fallback total.
   function carregarFirebaseConfig(){
@@ -570,10 +599,64 @@
   }
   window.anularOficio = anularOficio;
 
-  async function excluirOficio(id) {
-    if (!isMaster) { mostrarNotificacao('❌ SOMENTE O MASTER PODE EXCLUIR DEFINITIVAMENTE!', 'error'); return; }
+  // NOVO: edição do ofício — corrige assunto/destinatário/data mantendo o MESMO número.
+  // Pode editar: quem registrou o ofício, ou admin/master. Ofício anulado não é editável.
+  function abrirModalEditarOficio(id) {
     const item = oficiosCache.find(o => o.id === id);
     if (!item) return;
+    const podeEditar = podeAdministrar || item.registradoPor === loginUser;
+    if (!podeEditar) { mostrarNotificacao('❌ SEM PERMISSÃO PARA EDITAR ESTE OFÍCIO!', 'error'); return; }
+    if (item.cancelado) { mostrarNotificacao('⚠️ OFÍCIO ANULADO NÃO PODE SER EDITADO.', 'error'); return; }
+
+    document.getElementById('edit-of-id').value = item.id;
+    document.getElementById('edit-of-numero-label').textContent =
+      'Nº ' + String(item.numero).padStart(3, '0') + '/' + item.ano;
+    document.getElementById('edit-of-data').value = item.dataEmissao || '';
+    document.getElementById('edit-of-destinatario').value = item.destinatario || '';
+    document.getElementById('edit-of-assunto').value = item.assunto || '';
+    document.getElementById('modal-edit-oficio').style.display = 'flex';
+  }
+  window.abrirModalEditarOficio = abrirModalEditarOficio;
+
+  function fecharModalEditarOficio() {
+    document.getElementById('modal-edit-oficio').style.display = 'none';
+  }
+  window.fecharModalEditarOficio = fecharModalEditarOficio;
+
+  async function salvarEdicaoOficio() {
+    const id = document.getElementById('edit-of-id').value;
+    const item = oficiosCache.find(o => o.id === id);
+    if (!item) return;
+    const podeEditar = podeAdministrar || item.registradoPor === loginUser;
+    if (!podeEditar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+
+    const assunto = document.getElementById('edit-of-assunto').value.trim();
+    if (!assunto) { mostrarNotificacao('⚠️ INFORME O ASSUNTO DO OFÍCIO!', 'error'); return; }
+
+    try {
+      await db.ref('oficios/' + id).update({
+        dataEmissao: document.getElementById('edit-of-data').value || item.dataEmissao,
+        destinatario: document.getElementById('edit-of-destinatario').value.trim(),
+        assunto: assunto,
+        editadoPor: loginUser,
+        editadoEm: Date.now()
+      });
+      // Número e ano NÃO são alterados de propósito — a numeração já foi oficialmente registrada.
+      mostrarNotificacao('✅ OFÍCIO ATUALIZADO!', 'success');
+      registrarAuditoria('OFICIO_EDITADO', { id: id, numero: item.numero, ano: item.ano });
+      fecharModalEditarOficio();
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO SALVAR: ' + e.message, 'error');
+    }
+  }
+  window.salvarEdicaoOficio = salvarEdicaoOficio;
+
+  async function excluirOficio(id) {
+    const item = oficiosCache.find(o => o.id === id);
+    if (!item) return;
+    // NOVO: além do master, quem registrou o ofício (e admin) também pode excluir.
+    const podeExcluir = isMaster || podeAdministrar || item.registradoPor === loginUser;
+    if (!podeExcluir) { mostrarNotificacao('❌ SEM PERMISSÃO PARA EXCLUIR ESTE OFÍCIO!', 'error'); return; }
     if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE o registro do Ofício Nº ' + String(item.numero).padStart(3,'0') + '/' + item.ano + '?\n\nEssa ação NÃO pode ser desfeita. O número já usado não poderá ser reaproveitado automaticamente.')) return;
     try {
       await db.ref('oficios/' + id).remove();
@@ -600,7 +683,10 @@
     lista.sort((a, b) => (b.ano - a.ano) || (b.numero - a.numero));
 
     body.innerHTML = lista.length ? lista.map(o => {
-      const podeAnular = !o.cancelado && (podeAdministrar || o.registradoPor === loginUser);
+      const ehDono = podeAdministrar || o.registradoPor === loginUser;
+      const podeAnular = !o.cancelado && ehDono;
+      const podeEditar = !o.cancelado && ehDono;
+      const podeExcluir = isMaster || ehDono;
       return '<tr>' +
         '<td><b>' + String(o.numero).padStart(3, '0') + '/' + o.ano + '</b></td>' +
         '<td>' + o.secretaria + '</td>' +
@@ -610,8 +696,9 @@
         '<td>' + o.registradoPor + '</td>' +
         '<td><span class="status-tag ' + (o.cancelado ? 'status-anulado' : 'status-ativo') + '">' + (o.cancelado ? '❌ ANULADO' : '✅ ATIVO') + '</span></td>' +
         '<td class="no-print">' +
+          (podeEditar ? '<button class="btn-action btn-editar" onclick="abrirModalEditarOficio(\'' + o.id + '\')" title="Corrigir dados (o número não muda)">✏️ EDITAR</button>' : '') +
           (podeAnular ? '<button class="btn-action btn-anular" onclick="anularOficio(\'' + o.id + '\')">❌ ANULAR</button>' : '') +
-          (isMaster ? '<button class="btn-action btn-excluir" onclick="excluirOficio(\'' + o.id + '\')" title="Excluir definitivamente">🗑️</button>' : '') +
+          (podeExcluir ? '<button class="btn-action btn-excluir" onclick="excluirOficio(\'' + o.id + '\')" title="Excluir definitivamente">🗑️</button>' : '') +
         '</td>' +
       '</tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;color:#64748b;">Nenhum ofício encontrado.</td></tr>';
