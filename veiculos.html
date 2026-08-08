@@ -4177,7 +4177,48 @@ function veTudo() { return isAdmin() || (_sessao && _sessao.roleOrig === 'autori
 function podeVerVeiculo(v) {
   if(veTudo()) return true;
   if(!_sessao) return false;
-  return v.secretaria === _sessao.secretaria || v.compartilhado === true;
+  if(v.secretaria === _sessao.secretaria || v.compartilhado === true) return true;
+  // NOVO: veículo emprestado de outra secretaria para a minha (empréstimo ativo)
+  // fica temporariamente visível aqui. Usa o MESMO node 'emprestimos_veiculos'
+  // já mantido pelo Controle de Gasolina — não há cadastro duplicado do veículo.
+  return _temEmprestimoAtivoParaMinhaSecretaria(v);
+}
+
+// ── EMPRÉSTIMO ENTRE SECRETARIAS (somente leitura) ──────────────────────────
+// Espelha a regra já existente no Controle de Gasolina (emprestimoAtivoPara):
+// empréstimo vale se estiver ativo e dentro do prazo (quando houver prazo).
+var _emprestimosVeiculosFrota = [];
+try {
+  if (fbDB) {
+    fbDB.ref('emprestimos_veiculos').on('value', function(snap){
+      _emprestimosVeiculosFrota = [];
+      snap.forEach(function(item){
+        var e = item.val() || {};
+        e.placa = normPlaca(e.placa);
+        _emprestimosVeiculosFrota.push(e);
+      });
+      // Redesenha as listas para refletir empréstimos que entraram/saíram
+      try { if (typeof renderVeiculos === 'function') renderVeiculos(); } catch(err) {}
+      try { if (typeof renderPainel === 'function') renderPainel(); } catch(err) {}
+    });
+  }
+} catch(e) { console.warn('Empréstimos entre secretarias indisponíveis:', e); }
+
+function _temEmprestimoAtivoParaMinhaSecretaria(v) {
+  if (!v || !_sessao || !_sessao.secretaria) return false;
+  if (!_emprestimosVeiculosFrota.length) return false;
+  var placa = normPlaca(v.placa);
+  if (!placa) return false;
+  var minha = (_sessao.secretaria || '').trim().toLowerCase();
+  var hojeStr = new Date().toISOString().slice(0, 10);
+  return _emprestimosVeiculosFrota.some(function(e){
+    if (!e.ativo) return false;
+    if (e.placa !== placa) return false;
+    if ((e.secretariaDestino || '').trim().toLowerCase() !== minha) return false;
+    if (e.dataInicio && e.dataInicio > hojeStr) return false;      // ainda não começou
+    if (e.dataFimPrevista && e.dataFimPrevista < hojeStr) return false; // prazo vencido
+    return true;
+  });
 }
 function _podeVerRegistro(reg) {
   if(!isSecretario()) return true;
