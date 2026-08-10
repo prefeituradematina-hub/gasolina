@@ -2440,9 +2440,16 @@ function verVeiculo(vid) {
   if(aus) {
     btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirResolver(\''+aus.id+'\')">✓ Veículo retornou</button>';
   } else if(s==='trabalhando'||s==='irregular') {
-    btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
-    // Entrada noturna: disponível para quem registra entrada (frentista, admin, autorizador)
-    btns += '<button class="btn" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirGuardadoNoite(\''+mov.id+'\')">🌙 Guardado durante a noite</button>';
+    // Secretário NÃO pode registrar entrada (nem entrada noturna) em hipótese alguma.
+    if(isSecretario()) {
+      btns = '<div style="font-size:12px;color:#A32D2D;font-weight:600;background:#FEE2E2;border:1px solid #FECACA;border-radius:8px;padding:10px 12px">'+
+        '🚫 O registro de entrada é feito somente pelo controle de portaria/administração.'+
+        (s==='irregular'?'<br><span style="font-weight:400">⚠ Este veículo está com o retorno atrasado.</span>':'')+'</div>';
+    } else {
+      btns = '<button class="btn success" onclick="fechar(\'ov-veiculo-detalhe\');abrirEntrada(\''+mov.id+'\')">✓ Registrar entrada</button>';
+      // Entrada noturna: disponível para quem registra entrada (frentista, admin, autorizador)
+      btns += '<button class="btn" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirGuardadoNoite(\''+mov.id+'\')">🌙 Guardado durante a noite</button>';
+    }
     if(isAdmin()) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
       btns += '<button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogar(\''+mov.id+'\')">⏱️ Prorrogar retorno</button>';
@@ -2792,6 +2799,8 @@ function confirmarSaida() {
 
 // ── ENTRADA ──────────────────────────────────────────────────
 function abrirEntrada(movId) {
+  // Secretário não registra entrada em hipótese alguma (salvaguarda além do botão oculto)
+  if(isSecretario()) { toast('🚫 Registro de entrada é feito somente pela portaria/administração.'); return; }
   _entradaId = movId;
   var m = getMov(movId);
   if(!m) { toast('Movimentação não encontrada.'); return; }
@@ -3262,6 +3271,8 @@ function confirmarAusente() {
 var _guardadoNoiteMovId = null;
 
 function abrirGuardadoNoite(movId) {
+  // Secretário não registra entrada (nem retroativa) em hipótese alguma
+  if(isSecretario()) { toast('🚫 Registro de entrada é feito somente pela portaria/administração.'); return; }
   _guardadoNoiteMovId = movId;
   var m = getMov(movId);
   if(!m){ toast('Movimentação não encontrada.'); return; }
@@ -3392,7 +3403,9 @@ function renderSaidas() {
     var cronHTML = cr ? '<span class="cron-badge'+(cr.vencido?' vencido':'')+'" style="margin-top:6px;display:inline-flex"><span class="cron-dot"></span>'+(cr.vencido?'⚠ ATRASADO':'⏱ '+cr.str)+'</span>' : '';
     var btn = m.entrada_real
       ? '<span style="font-size:11px;color:#666;background:#f0f0ee;padding:3px 9px;border-radius:6px">✓ Entrada: '+fmtDT(m.entrada_real)+'</span>'
-      : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>';
+      : (isSecretario()
+          ? '<span style="font-size:11px;color:#A32D2D;background:#FEE2E2;padding:3px 9px;border-radius:6px">🚫 Entrada registrada pela portaria</span>'
+          : '<button class="btn success" onclick="abrirEntrada(\''+m.id+'\')">✓ Registrar entrada</button>');
     return '<div class="card">'+
       '<div class="card-header"><span class="card-title">'+(v?fmtPlaca(v.placa)+' — '+v.descricao:'Removido')+'</span>'+
       '<span class="badge '+s+'">'+LABEL[s]+'</span></div>'+
