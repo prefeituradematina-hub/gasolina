@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campeonato — Torneios &amp; Campeonatos</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: var(--giz); }
+
+  .capa {
+    background: var(--verde-campo);
+    color: var(--giz);
+    padding: 2.4rem 1.6rem 3.4rem;
+    position: relative;
+  }
+  .capa-conteudo { max-width: 960px; margin: 0 auto; display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+  .capa-logo { width: 84px; height: 84px; border-radius: var(--radius-md); object-fit: cover; background: rgba(246,243,234,0.15); }
+  .capa-marca { font-family: var(--fonte-digitos); font-size: 0.72rem; letter-spacing: 0.12em; opacity: 0.75; margin-bottom: 0.4rem; }
+  .capa h1 { font-size: 2rem; }
+  .capa-meta { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.85rem; opacity: 0.85; }
+
+  .envelope { max-width: 960px; margin: -1.8rem auto 3rem; padding: 0 1.6rem; }
+  .abas { display: flex; gap: 0.4rem; overflow-x: auto; background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); padding: 0.5rem; margin-bottom: 1.2rem; }
+  .aba {
+    border: none; background: transparent; padding: 0.6rem 1rem; border-radius: var(--radius-sm);
+    font-family: var(--fonte-placar); letter-spacing: 0.03em; font-size: 0.9rem; cursor: pointer; white-space: nowrap; color: var(--carvao);
+  }
+  .aba.aba-ativa { background: var(--verde-campo); color: var(--giz); }
+
+  .painel { display: none; }
+  .painel.painel-ativo { display: block; }
+
+  .cartao { background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); padding: 1.4rem 1.6rem; }
+  .grid-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 1rem; }
+  .cartao-time { background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); padding: 1.1rem; display: flex; align-items: center; gap: 0.8rem; }
+  .cartao-time img { width: 46px; height: 46px; border-radius: var(--radius-sm); object-fit: cover; background: var(--linha-campo); }
+  .cartao-time .nome { font-weight: 700; }
+  .cartao-time .cidade { font-size: 0.8rem; opacity: 0.65; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--linha-campo); }
+  th { font-family: var(--fonte-digitos); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+  tr:last-child td { border-bottom: none; }
+
+  .linha-jogo { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0; border-bottom: 1px solid var(--linha-campo); gap: 1rem; flex-wrap: wrap; }
+  .linha-jogo:last-child { border-bottom: none; }
+  .confronto { font-family: var(--fonte-placar); font-size: 1.05rem; }
+  .placar-mini { font-family: var(--fonte-digitos); font-size: 1.1rem; background: var(--giz); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); }
+  .meta-jogo { font-size: 0.78rem; opacity: 0.6; }
+
+  .regulamento-texto { white-space: pre-wrap; line-height: 1.6; font-size: 0.92rem; }
+  .vazio { padding: 2rem; text-align: center; opacity: 0.6; }
+  .rodada-titulo { font-family: var(--fonte-digitos); font-size: 0.7rem; letter-spacing: 0.08em; opacity: 0.55; margin: 1.2rem 0 0.4rem; }
+  .rodada-titulo:first-child { margin-top: 0; }
+
+  .aviso-indisponivel { max-width: 480px; margin: 4rem auto; text-align: center; padding: 2rem; }
+</style>
+</head>
+<body>
+
+<div id="raiz">
+  <div class="capa" id="capa" style="display:none;">
+    <div class="capa-conteudo">
+      <img class="capa-logo" id="campLogo" src="" alt="">
+      <div>
+        <div class="capa-marca">CAMPEONATO</div>
+        <h1 id="campNomeTitulo">—</h1>
+        <div class="capa-meta">
+          <span id="campModalidadeTexto"></span>
+          <span id="campLocalTexto"></span>
+          <span id="campPeriodoTexto"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="envelope" id="envelope" style="display:none;">
+    <div class="abas">
+      <button class="aba" data-aba="sobre">Sobre</button>
+      <button class="aba" data-aba="times">Times</button>
+      <button class="aba" data-aba="jogos">Jogos</button>
+      <button class="aba" data-aba="classificacao">Classificação</button>
+      <button class="aba" data-aba="artilharia">Artilharia</button>
+      <button class="aba" data-aba="regulamento">Regulamento</button>
+    </div>
+
+    <div class="painel" data-painel="sobre">
+      <div class="cartao">
+        <p id="campDescricaoTexto">—</p>
+      </div>
+    </div>
+
+    <div class="painel" data-painel="times">
+      <div class="grid-times" id="gridTimesPublico"></div>
+      <div class="vazio" id="vazioTimesPublico" style="display:none;">Nenhum time aprovado ainda.</div>
+    </div>
+
+    <div class="painel" data-painel="jogos">
+      <div class="cartao" id="listaJogosPublico"></div>
+      <div class="vazio" id="vazioJogosPublico" style="display:none;">Nenhum jogo cadastrado ainda.</div>
+    </div>
+
+    <div class="painel" data-painel="classificacao">
+      <div class="cartao" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>#</th><th>Time</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr></thead>
+          <tbody id="corpoClassificacaoPublico"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="vazioClassificacaoPublico" style="display:none;">Classificação ainda não disponível.</div>
+    </div>
+
+    <div class="painel" data-painel="artilharia">
+      <div class="cartao" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>#</th><th>Atleta</th><th>Time</th><th>Gols</th></tr></thead>
+          <tbody id="corpoArtilhariaPublico"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="vazioArtilhariaPublico" style="display:none;">Nenhum gol registrado ainda.</div>
+    </div>
+
+    <div class="painel" data-painel="regulamento">
+      <div class="cartao">
+        <div class="regulamento-texto" id="regulamentoTextoPublico"></div>
+        <div class="vazio" id="vazioRegulamentoPublico" style="display:none;">Regulamento ainda não publicado.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="aviso-indisponivel" id="avisoIndisponivel" style="display:none;">
+    <h2 style="color:var(--verde-campo);margin-bottom:0.6rem;">Página indisponível</h2>
+    <p id="textoIndisponivel">Este campeonato não está disponível para consulta pública.</p>
+  </div>
+</div>
+
+<script type="module">
+import { buscarCampeonato } from "./js/campeonatos.js";
+import { listarTimes } from "./js/times.js";
+import { listarJogos } from "./js/jogos.js";
+import { calcularClassificacao } from "./js/classificacao.js";
+import { calcularArtilharia } from "./js/artilharia.js";
+import { buscarRegulamento } from "./js/regulamentos.js";
+
+const IMG_PADRAO = "data:image/svg+xml;utf8," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='#D8D2C2'/></svg>`
+);
+
+const params = new URLSearchParams(window.location.search);
+const campeonatoId = params.get("id");
+
+function mostrarIndisponivel(msg) {
+  document.getElementById("avisoIndisponivel").style.display = "block";
+  document.getElementById("textoIndisponivel").textContent = msg;
+}
+
+if (!campeonatoId) {
+  mostrarIndisponivel("Nenhum campeonato foi informado na URL.");
+} else {
+  const campeonato = await buscarCampeonato(campeonatoId);
+  if (!campeonato) {
+    mostrarIndisponivel("Campeonato não encontrado.");
+  } else if (!campeonato.publico) {
+    mostrarIndisponivel("Este campeonato não está disponível para consulta pública.");
+  } else {
+    iniciar(campeonato);
+  }
+}
+
+async function iniciar(campeonato) {
+  if (campeonato.corPrimaria) {
+    document.documentElement.style.setProperty("--verde-campo", campeonato.corPrimaria);
+  }
+
+  document.getElementById("capa").style.display = "block";
+  document.getElementById("envelope").style.display = "block";
+
+  document.getElementById("campLogo").src = campeonato.logoUrl || IMG_PADRAO;
+  document.getElementById("campNomeTitulo").textContent = campeonato.nome || "—";
+  document.getElementById("campModalidadeTexto").textContent = campeonato.modalidade || "";
+  document.getElementById("campLocalTexto").textContent = campeonato.local ? "📍 " + campeonato.local : "";
+  document.getElementById("campPeriodoTexto").textContent =
+    (campeonato.dataInicio || campeonato.dataFim) ? `📅 ${campeonato.dataInicio || "?"} a ${campeonato.dataFim || "?"}` : "";
+  document.getElementById("campDescricaoTexto").textContent = campeonato.descricao || "Sem descrição cadastrada.";
+
+  // Abas
+  const abas = document.querySelectorAll(".aba");
+  const paineis = document.querySelectorAll(".painel");
+  function ativarAba(nome) {
+    abas.forEach((a) => a.classList.toggle("aba-ativa", a.dataset.aba === nome));
+    document.querySelectorAll(".painel").forEach((p) => p.classList.remove("painel-ativo"));
+    document.querySelector(`.painel[data-painel="${nome}"]`).classList.add("painel-ativo");
+    window.location.hash = nome;
+  }
+  abas.forEach((a) => a.addEventListener("click", () => ativarAba(a.dataset.aba)));
+  ativarAba((window.location.hash || "#sobre").replace("#", ""));
+
+  const times = await listarTimes({ campeonatoId: campeonato.id, status: "aprovado" });
+
+  // Times
+  const grid = document.getElementById("gridTimesPublico");
+  document.getElementById("vazioTimesPublico").style.display = times.length ? "none" : "block";
+  grid.innerHTML = times.map((t) => `
+    <div class="cartao-time">
+      <img src="${t.logoUrl || IMG_PADRAO}" alt="${t.nome}">
+      <div><div class="nome">${t.nome}</div><div class="cidade">${t.cidade || ""}</div></div>
+    </div>`).join("");
+
+  // Jogos (agrupados por rodada)
+  const jogos = await listarJogos({ campeonatoId: campeonato.id });
+  const nomeTime = (id) => times.find((t) => t.id === id)?.nome || "Time";
+  document.getElementById("vazioJogosPublico").style.display = jogos.length ? "none" : "block";
+
+  const porRodada = {};
+  jogos.forEach((j) => {
+    const chave = j.rodada || "Sem rodada definida";
+    (porRodada[chave] = porRodada[chave] || []).push(j);
+  });
+
+  document.getElementById("listaJogosPublico").innerHTML = Object.entries(porRodada).map(([rodada, lista]) => `
+    <div class="rodada-titulo">${rodada}</div>
+    ${lista.map((j) => `
+      <div class="linha-jogo">
+        <div>
+          <div class="confronto">${nomeTime(j.timeMandanteId)} x ${nomeTime(j.timeVisitanteId)}</div>
+          <div class="meta-jogo">${j.data || "?"} ${j.horario || ""} ${j.local ? "· " + j.local : ""}</div>
+        </div>
+        <div class="placar-mini">${j.status === "encerrado" ? `${j.placarMandante} x ${j.placarVisitante}` : (j.status === "adiado" ? "Adiado" : (j.status === "cancelado" ? "Cancelado" : "A definir"))}</div>
+      </div>`).join("")}
+  `).join("");
+
+  // Classificação
+  const tabela = await calcularClassificacao(campeonato);
+  document.getElementById("vazioClassificacaoPublico").style.display = tabela.length ? "none" : "block";
+  document.getElementById("corpoClassificacaoPublico").innerHTML = tabela.map((t, i) => `
+    <tr>
+      <td>${i + 1}º</td><td>${t.nome}</td><td>${t.pontos}</td><td>${t.jogos}</td>
+      <td>${t.vitorias}</td><td>${t.empates}</td><td>${t.derrotas}</td>
+      <td>${t.golsPro}</td><td>${t.golsContra}</td><td>${t.saldoGols}</td>
+    </tr>`).join("");
+
+  // Artilharia
+  const artilheiros = await calcularArtilharia(campeonato.id, times.map((t) => t.id));
+  document.getElementById("vazioArtilhariaPublico").style.display = artilheiros.length ? "none" : "block";
+  document.getElementById("corpoArtilhariaPublico").innerHTML = artilheiros.map((a, i) => `
+    <tr><td>${i + 1}º</td><td>${a.nome}</td><td>${nomeTime(a.timeId)}</td><td>${a.gols}</td></tr>`).join("");
+
+  // Regulamento
+  const regulamento = await buscarRegulamento(campeonato.id);
+  if (regulamento.publicado && regulamento.texto) {
+    document.getElementById("regulamentoTextoPublico").textContent = regulamento.texto;
+  } else {
+    document.getElementById("vazioRegulamentoPublico").style.display = "block";
+  }
+}
+</script>
+</body>
+</html>

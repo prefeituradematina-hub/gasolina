@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Time — Torneios &amp; Campeonatos</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: var(--giz); }
+  .app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+
+  .menu-lateral {
+    background: var(--verde-campo); color: var(--giz); padding: 1.4rem 1rem;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .menu-marca { display: flex; align-items: center; gap: 0.5rem; padding: 0 0.4rem 1.2rem; }
+  .menu-marca .bola { font-size: 1.3rem; }
+  .menu-marca span { font-family: var(--fonte-placar); font-size: 0.95rem; letter-spacing: 0.06em; }
+  .menu-grupo-titulo { font-family: var(--fonte-digitos); font-size: 0.66rem; letter-spacing: 0.12em; opacity: 0.55; padding: 0.9rem 0.6rem 0.3rem; }
+  .menu-link { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.6rem; border-radius: var(--radius-sm); color: var(--giz); text-decoration: none; font-size: 0.92rem; font-weight: 500; opacity: 0.82; }
+  .menu-link:hover { background: rgba(246,243,234,0.08); opacity: 1; }
+  .menu-ativo { background: rgba(246,243,234,0.14); opacity: 1; font-weight: 600; }
+  .menu-link .tag-em-breve { margin-left: auto; font-family: var(--fonte-digitos); font-size: 0.6rem; background: rgba(246,243,234,0.14); padding: 0.1rem 0.4rem; border-radius: 999px; }
+  .menu-link.desabilitado { pointer-events: none; opacity: 0.4; }
+
+  .conteudo { padding: 1.6rem 2rem 3rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.6rem; }
+  .topbar .usuario-info { display: flex; align-items: center; gap: 0.8rem; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--ouro-apito); color: var(--carvao); display: flex; align-items: center; justify-content: center; font-family: var(--fonte-placar); font-weight: 800; }
+  .btn-secundario { background: transparent; border: 1.5px solid var(--linha-campo); color: var(--carvao); }
+  .btn-perigo { background: var(--vermelho-cartao); color: #fff; }
+  .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+  .botao-menu-mobile { display: none; }
+
+  .secao { display: none; }
+  .secao-ativa { display: block; }
+  .secao-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem; }
+  .secao-cabecalho h2 { font-size: 1.5rem; color: var(--verde-campo); }
+
+  /* Card do time / status */
+  .cartao { background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); padding: 1.6rem 1.8rem; }
+  .status-time { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; }
+  .logo-time { width: 64px; height: 64px; border-radius: var(--radius-sm); object-fit: cover; background: var(--linha-campo); }
+  .aviso-pendente { background: #FBEBC8; color: #8A6A11; border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; font-size: 0.88rem; margin-bottom: 1.2rem; }
+  .aviso-rejeitado { background: #F5DCD9; color: var(--vermelho-cartao); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; font-size: 0.88rem; margin-bottom: 1.2rem; }
+
+  .form-linha { margin-bottom: 1rem; }
+  .form-duas-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.35rem; }
+  input, textarea, select { width: 100%; padding: 0.6rem 0.7rem; border: 1.5px solid var(--linha-campo); border-radius: var(--radius-sm); font-family: var(--fonte-texto); font-size: 0.92rem; }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+  .cartao-atleta { background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); overflow: hidden; }
+  .cartao-atleta .foto { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--linha-campo); }
+  .cartao-atleta .info { padding: 0.9rem 1rem; }
+  .cartao-atleta .nome { font-weight: 700; }
+  .cartao-atleta .detalhe { font-size: 0.82rem; opacity: 0.7; margin-top: 0.2rem; }
+  .cartao-atleta .acoes { display: flex; gap: 0.4rem; padding: 0 1rem 1rem; }
+
+  .modal-fundo { display: none; position: fixed; inset: 0; background: rgba(20,20,15,0.5); align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+  .modal-fundo.aberto { display: flex; }
+  .modal-caixa { background: #fff; border-radius: var(--radius-md); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 1.6rem 1.8rem; }
+  .modal-caixa h3 { color: var(--verde-campo); margin-bottom: 1rem; font-size: 1.3rem; }
+  .modal-acoes { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.2rem; }
+
+  .vazio { padding: 2rem; text-align: center; opacity: 0.6; font-size: 0.9rem; }
+  .toast { position: fixed; bottom: 1.2rem; right: 1.2rem; background: var(--verde-campo); color: var(--giz); padding: 0.8rem 1.2rem; border-radius: var(--radius-sm); font-size: 0.88rem; z-index: 100; opacity: 0; transform: translateY(8px); transition: 0.2s ease; pointer-events: none; }
+  .toast.mostrar { opacity: 1; transform: translateY(0); }
+  .toast.toast-erro { background: var(--vermelho-cartao); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--linha-campo); }
+  th { font-family: var(--fonte-digitos); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+  tr:last-child td { border-bottom: none; }
+  .tabela-caixa { background: #fff; border-radius: var(--radius-md); box-shadow: var(--sombra-cartao); overflow: auto; }
+
+  .linha-jogo { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0; border-bottom: 1px solid var(--linha-campo); gap: 1rem; flex-wrap: wrap; }
+  .linha-jogo:last-child { border-bottom: none; }
+  .confronto { font-family: var(--fonte-placar); font-size: 1.05rem; }
+  .placar-mini { font-family: var(--fonte-digitos); font-size: 1.1rem; background: var(--giz); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); }
+  .meta-jogo { font-size: 0.78rem; opacity: 0.6; }
+  .regulamento-texto { white-space: pre-wrap; line-height: 1.6; font-size: 0.92rem; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .menu-lateral { position: fixed; left: -260px; top: 0; width: 230px; z-index: 40; transition: left 0.2s ease; }
+    .menu-lateral.menu-aberto { left: 0; }
+    .botao-menu-mobile { display: inline-flex; }
+    .form-duas-colunas { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="menu-lateral" id="menuLateral">
+    <div class="menu-marca"><span class="bola">⚽</span><span>TORNEIOS &amp; CAMPEONATOS</span></div>
+    <div class="menu-grupo-titulo">MEU TIME</div>
+    <a class="menu-link" data-menu-link="meutime" href="#meutime">🛡️ Dados do time</a>
+    <a class="menu-link" data-menu-link="atletas" href="#atletas">🏃 Atletas</a>
+    <div class="menu-grupo-titulo">CAMPEONATO</div>
+    <a class="menu-link" data-menu-link="jogos" href="#jogos">⚽ Jogos do time</a>
+    <a class="menu-link" data-menu-link="classificacao" href="#classificacao">📈 Classificação</a>
+    <a class="menu-link" data-menu-link="artilharia" href="#artilharia">🥇 Artilharia</a>
+    <a class="menu-link" data-menu-link="regulamento" href="#regulamento">📄 Regulamento</a>
+  </nav>
+
+  <main class="conteudo">
+    <div class="topbar">
+      <button class="btn btn-secundario btn-sm botao-menu-mobile" id="btnMenuMobile">☰ Menu</button>
+      <div class="usuario-info">
+        <div class="avatar" data-avatar-resp>R</div>
+        <div>
+          <div style="font-weight:600;" data-nome-resp>—</div>
+          <div style="font-size:0.78rem;opacity:0.6;">Responsável de time</div>
+        </div>
+        <button class="btn btn-secundario btn-sm" id="btnSair">Sair</button>
+      </div>
+    </div>
+
+    <!-- ===== MEU TIME ===== -->
+    <section class="secao" data-secao="meutime">
+      <div class="secao-cabecalho"><h2>Dados do time</h2></div>
+
+      <!-- Estado: ainda não tem time -->
+      <div class="cartao" id="blocoCriarTime" style="display:none;">
+        <p style="margin-bottom:1.2rem;">Você ainda não tem um time cadastrado. Escolha um campeonato com inscrições abertas e cadastre seu time.</p>
+        <form id="formCriarTime">
+          <div class="form-linha">
+            <label>Campeonato</label>
+            <select id="criarCampeonatoId" required></select>
+          </div>
+          <div class="form-linha"><label>Nome do time</label><input type="text" id="criarNome" required></div>
+          <div class="form-duas-colunas">
+            <div class="form-linha"><label>Nome abreviado</label><input type="text" id="criarNomeAbreviado" maxlength="6"></div>
+            <div class="form-linha"><label>Cidade/localidade</label><input type="text" id="criarCidade"></div>
+          </div>
+          <div class="form-duas-colunas">
+            <div class="form-linha"><label>Telefone</label><input type="tel" id="criarTelefone"></div>
+            <div class="form-linha"><label>E-mail de contato</label><input type="email" id="criarEmail"></div>
+          </div>
+          <button type="submit" class="btn btn-primario">Cadastrar time</button>
+          <div id="avisoSemCampeonato" class="erro" style="margin-top:0.8rem;"></div>
+        </form>
+      </div>
+
+      <!-- Estado: já tem time -->
+      <div id="blocoMeuTime" style="display:none;">
+        <div id="avisoStatusTime"></div>
+        <div class="cartao">
+          <div class="status-time">
+            <img class="logo-time" id="logoTimeAtual" src="" alt="Logo do time">
+            <div>
+              <input type="file" id="inputLogoTime" accept="image/*" style="display:none;">
+              <button type="button" class="btn btn-secundario btn-sm" id="btnTrocarLogo">Trocar logo</button>
+            </div>
+          </div>
+          <form id="formMeuTime">
+            <div class="form-linha"><label>Nome do time</label><input type="text" id="meuNome" required></div>
+            <div class="form-duas-colunas">
+              <div class="form-linha"><label>Nome abreviado</label><input type="text" id="meuNomeAbreviado" maxlength="6"></div>
+              <div class="form-linha"><label>Cidade/localidade</label><input type="text" id="meuCidade"></div>
+            </div>
+            <div class="form-duas-colunas">
+              <div class="form-linha"><label>Telefone</label><input type="tel" id="meuTelefone"></div>
+              <div class="form-linha"><label>E-mail de contato</label><input type="email" id="meuEmail"></div>
+            </div>
+            <button type="submit" class="btn btn-primario">Salvar alterações</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ATLETAS ===== -->
+    <section class="secao" data-secao="atletas">
+      <div class="secao-cabecalho">
+        <h2>Atletas</h2>
+        <button class="btn btn-primario btn-sm" id="btnNovoAtleta">+ Novo atleta</button>
+      </div>
+      <div id="avisoSemTimeAtletas" class="vazio" style="display:none;">Cadastre seu time antes de adicionar atletas.</div>
+      <div class="grid-cards" id="gridAtletas"></div>
+      <div class="vazio" id="vazioAtletas" style="display:none;">Nenhum atleta cadastrado ainda.</div>
+    </section>
+
+    <!-- ===== JOGOS DO TIME ===== -->
+    <section class="secao" data-secao="jogos">
+      <div class="secao-cabecalho"><h2>Jogos do time</h2></div>
+      <div id="avisoSemTimeJogos" class="vazio" style="display:none;">Cadastre seu time para ver os jogos.</div>
+      <div class="cartao" id="listaJogosTime"></div>
+      <div class="vazio" id="vazioJogosTime" style="display:none;">Nenhum jogo cadastrado ainda para o seu time.</div>
+    </section>
+
+    <!-- ===== CLASSIFICAÇÃO ===== -->
+    <section class="secao" data-secao="classificacao">
+      <div class="secao-cabecalho"><h2>Classificação</h2></div>
+      <div class="tabela-caixa">
+        <table>
+          <thead><tr><th>#</th><th>Time</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></tr></thead>
+          <tbody id="corpoClassificacaoTime"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="vazioClassificacaoTime" style="display:none;">Classificação ainda não disponível.</div>
+    </section>
+
+    <!-- ===== ARTILHARIA ===== -->
+    <section class="secao" data-secao="artilharia">
+      <div class="secao-cabecalho"><h2>Artilharia</h2></div>
+      <div class="tabela-caixa">
+        <table>
+          <thead><tr><th>#</th><th>Atleta</th><th>Time</th><th>Gols</th></tr></thead>
+          <tbody id="corpoArtilhariaTime"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="vazioArtilhariaTime" style="display:none;">Nenhum gol registrado ainda.</div>
+    </section>
+
+    <!-- ===== REGULAMENTO ===== -->
+    <section class="secao" data-secao="regulamento">
+      <div class="secao-cabecalho"><h2>Regulamento</h2></div>
+      <div class="cartao">
+        <div class="regulamento-texto" id="regulamentoTextoTime"></div>
+        <div class="vazio" id="vazioRegulamentoTime" style="display:none;">Regulamento ainda não publicado.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== MODAL ATLETA ===== -->
+<div class="modal-fundo" id="modalAtleta">
+  <div class="modal-caixa">
+    <h3 id="tituloModalAtleta">Novo atleta</h3>
+    <form id="formAtleta">
+      <input type="hidden" id="atletaId">
+      <div class="status-time" style="margin-bottom:1rem;">
+        <img class="logo-time" id="fotoAtletaPreview" src="" alt="Foto do atleta">
+        <div>
+          <input type="file" id="inputFotoAtleta" accept="image/*" style="display:none;">
+          <button type="button" class="btn btn-secundario btn-sm" id="btnEscolherFoto">Escolher foto</button>
+          <div style="font-size:0.78rem;opacity:0.6;margin-top:0.3rem;">Foto do atleta é obrigatória *</div>
+        </div>
+      </div>
+      <div class="form-linha"><label>Nome completo</label><input type="text" id="atletaNomeCompleto" required></div>
+      <div class="form-duas-colunas">
+        <div class="form-linha"><label>Nome esportivo</label><input type="text" id="atletaNomeEsportivo"></div>
+        <div class="form-linha"><label>Número da camisa</label><input type="number" id="atletaNumero" min="0"></div>
+      </div>
+      <div class="form-duas-colunas">
+        <div class="form-linha"><label>Data de nascimento</label><input type="date" id="atletaDataNascimento"></div>
+        <div class="form-linha"><label>Posição</label><input type="text" id="atletaPosicao"></div>
+      </div>
+      <div class="form-linha" id="linhaDocumentoAtletaResp" style="display:none;">
+        <label>CPF / Documento</label>
+        <input type="text" id="atletaDocumento">
+      </div>
+      <div class="form-linha"><label>Altura (m)</label><input type="number" step="0.01" id="atletaAltura"></div>
+      <div class="form-linha"><label>Observações</label><textarea id="atletaObservacoes"></textarea></div>
+
+      <div class="form-linha" style="border-top:1px dashed var(--linha-campo);padding-top:1rem;margin-top:0.4rem;">
+        <label style="margin-bottom:0.6rem;">Documentos obrigatórios do cadastro</label>
+      </div>
+      <div class="form-duas-colunas">
+        <div class="form-linha"><label>Título de eleitor *</label><input type="text" id="atletaTituloEleitor" required></div>
+        <div class="form-linha"><label>CPF *</label><input type="text" id="atletaCpf" required></div>
+      </div>
+      <div class="form-linha">
+        <label>Documento com foto (RG, CNH etc.) *</label>
+        <img id="documentoAtletaPreview" src="" alt="" style="display:none;max-width:160px;border-radius:var(--radius-sm);margin-bottom:0.5rem;">
+        <input type="file" id="inputDocumentoAtleta" accept="image/*" style="display:none;">
+        <button type="button" class="btn btn-secundario btn-sm" id="btnEscolherDocumento">Escolher arquivo</button>
+        <span id="statusDocumentoAtleta" style="font-size:0.8rem;opacity:0.65;margin-left:0.4rem;"></span>
+      </div>
+
+      <div class="modal-acoes">
+        <button type="button" class="btn btn-secundario" data-fechar-modal="modalAtleta">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { requireAuth, logout, getPerfilAtual } from "./js/auth.js";
+import { buscarMeuTime, criarMeuTime, editarMeuTime, enviarLogoTime } from "./js/times.js";
+import { listarCampeonatosComInscricoesAbertas } from "./js/campeonatos.js";
+import { listarAtletas, buscarAtleta, salvarAtleta, excluirAtleta, enviarFotoAtleta, buscarAtletaPrivado, salvarAtletaPrivado, enviarDocumentoAtleta } from "./js/atletas.js";
+import { buscarCampeonato } from "./js/campeonatos.js";
+import { listarJogos } from "./js/jogos.js";
+import { calcularClassificacao } from "./js/classificacao.js";
+import { calcularArtilharia } from "./js/artilharia.js";
+import { buscarRegulamento } from "./js/regulamentos.js";
+import { buscarConfiguracoes } from "./js/configuracoes.js";
+import { listarTimes } from "./js/times.js";
+
+const IMG_PADRAO = "data:image/svg+xml;utf8," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='#D8D2C2'/></svg>`
+);
+
+function mostrarToast(msg, erro = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.toggle("toast-erro", erro);
+  t.classList.add("mostrar");
+  setTimeout(() => t.classList.remove("mostrar"), 3000);
+}
+function abrirModal(id) { document.getElementById(id).classList.add("aberto"); }
+function fecharModal(id) { document.getElementById(id).classList.remove("aberto"); }
+document.querySelectorAll("[data-fechar-modal]").forEach((b) => b.addEventListener("click", () => fecharModal(b.dataset.fecharModal)));
+
+let perfil;
+let configuracoesAtuais = { exigirDocumentoAtleta: false };
+
+try {
+  perfil = await requireAuth(["responsavel"]);
+  configuracoesAtuais = await buscarConfiguracoes();
+  document.querySelector("[data-nome-resp]").textContent = perfil.nome;
+  document.querySelector("[data-avatar-resp]").textContent = (perfil.nome || "R").charAt(0).toUpperCase();
+  document.getElementById("btnSair").addEventListener("click", logout);
+  document.getElementById("btnMenuMobile").addEventListener("click", () => document.getElementById("menuLateral").classList.toggle("menu-aberto"));
+} catch (err) {
+  document.querySelector(".app").outerHTML =
+    `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;">
+       <div style="max-width:440px;text-align:center;">
+         <h2 style="color:var(--verde-campo);margin-bottom:0.6rem;">Não foi possível carregar</h2>
+         <p style="font-size:0.9rem;opacity:0.8;">${err.message}</p>
+       </div>
+     </div>`;
+  throw err;
+}
+
+let meuTime = null;
+
+function iniciarNavegacao(aoTrocarSecao) {
+  const secoes = document.querySelectorAll("[data-secao]");
+  const linksMenu = document.querySelectorAll("[data-menu-link]");
+  function aplicar() {
+    const alvo = (window.location.hash || "#meutime").replace("#", "");
+    secoes.forEach((s) => s.classList.toggle("secao-ativa", s.dataset.secao === alvo));
+    linksMenu.forEach((l) => l.classList.toggle("menu-ativo", l.dataset.menuLink === alvo));
+    document.getElementById("menuLateral").classList.remove("menu-aberto");
+    if (typeof aoTrocarSecao === "function") aoTrocarSecao(alvo);
+  }
+  window.addEventListener("hashchange", aplicar);
+  aplicar();
+}
+
+iniciarNavegacao(async (secao) => {
+  if (secao === "meutime") await carregarMeuTime();
+  if (secao === "atletas") await carregarAtletas();
+  if (secao === "jogos") await carregarJogosTime();
+  if (secao === "classificacao") await carregarClassificacaoTime();
+  if (secao === "artilharia") await carregarArtilhariaTime();
+  if (secao === "regulamento") await carregarRegulamentoTime();
+});
+
+// ---------------------------------------------------------------------
+// Meu time
+// ---------------------------------------------------------------------
+async function carregarMeuTime() {
+  meuTime = await buscarMeuTime(perfil.id);
+
+  document.getElementById("blocoCriarTime").style.display = meuTime ? "none" : "block";
+  document.getElementById("blocoMeuTime").style.display = meuTime ? "block" : "none";
+
+  if (!meuTime) {
+    const campeonatos = await listarCampeonatosComInscricoesAbertas();
+    const sel = document.getElementById("criarCampeonatoId");
+    sel.innerHTML = campeonatos.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+    document.getElementById("avisoSemCampeonato").textContent = campeonatos.length
+      ? "" : "Nenhum campeonato com inscrições abertas no momento.";
+    document.getElementById("formCriarTime").querySelector("button[type=submit]").disabled = !campeonatos.length;
+    return;
+  }
+
+  const aviso = document.getElementById("avisoStatusTime");
+  if (meuTime.status === "pendente") {
+    aviso.innerHTML = `<div class="aviso-pendente">Seu time está aguardando aprovação do administrador.</div>`;
+  } else if (meuTime.status === "rejeitado") {
+    aviso.innerHTML = `<div class="aviso-rejeitado">Seu time foi rejeitado. Entre em contato com o administrador.</div>`;
+  } else if (meuTime.status === "bloqueado") {
+    aviso.innerHTML = `<div class="aviso-rejeitado">Seu time está bloqueado. Entre em contato com o administrador.</div>`;
+  } else {
+    aviso.innerHTML = "";
+  }
+
+  document.getElementById("logoTimeAtual").src = meuTime.logoUrl || IMG_PADRAO;
+  document.getElementById("meuNome").value = meuTime.nome || "";
+  document.getElementById("meuNomeAbreviado").value = meuTime.nomeAbreviado || "";
+  document.getElementById("meuCidade").value = meuTime.cidade || "";
+  document.getElementById("meuTelefone").value = meuTime.telefone || "";
+  document.getElementById("meuEmail").value = meuTime.email || "";
+}
+
+document.getElementById("formCriarTime").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await criarMeuTime(perfil.id, {
+      campeonatoId: document.getElementById("criarCampeonatoId").value,
+      nome: document.getElementById("criarNome").value.trim(),
+      nomeAbreviado: document.getElementById("criarNomeAbreviado").value.trim(),
+      cidade: document.getElementById("criarCidade").value.trim(),
+      telefone: document.getElementById("criarTelefone").value.trim(),
+      email: document.getElementById("criarEmail").value.trim(),
+      responsavelNome: perfil.nome
+    });
+    mostrarToast("Time cadastrado! Aguarde a aprovação do administrador.");
+    await carregarMeuTime();
+  } catch (err) {
+    mostrarToast("Erro ao cadastrar time: " + err.message, true);
+  }
+});
+
+document.getElementById("formMeuTime").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await editarMeuTime(meuTime.id, {
+      nome: document.getElementById("meuNome").value.trim(),
+      nomeAbreviado: document.getElementById("meuNomeAbreviado").value.trim(),
+      cidade: document.getElementById("meuCidade").value.trim(),
+      telefone: document.getElementById("meuTelefone").value.trim(),
+      email: document.getElementById("meuEmail").value.trim()
+    });
+    mostrarToast("Dados do time atualizados.");
+    await carregarMeuTime();
+  } catch (err) {
+    mostrarToast("Erro ao salvar: " + err.message, true);
+  }
+});
+
+document.getElementById("btnTrocarLogo").addEventListener("click", () => document.getElementById("inputLogoTime").click());
+document.getElementById("inputLogoTime").addEventListener("change", async (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo || !meuTime) return;
+  try {
+    const url = await enviarLogoTime(meuTime.id, arquivo);
+    document.getElementById("logoTimeAtual").src = url;
+    mostrarToast("Logo atualizada.");
+  } catch (err) {
+    mostrarToast("Erro ao enviar logo: " + err.message, true);
+  }
+});
+
+// ---------------------------------------------------------------------
+// Atletas
+// ---------------------------------------------------------------------
+function badgeStatusAtleta(status) {
+  const rotulos = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado", ativo: "Aprovado" };
+  const cores = { pendente: "badge-pendente", aprovado: "badge-aprovado", ativo: "badge-aprovado", rejeitado: "badge-rejeitado" };
+  return `<span class="badge ${cores[status] || "badge-pendente"}">${rotulos[status] || status}</span>`;
+}
+
+async function carregarAtletas() {
+  if (!meuTime) meuTime = await buscarMeuTime(perfil.id);
+  const semTime = !meuTime;
+  document.getElementById("avisoSemTimeAtletas").style.display = semTime ? "block" : "none";
+  document.getElementById("btnNovoAtleta").disabled = semTime;
+  if (semTime) {
+    document.getElementById("gridAtletas").innerHTML = "";
+    document.getElementById("vazioAtletas").style.display = "none";
+    return;
+  }
+
+  // Aqui é a listagem do PRÓPRIO time — mostra todos os status (o
+  // responsável precisa ver se um cadastro está pendente/rejeitado).
+  // A filtragem "só aprovados" só se aplica a telas públicas/de terceiros.
+  const atletas = await listarAtletas({ timeId: meuTime.id });
+  const grid = document.getElementById("gridAtletas");
+  grid.innerHTML = "";
+  document.getElementById("vazioAtletas").style.display = atletas.length ? "none" : "block";
+
+  atletas.forEach((a) => {
+    const div = document.createElement("div");
+    div.className = "cartao-atleta";
+    div.innerHTML = `
+      <img class="foto" src="${a.fotoUrl || IMG_PADRAO}" alt="${a.nomeCompleto}">
+      <div class="info">
+        <div class="nome">${a.nomeCompleto}</div>
+        <div class="detalhe">${a.posicao || "Posição não informada"} ${a.numeroCamisa != null ? "· nº " + a.numeroCamisa : ""}</div>
+        <div style="margin-top:0.4rem;">${badgeStatusAtleta(a.status)}</div>
+      </div>
+      <div class="acoes">
+        <button class="btn btn-secundario btn-sm" data-editar-atleta="${a.id}">Editar</button>
+        <button class="btn btn-perigo btn-sm" data-excluir-atleta="${a.id}">Excluir</button>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+let arquivoFotoSelecionado = null;
+let arquivoDocumentoSelecionado = null;
+let atletaEmEdicao = null; // { fotoUrl, documentoFotoUrl } — usado só pra validação ao editar
+
+document.getElementById("btnNovoAtleta").addEventListener("click", () => {
+  if (!meuTime) return;
+  document.getElementById("formAtleta").reset();
+  document.getElementById("atletaId").value = "";
+  document.getElementById("fotoAtletaPreview").src = IMG_PADRAO;
+  document.getElementById("documentoAtletaPreview").style.display = "none";
+  document.getElementById("statusDocumentoAtleta").textContent = "";
+  arquivoFotoSelecionado = null;
+  arquivoDocumentoSelecionado = null;
+  atletaEmEdicao = null;
+  document.getElementById("linhaDocumentoAtletaResp").style.display = configuracoesAtuais.exigirDocumentoAtleta ? "block" : "none";
+  document.getElementById("tituloModalAtleta").textContent = "Novo atleta";
+  abrirModal("modalAtleta");
+});
+
+document.getElementById("btnEscolherFoto").addEventListener("click", () => document.getElementById("inputFotoAtleta").click());
+document.getElementById("inputFotoAtleta").addEventListener("change", (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  arquivoFotoSelecionado = arquivo;
+  document.getElementById("fotoAtletaPreview").src = URL.createObjectURL(arquivo);
+});
+
+document.getElementById("btnEscolherDocumento").addEventListener("click", () => document.getElementById("inputDocumentoAtleta").click());
+document.getElementById("inputDocumentoAtleta").addEventListener("change", (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  arquivoDocumentoSelecionado = arquivo;
+  document.getElementById("statusDocumentoAtleta").textContent = "Arquivo selecionado: " + arquivo.name;
+  const preview = document.getElementById("documentoAtletaPreview");
+  preview.src = URL.createObjectURL(arquivo);
+  preview.style.display = "block";
+});
+
+document.getElementById("formAtleta").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("atletaId").value || null;
+
+  const tituloEleitor = document.getElementById("atletaTituloEleitor").value.trim();
+  const cpf = document.getElementById("atletaCpf").value.trim();
+  if (!tituloEleitor || !cpf) {
+    mostrarToast("Preencha título de eleitor e CPF.", true);
+    return;
+  }
+  const temFoto = arquivoFotoSelecionado || (atletaEmEdicao && atletaEmEdicao.fotoUrl);
+  if (!temFoto) {
+    mostrarToast("A foto do atleta é obrigatória.", true);
+    return;
+  }
+  const temDocumento = arquivoDocumentoSelecionado || (atletaEmEdicao && atletaEmEdicao.documentoFotoUrl);
+  if (!temDocumento) {
+    mostrarToast("O documento com foto é obrigatório.", true);
+    return;
+  }
+
+  const dados = {
+    timeId: meuTime.id,
+    nomeCompleto: document.getElementById("atletaNomeCompleto").value.trim(),
+    nomeEsportivo: document.getElementById("atletaNomeEsportivo").value.trim(),
+    numeroCamisa: Number(document.getElementById("atletaNumero").value) || null,
+    dataNascimento: document.getElementById("atletaDataNascimento").value || null,
+    documento: document.getElementById("atletaDocumento").value.trim(),
+    posicao: document.getElementById("atletaPosicao").value.trim(),
+    altura: Number(document.getElementById("atletaAltura").value) || null,
+    observacoes: document.getElementById("atletaObservacoes").value.trim()
+  };
+  if (!id) dados.status = "pendente"; // cadastro novo pelo responsável sempre entra pendente
+
+  try {
+    const atletaId = await salvarAtleta(dados, id);
+    if (arquivoFotoSelecionado) await enviarFotoAtleta(atletaId, arquivoFotoSelecionado);
+    if (arquivoDocumentoSelecionado) await enviarDocumentoAtleta(atletaId, arquivoDocumentoSelecionado);
+    await salvarAtletaPrivado(atletaId, { cpf, tituloEleitor });
+    fecharModal("modalAtleta");
+    mostrarToast(id ? "Atleta atualizado com sucesso." : "Atleta cadastrado! Aguarde a aprovação do administrador.");
+    carregarAtletas();
+  } catch (err) {
+    mostrarToast("Erro ao salvar: " + err.message, true);
+  }
+});
+
+document.getElementById("gridAtletas").addEventListener("click", async (e) => {
+  const idEditar = e.target.dataset.editarAtleta;
+  const idExcluir = e.target.dataset.excluirAtleta;
+
+  if (idEditar) {
+    const [a, privado] = await Promise.all([buscarAtleta(idEditar), buscarAtletaPrivado(idEditar)]);
+    atletaEmEdicao = { fotoUrl: a.fotoUrl || null, documentoFotoUrl: privado.documentoFotoUrl || null };
+    arquivoFotoSelecionado = null;
+    arquivoDocumentoSelecionado = null;
+    document.getElementById("atletaId").value = a.id;
+    document.getElementById("fotoAtletaPreview").src = a.fotoUrl || IMG_PADRAO;
+    if (privado.documentoFotoUrl) {
+      document.getElementById("documentoAtletaPreview").src = privado.documentoFotoUrl;
+      document.getElementById("documentoAtletaPreview").style.display = "block";
+      document.getElementById("statusDocumentoAtleta").textContent = "Documento já enviado (escolha outro arquivo para substituir).";
+    } else {
+      document.getElementById("documentoAtletaPreview").style.display = "none";
+      document.getElementById("statusDocumentoAtleta").textContent = "";
+    }
+    document.getElementById("linhaDocumentoAtletaResp").style.display = configuracoesAtuais.exigirDocumentoAtleta ? "block" : "none";
+    document.getElementById("atletaNomeCompleto").value = a.nomeCompleto || "";
+    document.getElementById("atletaNomeEsportivo").value = a.nomeEsportivo || "";
+    document.getElementById("atletaNumero").value = a.numeroCamisa ?? "";
+    document.getElementById("atletaDataNascimento").value = a.dataNascimento || "";
+    document.getElementById("atletaDocumento").value = a.documento || "";
+    document.getElementById("atletaPosicao").value = a.posicao || "";
+    document.getElementById("atletaAltura").value = a.altura ?? "";
+    document.getElementById("atletaObservacoes").value = a.observacoes || "";
+    document.getElementById("atletaTituloEleitor").value = privado.tituloEleitor || "";
+    document.getElementById("atletaCpf").value = privado.cpf || "";
+    document.getElementById("tituloModalAtleta").textContent = "Editar atleta";
+    abrirModal("modalAtleta");
+  }
+  if (idExcluir && confirm("Excluir este atleta?")) {
+    await excluirAtleta(idExcluir);
+    mostrarToast("Atleta excluído.");
+    carregarAtletas();
+  }
+});
+
+// ---------------------------------------------------------------------
+// Jogos do time (somente as partidas do próprio time)
+// ---------------------------------------------------------------------
+async function carregarJogosTime() {
+  if (!meuTime) meuTime = await buscarMeuTime(perfil.id);
+  const semTime = !meuTime;
+  document.getElementById("avisoSemTimeJogos").style.display = semTime ? "block" : "none";
+  if (semTime) {
+    document.getElementById("listaJogosTime").innerHTML = "";
+    document.getElementById("vazioJogosTime").style.display = "none";
+    return;
+  }
+
+  const [jogos, times] = await Promise.all([
+    listarJogos({ campeonatoId: meuTime.campeonatoId, timeId: meuTime.id }),
+    listarTimes({ campeonatoId: meuTime.campeonatoId, status: "aprovado" })
+  ]);
+  const nomeTime = (id) => times.find((t) => t.id === id)?.nome || "Time";
+
+  document.getElementById("vazioJogosTime").style.display = jogos.length ? "none" : "block";
+  document.getElementById("listaJogosTime").innerHTML = jogos.map((j) => `
+    <div class="linha-jogo">
+      <div>
+        <div class="confronto">${nomeTime(j.timeMandanteId)} x ${nomeTime(j.timeVisitanteId)}</div>
+        <div class="meta-jogo">${j.rodada ? j.rodada + " · " : ""}${j.data || "?"} ${j.horario || ""} ${j.local ? "· " + j.local : ""}</div>
+      </div>
+      <div class="placar-mini">${j.status === "encerrado" ? `${j.placarMandante} x ${j.placarVisitante}` : (j.status === "adiado" ? "Adiado" : (j.status === "cancelado" ? "Cancelado" : "A definir"))}</div>
+    </div>`).join("");
+}
+
+// ---------------------------------------------------------------------
+// Classificação (tabela completa do campeonato do time)
+// ---------------------------------------------------------------------
+async function carregarClassificacaoTime() {
+  if (!meuTime) meuTime = await buscarMeuTime(perfil.id);
+  if (!meuTime) return;
+  const campeonato = await buscarCampeonato(meuTime.campeonatoId);
+  const tabela = await calcularClassificacao(campeonato);
+  document.getElementById("vazioClassificacaoTime").style.display = tabela.length ? "none" : "block";
+  document.getElementById("corpoClassificacaoTime").innerHTML = tabela.map((t, i) => `
+    <tr>
+      <td>${i + 1}º</td><td>${t.nome}</td><td>${t.pontos}</td><td>${t.jogos}</td>
+      <td>${t.vitorias}</td><td>${t.empates}</td><td>${t.derrotas}</td>
+      <td>${t.golsPro}</td><td>${t.golsContra}</td><td>${t.saldoGols}</td>
+    </tr>`).join("");
+}
+
+// ---------------------------------------------------------------------
+// Artilharia (do campeonato do time)
+// ---------------------------------------------------------------------
+async function carregarArtilhariaTime() {
+  if (!meuTime) meuTime = await buscarMeuTime(perfil.id);
+  if (!meuTime) return;
+  const times = await listarTimes({ campeonatoId: meuTime.campeonatoId, status: "aprovado" });
+  const artilheiros = await calcularArtilharia(meuTime.campeonatoId, times.map((t) => t.id));
+  const nomeTime = (id) => times.find((t) => t.id === id)?.nome || "—";
+  document.getElementById("vazioArtilhariaTime").style.display = artilheiros.length ? "none" : "block";
+  document.getElementById("corpoArtilhariaTime").innerHTML = artilheiros.map((a, i) => `
+    <tr><td>${i + 1}º</td><td>${a.nome}</td><td>${nomeTime(a.timeId)}</td><td>${a.gols}</td></tr>`).join("");
+}
+
+// ---------------------------------------------------------------------
+// Regulamento (do campeonato do time)
+// ---------------------------------------------------------------------
+async function carregarRegulamentoTime() {
+  if (!meuTime) meuTime = await buscarMeuTime(perfil.id);
+  if (!meuTime) return;
+  const regulamento = await buscarRegulamento(meuTime.campeonatoId);
+  if (regulamento.publicado && regulamento.texto) {
+    document.getElementById("regulamentoTextoTime").textContent = regulamento.texto;
+    document.getElementById("vazioRegulamentoTime").style.display = "none";
+  } else {
+    document.getElementById("regulamentoTextoTime").textContent = "";
+    document.getElementById("vazioRegulamentoTime").style.display = "block";
+  }
+}
+</script>
+</body>
+</html>

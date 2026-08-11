@@ -1,0 +1,138 @@
+rules_version = '2';
+
+/**
+ * MODELO DE PROPRIEDADE DE TIME
+ * ---------------------------------------------------------------------
+ * Cada documento em /times/{timeId} guarda o campo `responsavelUid`
+ * (uid do Firebase Auth do responsável). Essa é a fonte da verdade de
+ * "qual time pertence a qual usuário" — não usar timeId salvo no
+ * documento de usuário para decisões de permissão, para evitar
+ * inconsistência caso o vínculo mude.
+ *
+ * Coleções: usuarios, campeonatos, times, atletas, jogos, resultados,
+ * artilharia, regulamentos, configuracoes.
+ * ---------------------------------------------------------------------
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Funções auxiliares ----------
+    function logado() {
+      return request.auth != null;
+    }
+
+    function meuPerfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function souAdmin() {
+      return logado() &&
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             meuPerfil().tipo == 'admin' &&
+             meuPerfil().status == 'ativo';
+    }
+
+    function souResponsavelAtivo() {
+      return logado() &&
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             meuPerfil().tipo == 'responsavel' &&
+             meuPerfil().status == 'ativo';
+    }
+
+    function souDonoDoTime(timeId) {
+      return souResponsavelAtivo() &&
+             exists(/databases/$(database)/documents/times/$(timeId)) &&
+             get(/databases/$(database)/documents/times/$(timeId)).data.responsavelUid == request.auth.uid;
+    }
+
+    // ---------- usuarios ----------
+    // Só o próprio admin gerencia contas. Usuário comum só lê o próprio doc
+    // (necessário para o app checar tipo/status após login).
+    match /usuarios/{uid} {
+      allow read: if souAdmin() || (logado() && request.auth.uid == uid);
+      allow create, update, delete: if souAdmin();
+    }
+
+    // ---------- campeonatos ----------
+    // Leitura pública (página pública do campeonato). Escrita só admin.
+    match /campeonatos/{campeonatoId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- times ----------
+    match /times/{timeId} {
+      allow read: if true;
+
+      // Responsável pode CRIAR seu próprio time (autoatribuindo-se como
+      // responsavelUid), sempre com status "pendente" — nunca já aprovado.
+      allow create: if souResponsavelAtivo() &&
+                       request.resource.data.responsavelUid == request.auth.uid &&
+                       request.resource.data.status == 'pendente';
+
+      // Responsável só edita dados do PRÓPRIO time, e não pode alterar
+      // status, responsavelUid ou campeonatoId (isso é controle do admin).
+      allow update: if souAdmin() ||
+                      (souDonoDoTime(timeId) &&
+                       request.resource.data.responsavelUid == resource.data.responsavelUid &&
+                       request.resource.data.status == resource.data.status &&
+                       request.resource.data.campeonatoId == resource.data.campeonatoId);
+
+      allow delete: if souAdmin();
+    }
+
+    // ---------- atletas ----------
+    match /atletas/{atletaId} {
+      allow read: if true;
+
+      allow create: if souAdmin() ||
+                       (souResponsavelAtivo() &&
+                        souDonoDoTime(request.resource.data.timeId));
+
+      allow update, delete: if souAdmin() ||
+                               (souResponsavelAtivo() &&
+                                souDonoDoTime(resource.data.timeId) &&
+                                request.resource.data.timeId == resource.data.timeId);
+    }
+
+    // ---------- jogos ----------
+    // Só o admin cadastra/edita jogos e insere resultados. Todos leem.
+    match /jogos/{jogoId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- resultados (histórico/log, se usado além do campo em jogos) ----------
+    match /resultados/{resultadoId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- classificacao (cache opcional calculado pelo admin) ----------
+    match /classificacao/{docId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- artilharia ----------
+    match /artilharia/{artilheiroId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- regulamentos ----------
+    match /regulamentos/{campeonatoId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+
+    // ---------- configuracoes ----------
+    // Ex: regras de pontuação, cores do campeonato. Leitura pública,
+    // escrita só admin.
+    match /configuracoes/{docId} {
+      allow read: if true;
+      allow write: if souAdmin();
+    }
+  }
+}
