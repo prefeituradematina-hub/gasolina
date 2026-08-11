@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<title>Controle de Ofícios</title>
+<title>Controle de Ofícios, Portarias e Decretos</title>
 
 <script>
 /* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
@@ -189,7 +189,7 @@
 <div id="tela-bloqueada" class="bloqueado-acesso" style="display:none;">
   <div class="card">
     <h3>🚫 SEM ACESSO</h3>
-    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Ofícios.</p>
+    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Ofícios, Portarias e Decretos.</p>
     <button class="btn-save" onclick="location.replace('porta.html')">⬅️ VOLTAR AO PORTAL</button>
   </div>
 </div>
@@ -197,7 +197,7 @@
 <div id="app" class="container" style="display:none;">
 
   <div class="top-bar">
-    <h1>📄 CONTROLE DE OFÍCIOS
+    <h1>📄 OFÍCIOS, PORTARIAS E DECRETOS
       <small id="top-user-info">—</small>
     </h1>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
@@ -211,8 +211,8 @@
   </div>
 
   <div class="nav-tabs">
-    <button id="btn-tab-novo" class="tab-btn" onclick="switchTab('novo')">📝 NOVO OFÍCIO</button>
-    <button id="btn-tab-historico" class="tab-btn" onclick="switchTab('historico')">📋 OFÍCIOS REGISTRADOS</button>
+    <button id="btn-tab-novo" class="tab-btn" onclick="switchTab('novo')">📝 NOVO DOCUMENTO</button>
+    <button id="btn-tab-historico" class="tab-btn" onclick="switchTab('historico')">📋 DOCUMENTOS REGISTRADOS</button>
     <button id="btn-tab-contadores" class="tab-btn" style="display:none;" onclick="switchTab('contadores')">🔢 AJUSTAR CONTADORES</button>
   </div>
 
@@ -224,13 +224,21 @@
     </div>
 
     <div class="card">
-      <h3>📝 NOVA SOLICITAÇÃO DE NÚMERO DE OFÍCIO</h3>
+      <h3>📝 NOVA SOLICITAÇÃO DE NÚMERO</h3>
       <p style="font-size:12px;color:#64748b;margin-bottom:15px;text-transform:none;">
-        A numeração é automática e sequencial — <b>separada por secretaria e por ano</b>. Ao registrar, o sistema
-        gera o próximo número disponível para a sua secretaria naquele ano (ex: Nº 007/2026 — SAÚDE), sem risco de
-        repetir um número já usado, mesmo se dois usuários registrarem ao mesmo tempo.
+        A numeração é automática e sequencial — <b>separada por tipo de documento, por secretaria e por ano</b>.
+        Ofício, Portaria e Decreto têm sequências independentes (pode existir Ofício 001, Portaria 001 e Decreto 001
+        ao mesmo tempo), sem risco de repetir um número já usado, mesmo se dois usuários registrarem ao mesmo tempo.
       </p>
       <div class="grid-form">
+        <div>
+          <label>TIPO DE DOCUMENTO</label>
+          <select id="of-tipo">
+            <option value="oficio">📄 OFÍCIO</option>
+            <option value="portaria">📜 PORTARIA</option>
+            <option value="decreto">⚖️ DECRETO</option>
+          </select>
+        </div>
         <div>
           <label>SECRETARIA</label>
           <select id="of-secretaria">
@@ -269,8 +277,17 @@
   <!-- ========== TAB: HISTÓRICO ========== -->
   <div id="tab-historico" style="display:none;">
     <div class="card">
-      <h3>📋 OFÍCIOS REGISTRADOS</h3>
+      <h3>📋 DOCUMENTOS REGISTRADOS</h3>
       <div class="grid-form" style="margin-bottom:15px;">
+        <div>
+          <label>TIPO DE DOCUMENTO</label>
+          <select id="hist-filtro-tipo" onchange="renderHistoricoOficios()">
+            <option value="">TODOS</option>
+            <option value="oficio">📄 OFÍCIO</option>
+            <option value="portaria">📜 PORTARIA</option>
+            <option value="decreto">⚖️ DECRETO</option>
+          </select>
+        </div>
         <div id="hist-filtro-secretaria-container" style="display:none;">
           <label>FILTRAR POR SECRETARIA</label>
           <select id="hist-filtro-secretaria" onchange="renderHistoricoOficios()">
@@ -305,7 +322,7 @@
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr><th>Nº / ANO</th><th>SECRETARIA</th><th>DATA</th><th>DESTINATÁRIO</th><th>ASSUNTO</th><th>REGISTRADO POR</th><th>STATUS</th><th class="no-print">AÇÕES</th></tr>
+            <tr><th>TIPO</th><th>Nº / ANO</th><th>SECRETARIA</th><th>DATA</th><th>DESTINATÁRIO</th><th>ASSUNTO</th><th>REGISTRADO POR</th><th>STATUS</th><th class="no-print">AÇÕES</th></tr>
           </thead>
           <tbody id="oficios-historico-body"></tbody>
         </table>
@@ -323,6 +340,14 @@
         Mexer aqui não cria nem apaga nenhum ofício — só ajusta de qual número o próximo registro vai continuar.
       </p>
       <div class="grid-form">
+        <div>
+          <label>TIPO DE DOCUMENTO</label>
+          <select id="cnt-tipo">
+            <option value="oficio">📄 OFÍCIO</option>
+            <option value="portaria">📜 PORTARIA</option>
+            <option value="decreto">⚖️ DECRETO</option>
+          </select>
+        </div>
         <div>
           <label>SECRETARIA</label>
           <select id="cnt-secretaria">
@@ -495,23 +520,40 @@
   }
   switchTab('novo');
 
-  // Chave segura para o contador no Firebase (secretaria + ano)
-  function chaveContador(secretaria, ano) {
-    return secretaria.replace(/[.#$\[\]\/]/g, '_') + '_' + ano;
+  // Rótulos e ícones dos tipos de documento (aditivo)
+  const TIPOS_DOC = {
+    oficio:   { label: 'OFÍCIO',   icone: '📄' },
+    portaria: { label: 'PORTARIA', icone: '📜' },
+    decreto:  { label: 'DECRETO',  icone: '⚖️' }
+  };
+  function rotuloTipo(tipo) {
+    const t = TIPOS_DOC[tipo || 'oficio'] || TIPOS_DOC.oficio;
+    return t.icone + ' ' + t.label;
+  }
+
+  // Chave segura para o contador no Firebase (tipo + secretaria + ano).
+  // IMPORTANTE: para 'oficio' a chave continua EXATAMENTE como era antes
+  // (secretaria_ano), para não reiniciar a numeração já em uso. Portaria e
+  // Decreto usam prefixo próprio, garantindo sequências independentes.
+  function chaveContador(secretaria, ano, tipo) {
+    const sec = secretaria.replace(/[.#$\[\]\/]/g, '_');
+    const t = tipo || 'oficio';
+    return (t === 'oficio' ? '' : t + '_') + sec + '_' + ano;
   }
 
   // ── GERAÇÃO DO NÚMERO (transação atômica — evita número repetido mesmo com 2 pessoas ao mesmo tempo) ──
   async function gerarNumeroOficio() {
+    const tipo = document.getElementById('of-tipo').value || 'oficio';
     const secretaria = document.getElementById('of-secretaria').value;
     const dataEmissao = document.getElementById('of-data').value || new Date().toISOString().slice(0, 10);
     const destinatario = document.getElementById('of-destinatario').value.trim();
     const assunto = document.getElementById('of-assunto').value.trim();
 
     if (!secretaria) { mostrarNotificacao('⚠️ SELECIONE A SECRETARIA!', 'error'); return; }
-    if (!assunto) { mostrarNotificacao('⚠️ INFORME O ASSUNTO DO OFÍCIO!', 'error'); return; }
+    if (!assunto) { mostrarNotificacao('⚠️ INFORME O ASSUNTO!', 'error'); return; }
 
     const ano = parseInt(dataEmissao.slice(0, 4));
-    const chave = chaveContador(secretaria, ano);
+    const chave = chaveContador(secretaria, ano, tipo);
 
     try {
       const resultado = await db.ref('contadores_oficios/' + chave).transaction(function(atual) {
@@ -524,6 +566,7 @@
       const numero = resultado.snapshot.val();
 
       await db.ref('oficios').push({
+        tipo: tipo,
         numero: numero,
         ano: ano,
         secretaria: secretaria,
@@ -536,12 +579,13 @@
       });
 
       const numeroFormatado = String(numero).padStart(3, '0');
-      document.getElementById('numero-gerado-texto').textContent = 'OFÍCIO Nº ' + numeroFormatado + '/' + ano;
+      const nomeTipo = (TIPOS_DOC[tipo] || TIPOS_DOC.oficio).label;
+      document.getElementById('numero-gerado-texto').textContent = nomeTipo + ' Nº ' + numeroFormatado + '/' + ano;
       document.getElementById('numero-gerado-detalhe').textContent = secretaria + ' — ' + assunto;
       document.getElementById('numero-gerado-destaque').style.display = 'block';
 
-      mostrarNotificacao('✅ OFÍCIO Nº ' + numeroFormatado + '/' + ano + ' REGISTRADO!', 'success');
-      registrarAuditoria('OFICIO_REGISTRADO', { numero: numero, ano: ano, secretaria: secretaria });
+      mostrarNotificacao('✅ ' + nomeTipo + ' Nº ' + numeroFormatado + '/' + ano + ' REGISTRADO!', 'success');
+      registrarAuditoria('OFICIO_REGISTRADO', { tipo: tipo, numero: numero, ano: ano, secretaria: secretaria });
 
       document.getElementById('of-destinatario').value = '';
       document.getElementById('of-assunto').value = '';
@@ -610,7 +654,7 @@
 
     document.getElementById('edit-of-id').value = item.id;
     document.getElementById('edit-of-numero-label').textContent =
-      'Nº ' + String(item.numero).padStart(3, '0') + '/' + item.ano;
+      (TIPOS_DOC[item.tipo || 'oficio'] || TIPOS_DOC.oficio).label + ' Nº ' + String(item.numero).padStart(3, '0') + '/' + item.ano;
     document.getElementById('edit-of-data').value = item.dataEmissao || '';
     document.getElementById('edit-of-destinatario').value = item.destinatario || '';
     document.getElementById('edit-of-assunto').value = item.assunto || '';
@@ -657,7 +701,7 @@
     // NOVO: além do master, quem registrou o ofício (e admin) também pode excluir.
     const podeExcluir = isMaster || podeAdministrar || item.registradoPor === loginUser;
     if (!podeExcluir) { mostrarNotificacao('❌ SEM PERMISSÃO PARA EXCLUIR ESTE OFÍCIO!', 'error'); return; }
-    if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE o registro do Ofício Nº ' + String(item.numero).padStart(3,'0') + '/' + item.ano + '?\n\nEssa ação NÃO pode ser desfeita. O número já usado não poderá ser reaproveitado automaticamente.')) return;
+    if (!confirm('⚠️ EXCLUIR DEFINITIVAMENTE o registro do ' + (TIPOS_DOC[item.tipo || 'oficio'] || TIPOS_DOC.oficio).label + ' Nº ' + String(item.numero).padStart(3,'0') + '/' + item.ano + '?\n\nEssa ação NÃO pode ser desfeita. O número já usado não poderá ser reaproveitado automaticamente.')) return;
     try {
       await db.ref('oficios/' + id).remove();
       mostrarNotificacao('✅ REGISTRO EXCLUÍDO!', 'success');
@@ -669,18 +713,21 @@
   function renderHistoricoOficios() {
     const body = document.getElementById('oficios-historico-body');
     if (!body) return;
+    const filtroTipo = document.getElementById('hist-filtro-tipo') ? document.getElementById('hist-filtro-tipo').value : '';
     const filtroSec = podeAdministrar && document.getElementById('hist-filtro-secretaria') ? document.getElementById('hist-filtro-secretaria').value : '';
     const filtroAno = document.getElementById('hist-filtro-ano') ? document.getElementById('hist-filtro-ano').value : '';
     const filtroStatus = document.getElementById('hist-filtro-status') ? document.getElementById('hist-filtro-status').value : '';
 
     let lista = oficiosCache.slice();
     if (!podeAdministrar) lista = lista.filter(o => o.secretaria === userSecretaria);
+    // Registros antigos não têm o campo 'tipo' — são tratados como 'oficio'
+    if (filtroTipo) lista = lista.filter(o => (o.tipo || 'oficio') === filtroTipo);
     if (filtroSec) lista = lista.filter(o => o.secretaria === filtroSec);
     if (filtroAno) lista = lista.filter(o => String(o.ano) === filtroAno);
     if (filtroStatus === 'ativo') lista = lista.filter(o => !o.cancelado);
     if (filtroStatus === 'anulado') lista = lista.filter(o => o.cancelado);
 
-    lista.sort((a, b) => (b.ano - a.ano) || (b.numero - a.numero));
+    lista.sort((a, b) => (b.ano - a.ano) || String(a.tipo || 'oficio').localeCompare(String(b.tipo || 'oficio')) || (b.numero - a.numero));
 
     body.innerHTML = lista.length ? lista.map(o => {
       const ehDono = podeAdministrar || o.registradoPor === loginUser;
@@ -688,6 +735,7 @@
       const podeEditar = !o.cancelado && ehDono;
       const podeExcluir = isMaster || ehDono;
       return '<tr>' +
+        '<td>' + rotuloTipo(o.tipo) + '</td>' +
         '<td><b>' + String(o.numero).padStart(3, '0') + '/' + o.ano + '</b></td>' +
         '<td>' + o.secretaria + '</td>' +
         '<td>' + fmtData(o.dataEmissao) + '</td>' +
@@ -701,23 +749,25 @@
           (podeExcluir ? '<button class="btn-action btn-excluir" onclick="excluirOficio(\'' + o.id + '\')" title="Excluir definitivamente">🗑️</button>' : '') +
         '</td>' +
       '</tr>';
-    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#64748b;">Nenhum ofício encontrado.</td></tr>';
+    }).join('') : '<tr><td colspan="9" style="text-align:center;color:#64748b;">Nenhum documento encontrado.</td></tr>';
   }
 
   // ── AJUSTE MANUAL DE CONTADOR (master/admin) ──
   async function ajustarContadorManual() {
     if (!podeAdministrar) { mostrarNotificacao('❌ SEM PERMISSÃO!', 'error'); return; }
+    const tipo = document.getElementById('cnt-tipo').value || 'oficio';
     const secretaria = document.getElementById('cnt-secretaria').value;
     const ano = parseInt(document.getElementById('cnt-ano').value);
     const valor = parseInt(document.getElementById('cnt-valor').value);
     if (!secretaria) { mostrarNotificacao('⚠️ SELECIONE A SECRETARIA!', 'error'); return; }
     if (!ano) { mostrarNotificacao('⚠️ INFORME O ANO!', 'error'); return; }
     if (isNaN(valor) || valor < 0) { mostrarNotificacao('⚠️ INFORME UM NÚMERO VÁLIDO!', 'error'); return; }
-    if (!confirm('Ajustar o contador de ' + secretaria + '/' + ano + ' para ' + valor + '?\nO próximo ofício gerado será o Nº ' + String(valor + 1).padStart(3, '0') + '.')) return;
+    const nomeTipoCnt = (TIPOS_DOC[tipo] || TIPOS_DOC.oficio).label;
+    if (!confirm('Ajustar o contador de ' + nomeTipoCnt + ' — ' + secretaria + '/' + ano + ' para ' + valor + '?\nO próximo documento gerado será o Nº ' + String(valor + 1).padStart(3, '0') + '.')) return;
     try {
-      await db.ref('contadores_oficios/' + chaveContador(secretaria, ano)).set(valor);
+      await db.ref('contadores_oficios/' + chaveContador(secretaria, ano, tipo)).set(valor);
       mostrarNotificacao('✅ CONTADOR AJUSTADO!', 'success');
-      registrarAuditoria('OFICIO_CONTADOR_AJUSTADO', { secretaria: secretaria, ano: ano, valor: valor });
+      registrarAuditoria('OFICIO_CONTADOR_AJUSTADO', { tipo: tipo, secretaria: secretaria, ano: ano, valor: valor });
     } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
   }
   window.ajustarContadorManual = ajustarContadorManual;
