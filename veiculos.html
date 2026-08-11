@@ -2616,6 +2616,19 @@ function abrirSaida(vid) {
   document.getElementById('s-hint').style.display = 'none';
   document.getElementById('s-mot-field').style.display = '';
   document.getElementById('s-mot-fixo').style.display = 'none';
+  // CORREÇÃO: zera o campo de motorista ANTES de pré-preencher com os dados da
+  // solicitação. Sem isso, o nome digitado manualmente na saída anterior continuava
+  // no formulário e aparecia como motorista da nova saída (motorista de outro veículo).
+  var _selMotLimpa = document.getElementById('s-mot');
+  if(_selMotLimpa) _selMotLimpa.value = '';
+  var _boxMotLimpa = document.getElementById('s-mot-manual');
+  if(_boxMotLimpa) _boxMotLimpa.style.display = 'none';
+  var _inpMotLimpa = document.getElementById('s-mot-texto');
+  if(_inpMotLimpa) _inpMotLimpa.value = '';
+  var _fixoNome = document.getElementById('s-mot-fixo-nome');
+  if(_fixoNome) _fixoNome.textContent = '';
+  var _buscaMot = document.getElementById('s-mot-busca');
+  if(_buscaMot) _buscaMot.value = '';
   _editMovId = null;
   if(vid) document.getElementById('s-vei').value = vid;
   // Se houver solicitação aprovada para este veículo, pré-preenche os dados informados.
@@ -2625,7 +2638,9 @@ function abrirSaida(vid) {
   if(solAp) {
     try {
       if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
-      if(solAp.motorista){ preencherMotorista('s', solAp.motid, solAp.motorista); }
+      // CORREÇÃO: o motorista da solicitação tem prioridade absoluta. Considera também
+      // o caso de a solicitação ter só o ID do motorista salvo (sem o nome).
+      if(solAp.motorista || solAp.motid){ preencherMotorista('s', solAp.motid, solAp.motorista); }
       var qp = solAp.qtd_passageiros || (solAp.passageiros?solAp.passageiros.length:0);
       if(qp > 0) {
         document.getElementById('s-com-pass').value = '1';
@@ -2792,6 +2807,16 @@ function confirmarSaida() {
       // Executado ≠ cancelado. 'usado' já o remove das listas e da disponibilidade.
       if(_ag){ _ag.usado = true; _ag.usadoEm = new Date().toISOString(); }
       document.getElementById('ov-saida').dataset.agid = '';
+    }
+    // CORREÇÃO: marca a solicitação liberada como "saída registrada", igual já era
+    // feito na saída em lote. Sem isso, quando a solicitação não tem data_viagem
+    // (ou a data não bate com o dia da saída), solicitacaoJaSaiu() continua retornando
+    // false e o veículo volta indevidamente para "Liberado para viagem" após a entrada.
+    var _solLiberada = getSolicitacaoLiberada(vid);
+    if(_solLiberada){
+      _solLiberada.saida_registrada = true;
+      _solLiberada.saida_registrada_em = new Date().toISOString();
+      _solLiberada.movid = D.movimentacoes[D.movimentacoes.length-1].id;
     }
   }
   salvar(); fechar('ov-saida'); toast('Saída registrada!'); renderTudo();
