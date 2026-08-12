@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<title>Controle de Ofícios, Portarias e Decretos</title>
+<title>Controle de Documentos Oficiais</title>
 
 <script>
 /* ── GUARDA DE SESSÃO (login compartilhado via porta.html) ── */
@@ -189,7 +189,7 @@
 <div id="tela-bloqueada" class="bloqueado-acesso" style="display:none;">
   <div class="card">
     <h3>🚫 SEM ACESSO</h3>
-    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Ofícios, Portarias e Decretos.</p>
+    <p style="text-transform:none;">Seu usuário não tem acesso ao Controle de Documentos Oficiais.</p>
     <button class="btn-save" onclick="location.replace('porta.html')">⬅️ VOLTAR AO PORTAL</button>
   </div>
 </div>
@@ -197,7 +197,7 @@
 <div id="app" class="container" style="display:none;">
 
   <div class="top-bar">
-    <h1>📄 OFÍCIOS, PORTARIAS E DECRETOS
+    <h1>📄 DOCUMENTOS OFICIAIS
       <small id="top-user-info">—</small>
     </h1>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
@@ -227,7 +227,8 @@
       <h3>📝 NOVA SOLICITAÇÃO DE NÚMERO</h3>
       <p style="font-size:12px;color:#64748b;margin-bottom:15px;text-transform:none;">
         A numeração é automática e sequencial — <b>separada por tipo de documento, por secretaria e por ano</b>.
-        Ofício, Portaria e Decreto têm sequências independentes (pode existir Ofício 001, Portaria 001 e Decreto 001
+        Cada tipo tem sequência independente (pode existir Ofício 001, Portaria 001, Decreto 001, Projeto de Lei 001
+        e Lei 001
         ao mesmo tempo), sem risco de repetir um número já usado, mesmo se dois usuários registrarem ao mesmo tempo.
       </p>
       <div class="grid-form">
@@ -237,6 +238,8 @@
             <option value="oficio">📄 OFÍCIO</option>
             <option value="portaria">📜 PORTARIA</option>
             <option value="decreto">⚖️ DECRETO</option>
+            <option value="projeto_lei">📑 PROJETO DE LEI</option>
+            <option value="lei">🏛️ LEI</option>
           </select>
         </div>
         <div>
@@ -286,6 +289,8 @@
             <option value="oficio">📄 OFÍCIO</option>
             <option value="portaria">📜 PORTARIA</option>
             <option value="decreto">⚖️ DECRETO</option>
+            <option value="projeto_lei">📑 PROJETO DE LEI</option>
+            <option value="lei">🏛️ LEI</option>
           </select>
         </div>
         <div id="hist-filtro-secretaria-container" style="display:none;">
@@ -346,6 +351,8 @@
             <option value="oficio">📄 OFÍCIO</option>
             <option value="portaria">📜 PORTARIA</option>
             <option value="decreto">⚖️ DECRETO</option>
+            <option value="projeto_lei">📑 PROJETO DE LEI</option>
+            <option value="lei">🏛️ LEI</option>
           </select>
         </div>
         <div>
@@ -522,9 +529,11 @@
 
   // Rótulos e ícones dos tipos de documento (aditivo)
   const TIPOS_DOC = {
-    oficio:   { label: 'OFÍCIO',   icone: '📄' },
-    portaria: { label: 'PORTARIA', icone: '📜' },
-    decreto:  { label: 'DECRETO',  icone: '⚖️' }
+    oficio:      { label: 'OFÍCIO',         icone: '📄' },
+    portaria:    { label: 'PORTARIA',       icone: '📜' },
+    decreto:     { label: 'DECRETO',        icone: '⚖️' },
+    projeto_lei: { label: 'PROJETO DE LEI', icone: '📑' },
+    lei:         { label: 'LEI',            icone: '🏛️' }
   };
   function rotuloTipo(tipo) {
     const t = TIPOS_DOC[tipo || 'oficio'] || TIPOS_DOC.oficio;
