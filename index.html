@@ -5635,6 +5635,62 @@
   }
   
   // 🔄 ZERAR KM DE TODOS OS VEÍCULOS — reinicia a contagem de quilometragem
+  // NOVO: zera o KM apenas de UM veículo (mesma lógica da versão em lote, mas filtrada por placa).
+  // Usada quando um veículo teve KM lançado errado e precisa recomeçar a contagem sozinho,
+  // sem afetar os demais veículos.
+  async function zerarKmDoVeiculo(placa) {
+    if (!(loginUser === 'master' || temPermissao('gerenciar_veiculos'))) {
+      mostrarNotificacao('❌ SEM PERMISSÃO PARA ESTA AÇÃO!', 'error');
+      return;
+    }
+    const p = normPlaca(placa);
+    const registrosDoVeiculo = (cache || []).filter(x => normPlaca(x.placa) === p);
+    const comKm = registrosDoVeiculo.filter(x => (x.km || 0) > 0).length;
+    if (comKm === 0) {
+      mostrarNotificacao('ℹ️ Este veículo não tem KM registrado para zerar.', 'info');
+      return;
+    }
+    if (!confirm(
+      `🔄 ZERAR KM DO VEÍCULO ${p}\n\n` +
+      `Isto vai zerar o KM de ${comKm} abastecimento(s) DESTE veículo, reiniciando a contagem do zero.\n\n` +
+      `✅ Preservados: valores, litros, datas, CPF, motorista, posto.\n` +
+      `🔄 Zerado: apenas o KM deste veículo.\n` +
+      `📊 A eficiência (km/l) dele volta a ser calculada a partir dos próximos abastecimentos.\n\n` +
+      `Os demais veículos NÃO são afetados. Um backup será baixado automaticamente antes. Continuar?`
+    )) return;
+
+    // 1) Backup de segurança (somente os registros deste veículo)
+    try {
+      const backup = JSON.stringify(registrosDoVeiculo, null, 2);
+      const blob = new Blob([backup], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_${p}_antes_de_zerar_km_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {
+      console.error('Falha ao gerar backup:', e);
+      if (!confirm('⚠️ Não foi possível baixar o backup automático. Deseja continuar mesmo assim?')) return;
+    }
+
+    // 2) Aplicar no Firebase só nos registros deste veículo
+    try {
+      const snap = await db.ref('abastecimentos').once('value');
+      const updates = {};
+      let qtd = 0;
+      snap.forEach(ch => {
+        const v = ch.val();
+        if (v && normPlaca(v.placa) === p && (v.km || 0) !== 0) { updates[ch.key + '/km'] = 0; qtd++; }
+      });
+      if (qtd === 0) { mostrarNotificacao('ℹ️ Nada para zerar.', 'info'); return; }
+      await db.ref('abastecimentos').update(updates);
+      registrarAuditoria('KM_ZERADO_VEICULO', { placa: p, registros: qtd });
+      mostrarNotificacao(`✅ KM DE ${p} ZERADO EM ${qtd} REGISTRO(S)!`, 'success');
+    } catch (e) {
+      mostrarNotificacao('❌ ERRO AO ZERAR KM: ' + e.message, 'error');
+    }
+  }
+  window.zerarKmDoVeiculo = zerarKmDoVeiculo;
+
   async function zerarTodosKm() {
     if (!(loginUser === 'master' || temPermissao('gerenciar_veiculos'))) {
       mostrarNotificacao('❌ SEM PERMISSÃO PARA ESTA AÇÃO!', 'error');
@@ -8518,12 +8574,12 @@
     const valorInput = document.getElementById('tanque-valor');
     if (!valorInput) return;
     
-    const valorTotal = parseFloat(valorInput.value.replace('R$ ', '').replace(',', '.')) || 0;
+    const valorTotal = moedaTextoParaNumero(valorInput.value);
     
     const saldoElement = document.getElementById('saldo-restante');
     if (!saldoElement) return;
     
-    const saldoRestante = parseFloat(saldoElement.textContent.replace('R$ ', '').replace(',', '.')) || 0;
+    const saldoRestante = moedaTextoParaNumero(saldoElement.textContent);
     
     const btnConfirmar = document.getElementById('btn-confirmar-tanque');
     const infoDiv = document.getElementById('info-limite');
@@ -8531,7 +8587,7 @@
     // NOVA REGRA: Verificar percentual de gasto para SECRETÁRIOS
     const limiteElement = document.getElementById('saldo-limite');
     if (limiteElement) {
-      const limite = parseFloat(limiteElement.textContent.replace('R$ ', '').replace(',', '.')) || 0;
+      const limite = moedaTextoParaNumero(limiteElement.textContent);
       const gastoAtual = limite - saldoRestante;
       const percentualGasto = (gastoAtual / limite) * 100;
       
@@ -8743,7 +8799,7 @@
     
     // Verificar limite uma última vez
     const saldoElement = document.getElementById('saldo-restante');
-    const saldoRestante = parseFloat(saldoElement.textContent.replace('R$ ', '').replace(',', '.')) || 0;
+    const saldoRestante = moedaTextoParaNumero(saldoElement.textContent);
     
     let excedeLimite = false;
     if (valor > saldoRestante && saldoRestante > 0) {
@@ -9559,6 +9615,24 @@
       maximumFractionDigits: 2
     });
   }
+  
+  // CORREÇÃO DE BUG: converte um texto de moeda no formato brasileiro para número.
+  // O código antigo fazia apenas .replace('R$ ','').replace(',','.'), o que quebrava
+  // com separador de milhar: "1.500,00" virava "1.500.00" e parseFloat devolvia 1.5
+  // em vez de 1500 (saldo/limite lidos ~1000x menores). Aqui o ponto de milhar é
+  // removido antes de trocar a vírgula decimal por ponto.
+  function moedaTextoParaNumero(txt) {
+    if (typeof txt === 'number') return txt || 0;
+    if (!txt) return 0;
+    return parseFloat(
+      String(txt)
+        .replace(/R\$/g, '')
+        .trim()
+        .replace(/\./g, '')   // remove separador de milhar
+        .replace(',', '.')    // vírgula decimal → ponto
+    ) || 0;
+  }
+  window.moedaTextoParaNumero = moedaTextoParaNumero;
   
   function formatarLitros(litros) {
     return litros.toLocaleString('pt-BR', {
@@ -16217,6 +16291,7 @@
               <button class="btn-action" style="background:#8b5cf6;color:white;" onclick="gerarQRCodeModal('${v.placa}')">📱 QR CODE</button>
               ${temPermissao('gerenciar_veiculos') ? `
                 <button class="btn-action" style="background:var(--accent);color:white;" onclick="editarVeiculo('${c.key}')">✏️ EDITAR</button>
+                <button class="btn-action" style="background:#ea580c;color:white;" title="Zerar o KM apenas deste veículo (para corrigir lançamento errado)" onclick="zerarKmDoVeiculo('${v.placa}')">🔄 ZERAR KM</button>
                 <button class="btn-action btn-deletar" onclick="if(confirm('⚠️ EXCLUIR VEÍCULO ${v.placa}?')) { db.ref('veiculos/${c.key}').remove().then(() => { registrarAuditoria('VEICULO_DELETADO', {placa: '${v.placa}'}); mostrarNotificacao('✅ VEÍCULO EXCLUÍDO!', 'success'); listVeiculos(); }); }">
                   🗑️
                 </button>
