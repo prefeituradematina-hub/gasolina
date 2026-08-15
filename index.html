@@ -3182,7 +3182,7 @@
         
         <div>
           <label>PLACA *</label>
-          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="8" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria(); mostrarUltimoKmVeiculo()">
+          <input type="text" id="f-placa" list="dl-placas" placeholder="ABC1D23 ou ABC1234" maxlength="8" oninput="mascaraPlaca(this); sugerir(this.value); verificarMediaEmTempoReal(); verificarLimiteEmTempoReal(); verificarVeiculoSelecionado(); verificarVeiculoPermitidoSecretaria(); mostrarUltimoKmVeiculo(); aplicarVinculoCpfDoVeiculo()">
         </div>
         <div>
           <label>POSTO *</label>
@@ -5995,6 +5995,47 @@
     }) || null;
   }
   
+  // ── CORREÇÃO DE SEGURANÇA: vínculo VEÍCULO → CPF ──────────────────────────
+  // Retorna a autorização ATIVA vinculada a uma PLACA (não ao CPF digitado).
+  // Esta é a chave da correção: como a consulta parte da placa, apagar o CPF do
+  // formulário deixa de ser um caminho para escapar da regra semanal.
+  function obterAutorizacaoDoVeiculo(placa) {
+    const p = normPlaca(placa);
+    if (!p) return null;
+    return cpfAutorizadosCache.find(a => {
+      if (a.status !== 'Ativo') return false;
+      if (!a.veiculo) return false;              // autorização sem veículo vinculado não trava nada
+      if (normPlaca(a.veiculo) !== p) return false;
+      if (!a.cpf || a.cpf.replace(/\D/g, '').length !== 11) return false;
+      return true;
+    }) || null;
+  }
+  window.obterAutorizacaoDoVeiculo = obterAutorizacaoDoVeiculo;
+
+  // Versão que consulta o Firebase diretamente (fonte da verdade), usada na
+  // validação final antes de gravar — não confia no cache que está no navegador.
+  async function obterAutorizacaoDoVeiculoFirebase(placa) {
+    const p = normPlaca(placa);
+    if (!p) return null;
+    try {
+      const snap = await db.ref('cpfAutorizados').once('value');
+      let achada = null;
+      snap.forEach(item => {
+        const a = item.val();
+        if (!a || achada) return;
+        if (a.status !== 'Ativo') return;
+        if (!a.veiculo || normPlaca(a.veiculo) !== p) return;
+        if (!a.cpf || a.cpf.replace(/\D/g, '').length !== 11) return;
+        achada = a;
+      });
+      return achada;
+    } catch (e) {
+      console.warn('⚠️ Falha ao consultar cpfAutorizados no Firebase, usando cache local:', e);
+      return obterAutorizacaoDoVeiculo(placa); // fallback: não deixa de validar
+    }
+  }
+  window.obterAutorizacaoDoVeiculoFirebase = obterAutorizacaoDoVeiculoFirebase;
+
   // Classifica a situação de uma autorização para exibição na lista.
   function situacaoAutorizacaoCPF(a) {
     return a.status === 'Ativo' ? 'vigente' : 'inativa';
@@ -6271,6 +6312,52 @@
     }
   }
   
+  // CORREÇÃO DE SEGURANÇA (camada de interface): se o veículo digitado tem um CPF
+  // oficialmente vinculado em "CPF Autorizados", o campo é preenchido e travado.
+  // Isto é conveniência + prevenção de erro; o bloqueio real está em processar().
+  function aplicarVinculoCpfDoVeiculo() {
+    const inputPlaca = document.getElementById('f-placa');
+    const inputCPF = document.getElementById('f-cpf');
+    const labelCPF = document.getElementById('label-cpf');
+    if (!inputPlaca || !inputCPF) return;
+
+    const aut = obterAutorizacaoDoVeiculo(inputPlaca.value);
+
+    if (aut) {
+      const cpfFmt = formatarCPFTexto(aut.cpf);
+      inputCPF.value = cpfFmt;
+      inputCPF.readOnly = true;
+      inputCPF.style.background = '#f1f5f9';
+      inputCPF.style.borderColor = '#0ea5e9';
+      inputCPF.title = 'CPF vinculado a este veículo — não pode ser alterado.';
+      if (labelCPF) {
+        labelCPF.innerHTML = 'CPF <span style="font-size:9px; color:#0284c7;">🔒 VINCULADO A ESTE VEÍCULO' +
+          (aut.nome ? ' (' + aut.nome + ')' : '') + '</span>';
+      }
+      // Mantém as validações em tempo real que já dependem do CPF preenchido
+      try { if (typeof buscarHistoricoPorCPF === 'function') buscarHistoricoPorCPF(); } catch(e) {}
+    } else if (inputCPF.readOnly) {
+      // Só destrava/limpa se o campo tinha sido travado por esta função — assim
+      // não interfere em nada que o usuário tenha digitado por conta própria.
+      inputCPF.readOnly = false;
+      inputCPF.value = '';
+      inputCPF.style.background = '';
+      inputCPF.style.borderColor = '';
+      inputCPF.title = '';
+      try { if (typeof controlarVisibilidadeCPF === 'function') controlarVisibilidadeCPF(); } catch(e) {}
+    }
+  }
+  window.aplicarVinculoCpfDoVeiculo = aplicarVinculoCpfDoVeiculo;
+
+  // Formata 11 dígitos como 000.000.000-00 (sem alterar a função formatarCPF já existente,
+  // que trabalha sobre um elemento de input durante a digitação).
+  function formatarCPFTexto(cpf) {
+    const d = String(cpf || '').replace(/\D/g, '');
+    if (d.length !== 11) return String(cpf || '');
+    return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9);
+  }
+  window.formatarCPFTexto = formatarCPFTexto;
+
   function buscarHistoricoPorCPF() {
     const cpfInput = document.getElementById('f-cpf');
     const cpf = cpfInput.value.replace(/\D/g, '');
@@ -7983,6 +8070,63 @@
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
+      }
+
+      // 🔒 CORREÇÃO DE SEGURANÇA — VÍNCULO OBRIGATÓRIO VEÍCULO → CPF
+      // Consulta a fonte da verdade (Firebase) PELA PLACA. Se o veículo tem um CPF
+      // oficialmente vinculado, o abastecimento só passa com exatamente esse CPF.
+      // Como a consulta parte da placa, apagar/trocar o CPF no formulário não escapa
+      // mais da regra semanal — que era a brecha existente.
+      // Veículo SEM CPF vinculado: nada muda, comportamento atual preservado.
+      const autVinculo = await obterAutorizacaoDoVeiculoFirebase(dados.placa);
+      if (autVinculo) {
+        const cpfOficial = String(autVinculo.cpf || '').replace(/\D/g, '');
+        const cpfEnviado = String(dados.cpf || '').replace(/\D/g, '');
+
+        if (!cpfEnviado) {
+          await mostrarModalSeguranca({
+            variante : 'bloqueio',
+            icone    : '🔒',
+            titulo   : 'CPF OBRIGATÓRIO PARA ESTE VEÍCULO',
+            subtitulo: 'Abastecimento bloqueado pelo sistema',
+            destaque : dados.placa,
+            msg      : 'Este veículo possui um CPF oficialmente vinculado no cadastro de CPF Autorizados.',
+            alerta   : '🔒 Abastecimentos deste veículo devem obrigatoriamente ser registrados com o CPF vinculado.',
+            sub      : 'Titular vinculado: <strong>' + (autVinculo.nome || '—') + '</strong><br>' +
+                       'Selecione a placa novamente para que o CPF seja preenchido automaticamente.',
+            textoBotao: '✅ ENTENDIDO — FECHAR'
+          });
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
+        }
+
+        if (cpfEnviado !== cpfOficial) {
+          try {
+            registrarAuditoria('CPF_DIVERGENTE_BLOQUEADO', {
+              placa: dados.placa, cpfEnviado: dados.cpf, titular: autVinculo.nome || null
+            });
+          } catch (e) {}
+          await mostrarModalSeguranca({
+            variante : 'bloqueio',
+            icone    : '🚫',
+            titulo   : 'CPF NÃO CORRESPONDE AO VEÍCULO',
+            subtitulo: 'Abastecimento bloqueado pelo sistema',
+            destaque : dados.placa,
+            msg      : 'O CPF informado é diferente do CPF oficialmente vinculado a este veículo.',
+            alerta   : '🔒 Só o CPF vinculado no cadastro pode abastecer este veículo.',
+            sub      : 'Titular vinculado: <strong>' + (autVinculo.nome || '—') + '</strong><br>' +
+                       'Se este vínculo estiver incorreto, solicite a um administrador a correção em "CPF Autorizados".<br>' +
+                       'Esta tentativa ficou registrada na auditoria.',
+            textoBotao: '✅ ENTENDIDO — FECHAR'
+          });
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
+        }
+
+        // CPF confere: garante que é o oficial que segue para as demais validações e para o registro
+        dados.cpf = formatarCPFTexto(cpfOficial);
       }
 
       // 🔒 BLOQUEIO INTELIGENTE POR CPF — vale para todos os perfis
@@ -13769,6 +13913,16 @@
     document.getElementById('f-lit').disabled = false;
     const infoUltimoKm = document.getElementById('f-km-ultimo-info');
     if (infoUltimoKm) infoUltimoKm.textContent = '';
+    // Destrava o CPF caso tenha ficado travado pelo vínculo do veículo anterior
+    const inpCpfLimpar = document.getElementById('f-cpf');
+    if (inpCpfLimpar && inpCpfLimpar.readOnly) {
+      inpCpfLimpar.readOnly = false;
+      inpCpfLimpar.value = '';
+      inpCpfLimpar.style.background = '';
+      inpCpfLimpar.style.borderColor = '';
+      inpCpfLimpar.title = '';
+      try { if (typeof controlarVisibilidadeCPF === 'function') controlarVisibilidadeCPF(); } catch(e) {}
+    }
     
     // Remover alertas de limite
     const alerta = document.getElementById('alerta-limite');
