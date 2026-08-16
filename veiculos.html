@@ -6,6 +6,7 @@
 <title>Controle de Veículos — Matina BA</title>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
 <script>
 /* ── GUARDA DE SESSÃO (login único via porta.html) ── */
 (function(){
@@ -1272,6 +1273,21 @@ function carregarFirebaseConfig(){
 }
 try {
   firebase.initializeApp(carregarFirebaseConfig());
+
+  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
+  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
+  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
+  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
+  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
+  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
+  try {
+    if (firebase.auth && !firebase.auth().currentUser) {
+      firebase.auth().signInAnonymously().catch(function(e){
+        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
+      });
+    }
+  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
+
   fbDB = firebase.database();
   // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento dos outros módulos
   fbDB.ref('config/personalizacao').once('value').then(function(snap) {

@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "usuarios":             { ".read": "auth != null", ".write": "auth != null" },
+    "abastecimentos":       { ".read": "auth != null", ".write": "auth != null" },
+    "postos":               { ".read": "auth != null", ".write": "auth != null" },
+    "pessoas_vip":          { ".read": "auth != null", ".write": "auth != null" },
+    "auditoria":            { ".read": "auth != null", ".write": "auth != null" },
+    "veiculos":             { ".read": "auth != null", ".write": "auth != null" },
+    "motoristas":           { ".read": "auth != null", ".write": "auth != null" },
+    "frota":                { ".read": "auth != null", ".write": "auth != null" },
+    "config":               { ".read": "auth != null", ".write": "auth != null" },
+    "notificacoes":         { ".read": "auth != null", ".write": "auth != null" },
+    "cpfAutorizados":       { ".read": "auth != null", ".write": "auth != null" },
+    "emprestimos_veiculos": { ".read": "auth != null", ".write": "auth != null" },
+    "lavagens":             { ".read": "auth != null", ".write": "auth != null" },
+    "oficios":              { ".read": "auth != null", ".write": "auth != null" },
+    "contadores_oficios":   { ".read": "auth != null", ".write": "auth != null" }
+  }
+}
