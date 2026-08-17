@@ -152,6 +152,20 @@
     var corrigirSenha = document.getElementById('opt-corrigir-senha').checked;
     if (corrigirSenha) log('🔑 Ajuste de senhas curtas: ATIVADO', 'aviso-log');
 
+    // As regras do banco exigem sessão autenticada (Fase A). Autentica antes de ler.
+    try {
+      if (!firebase.auth().currentUser) {
+        log('🔓 Autenticando no Firebase…', 'info');
+        await firebase.auth().signInAnonymously();
+        log('🔓 Autenticado.', 'ok');
+      }
+    } catch (e) {
+      log('❌ Falha ao autenticar: ' + e.message, 'erro');
+      log('   Verifique se o login ANÔNIMO está ativado em Authentication → Sign-in method.', 'erro');
+      liberar();
+      return;
+    }
+
     try {
       var snap = await db.ref('usuarios').once('value');
       if (!snap.exists()) { log('❌ Nenhum usuário encontrado no banco.', 'erro'); liberar(); return; }
