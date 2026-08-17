@@ -540,6 +540,8 @@ function salvarSessao(u, role, limite, sec, dados){
 }
 function sair(){
   localStorage.removeItem(SESSAO_KEY);
+  // C2: encerra também a sessão do Firebase, para não deixar a identidade ativa
+  try { if (firebase.auth) firebase.auth().signOut().catch(function(){}); } catch(e) {}
   document.getElementById('tela-hub').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('senha').value = '';
@@ -551,6 +553,34 @@ function toggleSenha(){
   inp.type = mostrar ? 'text' : 'password';
   if(btn) btn.textContent = mostrar ? '🙈' : '👁️';
   inp.focus();
+}
+
+// ── ETAPA C2: autenticação real no Firebase ─────────────────────────────
+// Depois que o login é validado pela regra atual do sistema (nó 'usuarios'),
+// tenta autenticar a MESMA identidade no Firebase Auth, para que o banco saiba
+// QUEM está acessando (base para as regras por perfil da Fase D).
+//
+// SEGURANÇA POR DESIGN: se qualquer coisa falhar aqui (usuário ainda não migrado,
+// senha divergente, rede instável, e-mail/senha desativado no console), o login
+// NÃO é bloqueado — cai no login anônimo e o usuário entra normalmente, como antes.
+// Assim esta etapa não pode deixar ninguém de fora do sistema.
+function autenticarNoFirebase(login, senha) {
+  return new Promise(function(resolve){
+    try {
+      if (!firebase.auth) { resolve(false); return; }
+      var email = String(login).toLowerCase().replace(/[^a-z0-9._-]/g, '_') + '@sistema.local';
+      firebase.auth().signInWithEmailAndPassword(email, String(senha))
+        .then(function(){ console.log('🔓 Autenticado no Firebase como', email); resolve(true); })
+        .catch(function(e){
+          console.warn('Autenticação nominal indisponível (' + (e && e.code) + '). ' +
+                       'Login liberado normalmente via sessão anônima.');
+          // Garante que exista ALGUMA sessão, para as regras da Fase A continuarem atendidas
+          if (!firebase.auth().currentUser) {
+            firebase.auth().signInAnonymously().catch(function(){}).then(function(){ resolve(false); });
+          } else { resolve(false); }
+        });
+    } catch(e) { resolve(false); }
+  });
 }
 
 // ── LOGIN (mesma lógica do sistema de gasolina) ──────────────
@@ -583,7 +613,10 @@ function logar(){
           combustivelLiberado:'todos', senha:senhaMaster, role:'admin', permissoes:null
         });
         try{ db.ref('auditoria').push({acao:'LOGIN', usuario:'master', via:'portal', em:new Date().toISOString()}); }catch(e){}
-        mostrarHub(sess); travar(false);
+        // C2: autentica no Firebase (não bloqueia o login se falhar)
+        autenticarNoFirebase('master', senhaMaster).then(function(){
+          mostrarHub(sess); travar(false);
+        });
       } else {
         erroLogin('Usuário ou senha incorretos.');
       }
@@ -621,7 +654,10 @@ function logar(){
       };
       var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
       try{ db.ref('auditoria').push({acao:'LOGIN', usuario:u, via:'portal', em:new Date().toISOString()}); }catch(e){}
-      mostrarHub(sess); travar(false);
+      // C2: autentica no Firebase (não bloqueia o login se falhar)
+      autenticarNoFirebase(u, s).then(function(){
+        mostrarHub(sess); travar(false);
+      });
     } else {
       erroLogin('Usuário ou senha incorretos.');
     }
