@@ -7954,6 +7954,63 @@
   window.verificarVeiculoAntesDeAbastecer = verificarVeiculoAntesDeAbastecer;
   // ══════════════════════════════════════════════════════════════════
 
+  // ══════════════════════════════════════════════════════════════════
+  // NOVO: veículo marcado como EM MANUTENÇÃO no Controle de Frota não pode
+  // ser abastecido por ninguém. Consulta o mesmo nó 'frota/dados' já usado
+  // pela verificação de garagem — não cria estrutura nova nem duplica cadastro.
+  // Se o veículo não existir na frota (ou a consulta falhar), NÃO bloqueia:
+  // mantém exatamente o comportamento atual para todos os demais casos.
+  async function verificarVeiculoEmManutencao(placa) {
+    if (!placa || placa.length < 7) return { bloqueado: false };
+    const placaN = normPlaca(placa);
+    try {
+      const snap = await db.ref('frota/dados').once('value');
+      const frota = snap.val();
+      if (!frota || !frota.veiculos) return { bloqueado: false };
+
+      const entradas = Array.isArray(frota.veiculos)
+        ? frota.veiculos.map((v, idx) => [String(idx), v])
+        : Object.entries(frota.veiculos);
+
+      let veiculo = null;
+      for (const [k, v] of entradas) {
+        if (v && normPlaca(v.placa) === placaN) { veiculo = v; break; }
+      }
+      if (!veiculo) return { bloqueado: false };
+
+      if (veiculo.manutencao) {
+        return {
+          bloqueado: true,
+          descricao: veiculo.descricao || veiculo.modelo || '',
+          obs: veiculo.obsManutencao || veiculo.motivoManutencao || ''
+        };
+      }
+      return { bloqueado: false };
+    } catch (e) {
+      console.warn('[Manutenção] Falha ao consultar frota/dados — não bloqueando:', e);
+      return { bloqueado: false };
+    }
+  }
+  window.verificarVeiculoEmManutencao = verificarVeiculoEmManutencao;
+
+  // Exibe o modal padrão de bloqueio para veículo em manutenção
+  async function avisarVeiculoEmManutencao(placa, info) {
+    await mostrarModalSeguranca({
+      variante : 'bloqueio',
+      icone    : '🔧',
+      titulo   : 'VEÍCULO EM MANUTENÇÃO',
+      subtitulo: 'Abastecimento bloqueado pelo sistema',
+      destaque : placa,
+      msg      : 'Este veículo está em manutenção, portanto não pode ser abastecido.',
+      alerta   : '🔒 Veículos em manutenção ficam indisponíveis para abastecimento até que a manutenção seja encerrada no Controle de Frota.',
+      sub      : (info && info.descricao ? 'Veículo: <strong>' + info.descricao + '</strong><br>' : '') +
+                 (info && info.obs ? 'Observação: ' + info.obs + '<br>' : '') +
+                 'Assim que a manutenção for finalizada no Controle de Frota, o abastecimento é liberado automaticamente.',
+      textoBotao: '✅ ENTENDIDO — FECHAR'
+    });
+  }
+  window.avisarVeiculoEmManutencao = avisarVeiculoEmManutencao;
+
   async function verificarPendenciaGaragem(placa) {
     if (!placa || placa.length < 7) { _selo('Garagem: placa curta (' + placa + ')'); return { bloqueado: false }; }
 
@@ -8075,6 +8132,16 @@
       const pendenciaGaragem = await verificarPendenciaGaragem(dados.placa);
       if (pendenciaGaragem.bloqueado) {
         abrirModalBloqueioGaragem(dados.placa);
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+
+      // 🔧 BLOQUEIO: VEÍCULO EM MANUTENÇÃO (vale para todos os perfis)
+      const manutencaoInfo = await verificarVeiculoEmManutencao(dados.placa);
+      if (manutencaoInfo.bloqueado) {
+        await avisarVeiculoEmManutencao(dados.placa, manutencaoInfo);
+        try { registrarAuditoria('ABAST_BLOQUEADO_MANUTENCAO', { placa: dados.placa }); } catch(e) {}
         btnRegistrar.disabled = false;
         btnRegistrar.innerHTML = textoOriginal;
         return;
@@ -17648,6 +17715,14 @@
       abrirModalBloqueioGaragem(placa);
       return;
     }
+
+    // 🔧 BLOQUEIO: VEÍCULO EM MANUTENÇÃO (vale para todos os perfis)
+    const manutencaoDiversas = await verificarVeiculoEmManutencao(placa);
+    if (manutencaoDiversas.bloqueado) {
+      await avisarVeiculoEmManutencao(placa, manutencaoDiversas);
+      try { registrarAuditoria('ABAST_BLOQUEADO_MANUTENCAO', { placa: placa, origem: 'DIVERSAS' }); } catch(e) {}
+      return;
+    }
     if (!motorista) {
       mostrarNotificacao("❌ INFORME O NOME DO MOTORISTA!", "error");
       return;
@@ -19460,6 +19535,22 @@
     if (!placa || placa.length < 7) {
       return;
     }
+    
+    // NOVO: aviso imediato se o veículo estiver em manutenção (o bloqueio efetivo
+    // acontece em processar(); aqui é só para o usuário não preencher o formulário à toa)
+    try {
+      const manut = await verificarVeiculoEmManutencao(placa);
+      if (manut.bloqueado && containerAlertas) {
+        containerAlertas.innerHTML += `
+          <div style="background:#f3e8ff; border:2px solid #7C3AED; border-radius:10px; padding:14px; margin-bottom:12px;">
+            <div style="font-size:20px; text-align:center;">🔧</div>
+            <div style="font-weight:bold; color:#5B21B6; text-align:center; margin:4px 0;">VEÍCULO EM MANUTENÇÃO</div>
+            <div style="font-size:12px; color:#4C1D95; text-align:center;">
+              Este veículo está em manutenção, portanto não pode ser abastecido.
+            </div>
+          </div>`;
+      }
+    } catch (e) {}
     
     // Verificar se já abasteceu hoje
     const abastHoje = await verificarAbastecimentoHoje(placa);
