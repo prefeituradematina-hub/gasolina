@@ -2470,6 +2470,12 @@ function verVeiculo(vid) {
       btns += '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar p/ após retorno</button>';
       btns += '<button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff" onclick="fechar(\'ov-veiculo-detalhe\');abrirProrrogar(\''+mov.id+'\')">⏱️ Prorrogar retorno</button>';
     }
+    // NOVO — exclusivo do MASTER: corrigir dados da viagem em andamento
+    // (motorista, destino, KM de saída, horários). Reaproveita a função
+    // editarSaida() que já existe e já é usada na lista de saídas.
+    if(isMasterFrota()) {
+      btns += '<button class="btn" style="background:linear-gradient(135deg,#0891B2,#0E7490);color:#fff" title="Corrigir dados desta viagem (somente master)" onclick="fechar(\'ov-veiculo-detalhe\');editarSaida(\''+mov.id+'\')">✏️ Editar viagem</button>';
+    }
   } else {
     if(!isAdmin()) {
       // Secretário só pode solicitar viagem
@@ -3469,6 +3475,7 @@ function renderSaidas() {
 
 function editarSaida(id) {
   var m = getMov(id);
+  if(!m){ toast('Movimentação não encontrada.'); return; }
   abrirSaida(null);
   _editMovId = id;
   document.getElementById('s-vei').value  = m.vid;
@@ -4223,6 +4230,9 @@ function fazerLogout() {
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
 function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
+// Identifica exclusivamente o usuário master (não confundir com isAdmin(), que
+// engloba admin, frentista e autorizador). Usada para ações restritas ao master.
+function isMasterFrota() { return !!(_sessao && _sessao.login === 'master'); }
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.
