@@ -1116,9 +1116,17 @@ function salvar() {
     _fbUltimoPush = Date.now();
     if(_fbConectado) setFbStatus('salvando');
     fbDB.ref('frota/dados').set(JSON.parse(JSON.stringify(D)))
-      .then(function(){ if(_fbConectado) setFbStatus('sincronizado'); })
+      .then(function(){
+        if(_fbConectado) setFbStatus('sincronizado');
+        // CORREÇÃO DE BUG: a proteção contra sobrescrita só é liberada quando a
+        // gravação REALMENTE terminou. Antes ela caía por tempo fixo (5s) e, em
+        // conexões lentas, o listener recebia os dados antigos (ainda sem
+        // entrada_real) e devolvia o veículo para "irregular".
+        window._entradaEmAndamento = false;
+      })
       .catch(function(e){
         console.error('⚠️ Erro ao salvar no Firebase (dados mantidos no cache local):', e);
+        window._entradaEmAndamento = false;
         if(_ehErroPermissao(e)){
           setFbStatus('permissao', 'Permissão negada: ajuste as regras do Firebase para liberar o nó "frota".');
           if(typeof toast==='function') toast('🚫 Sem permissão de escrita no banco. É preciso ajustar as regras do Firebase (nó "frota").');
@@ -1370,6 +1378,28 @@ if(fbDB){
       console.warn('Firebase retornou veiculos[] vazio — ignorado');
       return;
     }
+    // CORREÇÃO DE BUG (rede lenta / abas simultâneas): se alguma movimentação já
+    // tem entrada_real registrada aqui e o dado que veio do banco ainda NÃO tem,
+    // significa que essa versão é anterior à nossa gravação. Preserva a entrada
+    // local em vez de descartá-la — era isso que fazia o veículo voltar a
+    // "irregular" (vermelho piscando) minutos depois de dar entrada.
+    // Só protege o campo de entrada; todo o restante dos dados remotos é aplicado
+    // normalmente, sem alterar nenhum outro comportamento da sincronização.
+    try {
+      if (Array.isArray(D.movimentacoes) && Array.isArray(_novo.movimentacoes)) {
+        D.movimentacoes.forEach(function(local){
+          if (!local || !local.entrada_real) return;
+          var remoto = _novo.movimentacoes.find(function(r){ return r && r.id === local.id; });
+          if (remoto && !remoto.entrada_real) {
+            console.warn('[Sync] Preservando entrada já registrada da movimentação', local.id,
+                         '— o banco ainda estava com a versão anterior.');
+            remoto.entrada_real = local.entrada_real;
+            if (local.km_entrada != null && remoto.km_entrada == null) remoto.km_entrada = local.km_entrada;
+          }
+        });
+      }
+    } catch(e) { console.warn('[Sync] Falha ao preservar entradas locais:', e); }
+
     D = _novo;
     localStorage.setItem('frota_v3', JSON.stringify(D));
     if(_sessao && typeof renderTudo === 'function') renderTudo();
@@ -2885,7 +2915,10 @@ function confirmarEntrada() {
   fechar('ov-entrada');
   toast('✅ Entrada registrada!');
   salvar();
-  setTimeout(function(){ window._entradaEmAndamento = false; }, 5000);
+  // Rede de segurança: se por algum motivo o salvar() não retornar (ex.: aba fechada
+  // e reaberta), libera após 30s. A liberação normal agora acontece assim que a
+  // gravação no Firebase confirma, dentro de salvar().
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
 }
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
@@ -3350,7 +3383,8 @@ function confirmarGuardadoNoite() {
   fechar('ov-guardado-noite');
   toast('🌙 Entrada noturna registrada — '+fmtDT(m.entrada_real));
   salvar();
-  setTimeout(function(){ window._entradaEmAndamento = false; }, 5000);
+  // Rede de segurança (a liberação normal ocorre ao confirmar a gravação, em salvar())
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
 }
 
 // ══════════════════════════════════════════════════════════════════
