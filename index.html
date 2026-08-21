@@ -3187,7 +3187,7 @@
         </div>
         <div>
           <label>POSTO *</label>
-          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal(); aplicarFiltroCombustivelPorPosto(); validarTanqueCheioPorLimite()">
+          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal(); aplicarFiltroCombustivelPorPosto(); validarTanqueCheioPorLimite(); avisarLimiteEsgotadoNaTela()">
             <option value="">SELECIONE O POSTO</option>
           </select>
         </div>
@@ -8409,14 +8409,57 @@
             const passaSecretaria = x.secretaria === userSecretaria;
             const passaPosto = (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '');
             const passaReset = (x.timestamp || 0) > ultimoReset;
-            const naoETanqueCheio = !x.tanqueCheio; // NÃO CONTAR TANQUES CHEIOS NO GASTO
+            // CORREÇÃO: antes TODO tanque cheio era excluído do gasto, inclusive os já
+            // aprovados com valor real — o que permitia estourar o limite. Agora só fica
+            // de fora o tanque cheio AINDA PENDENTE, que entra no banco com valor 0
+            // (o valor real só é preenchido pelo administrador na aprovação).
+            const tanqueCheioPendenteSemValor = x.tanqueCheio && (!x.valor || x.valor === 0);
             
-            return passaStatus && passaSecretaria && passaPosto && passaReset && naoETanqueCheio;
+            return passaStatus && passaSecretaria && passaPosto && passaReset && !tanqueCheioPendenteSemValor;
           })
           .reduce((acc, item) => acc + (item.valor || 0), 0);
         
-        console.log('Gasto atual no posto (após reset, sem tanques cheios):', gastoAtualPosto);
+        console.log('Gasto atual no posto (após reset, inclui tanque cheio aprovado):', gastoAtualPosto);
         console.log('Saldo disponível:', (limitePosto - gastoAtualPosto));
+        
+        // 🚫 NOVA REGRA: LIMITE ESTOURADO = NENHUM ABASTECIMENTO
+        // Se o secretário já atingiu ou passou 100% do limite do posto, fica impedido
+        // de fazer QUALQUER abastecimento (não só tanque cheio) até o próximo reset.
+        // EXCEÇÃO: o usuário master pode abastecer quando necessário — a liberação
+        // fica registrada na auditoria.
+        if (gastoAtualPosto >= limitePosto) {
+          const _ehMasterLimite = String(loginUser || '').toLowerCase() === 'master';
+          const _pctEstourado = ((gastoAtualPosto / limitePosto) * 100).toFixed(1);
+          
+          if (!_ehMasterLimite) {
+            await mostrarModalSeguranca({
+              variante : 'bloqueio',
+              icone    : '🚫',
+              titulo   : 'LIMITE ESGOTADO',
+              subtitulo: 'Abastecimento bloqueado pelo sistema',
+              destaque : _pctEstourado + '% DO LIMITE UTILIZADO',
+              msg      : 'Seu limite neste posto já foi totalmente utilizado. Não é possível realizar novos abastecimentos.',
+              alerta   : '🔒 Com o limite esgotado, nenhum tipo de abastecimento é permitido até a renovação do limite.',
+              sub      : 'Posto: <strong>' + (isVictor ? 'POSTO VICTOR' : isMatina ? 'POSTO MATINA' : dados.posto) + '</strong><br>' +
+                         'Limite: <strong>R$ ' + formatarMoeda(limitePosto) + '</strong><br>' +
+                         'Já utilizado: <strong>R$ ' + formatarMoeda(gastoAtualPosto) + '</strong><br>' +
+                         'Em caso de necessidade, procure a administração.',
+              textoBotao: '✅ ENTENDIDO — FECHAR'
+            });
+            try { registrarAuditoria('ABAST_BLOQUEADO_LIMITE_ESGOTADO', {
+              posto: dados.posto, limite: limitePosto, gasto: gastoAtualPosto, percentual: _pctEstourado
+            }); } catch(e) {}
+            btnRegistrar.disabled = false;
+            btnRegistrar.innerHTML = textoOriginal;
+            return;
+          }
+          
+          // Master: permitido, mas registrado
+          console.warn('[LIMITE] OVERRIDE DO MASTER — limite esgotado (' + _pctEstourado + '%)');
+          try { registrarAuditoria('LIMITE_ESGOTADO_LIBERADO_MASTER', {
+            posto: dados.posto, limite: limitePosto, gasto: gastoAtualPosto, percentual: _pctEstourado
+          }); } catch(e) {}
+        }
         
         // Para tanque cheio, verificar se há saldo, mas não bloquear por valor
         if (dados.tanqueCheio) {
@@ -8853,7 +8896,11 @@
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
         if (x.secretaria !== userSecretaria) return false;
         if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
-        return (x.timestamp || 0) > ultimoReset;
+        if ((x.timestamp || 0) <= ultimoReset) return false;
+        // Mesmo critério da validação de gravação: tanque cheio ainda pendente entra
+        // no banco com valor 0, então não soma nada — só é ignorado para não confundir.
+        if (x.tanqueCheio && (!x.valor || x.valor === 0)) return false;
+        return true;
       })
       .reduce((acc, item) => acc + (item.valor || 0), 0);
 
@@ -8866,10 +8913,38 @@
       gasto: gastoAtualPosto,
       saldo: Math.max(0, limitePosto - gastoAtualPosto),
       posto: posto,
-      bloqueado: percentual >= 95
+      bloqueado: percentual >= 95,
+      esgotado: gastoAtualPosto >= limitePosto
     };
   }
   window.obterPercentualLimiteSecretario = obterPercentualLimiteSecretario;
+
+  // Aviso imediato na tela quando o limite do posto já está esgotado, para o
+  // secretário não preencher o formulário inteiro à toa. O bloqueio efetivo
+  // continua sendo feito em processar(), antes de gravar.
+  function avisarLimiteEsgotadoNaTela() {
+    const anterior = document.getElementById('aviso-limite-esgotado');
+    if (anterior) anterior.remove();
+
+    const info = obterPercentualLimiteSecretario();
+    if (!info || !info.esgotado) return;
+    if (String(loginUser || '').toLowerCase() === 'master') return;
+
+    const div = document.createElement('div');
+    div.id = 'aviso-limite-esgotado';
+    div.style.cssText = 'margin-top:10px; padding:14px; background:#fee2e2; border:2px solid var(--danger); border-radius:10px;';
+    div.innerHTML =
+      '<div style="font-size:20px; text-align:center;">🚫</div>' +
+      '<div style="font-weight:bold; color:#991b1b; text-align:center; margin:4px 0;">LIMITE ESGOTADO NESTE POSTO</div>' +
+      '<div style="font-size:12px; color:#7f1d1d; text-align:center;">' +
+        'Você já utilizou R$ ' + formatarMoeda(info.gasto) + ' de um limite de R$ ' + formatarMoeda(info.limite) +
+        ' (' + info.percentual.toFixed(1) + '%).<br>Nenhum abastecimento é permitido até a renovação do limite.' +
+      '</div>';
+
+    const form = document.querySelector('.grid-form');
+    if (form) form.appendChild(div);
+  }
+  window.avisarLimiteEsgotadoNaTela = avisarLimiteEsgotadoNaTela;
 
   // Chamada pelo checkbox "Tanque Cheio" do formulário do secretário.
   // Se o limite estiver em 95% ou mais, desmarca e exibe o popup padrão de bloqueio.
