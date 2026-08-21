@@ -5454,6 +5454,29 @@
   }
   window.excluirEmprestimoVeiculo = excluirEmprestimoVeiculo;
 
+  // NOVO: limite de exibição na listagem principal de empréstimos.
+  // Regra: data de vencimento (dataFimPrevista) + 30 dias. Passado esse prazo, o
+  // registro deixa de aparecer na listagem — mas continua salvo no banco, intacto,
+  // preservando histórico, auditoria e rastreabilidade.
+  // Empréstimos SEM data de vencimento ("sem prazo") nunca são ocultados, pois não
+  // há vencimento a partir do qual contar os 30 dias.
+  const DIAS_EXIBICAO_APOS_VENCIMENTO = 30;
+
+  function emprestimoDentroDaJanelaDeExibicao(e) {
+    if (!e || !e.dataFimPrevista) return true; // sem prazo definido: sempre exibe
+    const partes = String(e.dataFimPrevista).slice(0, 10).split('-');
+    if (partes.length !== 3) return true; // data em formato inesperado: não oculta
+    // Meio-dia evita qualquer deslocamento por fuso horário na virada do dia
+    const venc = new Date(+partes[0], +partes[1] - 1, +partes[2], 12, 0, 0);
+    if (isNaN(venc.getTime())) return true;
+    const limite = new Date(venc.getTime());
+    limite.setDate(limite.getDate() + DIAS_EXIBICAO_APOS_VENCIMENTO);
+    const agora = new Date();
+    const hojeMeioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12, 0, 0);
+    return hojeMeioDia <= limite; // no 30º dia ainda aparece; a partir do 31º, oculta
+  }
+  window.emprestimoDentroDaJanelaDeExibicao = emprestimoDentroDaJanelaDeExibicao;
+
   function renderEmprestimosVeiculos() {
     const tbody = document.getElementById('emprestimos-body');
     if (!tbody) return;
@@ -5463,10 +5486,19 @@
     if (userRole === 'secretarios') {
       lista = lista.filter(e => e.secretariaOrigem === userSecretaria || e.secretariaDestino === userSecretaria);
     }
+    // NOVO: oculta da listagem os já vencidos há mais de 30 dias (dados preservados no banco)
+    const totalAntesDaJanela = lista.length;
+    lista = lista.filter(emprestimoDentroDaJanelaDeExibicao);
+    const ocultados = totalAntesDaJanela - lista.length;
+
     lista = lista.slice().sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
 
     if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;">Nenhum empréstimo registrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;">' +
+        (ocultados > 0
+          ? 'Nenhum empréstimo recente. ' + ocultados + ' registro(s) antigo(s) permanecem salvos no histórico.'
+          : 'Nenhum empréstimo registrado.') +
+        '</td></tr>';
       return;
     }
 
@@ -5489,6 +5521,15 @@
         '</td>' +
         '</tr>';
     }).join('');
+
+    // NOVO: informa que existem registros antigos ocultos — deixa claro que eles
+    // NÃO foram apagados, apenas saíram da listagem principal.
+    if (ocultados > 0) {
+      tbody.innerHTML += '<tr><td colspan="7" style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;">' +
+        'ℹ️ ' + ocultados + ' empréstimo(s) vencido(s) há mais de ' + DIAS_EXIBICAO_APOS_VENCIMENTO +
+        ' dias não são exibidos aqui — os registros continuam salvos no banco de dados.' +
+        '</td></tr>';
+    }
   }
   window.renderEmprestimosVeiculos = renderEmprestimosVeiculos;
 
