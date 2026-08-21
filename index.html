@@ -3187,7 +3187,7 @@
         </div>
         <div>
           <label>POSTO *</label>
-          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal(); aplicarFiltroCombustivelPorPosto()">
+          <select id="f-posto" onchange="atualizarPrecosPosto(); verificarLimiteEmTempoReal(); aplicarFiltroCombustivelPorPosto(); validarTanqueCheioPorLimite()">
             <option value="">SELECIONE O POSTO</option>
           </select>
         </div>
@@ -3263,7 +3263,7 @@
       <!-- Opção Tanque Cheio -->
       <div style="grid-column: 1/-1; margin-top:15px;">
         <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; padding:10px 14px; background:#fff7ed; border:1.5px solid var(--warning); border-radius:8px;">
-          <input type="checkbox" id="f-tanque-cheio" onchange="toggleTanqueCheio(); verificarLimiteEmTempoReal()" style="width:18px; height:18px; margin:0; accent-color:var(--warning); cursor:pointer;">
+          <input type="checkbox" id="f-tanque-cheio" onchange="toggleTanqueCheio(); verificarLimiteEmTempoReal(); validarTanqueCheioPorLimite()" style="width:18px; height:18px; margin:0; accent-color:var(--warning); cursor:pointer;">
           <span style="color:var(--warning); font-weight:bold; white-space:nowrap;">⛽ TANQUE CHEIO (Secretário)</span>
         </label>
         <div id="tanque-cheio-info" style="display:none; margin-top:10px; padding:10px; background:#fff3cd; border-radius:8px; font-size:11px;">
@@ -8137,6 +8137,34 @@
         return;
       }
 
+      // ⛽ BLOQUEIO: TANQUE CHEIO COM LIMITE EM 95% OU MAIS (só secretários)
+      // Validação final, caso o checkbox tenha sido marcado antes da escolha do posto
+      // ou por manipulação da tela. Só afeta tanque cheio — abastecimento normal segue igual.
+      if (dados.tanqueCheio) {
+        const infoLimite95 = obterPercentualLimiteSecretario();
+        if (infoLimite95 && infoLimite95.bloqueado) {
+          await mostrarModalSeguranca({
+            variante : 'bloqueio',
+            icone    : '⛽',
+            titulo   : 'LIMITE MUITO BAIXO',
+            subtitulo: 'Tanque cheio bloqueado pelo sistema',
+            destaque : infoLimite95.percentual.toFixed(1) + '% DO LIMITE UTILIZADO',
+            msg      : 'Seu limite está muito baixo. Você não pode abastecer tanque cheio.',
+            alerta   : '🔒 A partir de 95% do limite utilizado, o abastecimento de tanque cheio fica bloqueado.',
+            sub      : 'Posto: <strong>' + infoLimite95.posto + '</strong><br>' +
+                       'Saldo disponível: <strong>R$ ' + formatarMoeda(infoLimite95.saldo) + '</strong><br>' +
+                       'Você ainda pode abastecer normalmente informando os litros, dentro do saldo disponível.',
+            textoBotao: '✅ ENTENDIDO — FECHAR'
+          });
+          try { registrarAuditoria('TANQUE_CHEIO_BLOQUEADO_LIMITE', {
+            percentual: infoLimite95.percentual.toFixed(1), posto: infoLimite95.posto
+          }); } catch(e) {}
+          btnRegistrar.disabled = false;
+          btnRegistrar.innerHTML = textoOriginal;
+          return;
+        }
+      }
+
       // 🔧 BLOQUEIO: VEÍCULO EM MANUTENÇÃO (vale para todos os perfis)
       const manutencaoInfo = await verificarVeiculoEmManutencao(dados.placa);
       if (manutencaoInfo.bloqueado) {
@@ -8796,6 +8824,82 @@
     return { limiteMensal, gastoAtual, saldoRestante };
   }
   
+  // ══════════════════════════════════════════════════════════════════
+  // REGRA DOS 95%: secretário com limite quase esgotado não pode marcar
+  // "Tanque Cheio". Usa exatamente o mesmo critério de limite/gasto que
+  // verificarLimiteEmTempoReal() já usa: POR POSTO (Victor e Matina têm
+  // limites estritamente separados) e contando apenas a partir do último reset.
+  // Não altera nenhum cálculo existente — apenas lê os mesmos dados.
+  function obterPercentualLimiteSecretario() {
+    if (userRole !== 'secretarios') return null; // regra vale só para secretários
+    const posto = document.getElementById('f-posto') ? document.getElementById('f-posto').value : '';
+    if (!posto) return null; // sem posto escolhido não há como calcular
+
+    const postoNome = posto.toUpperCase();
+    const isVictor = postoNome.includes('VICTOR');
+    const isMatina = postoNome.includes('MATINA');
+
+    let limitePosto = 0;
+    if (isVictor) {
+      limitePosto = (usuarioData.limiteVictor || 0) + (usuarioData.adicionalVictor || 0);
+    } else if (isMatina) {
+      limitePosto = (usuarioData.limiteMatina || 0) + (usuarioData.adicionalMatina || 0);
+    }
+    if (limitePosto <= 0) return null; // sem limite configurado: outra regra já trata
+
+    const ultimoReset = usuarioData.ultimoResetLimite || 0;
+    const gastoAtualPosto = cache
+      .filter(x => {
+        if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
+        if (x.secretaria !== userSecretaria) return false;
+        if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+        return (x.timestamp || 0) > ultimoReset;
+      })
+      .reduce((acc, item) => acc + (item.valor || 0), 0);
+
+    const percentual = (gastoAtualPosto / limitePosto) * 100;
+    if (isNaN(percentual) || !isFinite(percentual)) return null;
+
+    return {
+      percentual: percentual,
+      limite: limitePosto,
+      gasto: gastoAtualPosto,
+      saldo: Math.max(0, limitePosto - gastoAtualPosto),
+      posto: posto,
+      bloqueado: percentual >= 95
+    };
+  }
+  window.obterPercentualLimiteSecretario = obterPercentualLimiteSecretario;
+
+  // Chamada pelo checkbox "Tanque Cheio" do formulário do secretário.
+  // Se o limite estiver em 95% ou mais, desmarca e exibe o popup padrão de bloqueio.
+  async function validarTanqueCheioPorLimite() {
+    const chk = document.getElementById('f-tanque-cheio');
+    if (!chk || !chk.checked) return; // só valida quando está sendo MARCADO
+
+    const info = obterPercentualLimiteSecretario();
+    if (!info || !info.bloqueado) return;
+
+    chk.checked = false;
+    try { toggleTanqueCheio(); } catch(e) {} // devolve o formulário ao estado normal
+
+    await mostrarModalSeguranca({
+      variante : 'bloqueio',
+      icone    : '⛽',
+      titulo   : 'LIMITE MUITO BAIXO',
+      subtitulo: 'Tanque cheio bloqueado pelo sistema',
+      destaque : info.percentual.toFixed(1) + '% DO LIMITE UTILIZADO',
+      msg      : 'Seu limite está muito baixo. Você não pode abastecer tanque cheio.',
+      alerta   : '🔒 A partir de 95% do limite utilizado, o abastecimento de tanque cheio fica bloqueado.',
+      sub      : 'Posto: <strong>' + info.posto + '</strong><br>' +
+                 'Saldo disponível: <strong>R$ ' + formatarMoeda(info.saldo) + '</strong><br>' +
+                 'Você ainda pode abastecer normalmente informando os litros, dentro do saldo disponível.',
+      textoBotao: '✅ ENTENDIDO — FECHAR'
+    });
+  }
+  window.validarTanqueCheioPorLimite = validarTanqueCheioPorLimite;
+  // ══════════════════════════════════════════════════════════════════
+
   // NOVA FUNÇÃO: Verificar limite do secretário em tempo real
   function verificarLimiteSecretario() {
     const valorInput = document.getElementById('tanque-valor');
@@ -8812,7 +8916,9 @@
     const infoDiv = document.getElementById('info-limite');
     
     // NOVA REGRA: Verificar percentual de gasto para SECRETÁRIOS
-    const limiteElement = document.getElementById('saldo-limite');
+    // CORREÇÃO: o ID correto do elemento é 'limite-mensal' ('saldo-limite' nunca
+    // existiu no HTML, então este bloco inteiro jamais era executado).
+    const limiteElement = document.getElementById('limite-mensal');
     if (limiteElement) {
       const limite = moedaTextoParaNumero(limiteElement.textContent);
       const gastoAtual = limite - saldoRestante;
@@ -8820,7 +8926,8 @@
       
       // Se gastou 95% ou mais, bloquear tanque cheio
       if (percentualGasto >= 95) {
-        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        // CORREÇÃO: o ID correto é 'f-tanque-cheio' (o antigo 'tanque-cheio' não existe).
+        const checkboxTanqueCheio = document.getElementById('f-tanque-cheio');
         
         if (checkboxTanqueCheio && checkboxTanqueCheio.checked) {
           checkboxTanqueCheio.checked = false;
@@ -8828,9 +8935,12 @@
           console.log('🚫 Tanque cheio bloqueado para SECRETÁRIO: ' + percentualGasto.toFixed(2) + '%');
         }
         
-        // Desabilitar checkbox
-        checkboxTanqueCheio.disabled = true;
-        checkboxTanqueCheio.title = "Bloqueado: limite acima de 95% (" + percentualGasto.toFixed(1) + "%)";
+        // CORREÇÃO: estas linhas estavam FORA do if e lançavam erro quando o
+        // elemento não existia, interrompendo o restante da função.
+        if (checkboxTanqueCheio) {
+          checkboxTanqueCheio.disabled = true;
+          checkboxTanqueCheio.title = "Bloqueado: limite acima de 95% (" + percentualGasto.toFixed(1) + "%)";
+        }
         
         // Adicionar indicador visual
         const labelTanque = document.querySelector('label[for="tanque-cheio"]');
@@ -8841,7 +8951,7 @@
         }
       } else if (percentualGasto >= 80) {
         // Aviso entre 80% e 95%
-        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        const checkboxTanqueCheio = document.getElementById('f-tanque-cheio');
         if (checkboxTanqueCheio) {
           checkboxTanqueCheio.disabled = false;
           const labelTanque = document.querySelector('label[for="tanque-cheio"]');
@@ -8853,7 +8963,7 @@
         }
       } else {
         // Normal
-        const checkboxTanqueCheio = document.getElementById('tanque-cheio');
+        const checkboxTanqueCheio = document.getElementById('f-tanque-cheio');
         if (checkboxTanqueCheio) {
           checkboxTanqueCheio.disabled = false;
           const labelTanque = document.querySelector('label[for="tanque-cheio"]');
