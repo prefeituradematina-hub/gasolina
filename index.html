@@ -1176,13 +1176,21 @@
       .tab-btn {
           padding: 10px 12px;
           font-size: 10px;
-          flex: 1 1 45%;
-          min-width: 45%;
+          /* AJUSTE MOBILE: 3 botões por linha (antes 45% = 2 por linha).
+             Reduz o menu de 3 para 2 linhas em perfis com mais permissões
+             (master/admin), sem alterar nada para os demais perfis. */
+          flex: 1 1 30%;
+          min-width: 30%;
           white-space: normal;
       }
       
+      /* AJUSTE MOBILE: os botões INÍCIO e SAIR ficavam com largura total,
+         ocupando uma linha cada. Agora dividem a mesma linha, devolvendo
+         espaço de tela para todos os perfis. */
       .btn-logout {
-          width: 100%;
+          width: auto;
+          flex: 1 1 45%;
+          min-width: 45%;
           padding: 12px;
       }
       
@@ -3790,6 +3798,9 @@
           ❌ REJEITADOS
         </button>
       </div>
+      <!-- NOVO: abas por secretaria, geradas dinamicamente a partir dos próprios
+           registros. Não altera dados nem filtros existentes — apenas a apresentação. -->
+      <div class="nav-tabs no-print" id="historico-abas-secretaria" style="display:none; margin-bottom:15px;"></div>
       <div id="historico-pendentes-container"></div>
     </div>
   </div>
@@ -11384,6 +11395,51 @@
   // Filtro global para histórico de pendentes
   let filtroHistoricoPendentes = 'todos';
   
+  // NOVO: aba de secretaria selecionada no Histórico de Abastecimentos.
+  // '' = todas (comportamento original, mostrando todas as seções empilhadas).
+  let abaSecretariaHistorico = '';
+
+  function selecionarAbaSecretariaHistorico(sec) {
+    abaSecretariaHistorico = sec;
+    atualizarHistoricoPendentes();
+  }
+  window.selecionarAbaSecretariaHistorico = selecionarAbaSecretariaHistorico;
+
+  // Monta as abas a partir das secretarias presentes nos registros já carregados.
+  // Nenhuma secretaria é fixa no código: se uma nova passar a ter abastecimentos,
+  // sua aba aparece sozinha; se deixar de ter, a aba some.
+  function montarAbasSecretariaHistorico(porSecretaria, secretarias) {
+    const barra = document.getElementById('historico-abas-secretaria');
+    if (!barra) return;
+
+    if (secretarias.length <= 1) {
+      // Uma secretaria só (ou nenhuma): abas não agregam nada
+      barra.style.display = 'none';
+      barra.innerHTML = '';
+      return;
+    }
+
+    // Se a aba selecionada não existe mais nos dados atuais, volta para "todas"
+    if (abaSecretariaHistorico && secretarias.indexOf(abaSecretariaHistorico) === -1) {
+      abaSecretariaHistorico = '';
+    }
+
+    const totalRegistros = secretarias.reduce((acc, s) => acc + porSecretaria[s].length, 0);
+
+    barra.style.display = 'flex';
+    barra.innerHTML =
+      '<button class="tab-btn ' + (abaSecretariaHistorico === '' ? 'active' : '') + '" ' +
+        'onclick="selecionarAbaSecretariaHistorico(\'\')">📋 TODAS (' + totalRegistros + ')</button>' +
+      secretarias.map(function(sec){
+        const qtd = porSecretaria[sec].length;
+        const icone = (sec === 'DIVERSAS' || sec === 'VIP') ? '🌟' : '🏛️';
+        const secEscapada = String(sec).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return '<button class="tab-btn ' + (abaSecretariaHistorico === sec ? 'active' : '') + '" ' +
+               'onclick="selecionarAbaSecretariaHistorico(\'' + secEscapada + '\')">' +
+               icone + ' ' + sec + ' (' + qtd + ')</button>';
+      }).join('');
+  }
+
   function filtrarHistoricoPendentes(filtro) {
     filtroHistoricoPendentes = filtro;
     atualizarHistoricoPendentes();
@@ -11410,6 +11466,9 @@
     const container = document.getElementById('historico-pendentes-container');
     
     if (todosAbastecimentos.length === 0) {
+      // Esconde as abas quando não há registro algum (evita abas sem conteúdo)
+      const barraVazia = document.getElementById('historico-abas-secretaria');
+      if (barraVazia) { barraVazia.style.display = 'none'; barraVazia.innerHTML = ''; }
       container.innerHTML = `
         <div style="text-align:center; padding:40px;">
           📭 NENHUM ABASTECIMENTO ENCONTRADO
@@ -11431,10 +11490,19 @@
     // Ordenar secretarias alfabeticamente
     const secretarias = Object.keys(porSecretaria).sort();
     
+    // NOVO: monta as abas com TODAS as secretarias encontradas (contadores completos)
+    montarAbasSecretariaHistorico(porSecretaria, secretarias);
+    
+    // NOVO: se uma aba estiver selecionada, exibe apenas aquela secretaria.
+    // Isto é só apresentação — os dados, a ordem e os cálculos permanecem idênticos.
+    const secretariasExibidas = abaSecretariaHistorico
+      ? secretarias.filter(s => s === abaSecretariaHistorico)
+      : secretarias;
+    
     let html = '';
     
     // CRIAR UMA SEÇÃO PARA CADA SECRETARIA
-    secretarias.forEach(sec => {
+    secretariasExibidas.forEach(sec => {
       const itens = porSecretaria[sec];
       const totalSec = itens.reduce((acc, r) => acc + r.valor, 0);
       const litrosSec = itens.reduce((acc, r) => acc + r.litro, 0);
