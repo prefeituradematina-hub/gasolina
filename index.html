@@ -2438,6 +2438,1041 @@
           gap: 16px;
       }
   }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   MELHORIAS DE RESPONSIVIDADE — ADITIVAS (NÃO SUBSTITUEM REGRAS EXISTENTES)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. CELULARES PEQUENOS (320px – 374px) ───────────────────────── */
+@media (max-width: 374px) {
+    body {
+        padding: 4px;
+    }
+    .container {
+        padding: 0 2px;
+    }
+
+    /* Top-bar: empilhar completamente */
+    .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px 12px;
+        gap: 12px;
+    }
+    .top-bar > div:first-child {
+        width: 100%;
+    }
+    .top-bar > div:last-child {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    /* Nav-tabs: botões maiores e mais fáceis de tocar */
+    .nav-tabs {
+        gap: 4px;
+        padding: 6px;
+    }
+    .tab-btn {
+        flex: 1 1 46%;
+        min-width: 46%;
+        padding: 10px 8px;
+        font-size: 10px;
+        min-height: 44px;
+        line-height: 1.2;
+    }
+    .tab-btn.active {
+        font-size: 10px;
+    }
+
+    /* Botões do grupo MAIS em mobile */
+    .grupo-menu .btn-grupo {
+        width: 100%;
+        text-align: center;
+    }
+    .grupo-dropdown {
+        width: 100%;
+        left: 0;
+        right: 0;
+    }
+
+    /* Cards: padding mínimo */
+    .card {
+        padding: 14px 12px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+    }
+    .card h3 {
+        font-size: 15px;
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+    }
+
+    /* Mini-card e stats */
+    .mini-card {
+        padding: 14px 12px;
+        font-size: 12px;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .stat-card {
+        padding: 14px;
+    }
+    .stat-card .stat-value {
+        font-size: 22px;
+    }
+
+    /* Grid-form: 1 coluna garantida */
+    .grid-form {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    /* Inputs e selects */
+    input, select, textarea {
+        padding: 12px 10px;
+        font-size: 16px; /* previne zoom no iOS */
+        min-height: 44px;
+    }
+
+    /* Labels */
+    label {
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
+
+    /* Botões principais */
+    .btn-save, .btn-login {
+        padding: 14px;
+        font-size: 13px;
+        min-height: 48px;
+    }
+    .btn-logout {
+        padding: 10px 16px;
+        font-size: 12px;
+        min-height: 44px;
+    }
+
+    /* Tabelas: scroll suave e fonte legível */
+    .table-wrapper {
+        margin: 0 -4px;
+        padding: 0 4px;
+        border-radius: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+    table {
+        min-width: 800px; /* reduzido de 1000px para menos scroll */
+        font-size: 10px;
+    }
+    th, td {
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+    th {
+        font-size: 9px;
+    }
+
+    /* Botões de ação em tabelas: área de toque mínima */
+    .btn-action {
+        padding: 8px 10px;
+        font-size: 10px;
+        min-height: 36px;
+        min-width: 36px;
+        margin: 2px;
+    }
+
+    /* Modais: ocupar quase toda a tela */
+    .modal-content {
+        padding: 20px 16px;
+        width: 96%;
+        max-width: 96%;
+        border-radius: 12px;
+        max-height: 92vh;
+    }
+    .modal-content h3 {
+        font-size: 16px;
+    }
+    .modal-close {
+        font-size: 24px;
+    }
+
+    /* Notification center: largura adaptativa */
+    .notification-center {
+        width: calc(100% - 16px);
+        right: 8px;
+        left: 8px;
+        top: 70px;
+        max-height: calc(100vh - 80px);
+    }
+
+    /* Charts-row: evitar overflow */
+    .charts-row {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+    .charts-row .card {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    /* Canvas/gráficos: responsivos */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Login: ajustes finos */
+    .login-container {
+        width: 98%;
+        border-radius: 14px;
+    }
+    .login-left {
+        padding: 30px 20px;
+    }
+    .login-left h1 {
+        font-size: 22px;
+    }
+    .login-box {
+        padding: 30px 20px;
+    }
+    .login-box h2 {
+        font-size: 24px;
+    }
+
+    /* QR scanner */
+    .qr-scanner-container {
+        padding: 12px;
+    }
+    #qr-reader {
+        max-width: 100%;
+    }
+
+    /* Comparisons e métricas */
+    .comparison-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .executive-metrics {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .executive-metric {
+        padding: 14px;
+    }
+    .executive-metric-value {
+        font-size: 22px;
+    }
+
+    /* Quick actions */
+    .quick-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .btn-quick-action {
+        padding: 14px 10px;
+    }
+    .quick-icon {
+        font-size: 28px;
+    }
+
+    /* Busca global */
+    .search-global-container {
+        max-width: 100%;
+    }
+    .search-results {
+        width: calc(100% - 8px);
+        left: 4px;
+        right: 4px;
+    }
+
+    /* Alertas customizados */
+    .alert-consumo-alto .consumo-info,
+    .alert-ja-abasteceu .abast-info,
+    .historico-item-detalhes {
+        grid-template-columns: 1fr;
+    }
+
+    /* Histórico de abastecimentos */
+    .historico-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    /* Top veículos */
+    .top-veiculo-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    /* Theme toggle e controles do top-bar */
+    .theme-toggle {
+        width: 50px;
+        height: 26px;
+    }
+    .theme-slider:before {
+        height: 18px;
+        width: 18px;
+    }
+
+    /* PWA banner */
+    .install-pwa-banner {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    /* Modal de bloqueio de garagem */
+    .mbg-inner {
+        width: 96%;
+        border-radius: 16px;
+    }
+    .mbg-topo {
+        padding: 20px;
+    }
+    .mbg-topo h2 {
+        font-size: 18px;
+    }
+    .mbg-corpo {
+        padding: 20px 16px;
+    }
+    .mbg-placa {
+        font-size: 20px;
+        padding: 8px 20px;
+    }
+
+    /* Sub-abas de configuração */
+    #config-subtabs .tab-btn {
+        flex: 1 1 46%;
+        font-size: 9px;
+        padding: 8px 6px;
+    }
+
+    /* Sub-abas de pendentes por posto */
+    #pendentes-subtabs-posto .tab-btn {
+        flex: 1 1 46%;
+        font-size: 9px;
+    }
+
+    /* Sub-abas de histórico por secretaria */
+    #historico-abas-secretaria .tab-btn {
+        flex: 1 1 46%;
+        font-size: 9px;
+    }
+
+    /* Filtros de relatório */
+    #card-filtros-relatorio .grid-form {
+        gap: 10px;
+    }
+
+    /* Botões de filtro de histórico */
+    #tab-pendentes .btn-save {
+        min-width: 100%;
+        margin-bottom: 8px;
+    }
+
+    /* Dashboard do autorizador */
+    #dashboard-autorizador .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Tabela de performance */
+    #performance-body td,
+    #performance-body th {
+        font-size: 9px;
+        padding: 6px 4px;
+    }
+
+    /* Relatório de eficiência */
+    #eficiencia-resumo {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Empréstimo de veículo */
+    #card-emprestimo-veiculo .grid-form {
+        gap: 10px;
+    }
+
+    /* CPF autorizados - filtros */
+    #tab-cpfautorizados .grid-form {
+        gap: 10px;
+    }
+}
+
+/* ── 2. CELULARES MÉDIOS (375px – 479px) ────────────────────────── */
+@media (min-width: 375px) and (max-width: 479px) {
+    body {
+        padding: 6px;
+    }
+
+    .top-bar {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .tab-btn {
+        flex: 1 1 30%;
+        min-width: 30%;
+        padding: 10px 10px;
+        font-size: 10px;
+        min-height: 44px;
+    }
+
+    .card {
+        padding: 16px 14px;
+    }
+
+    .grid-form {
+        grid-template-columns: 1fr !important;
+        gap: 14px;
+    }
+
+    table {
+        min-width: 900px;
+        font-size: 10px;
+    }
+
+    .modal-content {
+        padding: 24px 18px;
+        width: 94%;
+    }
+
+    .notification-center {
+        width: calc(100% - 20px);
+        right: 10px;
+        left: 10px;
+    }
+
+    .charts-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .executive-metrics {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .comparison-card {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ── 3. CELULARES GRANDES / PHABLETS (480px – 767px) ───────────── */
+@media (min-width: 480px) and (max-width: 767px) {
+    .tab-btn {
+        flex: 1 1 30%;
+        min-width: 30%;
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+
+    .grid-form {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    table {
+        min-width: 950px;
+        font-size: 10px;
+    }
+
+    .modal-content {
+        max-width: 460px;
+        padding: 28px 22px;
+    }
+
+    .notification-center {
+        width: 320px;
+        right: 10px;
+        left: auto;
+    }
+
+    .charts-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    .executive-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ── 4. TABLETS (768px – 1023px) ────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .top-bar {
+        padding: 12px 16px;
+    }
+
+    .tab-btn {
+        flex: 1 1 auto;
+        min-width: 80px;
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+
+    .grid-form {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+
+    table {
+        min-width: 100%;
+        font-size: 11px;
+    }
+
+    .modal-content {
+        max-width: 600px;
+        padding: 30px;
+    }
+
+    .notification-center {
+        width: 340px;
+    }
+
+    .charts-row {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .executive-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-actions {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .login-container {
+        max-width: 900px;
+    }
+}
+
+/* ── 5. TELAS GRANDES (1400px+) ─────────────────────────────────── */
+@media (min-width: 1400px) {
+    .container {
+        max-width: 1600px;
+    }
+
+    .grid-form {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .charts-row {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+
+    .top-bar {
+        padding: 18px 24px;
+    }
+
+    .card {
+        padding: 28px;
+    }
+
+    .tab-btn {
+        padding: 12px 18px;
+        font-size: 13px;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    th, td {
+        padding: 14px;
+    }
+}
+
+/* ── 6. MELHORIAS GLOBAIS DE USABILIDADE ────────────────────────── */
+
+/* Garantir que canvas/gráficos sejam responsivos */
+canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Scroll suave em todas as tabelas */
+.table-wrapper {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) #f1f5f9;
+}
+.table-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+.table-wrapper::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 3px;
+}
+
+/* Garantir que modais não fiquem presos em telas com notch */
+@supports (padding: max(0px)) {
+    .modal {
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Prevenir overflow horizontal indesejado no body */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+/* Garantir que imagens e iframes não estourem */
+img, iframe, video, embed, object {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Melhorar foco em mobile para acessibilidade */
+input:focus, select:focus, textarea:focus, button:focus, .tab-btn:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Reduzir motion para quem prefere */
+@media (prefers-reduced-motion: reduce) {
+    .modal, .modal-content, .card, .tab-btn, .btn-action, .btn-save,
+    .notification-center, .alerta-item, .historico-item, .top-veiculo-item {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Melhorar dropdown do grupo-menu em telas com pouca altura */
+.grupo-dropdown {
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Garantir que o QR scanner não estoure */
+#qr-reader video {
+    max-width: 100% !important;
+}
+
+/* Ajustar selo de versão em mobile */
+#selo-versao {
+    font-size: 9px;
+    padding: 4px 8px;
+    left: 4px;
+    bottom: 4px;
+    border-radius: 6px;
+}
+
+/* Melhorar visualização de datalist em mobile */
+input[list] {
+    text-overflow: ellipsis;
+}
+
+/* Garantir que badges e tags não quebrem layout */
+.badge, .status-tag, .tanque-cheio-badge {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ajustar progress bars em telas pequenas */
+.progress-bar {
+    min-width: 60px;
+}
+
+/* Melhorar visualização de checkboxes em grupo */
+#lista-postos-secretario-new,
+#lista-combustiveis-secretario-new,
+#lista-postos-autorizador-novo,
+#lista-combustiveis-autorizador,
+#lista-postos-secretario-edit,
+#lista-combustiveis-secretario-edit,
+#lista-postos-autorizador-edit,
+#lista-combustiveis-autorizador-edit {
+    max-height: 200px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Garantir que o backup indicator não cubra conteúdo em mobile */
+.backup-indicator {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    right: max(10px, env(safe-area-inset-right));
+}
+
+/* Ajustar real-time notification em telas pequenas */
+.realtime-notification {
+    max-width: calc(100vw - 32px);
+    left: 16px;
+    right: 16px;
+}
+
+/* Melhorar a visualização de campos de busca rápida */
+#busca-motorista,
+#busca-veiculo-diversas,
+#busca-veiculo-autorizador,
+#cpfaut-veiculo,
+#emp-placa {
+    text-overflow: ellipsis;
+}
+
+/* Ajustar cards de comparação em telas muito pequenas */
+.comparison-item {
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Garantir que o efficiency-meter não estoure */
+.efficiency-meter {
+    max-width: 100%;
+}
+
+/* Ajustar executive-card em telas pequenas */
+.executive-card {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+/* Melhorar a visualização do alert-box em mobile */
+.alert-box {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Garantir que formulários dentro de modais não estourem */
+.modal-content .grid-form {
+    min-width: 0;
+}
+
+/* Ajustar selects múltiplos e checkboxes em mobile */
+.modal-content input[type="checkbox"],
+.modal-content input[type="radio"] {
+    min-width: 20px;
+    min-height: 20px;
+}
+
+/* Melhorar a visualização de campos de data/hora em mobile */
+input[type="date"],
+input[type="time"] {
+    min-height: 44px;
+}
+
+/* Ajustar o campo de busca geral */
+#busca-geral {
+    text-overflow: ellipsis;
+}
+
+/* Garantir que o resultado de busca não estoure */
+#busca-resultado {
+    max-width: 100%;
+    overflow-wrap: break-word;
+}
+
+/* Ajustar o container de alertas dinâmicos */
+#alertas-abastecimento {
+    max-width: 100%;
+}
+
+/* Melhorar a visualização do scanner QR em mobile */
+#qr-scanner-area {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Ajustar o display do QR code gerado */
+#qr-display {
+    max-width: 100%;
+    overflow: hidden;
+}
+#qrcode img, #qrcode canvas {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Garantir que o modal de QR não estoure */
+#modal-qr .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Ajustar tabelas de auditoria */
+#logs-auditoria {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Melhorar a visualização do dashboard de limites DIVERSAS */
+#container-limites-vip {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* Ajustar o card de gestão de pessoas DIVERSAS */
+#gestao-vips .grid-form {
+    min-width: 0;
+}
+
+/* Garantir que o modal de análise não estoure em mobile */
+#modal-analise .modal-content {
+    max-width: min(800px, 96vw);
+}
+
+/* Ajustar o modal de histórico de veículo */
+#modal-historico-veiculo .modal-content {
+    max-width: min(900px, 96vw);
+}
+
+/* Melhorar a visualização do modal de edição de abastecimento */
+#modal-edit-abastecimento .modal-content {
+    max-width: min(800px, 96vw);
+}
+
+/* Ajustar o modal de permissões */
+#modal-permissoes .modal-content {
+    max-width: min(700px, 96vw);
+}
+
+/* Garantir que o modal de tanque cheio não estoure */
+#modal-tanque-cheio .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Ajustar o modal de histórico avulso */
+#modal-historico-avulso .modal-content {
+    max-width: min(600px, 96vw);
+}
+
+/* Melhorar a visualização do modal de edição de posto */
+#modal-edit-posto .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Ajustar o modal de edição de veículo */
+#modal-edit-veiculo .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Garantir que o modal de edição de DIVERSAS não estoure */
+#modal-edit-diversas .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Ajustar o modal de edição de CPF autorizado */
+#modal-edit-cpfautorizado .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Melhorar a visualização do modal de edição de usuário */
+#modal-edit .modal-content {
+    max-width: min(500px, 96vw);
+}
+
+/* Ajustar o modal de segurança genérico */
+#modal-seguranca .mbg-inner {
+    max-width: min(520px, 96vw);
+}
+
+/* Garantir que o modal de bloqueio de garagem não estoure */
+#modal-bloqueio-garagem .mbg-inner {
+    max-width: min(520px, 96vw);
+}
+
+/* Melhorar a visualização de campos de preço/combustível em postos */
+#edit-posto-gas, #edit-posto-alc, #edit-posto-die,
+#edit-posto-diesels10, #edit-posto-gas-gnv,
+#posto-gas, #posto-alc, #posto-die,
+#posto-diesels10, #posto-gas-gnv {
+    min-width: 80px;
+}
+
+/* Ajustar o campo de limite mensal */
+#new-limit-victor, #new-limit-matina,
+#edit-limit-victor, #edit-limit-matina,
+#edit-adicional-victor, #edit-adicional-matina {
+    min-width: 0;
+}
+
+/* Garantir que o campo de observações não estoure */
+textarea {
+    max-width: 100%;
+    resize: vertical;
+}
+
+/* Melhorar a visualização do gráfico do autorizador */
+#chart-autorizador-tempo {
+    max-width: 100% !important;
+}
+
+/* Ajustar o ranking de eficiência em telas pequenas */
+#ranking-body td {
+    white-space: nowrap;
+}
+
+/* Melhorar a visualização do gráfico de combustível */
+#chartCombustivel, #chartTendencia,
+#chartExecutivo1, #chartExecutivo2,
+#chartAnual, #chartFrota,
+#chartSec, #chartVec {
+    max-width: 100% !important;
+}
+
+/* Ajustar o container de comparação mensal */
+#comparison-container {
+    gap: 12px;
+}
+
+/* Garantir que o container de relatório não estoure */
+#relatorio-container {
+    max-width: 100%;
+    overflow-wrap: break-word;
+}
+
+/* Melhorar a visualização do histórico de pendentes */
+#historico-pendentes-container {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Ajustar o corpo da tabela de empréstimos */
+#emprestimos-body td {
+    white-space: nowrap;
+}
+
+/* Melhorar a visualização do formulário de empréstimo */
+#card-emprestimo-veiculo .grid-form {
+    min-width: 0;
+}
+
+/* Garantir que o campo de busca de veículos não estoure */
+#veiculos-busca, #veiculos-filtro-secretaria, #veiculos-filtro-terceiros {
+    min-width: 0;
+}
+
+/* Ajustar a tabela de veículos cadastrados */
+#card-veiculos-cadastrados .table-wrapper {
+    max-width: 100%;
+}
+
+/* Melhorar a visualização do print em mobile */
+@media print and (max-width: 768px) {
+    .card {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    table {
+        font-size: 8px;
+    }
+    th, td {
+        padding: 4px;
+    }
+}
+
+/* ── 7. AJUSTES ESPECÍFICOS DE ORIENTAÇÃO ───────────────────────── */
+
+/* Modo paisagem em celulares */
+@media (max-width: 767px) and (orientation: landscape) {
+    .modal-content {
+        max-height: 85vh;
+        padding: 16px;
+    }
+    .modal-content .grid-form {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px;
+    }
+    .top-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .nav-tabs {
+        flex: 1 1 60%;
+    }
+}
+
+/* ── 8. AJUSTES PARA TELAS COM ALTURA REDUZIDA ──────────────────── */
+@media (max-height: 600px) {
+    .modal-content {
+        max-height: 85vh;
+    }
+    .login-left {
+        padding: 20px;
+    }
+    .login-box {
+        padding: 20px;
+    }
+    .card {
+        padding: 16px;
+    }
+}
+
+/* ── 9. SUPORTE A FOLDABLES / TELAS DOBRÁVEIS ───────────────────── */
+@media (max-width: 280px) {
+    body {
+        padding: 2px;
+    }
+    .card {
+        padding: 10px 8px;
+        border-radius: 8px;
+    }
+    .tab-btn {
+        flex: 1 1 100%;
+        min-width: 100%;
+        font-size: 10px;
+        padding: 8px;
+    }
+    input, select, textarea {
+        padding: 10px 8px;
+        font-size: 15px;
+    }
+    .btn-save {
+        padding: 12px;
+        font-size: 12px;
+    }
+    table {
+        min-width: 700px;
+        font-size: 9px;
+    }
+    .modal-content {
+        padding: 16px 12px;
+        width: 98%;
+    }
+}
 </style>
 
 <!-- Modal para Edição de Usuários -->
