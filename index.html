@@ -579,6 +579,9 @@
       .card { box-shadow: none; page-break-inside: avoid; }
       body { background: white; }
       .only-print { display: block !important; }
+      /* NOVO: seções do relatório recolhidas na tela devem SEMPRE aparecer na
+         impressão — recolher é apenas um recurso de visualização. */
+      [id^="relsec-"][id$="-corpo"] { display: block !important; }
       body.imprimindo-veiculos > *:not(#app) { display: none !important; }
       body.imprimindo-veiculos #app > *:not(#tab-users) { display: none !important; }
       body.imprimindo-veiculos #tab-users > *:not(#card-veiculos-cadastrados) { display: none !important; }
@@ -15864,6 +15867,29 @@
     exibirRelatorioFiltrado(registros);
   }
   
+  // NOVO: recolhe/expande a tabela de uma secretaria no relatório.
+  // Apenas visual — não altera os dados, os totais do cabeçalho nem a exportação
+  // (Excel e PDF são gerados a partir dos registros, não do HTML da tela).
+  function toggleSecaoRelatorio(secId) {
+    const corpo = document.getElementById(secId + '-corpo');
+    const seta = document.getElementById(secId + '-seta');
+    if (!corpo) return;
+    const oculto = corpo.style.display === 'none';
+    corpo.style.display = oculto ? '' : 'none';
+    if (seta) seta.style.transform = oculto ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+  window.toggleSecaoRelatorio = toggleSecaoRelatorio;
+
+  // Recolhe ou expande TODAS as seções de uma vez
+  function alternarTodasSecoesRelatorio(recolher) {
+    document.querySelectorAll('[id^="relsec-"][id$="-corpo"]').forEach(function(corpo){
+      corpo.style.display = recolher ? 'none' : '';
+      const seta = document.getElementById(corpo.id.replace('-corpo', '-seta'));
+      if (seta) seta.style.transform = recolher ? 'rotate(-90deg)' : 'rotate(0deg)';
+    });
+  }
+  window.alternarTodasSecoesRelatorio = alternarTodasSecoesRelatorio;
+
   function exibirRelatorioFiltrado(registros) {
     const container = document.getElementById('relatorio-container');
     const isFrentista = (userRole === 'frentista');
@@ -15924,8 +15950,18 @@
         </div>
       </div>`;
     
+    // NOVO: atalhos para recolher/expandir todas as secretarias de uma vez
+    // (só aparecem quando há mais de uma secretaria no resultado)
+    if (secretarias.length > 1) {
+      html += `
+      <div class="no-print" style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+        <button class="btn-action" style="background:#64748b; color:#fff;" onclick="alternarTodasSecoesRelatorio(true)">▶ RECOLHER TODAS</button>
+        <button class="btn-action" style="background:#64748b; color:#fff;" onclick="alternarTodasSecoesRelatorio(false)">▼ EXPANDIR TODAS</button>
+      </div>`;
+    }
+    
     // CRIAR UMA SEÇÃO PARA CADA SECRETARIA
-    secretarias.forEach(sec => {
+    secretarias.forEach((sec, idxSec) => {
       const itens = porSecretaria[sec];
       const totalSec = itens.reduce((acc, r) => acc + r.valor, 0);
       const litrosSec = itens.reduce((acc, r) => acc + r.litro, 0);
@@ -15936,15 +15972,21 @@
         ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;'
         : 'background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%); color: white;';
       
+      // NOVO: id único por seção (usa o índice para nunca colidir, já que nomes
+      // com acentos diferentes poderiam gerar a mesma chave se fossem sanitizados)
+      const secId = 'relsec-' + idxSec;
+      
       html += `
       <div class="card relatorio-section">
-        <h3 style="${headerStyle} padding: 15px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0;">
+        <h3 style="${headerStyle} padding: 15px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; cursor: pointer; user-select: none;"
+            onclick="toggleSecaoRelatorio('${secId}')" title="Clique para recolher/expandir">
+          <span id="${secId}-seta" class="no-print" style="display:inline-block; transition:transform .2s; margin-right:6px;">▼</span>
           ${isDiversas ? '🌟' : '📋'} ${sec.toUpperCase()}
           <span style="float: right; font-size: 14px; opacity: 0.9;">
             ${itens.length} registro(s) • ${litrosSec.toFixed(2)}L ${!isFrentista ? '• R$ ' + totalSec.toFixed(2) : ''}
           </span>
         </h3>
-        <div class="table-wrapper">
+        <div class="table-wrapper" id="${secId}-corpo">
           <table>
             <thead>
               <tr>
