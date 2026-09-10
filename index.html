@@ -12205,7 +12205,7 @@
     });
   }
   
-  function exportarExcel() {
+  async function exportarExcel() {
     if (!temPermissao('exportar_excel')) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA EXPORTAR!", "error");
       return;
@@ -12219,7 +12219,13 @@
     const placa = document.getElementById('rel-placa').value.toUpperCase().trim();
     const cpf = document.getElementById('rel-cpf').value.replace(/\D/g, '');
     
-    let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    // NOVO: garante que registros anteriores à janela em memória sejam carregados
+    if (dataInicial) {
+      const tsIni = new Date(dataInicial + 'T00:00:00').getTime();
+      if (!isNaN(tsIni)) await garantirPeriodoNoCache(tsIni);
+    }
+    
+    let registros = filtrarCachePorPosto(cacheCompleto().filter(x => x.status === STATUS.AUTORIZADO));
     
     // FILTRO AUTOMÁTICO: Secretários só exportam dados da própria secretaria
     if (userRole === 'secretarios') {
@@ -15617,7 +15623,7 @@
   
   // ==================== FIM DROPDOWN PESSOAS ====================
   
-  function gerarRelatorio() {
+  async function gerarRelatorio() {
     console.log('');
     console.log('═════════════════════════════════════════════════════════════════');
     console.log('📊 BOTÃO GERAR RELATÓRIO CLICADO');
@@ -15656,8 +15662,18 @@
       console.log('');
     }
     
-    // Começar com todos os autorizados
-    let registros = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AUTORIZADO));
+    // NOVO: se o filtro pede um período anterior à janela carregada em memória,
+    // busca APENAS esse intervalo no banco antes de montar o relatório.
+    // Garante que nenhum registro antigo deixe de aparecer.
+    if (dataInicial) {
+      const tsInicial = new Date(dataInicial + 'T00:00:00').getTime();
+      if (!isNaN(tsInicial)) {
+        await garantirPeriodoNoCache(tsInicial);
+      }
+    }
+    
+    // Começar com todos os autorizados (cache recente + histórico antigo carregado)
+    let registros = filtrarCachePorPosto(cacheCompleto().filter(x => x.status === STATUS.AUTORIZADO));
     
     console.log('📦 TOTAL DE REGISTROS AUTORIZADOS:', registros.length);
     console.log('');
@@ -16089,7 +16105,70 @@
     }).showToast();
   }
   
-  db.ref('abastecimentos').on('value', snap => {
+  // ══════════════════════════════════════════════════════════════════
+  // OTIMIZAÇÃO DE BANDA — JANELA DE CARGA DO LISTENER
+  // O listener .on('value') reenvia o nó INTEIRO a cada alteração, para CADA
+  // navegador conectado. Com o histórico completo, um único abastecimento novo
+  // gerava dezenas de MB de download multiplicados por todos os usuários online.
+  // Passamos a carregar apenas os últimos MESES_JANELA_CACHE meses.
+  // NENHUM DADO É PERDIDO: registros mais antigos continuam no banco e são
+  // buscados sob demanda quando o relatório filtra um período anterior
+  // (ver garantirPeriodoNoCache()).
+  const MESES_JANELA_CACHE = 6;
+  let _inicioJanelaCache = (function(){
+    const d = new Date();
+    d.setMonth(d.getMonth() - MESES_JANELA_CACHE);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+  // Registros antigos carregados sob demanda (fora da janela do listener)
+  let cacheHistorico = [];
+  // Marca até onde já buscamos no passado, para não repetir download
+  let _limiteHistoricoCarregado = _inicioJanelaCache;
+
+  // Garante que o período solicitado esteja disponível para consulta.
+  // Se for anterior à janela já carregada, busca APENAS o intervalo que falta.
+  async function garantirPeriodoNoCache(timestampInicial) {
+    if (!timestampInicial || timestampInicial >= _limiteHistoricoCarregado) return;
+    try {
+      const snap = await db.ref('abastecimentos')
+        .orderByChild('timestamp')
+        .startAt(timestampInicial)
+        .endAt(_limiteHistoricoCarregado - 1)
+        .once('value');
+      const novos = [];
+      snap.forEach(item => {
+        const v = item.val();
+        if (!v) return;
+        v.id = item.key;
+        if (v.secretaria === 'VIP') v.secretaria = 'DIVERSAS';
+        if (v.tipoAbastecimento === 'VIP') v.tipoAbastecimento = 'DIVERSAS';
+        if (v.secretaria === 'AGRICULTURA') v.secretaria = 'AGRICULTURA E MEIO AMBIENTE';
+        if (v.secretaria === 'INFRAESTRUTURA') v.secretaria = 'INFRAESTRUTURA E SERVIÇOS';
+        novos.push(v);
+      });
+      // Evita duplicar registros já presentes
+      const idsAtuais = new Set(cacheHistorico.map(x => x.id));
+      novos.forEach(n => { if (!idsAtuais.has(n.id)) cacheHistorico.push(n); });
+      _limiteHistoricoCarregado = timestampInicial;
+      console.log('📚 Histórico antigo carregado sob demanda:', novos.length, 'registro(s)');
+    } catch (e) {
+      console.warn('Falha ao carregar histórico antigo (o índice "timestamp" pode não estar nas regras):', e);
+    }
+  }
+  window.garantirPeriodoNoCache = garantirPeriodoNoCache;
+
+  // Retorna cache recente + histórico antigo já carregado (usado pelos relatórios)
+  function cacheCompleto() {
+    return cacheHistorico.length ? cache.concat(cacheHistorico) : cache;
+  }
+  window.cacheCompleto = cacheCompleto;
+  // ══════════════════════════════════════════════════════════════════
+
+  db.ref('abastecimentos')
+    .orderByChild('timestamp')
+    .startAt(_inicioJanelaCache)
+    .on('value', snap => {
     console.log("🔄 CARREGANDO ABASTECIMENTOS DO FIREBASE...");
     cache = [];
     let corrigidos = 0;
