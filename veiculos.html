@@ -1494,7 +1494,53 @@ function getMov(id) { return D.movimentacoes.find(function(m){return m.id===id;}
 function getAg(id) { return D.agendamentos.find(function(a){return a.id===id;}); }
 function getMn(id) { return D.manutencoes.find(function(m){return m.id===id;}); }
 function getAus(id) { return D.ausencias.find(function(a){return a.id===id;}); }
-function getMovAtiva(vid) { return D.movimentacoes.find(function(m){return m.vid===vid&&!m.entrada_real;})||null; }
+// CORREÇÃO DE BUG: antes usava .find(), que devolve a PRIMEIRA movimentação sem
+// entrada na ordem do array. Se o veículo tivesse uma saída antiga que nunca
+// recebeu entrada (órfã), ela era encontrada no lugar da viagem atual — e ao
+// registrar a entrada da viagem de hoje o veículo voltava a "irregular",
+// parecendo que a entrada não tinha sido salva.
+// Agora devolve sempre a MAIS RECENTE em aberto, que é a viagem de fato em curso.
+function getMovAtiva(vid) {
+  var abertas = D.movimentacoes.filter(function(m){ return m.vid===vid && !m.entrada_real; });
+  if(!abertas.length) return null;
+  if(abertas.length === 1) return abertas[0];
+  return abertas.slice().sort(function(a,b){
+    return new Date(b.saida||0) - new Date(a.saida||0);
+  })[0];
+}
+// Lista todas as movimentações em aberto de um veículo (usada no diagnóstico de órfãs)
+// NOVO: encerra uma saída antiga que ficou sem entrada registrada ("órfã").
+// Exclusivo do master. NÃO apaga o registro — apenas marca a entrada como a data
+// do próprio retorno previsto e sinaliza que foi uma regularização, preservando
+// o histórico para auditoria.
+function encerrarSaidaOrfa(movId) {
+  if(!isMasterFrota()) { toast('🔒 Somente o master pode regularizar saídas antigas.'); return; }
+  var m = getMov(movId);
+  if(!m) { toast('Movimentação não encontrada.'); return; }
+  if(m.entrada_real) { toast('Esta saída já possui entrada registrada.'); return; }
+
+  var quando = m.retorno || m.saida;
+  if(!confirm('Encerrar a saída de '+fmtDT(m.saida)+'?\n\n'+
+              'A entrada será registrada como '+fmtDT(quando)+' e a movimentação sairá da lista de pendências.\n'+
+              'O registro NÃO é apagado — fica marcado como regularizado pelo master.')) return;
+
+  m.entrada_real   = quando;
+  m.regularizada   = true;
+  m.regularizadaPor = (_sessao && _sessao.login) || 'master';
+  m.regularizadaEm  = new Date().toISOString();
+
+  window._entradaEmAndamento = true;
+  renderTudo();
+  fechar('ov-veiculo-detalhe');
+  toast('✅ Saída regularizada.');
+  salvar();
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
+}
+
+function getMovsAbertas(vid) {
+  return D.movimentacoes.filter(function(m){ return m.vid===vid && !m.entrada_real; })
+    .sort(function(a,b){ return new Date(b.saida||0) - new Date(a.saida||0); });
+}
 function getAusAtiva(vid) { return D.ausencias.find(function(a){return a.vid===vid&&!a.resolvido;})||null; }
 function uid(p) { return (p||'x')+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
@@ -2449,6 +2495,25 @@ function verVeiculo(vid) {
   }
   if(v.semCarona) {
     mediaHtml+='<div style="display:flex;align-items:flex-start;gap:8px;background:#FEF2F2;border:1.5px solid #FECACA;color:#991B1B;border-radius:8px;padding:8px 12px;margin-bottom:.75rem;font-size:12px"><span style="font-size:16px">🚫</span><span><strong>Veículo de trabalho — não aceita carona</strong>'+(v.semCaronaObs?'<br><span style="font-weight:400">'+v.semCaronaObs+'</span>':'')+'</span></div>';
+  }
+
+  // NOVO: alerta de saídas em aberto além da atual ("órfãs"). São saídas antigas que
+  // nunca receberam entrada e, por isso, mantêm o veículo preso em "irregular" mesmo
+  // depois de a viagem atual ser encerrada.
+  var _abertas = getMovsAbertas(vid);
+  if(_abertas.length > 1) {
+    var _antigas = _abertas.slice(1); // a primeira é a viagem atual (mais recente)
+    mediaHtml += '<div style="background:#FFFBEB;border:1.5px solid #F59E0B;border-radius:8px;padding:10px 12px;margin-bottom:.75rem;font-size:12px">'+
+      '<strong style="color:#92400E">⚠ '+_antigas.length+' saída(s) antiga(s) sem entrada registrada</strong><br>'+
+      '<span style="color:#78350F">Enquanto existirem, o veículo continua sendo marcado como irregular mesmo após dar entrada na viagem atual.</span>'+
+      _antigas.map(function(m){
+        return '<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span style="color:#78350F">• Saída de '+fmtDT(m.saida)+'</span>'+
+          (isMasterFrota() ? '<button class="btn" style="padding:4px 10px;font-size:11px" onclick="encerrarSaidaOrfa(\''+m.id+'\')">✓ Encerrar esta saída</button>' : '')+
+        '</div>';
+      }).join('')+
+      (isMasterFrota() ? '' : '<div style="margin-top:6px;color:#78350F">Solicite ao master que regularize estas saídas.</div>')+
+      '</div>';
   }
 
   var docs = docAlerts(v);
@@ -3689,6 +3754,9 @@ function renderVeiculos() {
       '<span class="badge '+s+'">'+(LABEL[s]||s||'—')+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
+      // NOVO: indica quando o veículo está aqui por empréstimo de outra secretaria
+      (_temEmprestimoAtivoParaMinhaSecretaria(v) && _sessao && v.secretaria !== _sessao.secretaria
+        ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-weight:600">🔁 Emprestado para sua secretaria</span>' : '')+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
       (cap?'<span>Cap.: <strong>'+cap+' pass.</strong></span>':'')+
       (v.combustivel?'<span>Comb.: <strong>'+v.combustivel+'</strong></span>':'')+

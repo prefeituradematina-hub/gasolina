@@ -5249,7 +5249,18 @@
         if (!v.placa) return;
         const opt = document.createElement('option');
         opt.value = v.placa;
-        opt.label = v.modelo ? (v.modelo + (v.secretaria ? ' — ' + v.secretaria : '')) : '';
+        // NOVO: destaca os veículos que estão emprestados PARA a secretaria do
+        // usuário atual, para ele saber que pode abastecê-los durante o empréstimo.
+        let sufixoEmp = '';
+        try {
+          if (userRole === 'secretarios' && userSecretaria &&
+              v.secretaria && v.secretaria !== userSecretaria &&
+              typeof emprestimoAtivoPara === 'function' &&
+              emprestimoAtivoPara(v.placa, userSecretaria)) {
+            sufixoEmp = ' 🔁 EMPRESTADO PARA VOCÊ';
+          }
+        } catch(e) {}
+        opt.label = (v.modelo ? (v.modelo + (v.secretaria ? ' — ' + v.secretaria : '')) : '') + sufixoEmp;
         dlPlacas.appendChild(opt);
       });
     }
@@ -19952,6 +19963,27 @@
       );
     } else {
       restaurarBotao();
+      // NOVO: aviso positivo — deixa claro que o veículo é de outra secretaria,
+      // mas está liberado porque existe um empréstimo ativo para a sua.
+      try {
+        if (veiculo && veiculo.secretaria && veiculo.secretaria !== minhaSecretaria) {
+          const emp = emprestimoAtivoPara(placa, minhaSecretaria);
+          if (emp) {
+            const cont = document.getElementById('alertas-abastecimento');
+            if (cont) {
+              cont.innerHTML +=
+                '<div style="background:#ecfdf5; border:2px solid #10b981; border-radius:10px; padding:12px; margin-bottom:12px;">' +
+                  '<div style="font-size:18px; text-align:center;">🔁</div>' +
+                  '<div style="font-weight:bold; color:#065f46; text-align:center; margin:4px 0;">VEÍCULO EMPRESTADO PARA SUA SECRETARIA</div>' +
+                  '<div style="font-size:12px; color:#047857; text-align:center;">' +
+                    'Pertence a <strong>' + veiculo.secretaria + '</strong>. O abastecimento está liberado e será debitado da sua cota.' +
+                    (emp.dataFimPrevista ? '<br>Devolução prevista: <strong>' + emp.dataFimPrevista + '</strong>' : '<br>Sem prazo de devolução definido.') +
+                  '</div>' +
+                '</div>';
+            }
+          }
+        }
+      } catch(e) {}
     }
   }
   
