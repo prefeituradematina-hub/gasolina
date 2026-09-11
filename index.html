@@ -17055,8 +17055,21 @@
       }
     });
     
-    db.ref('abastecimentos').on('child_added', (snap) => {
+    // OTIMIZAÇÃO CRÍTICA DE BANDA:
+    // .on('child_added') dispara uma vez para CADA registro já existente no nó —
+    // ou seja, ao conectar, o Firebase enviava TODOS os abastecimentos do histórico
+    // (dezenas de MB) só para alimentar notificações de solicitações NOVAS.
+    // limitToLast(1) faz o listener acompanhar apenas o último registro em diante,
+    // que é exatamente o que a notificação precisa. Nenhuma notificação é perdida:
+    // solicitações novas continuam chegando normalmente.
+    let _primeiraCargaChildAdded = true;
+    db.ref('abastecimentos').limitToLast(1).on('child_added', (snap) => {
       const abast = snap.val();
+      if (!abast) return;
+      
+      // Ignora o registro que já existia no momento da conexão (evita notificar
+      // algo antigo como se fosse novo, comportamento idêntico ao anterior)
+      if (_primeiraCargaChildAdded) { _primeiraCargaChildAdded = false; return; }
       
       // Notificar admins de novas solicitações
       if (abast.status === STATUS.AGUARDANDO && temPermissao('autorizar_abastecimento')) {
