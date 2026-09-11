@@ -2069,6 +2069,11 @@ function makeBtnVeiculo(v) {
     '</div>'+
     '<div class="vdesc">'+v.descricao+'</div>'+
     '<div class="vsec">'+v.secretaria+'</div>'+
+    // NOVO: sinaliza, no card do painel, que este veículo é de outra secretaria e
+    // está aqui por empréstimo ativo — é a tela onde o secretário realmente o vê.
+    (_sessao && _sessao.secretaria && v.secretaria !== _sessao.secretaria
+      && _temEmprestimoAtivoParaMinhaSecretaria(v)
+      ? '<div class="agenda-warn" style="background:#10B981;color:#fff">🔁 Emprestado p/ você</div>' : '')+
     (v.mediaKmL > 0 ? '<div class="vkml">⛽ '+parseFloat(v.mediaKmL).toFixed(1)+' KM/L</div>' : '')+
     vagasHTML+docW+rapidaHTML+agendaWarnHTML+
     '</div>'+
@@ -2500,6 +2505,23 @@ function verVeiculo(vid) {
   // NOVO: alerta de saídas em aberto além da atual ("órfãs"). São saídas antigas que
   // nunca receberam entrada e, por isso, mantêm o veículo preso em "irregular" mesmo
   // depois de a viagem atual ser encerrada.
+  // NOVO: no detalhe, informa que o veículo é de outra secretaria e está
+  // disponível por empréstimo ativo, mostrando o prazo quando houver.
+  if (_sessao && _sessao.secretaria && v.secretaria !== _sessao.secretaria) {
+    var _empAtivo = (_emprestimosVeiculosFrota || []).find(function(e){
+      if (!e.ativo) return false;
+      if (e.placa !== normPlaca(v.placa)) return false;
+      return (e.secretariaDestino || '').trim().toLowerCase() === (_sessao.secretaria || '').trim().toLowerCase();
+    });
+    if (_empAtivo) {
+      mediaHtml += '<div style="background:#ECFDF5;border:1.5px solid #10B981;border-radius:8px;padding:10px 12px;margin-bottom:.75rem;font-size:12px">'+
+        '<strong style="color:#065F46">🔁 Veículo emprestado para sua secretaria</strong><br>'+
+        '<span style="color:#047857">Pertence a <strong>'+v.secretaria+'</strong>. '+
+        (_empAtivo.dataFimPrevista ? 'Devolução prevista: <strong>'+fmtData(_empAtivo.dataFimPrevista)+'</strong>.' : 'Sem prazo de devolução definido.')+
+        '</span></div>';
+    }
+  }
+
   var _abertas = getMovsAbertas(vid);
   if(_abertas.length > 1) {
     var _antigas = _abertas.slice(1); // a primeira é a viagem atual (mais recente)
@@ -3754,9 +3776,6 @@ function renderVeiculos() {
       '<span class="badge '+s+'">'+(LABEL[s]||s||'—')+'</span></div>'+
       '<div class="card-meta">'+
       '<span>Secretaria: <strong>'+v.secretaria+'</strong></span>'+
-      // NOVO: indica quando o veículo está aqui por empréstimo de outra secretaria
-      (_temEmprestimoAtivoParaMinhaSecretaria(v) && _sessao && v.secretaria !== _sessao.secretaria
-        ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-weight:600">🔁 Emprestado para sua secretaria</span>' : '')+
       '<span>Ano: <strong>'+v.ano+'</strong></span>'+
       (cap?'<span>Cap.: <strong>'+cap+' pass.</strong></span>':'')+
       (v.combustivel?'<span>Comb.: <strong>'+v.combustivel+'</strong></span>':'')+
