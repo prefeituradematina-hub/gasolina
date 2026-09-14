@@ -16176,10 +16176,72 @@
   window.cacheCompleto = cacheCompleto;
   // ══════════════════════════════════════════════════════════════════
 
+  // ══════════════════════════════════════════════════════════════════
+  // NORMALIZAÇÃO DE UM REGISTRO DE ABASTECIMENTO
+  // Extraída para ser usada TANTO na carga inicial QUANTO nas atualizações
+  // incrementais, garantindo que um registro tratado por qualquer caminho
+  // fique exatamente igual ao que o listener original produzia.
+  // Mantém integralmente as compatibilidades existentes (VIP → DIVERSAS,
+  // AGRICULTURA → AGRICULTURA E MEIO AMBIENTE, INFRAESTRUTURA → ...).
+  // ══════════════════════════════════════════════════════════════════
+  function normalizarRegistroAbastecimento(v, chave) {
+    if (!v) return null;
+    v.id = chave;
+    
+    // NORMALIZAR VIP → DIVERSAS (compatibilidade com dados antigos)
+    if (v.secretaria === 'VIP') v.secretaria = 'DIVERSAS';
+    if (v.tipoAbastecimento === 'VIP') v.tipoAbastecimento = 'DIVERSAS';
+    // NORMALIZAR AGRICULTURA → AGRICULTURA E MEIO AMBIENTE (unificação)
+    if (v.secretaria === 'AGRICULTURA') v.secretaria = 'AGRICULTURA E MEIO AMBIENTE';
+    if (v.secretaria === 'INFRAESTRUTURA') v.secretaria = 'INFRAESTRUTURA E SERVIÇOS';
+    
+    // SANITIZAÇÃO DE TIPOS (mesmos critérios da carga original)
+    v.valor = typeof v.valor === 'number' ? v.valor : (parseFloat(String(v.valor || 0).replace(',', '.')) || 0);
+    if (isNaN(v.valor) || !isFinite(v.valor) || v.valor < 0) v.valor = 0;
+    v.litro = typeof v.litro === 'number' ? v.litro : (parseFloat(String(v.litro || 0).replace(',', '.')) || 0);
+    if (isNaN(v.litro) || !isFinite(v.litro) || v.litro < 0) v.litro = 0;
+    v.km = typeof v.km === 'number' ? v.km : (parseInt(v.km) || 0);
+    if (isNaN(v.km) || !isFinite(v.km) || v.km < 0) v.km = 0;
+    if (typeof v.timestamp !== 'number' || isNaN(v.timestamp)) {
+      const t = v.data ? new Date(v.data).getTime() : 0;
+      v.timestamp = isNaN(t) ? 0 : t;
+    }
+    return v;
+  }
+  window.normalizarRegistroAbastecimento = normalizarRegistroAbastecimento;
+
+  // ══════════════════════════════════════════════════════════════════
+  // OTIMIZAÇÃO CRÍTICA DE BANDA — CARGA ÚNICA + ATUALIZAÇÕES INCREMENTAIS
+  //
+  // PROBLEMA QUE ISTO RESOLVE:
+  // .on('value') REENVIA TODO O CONJUNTO DA CONSULTA a cada alteração — não
+  // apenas o registro que mudou. Assim, cada abastecimento novo/aprovado fazia
+  // TODOS os navegadores conectados rebaixarem a janela inteira (dezenas de MB),
+  // dezenas de vezes por dia.
+  //
+  // COMO FUNCIONA AGORA:
+  // 1) .once('value')  → uma ÚNICA carga inicial, idêntica à anterior;
+  // 2) child_added / child_changed / child_removed → a partir daí, só o registro
+  //    alterado trafega (~0,4 KB em vez de dezenas de MB).
+  //
+  // O resultado para o sistema é o mesmo: a variável 'cache' continua completa e
+  // atualizada em tempo real, e as mesmas funções de tela continuam sendo
+  // chamadas após cada mudança. Nenhuma funcionalidade muda.
+  // ══════════════════════════════════════════════════════════════════
+  let _cargaInicialFeita = false;
+
+  // Reaplica as telas que dependem do cache (mesmas chamadas do listener original)
+  function _atualizarTelasAposCache() {
+    try {
+      if (loginUser) atualizarPendentes();
+    } catch (e) { console.error('Erro ao atualizar pendentes (abastecimentos):', e); }
+    try { renderizar(); } catch (e) { console.error('Erro no renderizar (abastecimentos):', e); }
+  }
+
   db.ref('abastecimentos')
     .orderByChild('timestamp')
     .startAt(_inicioJanelaCache)
-    .on('value', snap => {
+    .once('value', snap => {
     console.log("🔄 CARREGANDO ABASTECIMENTOS DO FIREBASE...");
     cache = [];
     let corrigidos = 0;
@@ -16306,13 +16368,49 @@
     
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
     // Pendentes de forma robusta: independente de qualquer erro no renderizar()
-    try {
-      if (loginUser) {
-        atualizarPendentes();
-      }
-    } catch (e) { console.error('Erro ao atualizar pendentes (abastecimentos):', e); }
-    try { renderizar(); } catch (e) { console.error('Erro no renderizar (abastecimentos):', e); }
+    _atualizarTelasAposCache();
+    
+    // ── A PARTIR DAQUI, SÓ AS MUDANÇAS TRAFEGAM ──────────────────────
+    _cargaInicialFeita = true;
+    _ativarListenersIncrementais();
   });
+
+  // Listeners incrementais: mantêm o 'cache' sincronizado em tempo real,
+  // recebendo APENAS o registro que foi criado/alterado/removido.
+  function _ativarListenersIncrementais() {
+    const ref = db.ref('abastecimentos').orderByChild('timestamp').startAt(_inicioJanelaCache);
+
+    ref.on('child_added', item => {
+      // Durante a carga inicial os registros já entraram no cache; ignora o eco.
+      if (!_cargaInicialFeita) return;
+      const v = normalizarRegistroAbastecimento(item.val(), item.key);
+      if (!v) return;
+      if (cache.some(x => x.id === v.id)) return; // evita duplicar
+      cache.push(v);
+      console.log('➕ Abastecimento adicionado ao cache:', v.id);
+      _atualizarTelasAposCache();
+    });
+
+    ref.on('child_changed', item => {
+      const v = normalizarRegistroAbastecimento(item.val(), item.key);
+      if (!v) return;
+      const i = cache.findIndex(x => x.id === v.id);
+      if (i >= 0) cache[i] = v; else cache.push(v);
+      console.log('✏️ Abastecimento atualizado no cache:', v.id);
+      _atualizarTelasAposCache();
+    });
+
+    ref.on('child_removed', item => {
+      const i = cache.findIndex(x => x.id === item.key);
+      if (i >= 0) {
+        cache.splice(i, 1);
+        console.log('🗑️ Abastecimento removido do cache:', item.key);
+        _atualizarTelasAposCache();
+      }
+    });
+
+    console.log('⚡ Listeners incrementais ativos — apenas alterações trafegam a partir de agora.');
+  }
   
   // ==================== FUNÇÃO DE MIGRAÇÃO ====================
   
