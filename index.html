@@ -16238,10 +16238,24 @@
     try { renderizar(); } catch (e) { console.error('Erro no renderizar (abastecimentos):', e); }
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // NOTA TÉCNICA — POR QUE AQUI USAMOS .on('value')
+  //
+  // Foi tentada a troca por listeners incrementais (child_added/changed/removed)
+  // para reduzir banda, mas a atualização em tempo real da tela de Pendentes
+  // deixou de funcionar. Como a prioridade é o sistema operar corretamente,
+  // mantivemos .on('value'), que é confiável e já está validado em produção.
+  //
+  // As demais otimizações CONTINUAM ATIVAS e seguem reduzindo o consumo:
+  //   • janela de 6 meses (startAt) em vez do histórico completo;
+  //   • dashboard lendo do cache em vez de rebaixar o nó;
+  //   • child_added das notificações com limitToLast(1);
+  //   • backup automático com controle compartilhado no Firebase.
+  // ══════════════════════════════════════════════════════════════════
   db.ref('abastecimentos')
     .orderByChild('timestamp')
     .startAt(_inicioJanelaCache)
-    .once('value', snap => {
+    .on('value', snap => {
     console.log("🔄 CARREGANDO ABASTECIMENTOS DO FIREBASE...");
     cache = [];
     let corrigidos = 0;
@@ -16369,48 +16383,8 @@
     console.log("📊 Primeiros 3:", cache.slice(0, 3));
     // Pendentes de forma robusta: independente de qualquer erro no renderizar()
     _atualizarTelasAposCache();
-    
-    // ── A PARTIR DAQUI, SÓ AS MUDANÇAS TRAFEGAM ──────────────────────
-    _cargaInicialFeita = true;
-    _ativarListenersIncrementais();
   });
 
-  // Listeners incrementais: mantêm o 'cache' sincronizado em tempo real,
-  // recebendo APENAS o registro que foi criado/alterado/removido.
-  function _ativarListenersIncrementais() {
-    const ref = db.ref('abastecimentos').orderByChild('timestamp').startAt(_inicioJanelaCache);
-
-    ref.on('child_added', item => {
-      // Durante a carga inicial os registros já entraram no cache; ignora o eco.
-      if (!_cargaInicialFeita) return;
-      const v = normalizarRegistroAbastecimento(item.val(), item.key);
-      if (!v) return;
-      if (cache.some(x => x.id === v.id)) return; // evita duplicar
-      cache.push(v);
-      console.log('➕ Abastecimento adicionado ao cache:', v.id);
-      _atualizarTelasAposCache();
-    });
-
-    ref.on('child_changed', item => {
-      const v = normalizarRegistroAbastecimento(item.val(), item.key);
-      if (!v) return;
-      const i = cache.findIndex(x => x.id === v.id);
-      if (i >= 0) cache[i] = v; else cache.push(v);
-      console.log('✏️ Abastecimento atualizado no cache:', v.id);
-      _atualizarTelasAposCache();
-    });
-
-    ref.on('child_removed', item => {
-      const i = cache.findIndex(x => x.id === item.key);
-      if (i >= 0) {
-        cache.splice(i, 1);
-        console.log('🗑️ Abastecimento removido do cache:', item.key);
-        _atualizarTelasAposCache();
-      }
-    });
-
-    console.log('⚡ Listeners incrementais ativos — apenas alterações trafegam a partir de agora.');
-  }
   
   // ==================== FUNÇÃO DE MIGRAÇÃO ====================
   
