@@ -21019,10 +21019,37 @@
       atualizarInfoBackup();
     }
     
-    // Verificar se precisa fazer backup agora
-    if (!ultimoBackup || (Date.now() - ultimoBackup.timestamp) > 86400000) {
-      setTimeout(fazerBackupAutomatico, 5000); // Fazer backup 5s após iniciar
+    // ══════════════════════════════════════════════════════════════
+    // OTIMIZAÇÃO DE BANDA — CONTROLE COMPARTILHADO DO BACKUP
+    // ANTES: o controle era só por localStorage (individual de cada navegador),
+    // então CADA usuário baixava a base inteira (4 nós) a cada 24h — e quem
+    // limpasse o cache ou usasse outro navegador disparava um backup novo.
+    // AGORA: a data do último backup fica no Firebase (config/ultimoBackupAuto),
+    // fazendo com que exista UM backup por dia no total, não um por pessoa.
+    // Além disso, só admin/master executam — não faz sentido cada secretário
+    // baixar a base completa. A funcionalidade de backup continua idêntica.
+    // ══════════════════════════════════════════════════════════════
+    const _podeFazerBackup = (loginUser === 'master' || userRole === 'admin');
+    if (!_podeFazerBackup) {
+      console.log('ℹ️ Backup automático: executado apenas por admin/master.');
+      return;
     }
+    
+    db.ref('config/ultimoBackupAuto').once('value').then(function(snap){
+      const ultimoGlobal = snap.val() || 0;
+      const passou24h = (Date.now() - ultimoGlobal) > 86400000;
+      if (passou24h) {
+        setTimeout(fazerBackupAutomatico, 5000); // Fazer backup 5s após iniciar
+      } else {
+        console.log('ℹ️ Backup automático já realizado nas últimas 24h por outro usuário.');
+      }
+    }).catch(function(e){
+      console.warn('Não foi possível verificar o último backup; mantendo regra local:', e);
+      // Fallback: comportamento original, para nunca ficar sem backup
+      if (!ultimoBackup || (Date.now() - ultimoBackup.timestamp) > 86400000) {
+        setTimeout(fazerBackupAutomatico, 5000);
+      }
+    });
   }
   
   async function fazerBackupAutomatico() {
@@ -21039,6 +21066,9 @@
       };
       
       localStorage.setItem('ultimoBackup', JSON.stringify(ultimoBackup));
+      // Marca compartilhada no Firebase: evita que outros navegadores
+      // repitam o mesmo backup nas próximas 24h (economia de banda).
+      try { db.ref('config/ultimoBackupAuto').set(Date.now()); } catch(e) {}
       atualizarInfoBackup();
       
       mostrarNotificacao('✅ BACKUP AUTOMÁTICO REALIZADO COM SUCESSO!', 'success');
