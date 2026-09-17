@@ -383,6 +383,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span id="fb-status" title="Status de sincronização com o banco compartilhado" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#F1F5F9;color:#64748B;cursor:default">⏳ Conectando…</span>
       <span id="clock"></span>
+      <button class="btn" id="btn-som-solicitacao" onclick="toggleSomSolicitacao()" style="font-size:13px;padding:4px 10px" title="Ativar/desativar alerta sonoro de novas solicitações">🔊</button>
       <button class="btn" onclick="location.href='porta.html'" style="font-size:11px;padding:4px 10px" title="Voltar ao painel inicial">🏠 Início</button>
       <span id="sessao-info"></span>
     </div>
@@ -5114,6 +5115,58 @@ function renderTudo() {
   atualizarBadgeCaronas();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// ALERTA DE NOVA SOLICITAÇÃO (aditivo)
+// Toca um som curto e mostra um aviso quando chega solicitação nova.
+// Não altera a contagem do badge nem nenhuma regra existente — apenas
+// avisa quem já tinha permissão de ver aquela solicitação.
+// ══════════════════════════════════════════════════════════════════
+var _ultimoTotalSolicitacoes = null; // null = ainda não medido (evita alertar na 1ª carga)
+var _somSolicitacaoLigado = (localStorage.getItem('frota_som_solicitacao') !== 'off');
+
+function toggleSomSolicitacao() {
+  _somSolicitacaoLigado = !_somSolicitacaoLigado;
+  localStorage.setItem('frota_som_solicitacao', _somSolicitacaoLigado ? 'on' : 'off');
+  var btn = document.getElementById('btn-som-solicitacao');
+  if (btn) btn.textContent = _somSolicitacaoLigado ? '🔊' : '🔇';
+  toast(_somSolicitacaoLigado ? '🔊 Alerta sonoro ativado' : '🔇 Alerta sonoro desativado');
+}
+
+// Som gerado pelo próprio navegador (sem arquivo externo, sem download)
+function _tocarBipSolicitacao() {
+  if (!_somSolicitacaoLigado) return;
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1180].forEach(function(freq, i){
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      var t = ctx.currentTime + (i * 0.18);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      osc.start(t); osc.stop(t + 0.18);
+    });
+  } catch(e) { /* navegador sem suporte: segue sem som */ }
+}
+
+// Notificação do navegador (funciona mesmo com o sistema em outra aba)
+function _notificarSolicitacao(qtd) {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification('📋 Nova solicitação de viagem', {
+        body: qtd > 1 ? qtd + ' solicitações aguardando aprovação.' : 'Uma solicitação aguarda sua aprovação.',
+        tag: 'frota-solicitacao'
+      });
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  } catch(e) {}
+}
+
 // Badge de notificação: nº de solicitações PENDENTES visíveis ao usuário
 function atualizarBadgeSolicitacoes() {
   var b = document.getElementById('badge-solicitacoes');
@@ -5125,11 +5178,36 @@ function atualizarBadgeSolicitacoes() {
   }).length;
   if(n > 0){ b.textContent = n > 99 ? '99+' : n; b.style.display = 'inline-flex'; }
   else { b.style.display = 'none'; }
+
+  // NOVO: alerta quando o número de pendentes AUMENTA (ou seja, chegou solicitação nova).
+  // A primeira medição não alerta, para não tocar ao abrir o sistema.
+  if (_ultimoTotalSolicitacoes !== null && n > _ultimoTotalSolicitacoes) {
+    var novas = n - _ultimoTotalSolicitacoes;
+    _tocarBipSolicitacao();
+    _notificarSolicitacao(novas);
+    if (typeof toast === 'function') {
+      toast(novas > 1 ? '📋 ' + novas + ' novas solicitações recebidas!' : '📋 Nova solicitação de viagem recebida!');
+    }
+    // Destaca a aba por alguns segundos
+    var btnAba = b.parentElement;
+    if (btnAba) {
+      btnAba.style.transition = 'background .3s';
+      var corOriginal = btnAba.style.background;
+      btnAba.style.background = '#FEF3C7';
+      setTimeout(function(){ btnAba.style.background = corOriginal || ''; }, 4000);
+    }
+  }
+  _ultimoTotalSolicitacoes = n;
 }
 
 // ── INIT ─────────────────────────────────────────────────────
 updateClock();
 setInterval(updateClock, 30000);
+// Reflete no botão o estado salvo do alerta sonoro
+(function(){
+  var _b = document.getElementById('btn-som-solicitacao');
+  if (_b) _b.textContent = _somSolicitacaoLigado ? '🔊' : '🔇';
+})();
 // Login único: aplica a sessão vinda do portal (a guarda no <head> já redirecionou se não houver)
 iniciarSessaoPortal();
 startCron();
