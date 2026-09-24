@@ -21832,57 +21832,115 @@ entrar = function(u, role, limit, sec, dadosExtras){
    Apenas PREENCHE o formulário de novo abastecimento com os dados do veículo/viagem.
    NÃO autoriza, NÃO registra e NÃO altera permissões: o usuário continua tendo que clicar
    em "REGISTRAR ABASTECIMENTO", e o processar() aplica todas as validações e a aprovação
-   do Master exatamente como já fazia. Posto, litros e KM ficam por conta do usuário. */
+   do Master exatamente como já fazia. */
 (function(){
   var CHAVE = 'gasolina_prefill', VALIDADE = 10 * 60 * 1000;
   var p = null;
   try { p = JSON.parse(localStorage.getItem(CHAVE)); } catch(e) {}
   if (!p || p.origem !== 'frota') return;
   if (!p.ts || (Date.now() - p.ts) > VALIDADE) { try { localStorage.removeItem(CHAVE); } catch(e) {} return; }
-
-  var tentativas = 0;
-  var timer = setInterval(function(){
-    tentativas++;
-    var pronto = false;
-    try { pronto = !!loginUser && Array.isArray(veiculos) && veiculos.length > 0 && !!document.getElementById('f-placa'); } catch(e) {}
-    if (!pronto && tentativas < 50) return;      // aguarda login + carga de veículos (até ~15 s)
-    clearInterval(timer);
-    try { localStorage.removeItem(CHAVE); } catch(e) {}   // uso único
-    try { if (pronto && p.login === loginUser) aplicar(p); } catch(e) { console.error('Pré-preenchimento da frota falhou:', e); }
-  }, 300);
+  console.log('⛽ Pré-preenchimento da frota recebido:', p);
 
   function disparar(el, tipo){ el.dispatchEvent(new Event(tipo, { bubbles: true })); }
+  function norm(x){ return String(x||'').trim().toLowerCase(); }
 
+  // Aplica os dados. NÃO depende da lista de veículos do Firebase estar carregada:
+  // a placa vem da própria frota e o formulário já existe na página.
   function aplicar(d){
-    if (!temPermissao('registrar_abastecimento')) {
-      mostrarNotificacao('⚠️ SEU USUÁRIO NÃO TEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO.', 'error');
-      return;
-    }
-    try { switchTab('geral'); } catch(e) {}
-
-    // Secretaria: só para quem pode escolher (Master). Secretário tem o campo travado na sua secretaria.
-    var selSec = document.getElementById('f-sec');
-    var vGas = veiculos.find(function(v){ return normPlaca(v.placa) === normPlaca(d.placa); });
-    if (selSec && !selSec.disabled && vGas && vGas.secretaria &&
-        Array.from(selSec.options).some(function(o){ return o.value === vGas.secretaria; })) {
-      selSec.value = vGas.secretaria;
-      disparar(selSec, 'change');
-    }
-
-    // Placa: dispara o 'input' para rodar as verificações que já existem (CPF vinculado, último KM, média, limite...)
     var elPlaca = document.getElementById('f-placa');
-    elPlaca.value = d.placa || '';
-    disparar(elPlaca, 'input');
+    if (!elPlaca) return false;
 
-    if (d.motorista) { var m = document.getElementById('f-mot'); m.value = String(d.motorista).toUpperCase(); disparar(m, 'input'); }
-    if (d.destino)   { var t = document.getElementById('f-destino'); t.value = String(d.destino).toUpperCase(); }
-    if (d.data && /^\d{4}-\d{2}-\d{2}$/.test(d.data)) { document.getElementById('f-data').value = d.data; }
+    // Secretaria: só para quem pode escolher (Master). Secretário tem o campo travado.
+    var selSec = document.getElementById('f-sec');
+    try {
+      var vGas = (typeof veiculos !== 'undefined' && Array.isArray(veiculos))
+        ? veiculos.find(function(v){ return normPlaca(v.placa) === normPlaca(d.placa); }) : null;
+      if (selSec && !selSec.disabled && vGas && vGas.secretaria &&
+          Array.from(selSec.options).some(function(o){ return o.value === vGas.secretaria; })) {
+        selSec.value = vGas.secretaria;
+        disparar(selSec, 'change');
+      }
+    } catch(e) {}
 
-    var card = document.getElementById('card-novo-abastecimento');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    mostrarNotificacao('⛽ DADOS DA VIAGEM PREENCHIDOS (' + (d.placa || '') + '). CONFIRA E COMPLETE POSTO, LITROS E KM.', 'success');
-    try { registrarAuditoria('GASOLINA_PREFILL_FROTA', { placa: d.placa, solicitacaoId: d.solicitacaoId || null }); } catch(e) {}
+    // Placa: dispara 'input' para rodar as verificações existentes (CPF vinculado, último KM, limite...)
+    if (normPlaca(elPlaca.value) !== normPlaca(d.placa)) {
+      elPlaca.value = d.placa || '';
+      disparar(elPlaca, 'input');
+    }
+    // Motorista / destino / data
+    var m = document.getElementById('f-mot');
+    if (d.motorista && m && !m.value) { m.value = String(d.motorista).toUpperCase(); disparar(m, 'input'); }
+    var t = document.getElementById('f-destino');
+    if (d.destino && t && !t.value) { t.value = String(d.destino).toUpperCase(); disparar(t, 'input'); }
+    if (d.data && /^\d{4}-\d{2}-\d{2}$/.test(d.data)) { var f = document.getElementById('f-data'); if (f) f.value = d.data; }
+
+    // Combustível conforme o cadastro da frota (só quando é inequívoco e a opção está disponível)
+    var comb = norm(d.combustivel), alvo = '';
+    if (comb.indexOf('diesel') > -1) alvo = 'DIESEL';
+    else if (comb === 'etanol' || comb === 'álcool' || comb === 'alcool') alvo = 'ALCOOL';
+    var tp = document.getElementById('f-tipo');
+    if (alvo && tp) {
+      var op = Array.from(tp.options).find(function(o){ return o.value === alvo && !o.disabled && o.style.display !== 'none'; });
+      if (op) { tp.value = alvo; disparar(tp, 'change'); }
+    }
+
+    // KM: NÃO preenche o campo (o valor do hodômetro deve ser conferido); mostra o último KM da frota como referência
+    if (d.kmFrota) {
+      var info = document.getElementById('f-km-ultimo-info');
+      if (info && !document.getElementById('f-km-frota-ref')) {
+        var ref = document.createElement('div');
+        ref.id = 'f-km-frota-ref';
+        ref.style.cssText = 'font-size:10px;color:#b45309;font-weight:bold;margin-bottom:5px;';
+        ref.textContent = '🚗 ÚLTIMO KM NO CONTROLE DE FROTA: ' + Number(d.kmFrota).toLocaleString('pt-BR');
+        info.parentNode.insertBefore(ref, info.nextSibling);
+      }
+    }
+    return true;
   }
+
+  function preenchido(d){
+    var el = document.getElementById('f-placa');
+    return !!el && normPlaca(el.value) === normPlaca(d.placa);
+  }
+
+  var tentativas = 0, jaAvisou = false;
+  var timer = setInterval(function(){
+    tentativas++;
+    var logado = false;
+    try { logado = !!loginUser; } catch(e) {}
+    if (!logado) { if (tentativas > 60) { clearInterval(timer); console.warn('⛽ Prefill: login não concluiu a tempo.'); } return; }
+
+    // Usuário diferente do que iniciou o fluxo na frota: descarta (nunca aplica dados de outro usuário)
+    if (norm(p.login) !== norm(loginUser)) {
+      clearInterval(timer); try { localStorage.removeItem(CHAVE); } catch(e) {}
+      console.warn('⛽ Prefill descartado: usuário diferente.', p.login, loginUser); return;
+    }
+    if (!temPermissao('registrar_abastecimento')) {
+      clearInterval(timer); try { localStorage.removeItem(CHAVE); } catch(e) {}
+      mostrarNotificacao('⚠️ SEU USUÁRIO NÃO TEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO.', 'error'); return;
+    }
+
+    // Aguarda o login terminar de montar a tela (entrar() faz switchTab após ~100 ms)
+    if (tentativas < 4) return;
+
+    if (tentativas === 4) { try { switchTab('geral'); } catch(e) {} }
+
+    // Reaplica enquanto o formulário não estiver preenchido (caso algo o limpe no carregamento)
+    if (!preenchido(p)) { try { aplicar(p); } catch(e) { console.error('Pré-preenchimento falhou:', e); } }
+
+    if (preenchido(p) && !jaAvisou) {
+      jaAvisou = true;
+      var card = document.getElementById('card-novo-abastecimento');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      mostrarNotificacao('⛽ DADOS DA FROTA PREENCHIDOS (' + (p.placa || '') + '). COMPLETE POSTO, LITROS E CONFIRA O KM.', 'success');
+      try { registrarAuditoria('GASOLINA_PREFILL_FROTA', { placa: p.placa, solicitacaoId: p.solicitacaoId || null }); } catch(e) {}
+    }
+
+    // Mantém o "guardião" ~6 s após preencher, depois encerra e consome (uso único)
+    if (jaAvisou && tentativas > 24) { clearInterval(timer); try { localStorage.removeItem(CHAVE); } catch(e) {} }
+    else if (!jaAvisou && tentativas > 60) { clearInterval(timer); try { localStorage.removeItem(CHAVE); } catch(e) {}
+      mostrarNotificacao('⚠️ NÃO FOI POSSÍVEL PREENCHER OS DADOS DA FROTA. INFORME A PLACA MANUALMENTE.', 'error'); }
+  }, 300);
 })();
 </script>
 </body>

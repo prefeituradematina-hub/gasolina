@@ -4391,8 +4391,17 @@ function irParaGasolina(vid) {
     motNome = sol.motorista || '';
     if(!motNome && sol.motid) { var _m = getM(sol.motid); motNome = _m ? (_m.nome||'') : ''; }
   }
+  // Último KM conhecido no Controle de Frota (entrada mais recente; se ainda em viagem, a saída)
+  var kmFrota = null;
+  try {
+    var _movs = (D.movimentacoes||[]).filter(function(m){ return m.vid===vid; })
+      .sort(function(a,b){ return String(b.saida||'').localeCompare(String(a.saida||'')); });
+    for(var i=0;i<_movs.length && kmFrota===null;i++){ kmFrota = _movs[i].km_entrada || _movs[i].km_saida || null; }
+  } catch(e) {}
   var payload = {
     origem: 'frota',
+    combustivel: v.combustivel || '',
+    kmFrota: kmFrota,
     login: _sessao.login,                       // só é consumido por este mesmo usuário
     ts: Date.now(),                             // expira em 10 min do lado da gasolina
     vid: v.id,
