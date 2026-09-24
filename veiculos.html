@@ -670,6 +670,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarSaida()">Confirmar saída</button>
+      <button class="btn" id="s-btn-gasolina" style="display:none;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border-color:#D97706" onclick="fechar('ov-saida');irParaGasolina(document.getElementById('s-vei').value)">⛽ Precisa de gasolina</button>
       <button class="btn" onclick="fechar('ov-saida')">Cancelar</button>
     </div>
   </div>
@@ -2052,6 +2053,11 @@ function makeBtnVeiculo(v) {
       rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
     }
   }
+  // ⛽ Atalho "Precisa de gasolina" no card (somente veículo liberado; somente Secretário/Master)
+  var gasolinaHTML = '';
+  if(s==='liberado' && podeVerBotaoGasolina()) {
+    gasolinaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();irParaGasolina(\''+v.id+'\')">⛽ Precisa de gasolina</div>';
+  }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
   var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
@@ -2076,7 +2082,7 @@ function makeBtnVeiculo(v) {
       && _temEmprestimoAtivoParaMinhaSecretaria(v)
       ? '<div class="agenda-warn" style="background:#10B981;color:#fff">🔁 Emprestado p/ você</div>' : '')+
     (v.mediaKmL > 0 ? '<div class="vkml">⛽ '+parseFloat(v.mediaKmL).toFixed(1)+' KM/L</div>' : '')+
-    vagasHTML+docW+rapidaHTML+agendaWarnHTML+
+    vagasHTML+docW+rapidaHTML+gasolinaHTML+agendaWarnHTML+
     '</div>'+
     '<div class="vbtn-cor" style="background:'+getCorHex(v.cor||'branco')+'"></div>'+
     '</button>';
@@ -2614,6 +2620,10 @@ function verVeiculo(vid) {
         var _sidLib = solLib?solLib.id:'';
         btns = '<div style="font-size:12px;color:#EA580C;font-weight:600;padding:8px 0">✅ Viagem aprovada — aguardando saída no portão</div>'+
           '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidLib+'\')">❌ Cancelar viagem</button>';
+        // ⛽ Secretário: encaminha ao Controle de Gasolina (segue a aprovação normal do Master)
+        if(podeVerBotaoGasolina()) {
+          btns += '<button class="btn" style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border-color:#D97706" onclick="fechar(\'ov-veiculo-detalhe\');irParaGasolina(\''+vid+'\')">⛽ Precisa de gasolina</button>';
+        }
       }
     } else {
       // Verifica se tem escala ativa hoje com destino definido
@@ -2632,6 +2642,10 @@ function verVeiculo(vid) {
         btns = '<button class="btn primary" onclick="fechar(\'ov-veiculo-detalhe\');abrirSaida(\''+vid+'\')">🚗 Registrar saída no portão</button>'+
                '<button class="btn" onclick="fechar(\'ov-veiculo-detalhe\');abrirAgenda(\''+vid+'\')">📅 Agendar</button>'+
                '<button class="btn danger" onclick="fechar(\'ov-veiculo-detalhe\');cancelarSolicitacao(\''+_sidLibAdm+'\')">❌ Cancelar viagem</button>';
+        // ⛽ Somente o MASTER (admin/frentista/autorizador não veem este botão)
+        if(isMasterFrota()) {
+          btns += '<button class="btn" style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border-color:#D97706" onclick="fechar(\'ov-veiculo-detalhe\');irParaGasolina(\''+vid+'\')">⛽ Precisa de gasolina</button>';
+        }
       } else if(s==='aprovado') {
         var _solApAdm = getSolicitacaoAprovadaFutura(vid);
         var _sidApAdm = _solApAdm?_solApAdm.id:'';
@@ -2775,6 +2789,8 @@ function abrirSaida(vid) {
   // Protegido com try/catch: mesmo se algo aqui falhar, a tela de saída deve abrir do mesmo jeito
   // (o usuário pode preencher manualmente), em vez do clique não fazer nada.
   var solAp = vid ? getSolicitacaoLiberada(vid) : null;
+  var _btnGas = document.getElementById('s-btn-gasolina');
+  if(_btnGas) _btnGas.style.display = (solAp && podeVerBotaoGasolina()) ? '' : 'none';
   if(solAp) {
     try {
       if(solAp.destino){ document.getElementById('s-dest').value = solAp.destino; }
@@ -4355,6 +4371,43 @@ function isSecretario() { return _sessao && _sessao.perfil === 'secretario'; }
 // Identifica exclusivamente o usuário master (não confundir com isAdmin(), que
 // engloba admin, frentista e autorizador). Usada para ações restritas ao master.
 function isMasterFrota() { return !!(_sessao && _sessao.login === 'master'); }
+
+// ── ⛽ PRECISA DE GASOLINA (Controle de Frota → Controle de Gasolina) ─────────
+// VISIBILIDADE: somente Secretário e Master, usando os MESMOS verificadores de perfil
+// que o sistema já tem (isSecretario / isMasterFrota). Nenhuma permissão foi criada
+// ou alterada. O botão NÃO autoriza abastecimento: ele só encaminha o usuário para o
+// Controle de Gasolina e leva os dados do veículo/viagem. Toda a regra de aprovação
+// (Secretário → Master, etc.) continua sendo aplicada lá, exatamente como antes.
+function podeVerBotaoGasolina() { return !!(isSecretario() || isMasterFrota()); }
+
+function irParaGasolina(vid) {
+  // Salvaguarda além do botão oculto (mesmo padrão já usado em abrirEntrada)
+  if(!podeVerBotaoGasolina()) { toast('🚫 Recurso disponível somente para Secretário e Master.'); return; }
+  var v = getV(vid);
+  if(!v) { toast('Veículo não encontrado.'); return; }
+  var sol = getSolicitacaoLiberada(vid);
+  var motNome = '';
+  if(sol) {
+    motNome = sol.motorista || '';
+    if(!motNome && sol.motid) { var _m = getM(sol.motid); motNome = _m ? (_m.nome||'') : ''; }
+  }
+  var payload = {
+    origem: 'frota',
+    login: _sessao.login,                       // só é consumido por este mesmo usuário
+    ts: Date.now(),                             // expira em 10 min do lado da gasolina
+    vid: v.id,
+    placa: v.placa,
+    descricao: v.descricao || '',
+    secretaria: (sol && sol.sec) || v.secretaria || '',
+    motorista: motNome,
+    destino: (sol && sol.destino) || '',
+    data: (sol && sol.data_viagem) ? String(sol.data_viagem).slice(0,10) : now().toISOString().slice(0,10),
+    solicitacaoId: sol ? sol.id : null
+  };
+  try { localStorage.setItem('gasolina_prefill', JSON.stringify(payload)); }
+  catch(e) { console.error('Não foi possível gravar o pré-preenchimento:', e); }
+  location.href = 'index.html';
+}
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
 // então isAdmin() já cobre todos eles; o roleOrig fica como salvaguarda.

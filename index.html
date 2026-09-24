@@ -21826,5 +21826,64 @@ entrar = function(u, role, limit, sec, dadosExtras){
 <!-- Motoristas compartilhados com o Controle de Frota (nó "motoristas") -->
 <datalist id="dl-motoristas"></datalist>
 <datalist id="dl-placas"></datalist>
+
+<script>
+/* ── ⛽ PRÉ-PREENCHIMENTO VINDO DO CONTROLE DE FROTA ("Precisa de gasolina") ───────────
+   Apenas PREENCHE o formulário de novo abastecimento com os dados do veículo/viagem.
+   NÃO autoriza, NÃO registra e NÃO altera permissões: o usuário continua tendo que clicar
+   em "REGISTRAR ABASTECIMENTO", e o processar() aplica todas as validações e a aprovação
+   do Master exatamente como já fazia. Posto, litros e KM ficam por conta do usuário. */
+(function(){
+  var CHAVE = 'gasolina_prefill', VALIDADE = 10 * 60 * 1000;
+  var p = null;
+  try { p = JSON.parse(localStorage.getItem(CHAVE)); } catch(e) {}
+  if (!p || p.origem !== 'frota') return;
+  if (!p.ts || (Date.now() - p.ts) > VALIDADE) { try { localStorage.removeItem(CHAVE); } catch(e) {} return; }
+
+  var tentativas = 0;
+  var timer = setInterval(function(){
+    tentativas++;
+    var pronto = false;
+    try { pronto = !!loginUser && Array.isArray(veiculos) && veiculos.length > 0 && !!document.getElementById('f-placa'); } catch(e) {}
+    if (!pronto && tentativas < 50) return;      // aguarda login + carga de veículos (até ~15 s)
+    clearInterval(timer);
+    try { localStorage.removeItem(CHAVE); } catch(e) {}   // uso único
+    try { if (pronto && p.login === loginUser) aplicar(p); } catch(e) { console.error('Pré-preenchimento da frota falhou:', e); }
+  }, 300);
+
+  function disparar(el, tipo){ el.dispatchEvent(new Event(tipo, { bubbles: true })); }
+
+  function aplicar(d){
+    if (!temPermissao('registrar_abastecimento')) {
+      mostrarNotificacao('⚠️ SEU USUÁRIO NÃO TEM PERMISSÃO PARA REGISTRAR ABASTECIMENTO.', 'error');
+      return;
+    }
+    try { switchTab('geral'); } catch(e) {}
+
+    // Secretaria: só para quem pode escolher (Master). Secretário tem o campo travado na sua secretaria.
+    var selSec = document.getElementById('f-sec');
+    var vGas = veiculos.find(function(v){ return normPlaca(v.placa) === normPlaca(d.placa); });
+    if (selSec && !selSec.disabled && vGas && vGas.secretaria &&
+        Array.from(selSec.options).some(function(o){ return o.value === vGas.secretaria; })) {
+      selSec.value = vGas.secretaria;
+      disparar(selSec, 'change');
+    }
+
+    // Placa: dispara o 'input' para rodar as verificações que já existem (CPF vinculado, último KM, média, limite...)
+    var elPlaca = document.getElementById('f-placa');
+    elPlaca.value = d.placa || '';
+    disparar(elPlaca, 'input');
+
+    if (d.motorista) { var m = document.getElementById('f-mot'); m.value = String(d.motorista).toUpperCase(); disparar(m, 'input'); }
+    if (d.destino)   { var t = document.getElementById('f-destino'); t.value = String(d.destino).toUpperCase(); }
+    if (d.data && /^\d{4}-\d{2}-\d{2}$/.test(d.data)) { document.getElementById('f-data').value = d.data; }
+
+    var card = document.getElementById('card-novo-abastecimento');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    mostrarNotificacao('⛽ DADOS DA VIAGEM PREENCHIDOS (' + (d.placa || '') + '). CONFIRA E COMPLETE POSTO, LITROS E KM.', 'success');
+    try { registrarAuditoria('GASOLINA_PREFILL_FROTA', { placa: d.placa, solicitacaoId: d.solicitacaoId || null }); } catch(e) {}
+  }
+})();
+</script>
 </body>
 </html>
