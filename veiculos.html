@@ -4380,6 +4380,40 @@ function isMasterFrota() { return !!(_sessao && _sessao.login === 'master'); }
 // (Secretário → Master, etc.) continua sendo aplicada lá, exatamente como antes.
 function podeVerBotaoGasolina() { return !!(isSecretario() || isMasterFrota()); }
 
+// Monta o pacote de dados e redireciona para o Controle de Gasolina.
+// Usada tanto pelo botão "Precisa de gasolina" (veículo já liberado) quanto pelo
+// novo botão "Solicitar viagem e abastecer" (viagem acabou de ser solicitada).
+function enviarParaGasolina(dados) {
+  var payload = {
+    origem: 'frota',
+    login: _sessao.login,                       // só é consumido por este mesmo usuário
+    ts: Date.now(),                             // expira em 10 min do lado da gasolina
+    vid: dados.vid,
+    placa: dados.placa,
+    descricao: dados.descricao || '',
+    combustivel: dados.combustivel || '',
+    kmFrota: dados.kmFrota != null ? dados.kmFrota : null,
+    secretaria: dados.secretaria || '',
+    motorista: dados.motorista || '',
+    destino: dados.destino || '',
+    data: dados.data || now().toISOString().slice(0,10),
+    solicitacaoId: dados.solicitacaoId || null
+  };
+  try { localStorage.setItem('gasolina_prefill', JSON.stringify(payload)); }
+  catch(e) { console.error('Não foi possível gravar o pré-preenchimento:', e); }
+  location.href = 'index.html';
+}
+
+function ultimoKmFrota(vid) {
+  var kmFrota = null;
+  try {
+    var _movs = (D.movimentacoes||[]).filter(function(m){ return m.vid===vid; })
+      .sort(function(a,b){ return String(b.saida||'').localeCompare(String(a.saida||'')); });
+    for(var i=0;i<_movs.length && kmFrota===null;i++){ kmFrota = _movs[i].km_entrada || _movs[i].km_saida || null; }
+  } catch(e) {}
+  return kmFrota;
+}
+
 function irParaGasolina(vid) {
   // Salvaguarda além do botão oculto (mesmo padrão já usado em abrirEntrada)
   if(!podeVerBotaoGasolina()) { toast('🚫 Recurso disponível somente para Secretário e Master.'); return; }
@@ -4391,31 +4425,15 @@ function irParaGasolina(vid) {
     motNome = sol.motorista || '';
     if(!motNome && sol.motid) { var _m = getM(sol.motid); motNome = _m ? (_m.nome||'') : ''; }
   }
-  // Último KM conhecido no Controle de Frota (entrada mais recente; se ainda em viagem, a saída)
-  var kmFrota = null;
-  try {
-    var _movs = (D.movimentacoes||[]).filter(function(m){ return m.vid===vid; })
-      .sort(function(a,b){ return String(b.saida||'').localeCompare(String(a.saida||'')); });
-    for(var i=0;i<_movs.length && kmFrota===null;i++){ kmFrota = _movs[i].km_entrada || _movs[i].km_saida || null; }
-  } catch(e) {}
-  var payload = {
-    origem: 'frota',
-    combustivel: v.combustivel || '',
-    kmFrota: kmFrota,
-    login: _sessao.login,                       // só é consumido por este mesmo usuário
-    ts: Date.now(),                             // expira em 10 min do lado da gasolina
-    vid: v.id,
-    placa: v.placa,
-    descricao: v.descricao || '',
+  enviarParaGasolina({
+    vid: v.id, placa: v.placa, descricao: v.descricao || '',
+    combustivel: v.combustivel || '', kmFrota: ultimoKmFrota(vid),
     secretaria: (sol && sol.sec) || v.secretaria || '',
     motorista: motNome,
     destino: (sol && sol.destino) || '',
-    data: (sol && sol.data_viagem) ? String(sol.data_viagem).slice(0,10) : now().toISOString().slice(0,10),
+    data: (sol && sol.data_viagem) ? String(sol.data_viagem).slice(0,10) : null,
     solicitacaoId: sol ? sol.id : null
-  };
-  try { localStorage.setItem('gasolina_prefill', JSON.stringify(payload)); }
-  catch(e) { console.error('Não foi possível gravar o pré-preenchimento:', e); }
-  location.href = 'index.html';
+  });
 }
 // Vê todos os veículos/solicitações de todas as secretarias.
 // Admin, frentista e autorizador entram como perfil admin (acesso total),
@@ -4672,6 +4690,9 @@ function abrirSolicitacao(vid, editId) {
   if(secDisplay) secDisplay.textContent = secVal || '(não definida)';
   // Título e botão
   document.querySelector('#ov-solicitacao h2').textContent = editId ? '✏️ Editar solicitação' : '📋 Solicitar viagem';
+  // ⛽ Só faz sentido em solicitação nova (não em edição) e só para Secretário/Master
+  var _btnSolGas = document.getElementById('sol-btn-gasolina');
+  if(_btnSolGas) _btnSolGas.style.display = (!editId && podeVerBotaoGasolina()) ? '' : 'none';
   abrir('ov-solicitacao');
 }
 
@@ -4711,7 +4732,7 @@ function solSyncQtd() {
   // (o usuário pode listar só alguns nomes e ter um total maior)
 }
 
-function confirmarSolicitacao() {
+function confirmarSolicitacao(eGasolina) {
   var editId = document.getElementById('sol-id').value;
   var vid  = document.getElementById('sol-vei').value;
   var mot  = document.getElementById('sol-mot-nome').value.trim();
@@ -4744,15 +4765,32 @@ function confirmarSolicitacao() {
     return;
   }
 
-  D.solicitacoes.push({
+  var novaSol = {
     id:uid_s(), vid:vid, motorista:mot, destino:dest, data_viagem:data,
     hora_retirada:hora,
     obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
     qtd_passageiros:qtd, passageiros:pessoas,
     status:'pendente', criado_em:now().toISOString(),
     aprovado_em:null, saida_registrada:false
-  });
+  };
+  D.solicitacoes.push(novaSol);
   salvar(); fechar('ov-solicitacao');
+
+  // ⛽ "Solicitar viagem e abastecer": a viagem é solicitada normalmente (segue
+  // pendente de aprovação do administrador) e o usuário é só encaminhado ao
+  // Controle de Gasolina com os dados já preenchidos. Não pula nem altera a aprovação.
+  if(eGasolina && podeVerBotaoGasolina()) {
+    var vv = getV(vid);
+    toast('✅ Solicitação enviada! Encaminhando para o Controle de Gasolina...');
+    enviarParaGasolina({
+      vid: vid, placa: vv?vv.placa:'', descricao: vv?(vv.descricao||''):'',
+      combustivel: vv?(vv.combustivel||''):'', kmFrota: ultimoKmFrota(vid),
+      secretaria: sec, motorista: mot, destino: dest, data: data,
+      solicitacaoId: novaSol.id
+    });
+    return;
+  }
+
   toast('✅ Solicitação enviada! Aguarde aprovação do administrador.');
   renderTudo();
 }
@@ -5435,6 +5473,7 @@ startCron();
     <div class="field"><label>Observações</label><textarea id="sol-obs" placeholder="Informe o objetivo da viagem, etc."></textarea></div>
     <div class="actions">
       <button class="btn primary" onclick="confirmarSolicitacao()">Enviar solicitação</button>
+      <button class="btn" id="sol-btn-gasolina" style="display:none;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border-color:#D97706" onclick="confirmarSolicitacao(true)">⛽ Solicitar viagem e abastecer</button>
       <button class="btn" onclick="fechar('ov-solicitacao')">Cancelar</button>
     </div>
   </div>
