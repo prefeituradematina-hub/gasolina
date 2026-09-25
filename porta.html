@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal de Sistemas — Matina BA</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlBvcnRhbCBkZSBTaXN0ZW1hcyAtIE1hdGluYSBCQSIsICJzaG9ydF9uYW1lIjogIlBvcnRhbCBNYXRpbmEiLCAic3RhcnRfdXJsIjogInBvcnRhLmh0bWwiLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgImJhY2tncm91bmRfY29sb3IiOiAiIzY2N2VlYSIsICJ0aGVtZV9jb2xvciI6ICIjNjY3ZWVhIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vaS5pbWd1ci5jb20vQUtNMjVXMS5wbmciLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyJ9XX0=">
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
@@ -126,6 +127,21 @@ body{
 .modulo.bloqueado .mod-entrar{display:none}
 .modulo.bloqueado .mod-cadeado{display:inline-block}
 .hub-rodape{text-align:center;color:rgba(255,255,255,.85);font-size:12px;margin-top:18px}
+
+/* ── ATALHO NO CELULAR (PWA) ──────────────────────────────── */
+.install-pwa-banner{
+  position:fixed;bottom:0;left:0;right:0;
+  background:linear-gradient(135deg,var(--grad-a) 0%,var(--grad-b) 100%);
+  color:#fff;padding:15px 20px;display:none;align-items:center;justify-content:space-between;
+  gap:14px;flex-wrap:wrap;z-index:999;box-shadow:0 -4px 20px rgba(0,0,0,.25);
+}
+.install-pwa-banner.show{display:flex;animation:fadeUp .3s ease}
+.install-pwa-banner button{
+  background:#fff;color:var(--grad-a);border:none;padding:10px 20px;border-radius:8px;
+  font-weight:bold;cursor:pointer;font-size:12px;transition:all .3s;
+}
+.install-pwa-banner button:hover{transform:scale(1.05)}
+.install-pwa-banner .close-banner{background:transparent;color:#fff;font-size:20px;padding:5px 10px}
 
 @media (max-width:768px){
   .login-container{flex-direction:column}
@@ -252,6 +268,18 @@ body{
     </div>
   </div>
   <div class="hub-rodape" id="hub-rodape">Sessão válida por 12 horas · Os dois sistemas compartilham o mesmo banco de dados</div>
+</div>
+
+<!-- ── ATALHO NO CELULAR (PWA) ── -->
+<div class="install-pwa-banner" id="pwa-banner">
+  <div>
+    <strong style="font-size:14px;">📱 CRIAR ATALHO NO CELULAR</strong>
+    <div style="font-size:11px; opacity:.9; margin-top:5px;">Acesse o Portal direto da tela inicial, sem digitar o endereço</div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button class="close-banner" onclick="fecharBannerPWA()">✕</button>
+    <button onclick="instalarPWA()">CRIAR ATALHO</button>
+  </div>
 </div>
 
 <!-- ── MODAL: CONFIGURAÇÕES GERAIS (Fase 1 — aditivo, só master) ── -->
@@ -695,6 +723,8 @@ function mostrarHub(s){
     'Acesso ao Controle de Higienização não liberado para o seu usuário.');
   configurarCardHub(document.getElementById('card-oficios'), podeOficios, 'oficios.html',
     'Acesso ao Controle de Ofícios não liberado para o seu usuário.');
+
+  ofertarAtalhoPWA();
 }
 
 // Habilita ou bloqueia visualmente um card do hub
@@ -716,6 +746,49 @@ function configurarCardHub(card, liberado, href, msgBloqueio){
     };
   }
 }
+
+// ── ATALHO NO CELULAR (PWA) ────────────────────────────────────
+// Apenas oferece "adicionar/criar atalho" na tela inicial do celular.
+// Não interfere em login, sessão, permissões ou em nenhum outro fluxo.
+var deferredPrompt = null;
+var _pwaProntoParaMostrar = false;
+
+function verificarPWA(){
+  // Já instalado como app? Não mostra nada.
+  if (window.matchMedia('(display-mode: standalone)').matches) { return; }
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    if (_pwaProntoParaMostrar) mostrarBannerPWA();
+  });
+  window.addEventListener('appinstalled', function(){
+    deferredPrompt = null;
+    document.getElementById('pwa-banner').classList.remove('show');
+  });
+}
+
+// Chamado depois que o hub aparece (login novo ou sessão já ativa) — é aí que
+// faz sentido oferecer o atalho, e não na tela de login.
+function ofertarAtalhoPWA(){
+  _pwaProntoParaMostrar = true;
+  if (deferredPrompt) mostrarBannerPWA();
+}
+function mostrarBannerPWA(){
+  setTimeout(function(){
+    var b = document.getElementById('pwa-banner');
+    if (b) b.classList.add('show');
+  }, 1500);
+}
+function instalarPWA(){
+  if (!deferredPrompt) { fecharBannerPWA(); return; }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
+  document.getElementById('pwa-banner').classList.remove('show');
+}
+function fecharBannerPWA(){
+  document.getElementById('pwa-banner').classList.remove('show');
+}
+verificarPWA();
 
 // Sessão ativa? Mostra o hub (frentista vê o hub com o Controle de Frota desabilitado).
 (function(){
