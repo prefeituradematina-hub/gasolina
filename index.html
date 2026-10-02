@@ -17888,6 +17888,121 @@
     }
   }
   
+  // ══════════════════════════════════════════════════════════════════
+  // 🔧 CORREÇÃO COTA DIVERSAS (ex.: Cássia não abatia a cota)
+  //
+  // PROBLEMA: o gasto era somado SOMENTE por
+  //   abastecimentos.pessoaDiversas == pessoa.id
+  // Se o abastecimento foi gravado com outra variação do ID (ex.: "CASSIA"
+  // x "CSSIA" — o cadastro removia letras acentuadas ao gerar o ID), com
+  // maiúsculas/acentos diferentes, só com o campo antigo pessoaVIP, ou se o
+  // campo "id" do cadastro diferia da chave do nó, o registro ficava de fora
+  // da soma e a cota nunca diminuía.
+  //
+  // SOLUÇÃO (100% aditiva): a consulta original continua sendo executada
+  // exatamente como antes. Esta função apenas ACRESCENTA, sem duplicar,
+  // os registros da mesma pessoa que a consulta original não encontrou.
+  // Devolve um objeto com a mesma interface usada pelo código existente
+  // (exists / numChildren / forEach com snap.key e snap.val()).
+  // ══════════════════════════════════════════════════════════════════
+  function _normChaveDiversas(s) {
+    return String(s == null ? '' : s)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^A-Z0-9_]/g, '');
+  }
+  window._normChaveDiversas = _normChaveDiversas;
+
+  function _normNomeDiversas(s) {
+    return String(s == null ? '' : s)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/\s+/g, ' ').trim();
+  }
+
+  async function obterAbastecimentosDiversasPessoa(snapshotLegado, pessoa, chaveNo, idLegado) {
+    const achados = new Map();
+    let totalLegado = 0;
+
+    const adicionar = (key, val) => {
+      if (!key || !val || achados.has(key)) return false;
+      const v = Object.assign({}, val);
+      // Garante valor numérico (valor gravado como texto quebrava a soma)
+      const n = typeof v.valor === 'number' ? v.valor : parseFloat(String(v.valor == null ? 0 : v.valor).replace(',', '.'));
+      v.valor = isFinite(n) ? n : 0;
+      achados.set(key, v);
+      return true;
+    };
+
+    // 1) Resultado da consulta ORIGINAL (mantido integralmente)
+    try {
+      if (snapshotLegado && snapshotLegado.exists()) {
+        snapshotLegado.forEach(s => { if (adicionar(s.key, s.val())) totalLegado++; });
+      }
+    } catch (e) { console.warn('[COTA DIVERSAS] erro lendo consulta original:', e); }
+
+    // 2) Identificadores possíveis desta pessoa (id, chave do nó e nome)
+    pessoa = pessoa || {};
+    const idsCand = new Set(
+      [pessoa.id, chaveNo, pessoa.nome].map(_normChaveDiversas).filter(Boolean)
+    );
+    const nomeCand = _normNomeDiversas(pessoa.nome);
+
+    // 3) Consultas extras (mesmo campo/índice da original) só para IDs
+    //    alternativos diferentes do que já foi consultado
+    const jaConsultados = new Set([String(idLegado == null ? '' : idLegado)]);
+    for (const alt of Array.from(idsCand)) {
+      if (jaConsultados.has(alt)) continue;
+      jaConsultados.add(alt);
+      try {
+        const sn = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(alt).once('value');
+        sn.forEach(x => { adicionar(x.key, x.val()); });
+      } catch (e) { console.warn('[COTA DIVERSAS] consulta alternativa falhou para', alt, e); }
+    }
+
+    // 4) Varredura no cache em memória (zero download): pega registros ligados
+    //    à pessoa por pessoaVIP (campo antigo), ID com acento/caixa diferente
+    //    ou pelo nome gravado no abastecimento
+    try {
+      const fonte = (typeof cacheCompleto === 'function') ? cacheCompleto() : (Array.isArray(cache) ? cache : []);
+      (fonte || []).forEach(rec => {
+        if (!rec || !rec.id || achados.has(rec.id)) return;
+        const porId = [rec.pessoaDiversas, rec.pessoaVIP].map(_normChaveDiversas).some(i => i && idsCand.has(i));
+        const nomeRec = _normNomeDiversas(rec.nomePessoaDiversas || rec.nomePessoaVIP || rec.vipNome || rec.nomeVIP);
+        const porNome = !!nomeCand && nomeRec === nomeCand;
+        if (porId || porNome) adicionar(rec.id, rec);
+      });
+    } catch (e) { console.warn('[COTA DIVERSAS] erro na varredura do cache:', e); }
+
+    const lista = Array.from(achados.entries()).map(([key, val]) => ({ key: key, val: () => val }));
+    if (lista.length > totalLegado) {
+      console.warn(`[COTA DIVERSAS] ${pessoa.nome || chaveNo}: ${lista.length - totalLegado} abastecimento(s) estavam fora da consulta por ID e agora entram na cota.`);
+    }
+    return {
+      exists: () => lista.length > 0,
+      numChildren: () => lista.length,
+      forEach: (cb) => { for (const it of lista) { if (cb(it) === true) return true; } return false; }
+    };
+  }
+  window.obterAbastecimentosDiversasPessoa = obterAbastecimentosDiversasPessoa;
+
+  // Diagnóstico (somente leitura). Uso no console: diagnosticarCotaDiversas()
+  async function diagnosticarCotaDiversas() {
+    const snap = await db.ref('pessoas_vip').once('value');
+    const linhas = [];
+    const pessoas = [];
+    snap.forEach(x => { pessoas.push([x.key, x.val()]); });
+    for (const [chave, p] of pessoas) {
+      const idQ = p.id || chave;
+      const leg = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(idQ).once('value');
+      const mer = await obterAbastecimentosDiversasPessoa(leg, p, chave, idQ);
+      linhas.push({ chave: chave, id: p.id, nome: p.nome, consultaOriginal: leg.numChildren(), comCorrecao: mer.numChildren() });
+    }
+    console.table(linhas);
+    return linhas;
+  }
+  window.diagnosticarCotaDiversas = diagnosticarCotaDiversas;
+
   // Verificar se o abastecimento excede o limite
   async function verificarLimiteVIP(valorTotal) {
     const pessoaId = document.getElementById('diversas-pessoa').value;
@@ -17926,7 +18041,9 @@
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
     
-    const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(pessoaId).once('value');
+    const gastosSnapshotLegado = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(pessoaId).once('value');
+    // 🔧 Soma também os registros da pessoa gravados com outra variação de ID
+    const gastosSnapshot = await obterAbastecimentosDiversasPessoa(gastosSnapshotLegado, vipData, pessoaId, pessoaId);
     let gastoMes = 0;
     
     if (gastosSnapshot.exists()) {
@@ -18002,9 +18119,9 @@
       administrativo: []
     };
     
-    for (const snap of Object.values(snapshotVIPs.val())) {
+    for (const [chaveNoVip, snap] of Object.entries(snapshotVIPs.val())) {
       const pessoa = snap;
-      const key = pessoa.id;
+      const key = pessoa.id || chaveNoVip;  // 🔧 fallback: chave do nó quando o campo id não existe
       const limite = pessoa.limite;
       const semLimite = pessoa.semLimite || false;
       
@@ -18020,7 +18137,9 @@
       console.log(`  • Buscando: abastecimentos.pessoaDiversas == "${key}"`);
       
       // Calcular gasto do mês - buscar por pessoaDiversas (campo padrão)
-      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(key).once('value');
+      const gastosSnapshotLegado = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(key).once('value');
+      // 🔧 Soma também os registros da pessoa gravados com outra variação de ID
+      const gastosSnapshot = await obterAbastecimentosDiversasPessoa(gastosSnapshotLegado, pessoa, chaveNoVip, key);
       let gastoMes = 0;
       let qtdAbastecimentos = 0;
       
@@ -18755,12 +18874,14 @@
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
     
-    for (const snap of Object.values(snapshot.val())) {
+    for (const [chaveVip, snap] of Object.entries(snapshot.val())) {
       const vip = snap;
-      const vipId = vip.id;
+      const vipId = vip.id || chaveVip;  // 🔧 fallback: chave do nó quando o campo id não existe
       
       // Calcular gasto do mês (considerando ultimoResetLimite se existir)
-      const gastosSnapshot = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(vipId).once('value');
+      const gastosSnapshotLegado = await db.ref('abastecimentos').orderByChild('pessoaDiversas').equalTo(vipId).once('value');
+      // 🔧 Soma também os registros da pessoa gravados com outra variação de ID
+      const gastosSnapshot = await obterAbastecimentosDiversasPessoa(gastosSnapshotLegado, vip, chaveVip, vipId);
       let gastoMes = 0;
       
       // Pegar timestamp do último reset (se existir)
@@ -18881,7 +19002,7 @@
   }
   
   // Adicionar nova pessoa VIP
-  function adicionarDiversas() {
+  async function adicionarDiversas() {
     if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA GERENCIAR VIPs!", "error");
       return;
@@ -18917,7 +19038,19 @@
     }
     
     // Gerar ID único (slug do nome)
-    const vipId = nome.replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+    const vipIdLegado = nome.replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+    // 🔧 Novos cadastros: remove acentos em vez de apagar a letra (CÁSSIA → CASSIA, e não CSSIA)
+    const vipId = _normChaveDiversas(nome) || vipIdLegado;
+    if (vipId !== vipIdLegado) {
+      // Proteção: nunca sobrescrever um cadastro já existente com o ID corrigido
+      try {
+        const existente = await db.ref('pessoas_vip/' + vipId).once('value');
+        if (existente.exists()) {
+          mostrarNotificacao("⚠️ JÁ EXISTE UMA PESSOA COM ESTE NOME (ID " + vipId + "). USE O BOTÃO EDITAR NA LISTA.", "error");
+          return;
+        }
+      } catch (e) { console.warn('Falha ao checar duplicidade de ID DIVERSAS:', e); }
+    }
     
     const novaVIP = {
       id: vipId,
@@ -19818,7 +19951,7 @@
       snapshot.forEach(snap => {
         const vip = snap.val();
         const icone = vip.categoria === 'executivo' ? '👑' : (vip.categoria === 'legislativo' ? '🏛️' : '👤');
-        selectVIP.innerHTML += `<option value="${vip.id}">${icone} ${vip.nome} (${vip.cargo})</option>`;
+        selectVIP.innerHTML += `<option value="${vip.id || snap.key}">${icone} ${vip.nome} (${vip.cargo})</option>`;
       });
     }
   }
