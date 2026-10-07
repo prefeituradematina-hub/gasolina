@@ -2922,6 +2922,7 @@ function confirmarSaida() {
   var saida = document.getElementById('s-saida').value;
   var ret   = document.getElementById('s-retorno').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo, saída e retorno.'); return; }
+  var justificativaSaida = (_justifSel === 'outro' ? (document.getElementById('justif-texto')?.value || '').trim() : (_justifSel || '')).trim();
   var dest = getDestValue('s');
   if(!dest) { alert('Informe o destino.'); return; }
   // Trava de segurança: revalida no salvamento (a lista da tela pode ter sido burlada)
@@ -2938,10 +2939,6 @@ function confirmarSaida() {
   var v = getV(vid);
   if(v && v.capacidade && pass > v.capacidade) { alert('Capacidade máxima: '+v.capacidade+' passageiros.'); return; }
 
-  var justificativaSaida = (_justifSel === 'outro')
-    ? (document.getElementById('justif-texto').value.trim() || '')
-    : (_justifSel || '');
-
   if(_editMovId) {
     var m = getMov(_editMovId);
     m.vid=vid; m.motid=motid; m.motorista=motNome;
@@ -2950,7 +2947,7 @@ function confirmarSaida() {
     m.km_saida=parseInt(document.getElementById('s-km').value)||null;
     m.pass=pass; m.com_pass=comPass;
     m.saida=saida; m.retorno=ret; m.destino=dest;
-    if(justificativaSaida) m.justificativa = justificativaSaida;
+    if(justificativaSaida) m.justificativa=justificativaSaida;
   } else {
     var _agid = (document.getElementById('ov-saida').dataset.agid)||'';
     D.movimentacoes.push({
@@ -2960,8 +2957,7 @@ function confirmarSaida() {
       km_saida:parseInt(document.getElementById('s-km').value)||null,
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[],
-      justificativa:justificativaSaida||null,
-      agid:_agid||null
+      agid:_agid||null, justificativa:justificativaSaida||null
     });
     // Agendamento consumido: nao pre-preenche mais nem duplica
     if(_agid){
@@ -3033,8 +3029,8 @@ function confirmarEntrada() {
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
 function abrirAgenda(vid, editId) {
-  // Agendamento: o conflito é avaliado pelo período pretendido, não pelo "agora"
   _editAgId = editId || null;
+  // Agendamento: o conflito é avaliado pelo período pretendido, não pelo "agora"
   _filtroDispAtual = { inicio: null, fim: null, ignorarAgId: _editAgId||null,
                        ignorarEmViagem: !!_editAgId };
   popVeis(['ag-vei'], _filtroDispAtual); popMots(['ag-mot']); popSecs(['ag-sec']);
@@ -3061,6 +3057,7 @@ function abrirAgenda(vid, editId) {
   document.getElementById('ag-pass-row').style.display = 'none';
   document.getElementById('ag-hint').style.display = 'none';
   document.getElementById('ag-titulo').textContent = 'Novo agendamento';
+  if(!editId) _editAgId = null;
   if(vid) document.getElementById('ag-vei').value = vid;
   abrir('ov-agenda');
 }
@@ -3069,6 +3066,7 @@ function editarAgenda(id) {
   if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
   var a = getAg(id);
   if(!a){ toast('Agendamento não encontrado.'); return; }
+  _editAgId = id;
   abrirAgenda(null, id);
   document.getElementById('ag-titulo').textContent = 'Editar agendamento';
   document.getElementById('ag-vei').value = a.vid;
@@ -3533,10 +3531,8 @@ function abrirProrrogar(movId) {
 function prorrogarMin(min) {
   var m = getMov(_prorrogarMovId);
   if(!m) return;
-  var campo = document.getElementById('prorr-novo-retorno');
-  var base = campo && campo.value ? new Date(campo.value) : new Date(m.retorno);
-  if(isNaN(base)) base = new Date(m.retorno);
-  var novo = new Date(base.getTime() + min*60000);
+  var baseRetorno = document.getElementById('prorr-novo-retorno').value || m.retorno;
+  var novo = new Date(new Date(baseRetorno).getTime() + min*60000);
   var iso  = new Date(novo.getTime()-novo.getTimezoneOffset()*60000).toISOString().slice(0,16);
   document.getElementById('prorr-novo-retorno').value = iso;
   var prev = document.getElementById('prorr-preview');
@@ -3622,8 +3618,8 @@ function renderSaidas() {
       (m.destino?'<span>Destino: <strong>'+m.destino+'</strong></span>':'')+
       '</div>'+cronHTML+
       '<div class="actions">'+btn+
-      (isAdmin() ? '<button class="btn" onclick="editarSaida(\''+m.id+'\')">✏️ Editar</button>'+
-      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover movimentação?\',\'Esta ação não pode ser desfeita.\',function(){D.movimentacoes=D.movimentacoes.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>' : '')+
+      '<button class="btn" onclick="editarSaida(\''+m.id+'\')">✏️ Editar</button>'+
+      '<button class="btn danger" onclick="confirmarAcao(\'🗑️\',\'Remover movimentação?\',\'Esta ação não pode ser desfeita.\',function(){D.movimentacoes=D.movimentacoes.filter(function(x){return x.id!==\''+m.id+'\';});salvar();toast(\'Removido.\');renderTudo();})">Remover</button>'+
       '</div></div>';
   }).join('');
 }
@@ -3676,8 +3672,8 @@ function renderAgendamentos() {
       '</div>'+
       '<div class="actions">'+
       '<button class="btn primary" onclick="registrarSaidaAgenda(\''+a.id+'\')">🚗 Registrar saída</button>'+
-      (isAdmin() ? '<button class="btn" onclick="editarAgenda(\''+a.id+'\')">✏️ Editar</button>'+
-      '<button class="btn danger" onclick="cancelarAgenda(\''+a.id+'\')">✕ Cancelar</button>' : '')+
+      '<button class="btn" onclick="editarAgenda(\''+a.id+'\')">✏️ Editar</button>'+
+      '<button class="btn danger" onclick="cancelarAgenda(\''+a.id+'\')">✕ Cancelar</button>'+
       '</div></div>';
   }).join('');
   if(feitos.length) {

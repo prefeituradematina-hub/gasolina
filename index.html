@@ -2465,7 +2465,7 @@
           <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
-<option value='GAS'>Gás</option>
+
           <option value="todos">TODOS</option>
         </select>
       </div>
@@ -3460,7 +3460,7 @@
             <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
-<option value='GAS'>Gás</option>
+
           </select>
         </div>
         <div>
@@ -4011,7 +4011,7 @@
             <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
-<option value='GAS'>Gás</option>
+
             <option value="todos">TODOS</option>
           </select>
         </div>
@@ -4175,7 +4175,7 @@
             <option value="DIESEL">DIESEL</option>
 <option value='GAS'>Gás</option>
 <option value='DIESEL S10'>Diesel S10</option>
-<option value='GAS'>Gás</option>
+
             <option value="FLEX">FLEX (GASOLINA/ÁLCOOL)</option>
           </select>
         </div>
@@ -5098,6 +5098,7 @@
   
   // Retorna objeto {classe, texto, cor, emoji} baseado na media e tipo
   function classificarEficiencia(media, tipo) {
+    if (tipo === 'GÁS') tipo = 'GAS';
     const faixa = FAIXAS_EFICIENCIA[tipo] || FAIXAS_EFICIENCIA['GASOLINA'];
     if (media <= 0)                     return { classe: '',              texto: '---',         cor: '#94a3b8', emoji: '❓' };
     if (media < faixa.critico)          return { classe: 'alerta-media',  texto: 'CRÍTICA',     cor: '#ef4444', emoji: '🚨' };
@@ -5192,7 +5193,7 @@
       const alvo = posto ? posto.nome : userPostoVinculado;
       const filtrado = dados.filter(x => _postoMatch(x.posto, alvo));
       // Se resolveu o posto, usa o filtrado. Se NÃO resolveu e nada casou, não esconde tudo.
-      return (posto || filtrado.length > 0) ? filtrado : dados;
+      return posto ? filtrado : [];
     }
     if (userRole === 'autorizador' && userPostosVinculados && userPostosVinculados.length > 0) {
       const encontrados = postos.filter(p =>
@@ -6573,7 +6574,8 @@
 
   // NOVA FUNÇÃO: Verificar limite em tempo real
   function verificarLimiteEmTempoReal() {
-    if (userRole !== 'secretarios' && userRole !== 'autorizador') return;
+    const btnRegistrar = document.getElementById('btn-registrar');
+    if (userRole !== 'secretarios') return;
     
     // Se for tanque cheio, não validar limite agora
     const isTanqueCheio = document.getElementById('f-tanque-cheio').checked;
@@ -6666,7 +6668,7 @@
       .filter(x => {
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
         if (x.secretaria !== userSecretaria) return false;
-        if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+        if (!isVictor && !isMatina || !(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : 'MATINA')) return false;
         
         // Só conta abastecimentos DEPOIS do último reset
         return (x.timestamp || 0) > ultimoReset;
@@ -6702,7 +6704,7 @@
     const itensDoCalculo = cache.filter(x => {
       if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
       if (x.secretaria !== userSecretaria) return false;
-      if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+      if (!isVictor && !isMatina || !(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : 'MATINA')) return false;
       return (x.timestamp || 0) > ultimoReset;
     });
     
@@ -6720,7 +6722,7 @@
     // Verificar abastecimentos SEM timestamp
     const semTimestamp = cache.filter(x => 
       x.secretaria === userSecretaria &&
-      (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '') &&
+      ((isVictor && (x.posto || '').toUpperCase().includes('VICTOR')) || (isMatina && (x.posto || '').toUpperCase().includes('MATINA'))) &&
       !x.timestamp
     );
     if (semTimestamp.length > 0) {
@@ -6740,7 +6742,6 @@
     
     // Atualizar interface para mostrar situação
     const valorInput = document.getElementById('f-val');
-    const btnRegistrar = document.getElementById('btn-registrar');
     
     if (gastoProjetado > limitePosto) {
       // Excedeu o limite
@@ -7690,8 +7691,7 @@
     var registros = [];
 
     try {
-      var snap = await db.ref('abastecimentos').once('value');
-      snap.forEach(function(item){ var a = item.val(); if(a) registros.push(a); });
+      registros = await obterAbastecimentosParaLeitura();
     } catch(e) {
       console.warn('⚠️ validarCpfUsuarioUnico: Firebase indisponível, usando cache local', e);
       registros = Array.isArray(cache) ? cache.slice() : [];
@@ -7868,8 +7868,7 @@
     // Busca registros existentes desse CPF (Firebase como fonte de verdade, com fallback pro cache local)
     var registros = [];
     try {
-      var snap = await db.ref('abastecimentos').once('value');
-      snap.forEach(function(item){ var a = item.val(); if(a) registros.push(a); });
+      registros = await obterAbastecimentosParaLeitura();
     } catch(e) {
       console.warn('⚠️ validarFrequenciaCPF: Firebase indisponível, usando cache local', e);
       registros = Array.isArray(cache) ? cache.slice() : [];
@@ -8473,7 +8472,7 @@
           .filter(x => {
             const passaStatus = (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO);
             const passaSecretaria = x.secretaria === userSecretaria;
-            const passaPosto = (x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '');
+            const passaPosto = (isVictor && (x.posto || '').toUpperCase().includes('VICTOR')) || (isMatina && (x.posto || '').toUpperCase().includes('MATINA'));
             const passaReset = (x.timestamp || 0) > ultimoReset;
             // CORREÇÃO: antes TODO tanque cheio era excluído do gasto, inclusive os já
             // aprovados com valor real — o que permitia estourar o limite. Agora só fica
@@ -8961,7 +8960,7 @@
       .filter(x => {
         if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return false;
         if (x.secretaria !== userSecretaria) return false;
-        if (!(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : isMatina ? 'MATINA' : '')) return false;
+        if (!isVictor && !isMatina || !(x.posto || '').toUpperCase().includes(isVictor ? 'VICTOR' : 'MATINA')) return false;
         if ((x.timestamp || 0) <= ultimoReset) return false;
         // Mesmo critério da validação de gravação: tanque cheio ainda pendente entra
         // no banco com valor 0, então não soma nada — só é ignorado para não confundir.
