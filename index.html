@@ -8043,7 +8043,62 @@
     }
   }
   window.validarFrequenciaCPF = validarFrequenciaCPF;
-  
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🔒 TRAVA DE CONCORRÊNCIA — regra semanal por CPF autorizado
+  //
+  // validarFrequenciaCPF() acima já bloqueia o caso normal, lendo o
+  // histórico de abastecimentos. Mas duas solicitações DISPARADAS AO
+  // MESMO TEMPO (dois dispositivos, ou duas abas) podem ambas ler
+  // "ainda não abasteceu nesta semana" ANTES de qualquer uma delas
+  // gravar — e as duas passariam.
+  //
+  // Esta função fecha essa brecha com uma TRANSAÇÃO ATÔMICA do Firebase
+  // (resolvida no servidor do Firebase, não no celular/navegador): só a
+  // primeira das duas reservas pode vencer para o mesmo CPF+semana,
+  // mesmo que as duas cheguem no mesmíssimo instante.
+  //
+  // 100% ADITIVA e sem risco de bloqueio indevido:
+  //  • Só entra em ação para CPF com autorização ATIVA (a regra semanal)
+  //    — CPF sem autorização (regra mensal) não é afetado.
+  //  • Só é chamada no instante exato de GRAVAR o abastecimento (depois
+  //    de todas as outras confirmações) — nunca "queima" a semana de um
+  //    usuário que cancelou uma confirmação anterior.
+  //  • Se o nó novo "controle_frequencia_cpf" ainda não estiver liberado
+  //    nas Regras de Segurança do Firebase, a trava simplesmente não
+  //    bloqueia nada (modo de segurança: nunca impede um abastecimento
+  //    por causa de uma regra nova que ainda não foi aplicada no banco).
+  // ══════════════════════════════════════════════════════════════════
+  async function reservarSemanaCpfAutorizado(cpf) {
+    var cpfN = _normCPF(cpf);
+    if (cpfN.length < 11) return { ok: true };
+
+    var autorizado = (typeof obterAutorizacaoCPFVigente === 'function') ? obterAutorizacaoCPFVigente(cpfN) : null;
+    if (!autorizado) return { ok: true }; // regra semanal vale só para CPF com autorização ativa
+
+    var agora = new Date();
+    var inicioSemana = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    var diasDesdeSegunda = (inicioSemana.getDay() + 6) % 7; // segunda=0 ... domingo=6
+    inicioSemana.setDate(inicioSemana.getDate() - diasDesdeSegunda);
+    function _pad2(n){ return String(n).padStart(2, '0'); }
+    var chaveSemana = inicioSemana.getFullYear() + '-' + _pad2(inicioSemana.getMonth() + 1) + '-' + _pad2(inicioSemana.getDate());
+
+    try {
+      var resultado = await db.ref('controle_frequencia_cpf/' + cpfN).transaction(function(atual) {
+        if (atual && atual.semanaChave === chaveSemana) return; // já reservado nesta semana: aborta sem alterar nada
+        return { semanaChave: chaveSemana, reservadoEm: Date.now(), reservadoPor: String(loginUser || '').toUpperCase() };
+      });
+      if (resultado && resultado.committed === false) {
+        return { ok: false }; // outra solicitação simultânea reservou esta semana primeiro
+      }
+      return { ok: true };
+    } catch (e) {
+      console.warn('[CPF] trava de concorrência indisponível (regra semanal segue valendo normalmente pela validação de histórico):', e);
+      return { ok: true }; // Firebase indisponível ou regra ainda não liberada: não bloqueia por causa disto
+    }
+  }
+  window.reservarSemanaCpfAutorizado = reservarSemanaCpfAutorizado;
+
   /**
    * Validação de veículo x secretaria antes de gravar um abastecimento.
    * Vale apenas para o perfil "secretarios" (master/admin/frentista/autorizador não são afetados).
