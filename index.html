@@ -7652,6 +7652,67 @@
   }
   window.mostrarModalSeguranca = mostrarModalSeguranca;
 
+  // ══════════════════════════════════════════════════════════════════
+  // 🔧 CORREÇÃO MOBILE — substitui window.confirm() nos pontos críticos
+  // de LANÇAMENTO DE ABASTECIMENTO.
+  //
+  // PROBLEMA: alguns navegadores embutidos em apps (WhatsApp, Instagram,
+  // Facebook, alguns apps corporativos) BLOQUEIAM ou SUPRIMEM as caixas
+  // nativas window.confirm()/alert()/prompt() — a chamada não aparece na
+  // tela e nunca retorna (trava o celular) ou retorna falso na hora, sem
+  // nenhum aviso. O Chrome mobile também passa a suprimir confirm()
+  // automaticamente depois de alguns diálogos na mesma página ("Impedir
+  // que esta página crie mais caixas de diálogo"). Isso explica o
+  // travamento ao abastecer relatado só por ALGUMAS pessoas (exatamente
+  // as que caem nos alertas de anti-desvio/média baixa/confirmação).
+  //
+  // SOLUÇÃO (100% aditiva): um modal de confirmação próprio (puro HTML/
+  // CSS/JS, criado dinamicamente, sem depender de API nativa do
+  // navegador), com o mesmo resultado Promise<boolean> de um confirm().
+  // Nenhum confirm() existente no resto do sistema foi alterado — só os
+  // 3 pontos do fluxo de registrar abastecimento (normal e Diversas).
+  // ══════════════════════════════════════════════════════════════════
+  function confirmarAcaoMobile(mensagem, opts) {
+    opts = opts || {};
+    return new Promise(function(resolve) {
+      var overlay = document.getElementById('modal-confirma-mobile');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'modal-confirma-mobile';
+        overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);align-items:center;justify-content:center;z-index:999999;padding:16px;';
+        overlay.innerHTML =
+          '<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:85vh;overflow:auto;">' +
+            '<div id="cfm-msg" style="font-size:14px;color:#1e293b;white-space:pre-line;margin-bottom:20px;line-height:1.55;"></div>' +
+            '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">' +
+              '<button type="button" id="cfm-btn-cancelar" style="padding:11px 18px;border-radius:8px;border:1px solid #cbd5e1;background:#f1f5f9;color:#334155;font-weight:600;cursor:pointer;font-size:13px;">CANCELAR</button>' +
+              '<button type="button" id="cfm-btn-ok" style="padding:11px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;font-size:13px;">CONFIRMAR</button>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(overlay);
+      }
+      document.getElementById('cfm-msg').textContent = mensagem;
+      var btnOk = document.getElementById('cfm-btn-ok');
+      var btnCancelar = document.getElementById('cfm-btn-cancelar');
+      btnOk.textContent = opts.textoConfirmar || 'CONFIRMAR';
+      btnCancelar.textContent = opts.textoCancelar || 'CANCELAR';
+
+      function fechar(resultado) {
+        overlay.style.display = 'none';
+        btnOk.onclick = null; btnCancelar.onclick = null; overlay.onclick = null;
+        document.removeEventListener('keydown', onEsc);
+        resolve(resultado);
+      }
+      function onEsc(e) { if (e.key === 'Escape') fechar(false); }
+
+      btnOk.onclick = function(){ fechar(true); };
+      btnCancelar.onclick = function(){ fechar(false); };
+      overlay.onclick = function(e){ if (e.target === overlay) fechar(false); };
+      document.addEventListener('keydown', onEsc);
+      overlay.style.display = 'flex';
+    });
+  }
+  window.confirmarAcaoMobile = confirmarAcaoMobile;
+
   // Normaliza CPF: mantém apenas dígitos (aceita 000.000.000-00 ou 00000000000)
   function _normCPF(cpf){ return String(cpf||'').replace(/\D/g,''); }
 
@@ -8601,7 +8662,7 @@
           const _horas = (Date.now() - _ultimoMesmoCPF.timestamp) / 3600000;
           if (_horas < 24) {
             const _quando = new Date(_ultimoMesmoCPF.timestamp).toLocaleString('pt-BR');
-            const _confirmarCPF = confirm(
+            const _confirmarCPF = await confirmarAcaoMobile(
               `⚠️ ALERTA ANTI-DESVIO: ESTE CPF JÁ ABASTECEU NAS ÚLTIMAS 24H!\n\n` +
               `CPF: ${dados.cpf}\n` +
               `Último abastecimento: há ${_horas.toFixed(1)}h (${_quando})\n` +
@@ -8624,7 +8685,7 @@
         const validacaoMedia = validarMediaVeiculo(dados);
         
         if (validacaoMedia.media > 0 && validacaoMedia.abaixoDoLimite) {
-          const confirmar = confirm(
+          const confirmar = await confirmarAcaoMobile(
             `⚠️ ALERTA: MÉDIA DE CONSUMO BAIXA!\n\n` +
             `Veículo: ${dados.placa}\n` +
             `Tipo: ${dados.tipo}\n` +
@@ -18427,7 +18488,7 @@
     const postoSnapshot = await db.ref('postos/' + postoId).once('value');
     const nomePosto = postoSnapshot.exists() ? postoSnapshot.val().nome : 'POSTO NÃO ENCONTRADO';
     
-    if (!confirm(`⭐ CONFIRMAR ABASTECIMENTO DIVERSAS?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${formatarMoeda(valor)}`)) {
+    if (!(await confirmarAcaoMobile(`⭐ CONFIRMAR ABASTECIMENTO DIVERSAS?\n\nPessoa: ${pessoa.nome}\nMotorista: ${motorista}\nPlaca: ${placa}\nPosto: ${nomePosto}\nCombustível: ${combustivel}\nLitros: ${litros}L\nValor: R$ ${formatarMoeda(valor)}`))) {
       return;
     }
     
