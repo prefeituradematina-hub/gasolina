@@ -434,6 +434,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <div style="width:1px;background:var(--border,#E5E7EB);height:20px"></div>
         <button class="btn" id="btn-view-todos" onclick="setView('todos')" style="font-size:11px;padding:5px 10px">Todos</button>
         <button class="btn" id="btn-view-sec" onclick="setView('secretarias')" style="font-size:11px;padding:5px 10px">Por secretaria</button>
+        <button class="btn" id="btn-view-dest" onclick="setView('destinos')" style="font-size:11px;padding:5px 10px">📍 Por destino</button>
         <div style="width:1px;background:var(--border);margin:0 2px"></div>
         <button class="btn" id="btn-ord-nome" onclick="setOrdem('nome')" style="font-size:11px;padding:5px 10px" title="Ordenar por placa/nome">A–Z</button>
         <button class="btn" id="btn-ord-status" onclick="setOrdem('status')" style="font-size:11px;padding:5px 10px" title="Agrupar por status">Por status</button>
@@ -564,6 +565,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div style="font-size:12px;color:#166534;margin-bottom:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:9px 12px;line-height:1.5">
       Viagens de <b>outras secretarias</b> com lugares sobrando — já solicitadas ou aprovadas (não precisa esperar a aprovação). Reserve uma vaga para aproveitar a mesma viagem, economizando combustível e evitando mandar um segundo carro pro mesmo destino.
+    </div>
+    <div class="field" style="max-width:280px;margin-bottom:10px">
+      <label style="font-size:11px">📍 Filtrar por destino</label>
+      <select id="carona-filtro-destino" onchange="renderCaronas()">
+        <option value="">Todos os destinos</option>
+      </select>
     </div>
     <div id="lista-caronas"></div>
   </div>
@@ -1976,9 +1983,65 @@ function setView(mode){
   _viewMode = mode;
   var btnTodos = document.getElementById('btn-view-todos');
   var btnSec = document.getElementById('btn-view-sec');
+  var btnDest = document.getElementById('btn-view-dest');
   if(btnTodos) btnTodos.style.cssText = mode==='todos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
   if(btnSec) btnSec.style.cssText = mode==='secretarias'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
+  if(btnDest) btnDest.style.cssText = mode==='destinos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
   renderPainel();
+}
+
+// Destino "atual" de um veículo, para agrupar/filtrar o painel por local (reaproveita o
+// campo "destino" já usado em movimentações, solicitações e escalas — não cria campo novo):
+//  1) Em viagem agora → destino da movimentação em aberto
+//  2) Solicitação pendente (aguardando aprovação) → destino da solicitação
+//  3) Sem viagem agora → destino da escala de hoje (se houver)
+//  4) Nada disso → "Sem destino definido"
+function getDestinoAtual(v) {
+  var mov = getMovAtiva(v.id);
+  if(mov && mov.destino) return mov.destino;
+  var sol = getSolicitacaoPendente(v.id);
+  if(sol && sol.destino) return sol.destino;
+  var esc = getEscalaHoje(v);
+  if(esc && esc.destino) return esc.destino;
+  return 'Sem destino definido';
+}
+
+function renderPorDestino() {
+  var grupos = {};
+  getVeiculosFiltrados().forEach(function(v) {
+    var dest = getDestinoAtual(v);
+    if(!grupos[dest]) grupos[dest] = [];
+    grupos[dest].push(v);
+  });
+  var dests = Object.keys(grupos).sort(function(a,b){
+    if(a==='Sem destino definido') return 1;
+    if(b==='Sem destino definido') return -1;
+    return a.localeCompare(b);
+  });
+  var html = '';
+  dests.forEach(function(dest) {
+    var veics = grupos[dest];
+    var g=0,t=0,ir=0,au=0;
+    veics.forEach(function(v) {
+      var s=getStatus(v.id);
+      if(s==='guardado')g++;else if(s==='trabalhando')t++;else if(s==='irregular')ir++;else if(s==='ausente')au++;
+    });
+    var badges =
+      (g>0?'<span class="sec-badge g">🟢 '+g+'</span>':'')+
+      (t>0?'<span class="sec-badge y">🟡 '+t+'</span>':'')+
+      (ir>0?'<span class="sec-badge r">🔴 '+ir+'</span>':'')+
+      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'');
+    var grid = veics.map(makeBtnVeiculo).join('');
+    html += '<div class="sec-group">'+
+      '<div class="sec-group-header">'+
+      '<div class="sec-group-name">📍 '+dest+'</div>'+
+      '<div class="sec-group-badges">'+badges+'</div>'+
+      '<span style="font-size:11px;color:#999">'+veics.length+' veículo'+(veics.length!==1?'s':'')+'</span>'+
+      '</div>'+
+      '<div class="frota-grid">'+grid+'</div>'+
+      '</div>';
+  });
+  document.getElementById('frota-container').innerHTML = html || '<div class="empty">Nenhum veículo.</div>';
 }
 
 function renderPorSecretaria() {
@@ -2076,6 +2139,7 @@ function makeBtnVeiculo(v) {
     '</div>'+
     '<div class="vdesc">'+v.descricao+'</div>'+
     '<div class="vsec">'+v.secretaria+'</div>'+
+    (function(){ var _d=getDestinoAtual(v); return _d!=='Sem destino definido' ? '<div class="vsec" style="opacity:.75;font-size:10px">📍 '+_d+'</div>' : ''; })()+
     // NOVO: sinaliza, no card do painel, que este veículo é de outra secretaria e
     // está aqui por empréstimo ativo — é a tela onde o secretário realmente o vê.
     (_sessao && _sessao.secretaria && v.secretaria !== _sessao.secretaria
@@ -2099,6 +2163,8 @@ function renderPainel() {
     renderFrotaPorStatus();
   } else if(_viewMode === 'secretarias') {
     renderPorSecretaria();
+  } else if(_viewMode === 'destinos') {
+    renderPorDestino();
   } else {
     var veicsVisiveis = getVeiculosFiltrados();
     if(_ordemMode === 'nome') veicsVisiveis = veicsVisiveis.slice().sort(function(a,b){return a.placa.localeCompare(b.placa);});
@@ -5117,8 +5183,21 @@ function renderCaronas(){
   if(!cont) return;
   var minha = _sessao ? (_sessao.secretaria||'') : '';
   var viagens = caronasVisiveis();
+
+  // 📍 Filtro por destino (local) — popula o select com os destinos realmente disponíveis agora
+  var selDest = document.getElementById('carona-filtro-destino');
+  if(selDest){
+    var destinosUnicos = Array.from(new Set(viagens.map(function(s){return (s.destino||'').trim();}).filter(Boolean))).sort();
+    var valorAtualDest = selDest.value;
+    selDest.innerHTML = '<option value="">Todos os destinos</option>'+
+      destinosUnicos.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join('');
+    if(destinosUnicos.indexOf(valorAtualDest) > -1) selDest.value = valorAtualDest;
+  }
+  var filtroDestinoCarona = selDest ? selDest.value : '';
+  if(filtroDestinoCarona) viagens = viagens.filter(function(s){ return (s.destino||'').trim() === filtroDestinoCarona; });
+
   if(!viagens.length){
-    cont.innerHTML = '<div class="empty">Nenhuma viagem com vaga disponível no momento.</div>';
+    cont.innerHTML = '<div class="empty">Nenhuma viagem com vaga disponível'+(filtroDestinoCarona?' para este destino':' no momento')+'.</div>';
     return;
   }
   cont.innerHTML = viagens.map(function(s){
