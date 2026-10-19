@@ -1987,18 +1987,36 @@ function setView(mode){
   if(btnTodos) btnTodos.style.cssText = mode==='todos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
   if(btnSec) btnSec.style.cssText = mode==='secretarias'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
   if(btnDest) btnDest.style.cssText = mode==='destinos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
+  // "Por destino" é agrupamento, assim como "Por status" — os dois não podem ficar ativos
+  // ao mesmo tempo (renderPainel() dá prioridade ao status). Ao entrar em "Por destino",
+  // desmarca "Por status" para o agrupamento por destino aparecer de fato.
+  if(mode === 'destinos' && _ordemMode === 'status'){
+    _ordemMode = 'none';
+    ['nome','status'].forEach(function(m){
+      var btnOrd = document.getElementById('btn-ord-'+m);
+      if(btnOrd){ btnOrd.style.background=''; btnOrd.style.color=''; btnOrd.style.borderColor=''; }
+    });
+  }
   renderPainel();
 }
 
 // Destino "atual" de um veículo, para agrupar/filtrar o painel por local (reaproveita o
 // campo "destino" já usado em movimentações, solicitações e escalas — não cria campo novo):
-//  1) Em viagem agora → destino da movimentação em aberto
-//  2) Solicitação pendente (aguardando aprovação) → destino da solicitação
-//  3) Sem viagem agora → destino da escala de hoje (se houver)
-//  4) Nada disso → "Sem destino definido"
+//  1) Em viagem agora (trabalhando/irregular) → destino da movimentação em aberto
+//  2) Liberado para viagem hoje → destino da solicitação liberada
+//  3) Agendado para data futura → destino da solicitação aprovada futura
+//  4) Solicitado (aguardando aprovação) → destino da solicitação pendente
+//  5) Sem nada disso → destino da escala de hoje (se houver)
+//  6) Nada disso → "Sem destino definido"
+// Assim, veículos em viagem + liberados + agendados para o MESMO destino caem no
+// mesmo grupo em "Por destino", mesmo estando em status diferentes.
 function getDestinoAtual(v) {
   var mov = getMovAtiva(v.id);
   if(mov && mov.destino) return mov.destino;
+  var solLib = getSolicitacaoLiberada(v.id);
+  if(solLib && solLib.destino) return solLib.destino;
+  var solAgend = getSolicitacaoAprovadaFutura(v.id);
+  if(solAgend && solAgend.destino) return solAgend.destino;
   var sol = getSolicitacaoPendente(v.id);
   if(sol && sol.destino) return sol.destino;
   var esc = getEscalaHoje(v);
