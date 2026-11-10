@@ -389,16 +389,21 @@
 
 </div>
 
-<!-- ── MODAL: EDITAR OFÍCIO (corrige dados sem alterar o número) ── -->
+<!-- ── MODAL: EDITAR OFÍCIO (corrige dados, incluindo o número em caso de erro de numeração) ── -->
 <div id="modal-edit-oficio" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); z-index:999; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto;">
   <div class="card" style="max-width:560px; width:100%; margin:0;">
     <h3>✏️ EDITAR OFÍCIO <span id="edit-of-numero-label" style="color:var(--accent);"></span></h3>
     <p style="font-size:11px;color:#64748b;margin-bottom:15px;text-transform:none;">
-      O número e o ano do ofício <b>não mudam</b> — a numeração já foi registrada. Aqui você corrige
-      apenas os dados preenchidos por engano.
+      O ano do documento <b>não muda</b> — a numeração já foi registrada naquele ano. O número pode ser
+      corrigido aqui caso tenha sido digitado errado; o sistema impede salvar um número já usado por
+      outro documento do mesmo tipo/secretaria/ano.
     </p>
     <input type="hidden" id="edit-of-id">
     <div class="grid-form">
+      <div>
+        <label>NÚMERO</label>
+        <input type="number" id="edit-of-numero" min="1" step="1">
+      </div>
       <div>
         <label>DATA DE EMISSÃO</label>
         <input type="date" id="edit-of-data">
@@ -442,20 +447,6 @@
   const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
 
-  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
-  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
-  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
-  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
-  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
-  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
-  try {
-    if (firebase.auth && !firebase.auth().currentUser) {
-      firebase.auth().signInAnonymously().catch(function(e){
-        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
-      });
-    }
-  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
-
   const db = firebase.database();
 
   db.ref('config/personalizacao').once('value').then(function(snap) {
@@ -497,7 +488,7 @@
     if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
       try { db.ref('auditoria').push({ acao: 'LOGOUT', usuario: loginUser, modulo: 'oficios', em: new Date().toISOString() }); } catch (e) {}
       localStorage.removeItem('sessao_global');
-      setTimeout(() => location.replace('porta.html'), 300);
+      firebase.auth().signOut().catch(function(){}).finally(function(){ location.replace('porta.html'); });
     }
   }
 
@@ -668,7 +659,8 @@
   }
   window.anularOficio = anularOficio;
 
-  // NOVO: edição do ofício — corrige assunto/destinatário/data mantendo o MESMO número.
+  // NOVO: edição do ofício — corrige assunto/destinatário/data e, se necessário, o número
+  // (caso tenha sido digitado errado na hora de gerar). O ano permanece fixo.
   // Pode editar: quem registrou o ofício, ou admin/master. Ofício anulado não é editável.
   function abrirModalEditarOficio(id) {
     const item = oficiosCache.find(o => o.id === id);
@@ -680,6 +672,7 @@
     document.getElementById('edit-of-id').value = item.id;
     document.getElementById('edit-of-numero-label').textContent =
       (TIPOS_DOC[item.tipo || 'oficio'] || TIPOS_DOC.oficio).label + ' Nº ' + String(item.numero).padStart(3, '0') + '/' + item.ano;
+    document.getElementById('edit-of-numero').value = item.numero;
     document.getElementById('edit-of-data').value = item.dataEmissao || '';
     document.getElementById('edit-of-destinatario').value = item.destinatario || '';
     document.getElementById('edit-of-assunto').value = item.assunto || '';
@@ -702,17 +695,52 @@
     const assunto = document.getElementById('edit-of-assunto').value.trim();
     if (!assunto) { mostrarNotificacao('⚠️ INFORME O ASSUNTO DO OFÍCIO!', 'error'); return; }
 
+    // NOVO: permite corrigir o número manualmente, caso tenha sido digitado errado.
+    const novoNumero = parseInt(document.getElementById('edit-of-numero').value);
+    if (isNaN(novoNumero) || novoNumero <= 0) { mostrarNotificacao('⚠️ INFORME UM NÚMERO VÁLIDO!', 'error'); return; }
+    const numeroMudou = novoNumero !== item.numero;
+
+    if (numeroMudou) {
+      // Impede duplicidade: mesmo tipo + secretaria + ano + número, em outro documento ativo.
+      const duplicado = oficiosCache.some(o =>
+        o.id !== item.id &&
+        !o.cancelado &&
+        (o.tipo || 'oficio') === (item.tipo || 'oficio') &&
+        o.secretaria === item.secretaria &&
+        o.ano === item.ano &&
+        o.numero === novoNumero
+      );
+      if (duplicado) {
+        mostrarNotificacao('❌ JÁ EXISTE UM ' + (TIPOS_DOC[item.tipo || 'oficio'] || TIPOS_DOC.oficio).label + ' Nº ' + String(novoNumero).padStart(3, '0') + '/' + item.ano + ' PARA ESTA SECRETARIA!', 'error');
+        return;
+      }
+    }
+
     try {
       await db.ref('oficios/' + id).update({
+        numero: novoNumero,
         dataEmissao: document.getElementById('edit-of-data').value || item.dataEmissao,
         destinatario: document.getElementById('edit-of-destinatario').value.trim(),
         assunto: assunto,
         editadoPor: loginUser,
         editadoEm: Date.now()
       });
-      // Número e ano NÃO são alterados de propósito — a numeração já foi oficialmente registrada.
+      // Ano NÃO é alterado de propósito — a numeração já foi oficialmente registrada naquele ano.
+
+      if (numeroMudou) {
+        // Garante que o contador não gere, no futuro, um número já usado manualmente acima dele.
+        try {
+          const chave = chaveContador(item.secretaria, item.ano, item.tipo);
+          await db.ref('contadores_oficios/' + chave).transaction(function(atual) {
+            return Math.max(atual || 0, novoNumero);
+          });
+        } catch (e) { /* não bloqueia a edição se o ajuste do contador falhar */ }
+      }
+
       mostrarNotificacao('✅ OFÍCIO ATUALIZADO!', 'success');
-      registrarAuditoria('OFICIO_EDITADO', { id: id, numero: item.numero, ano: item.ano });
+      registrarAuditoria('OFICIO_EDITADO', numeroMudou
+        ? { id: id, numero: novoNumero, numeroAnterior: item.numero, ano: item.ano }
+        : { id: id, numero: item.numero, ano: item.ano });
       fecharModalEditarOficio();
     } catch (e) {
       mostrarNotificacao('❌ ERRO AO SALVAR: ' + e.message, 'error');
@@ -769,7 +797,7 @@
         '<td>' + o.registradoPor + '</td>' +
         '<td><span class="status-tag ' + (o.cancelado ? 'status-anulado' : 'status-ativo') + '">' + (o.cancelado ? '❌ ANULADO' : '✅ ATIVO') + '</span></td>' +
         '<td class="no-print">' +
-          (podeEditar ? '<button class="btn-action btn-editar" onclick="abrirModalEditarOficio(\'' + o.id + '\')" title="Corrigir dados (o número não muda)">✏️ EDITAR</button>' : '') +
+          (podeEditar ? '<button class="btn-action btn-editar" onclick="abrirModalEditarOficio(\'' + o.id + '\')" title="Corrigir dados, incluindo o número">✏️ EDITAR</button>' : '') +
           (podeAnular ? '<button class="btn-action btn-anular" onclick="anularOficio(\'' + o.id + '\')">❌ ANULAR</button>' : '') +
           (podeExcluir ? '<button class="btn-action btn-excluir" onclick="excluirOficio(\'' + o.id + '\')" title="Excluir definitivamente">🗑️</button>' : '') +
         '</td>' +
