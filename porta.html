@@ -588,6 +588,33 @@ async function autenticarNoFirebase(login, senha) {
   }
 }
 
+// ── AUDITORIA (mesmo formato/caminho 'auditoria' usado no index.html) ──
+// Nunca pode quebrar o login: qualquer falha aqui é ignorada.
+function registrarAuditoria(acao, dados) {
+  try {
+    dados = dados || {};
+    var s = getSessao() || {};
+    var agora = new Date();
+    var registro = {
+      acao: acao,
+      usuario: dados.usuario || s.u || 'SISTEMA',
+      userRole: s.role || (dados.usuario === 'master' ? 'admin' : 'SISTEMA'),
+      timestamp: Date.now(),
+      data: agora.toISOString(),
+      dataFormatada: agora.toLocaleString('pt-BR'),
+      ip: 'N/A',
+      dispositivo: navigator.userAgent,
+      dados: dados
+    };
+    db.ref('auditoria').push(registro).catch(function (err) {
+      console.error('Erro ao registrar auditoria:', err);
+    });
+  } catch (e) {
+    console.error('Erro ao criar registro de auditoria:', e);
+  }
+  return Promise.resolve();
+}
+
 // ── LOGIN (mesma lógica do sistema de gasolina) ──────────────
 function erroLogin(msg){
   var el = document.getElementById('login-erro');
@@ -654,7 +681,7 @@ async function logar(){
   } catch (err) {
     console.error('Falha no login/migração:', err && err.code);
     var msg = err && err.code === 'functions/failed-precondition' ? err.message : 'Usuário ou senha incorretos.';
-    erroLogin(msg);
+    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ']' : ''));
   }
 }
 
