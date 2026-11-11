@@ -685,7 +685,7 @@ async function logar(){
   } catch (err) {
     console.error('Falha no login/migração:', err && err.code);
     var msg = err && err.code === 'functions/failed-precondition' ? err.message : 'Usuário ou senha incorretos.';
-    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ' em ' + (window.__etapa || '?') + ']' : ''));
+    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ' em ' + (window.__etapa || '?') + ' | ' + String(err.message || '').slice(0, 160) + ']' : ''));
   }
 }
 
