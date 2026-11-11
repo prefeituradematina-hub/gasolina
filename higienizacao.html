@@ -431,20 +431,6 @@
   const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
 
-  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
-  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
-  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
-  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
-  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
-  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
-  try {
-    if (firebase.auth && !firebase.auth().currentUser) {
-      firebase.auth().signInAnonymously().catch(function(e){
-        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
-      });
-    }
-  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
-
   const db = firebase.database();
   
   // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento do index.html
@@ -486,7 +472,7 @@
     if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
       try { db.ref('auditoria').push({ acao: 'LOGOUT', usuario: loginUser, modulo: 'lavagem', em: new Date().toISOString() }); } catch (e) {}
       localStorage.removeItem('sessao_global');
-      setTimeout(() => location.replace('porta.html'), 300);
+      firebase.auth().signOut().catch(function(){}).finally(function(){ location.replace('porta.html'); });
     }
   }
 
