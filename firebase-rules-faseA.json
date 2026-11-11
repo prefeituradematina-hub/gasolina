@@ -1,19 +1,99 @@
 {
   "rules": {
-    "usuarios":             { ".read": "auth != null", ".write": "auth != null" },
-    "abastecimentos":       { ".read": "auth != null", ".write": "auth != null" },
-    "postos":               { ".read": "auth != null", ".write": "auth != null" },
-    "pessoas_vip":          { ".read": "auth != null", ".write": "auth != null" },
-    "auditoria":            { ".read": "auth != null", ".write": "auth != null" },
-    "veiculos":             { ".read": "auth != null", ".write": "auth != null" },
-    "motoristas":           { ".read": "auth != null", ".write": "auth != null" },
-    "frota":                { ".read": "auth != null", ".write": "auth != null" },
-    "config":               { ".read": "auth != null", ".write": "auth != null" },
-    "notificacoes":         { ".read": "auth != null", ".write": "auth != null" },
-    "cpfAutorizados":       { ".read": "auth != null", ".write": "auth != null" },
-    "emprestimos_veiculos": { ".read": "auth != null", ".write": "auth != null" },
-    "lavagens":             { ".read": "auth != null", ".write": "auth != null" },
-    "oficios":              { ".read": "auth != null", ".write": "auth != null" },
-    "contadores_oficios":   { ".read": "auth != null", ".write": "auth != null" }
+    ".read": false,
+    ".write": false,
+    "usuarios": {
+      ".read": false,
+      ".write": false
+    },
+    "config": {
+      "personalizacao": {
+        ".read": true,
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "prefeitura": {
+        ".read": true,
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "masterPassword": {
+        ".read": false,
+        ".write": false
+      },
+      "notasCompartilhadas": {
+        ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "regras": {
+        ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "precos": {
+        ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "ultimoBackupAuto": {
+        ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      },
+      "lavagem": {
+        ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+        ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+      }
+    },
+    "abastecimentos": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".indexOn": ["timestamp", "status", "veiculo", "placa"]
+    },
+    "postos": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "pessoas_vip": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "auditoria": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      "$registro": {
+        ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true && !data.exists()"
+      }
+    },
+    "veiculos": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "motoristas": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "frota": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "notificacoes": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "cpfAutorizados": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.admin == true && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "emprestimos_veiculos": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "lavagens": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "oficios": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    },
+    "contadores_oficios": {
+      ".read": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true",
+      ".write": "auth != null && auth.token.login != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('_access').child(auth.uid).child('active').val() == true"
+    }
   }
 }
