@@ -608,6 +608,21 @@ function travar(t){
   var b = document.getElementById('btn-entrar');
   b.disabled = t; b.textContent = t ? 'VERIFICANDO…' : 'ENTRAR';
 }
+// Usuário cadastrado, mas SEM senha guardada no banco (ex.: conta já migrada para o Firebase
+// Authentication): confere a senha digitada direto no Firebase Auth. Se o usuário tem senha
+// no banco, nada muda — continua valendo a comparação de sempre.
+function semSenhaNoBanco(user, login, senha){
+  return new Promise(function(resolve){
+    try {
+      if (!user || user.senha || !firebase.auth) { resolve(false); return; }
+      var email = String(login).toLowerCase().replace(/[^a-z0-9._-]/g, '_') + '@sistema.local';
+      firebase.auth().signInWithEmailAndPassword(email, String(senha))
+        .then(function(){ resolve(true); })
+        .catch(function(){ resolve(false); });
+    } catch(e) { resolve(false); }
+  });
+}
+
 function logar(){
   var u = document.getElementById('user').value.trim();
   var s = document.getElementById('senha').value.trim();
@@ -639,11 +654,11 @@ function logar(){
     return;
   }
 
-  db.ref('usuarios/' + u).once('value').then(function(snap){
+  db.ref('usuarios/' + u).once('value').then(function(snap){ return semSenhaNoBanco(snap.val(), u, s).then(function(authOk){
     var user = snap.val();
     // Normaliza o papel (usuários antigos podem ter "Autorizador" com maiúscula)
     if(user && user.role) user.role = String(user.role).trim().toLowerCase();
-    if(user && user.senha === s){
+    if(user && (user.senha === s || authOk)){
       var limiteVictor = user.limiteVictor || 0;
       var limiteMatina = user.limiteMatina || 0;
       var limiteTotal  = (limiteVictor + limiteMatina) || user.limite || 0;
@@ -674,7 +689,7 @@ function logar(){
     } else {
       erroLogin('Usuário ou senha incorretos.');
     }
-  }).catch(function(err){
+  }); }).catch(function(err){
     console.error(err);
     erroLogin('Erro ao conectar ao banco de dados. Verifique sua internet.');
   });
