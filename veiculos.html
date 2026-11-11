@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-functions-compat.js"></script>
 <script>
 /* ── GUARDA DE SESSÃO (login único via porta.html) ── */
 (function(){
@@ -1081,9 +1082,7 @@ const DEF = {
   ],
   ausencias:[],
   abastecimentos:[],
-  usuarios:[
-    {id:'u1',login:'admin',senha:'admin123',nome:'Administrador',perfil:'admin',secretaria:'',ativo:true}
-  ],
+  usuarios:[],
   solicitacoes:[],
   caronas:[]
 };
@@ -1120,6 +1119,8 @@ function salvar() {
     return;
   }
   D._salvo_em = new Date().toISOString();
+  // Contas são gerenciadas pelo sistema central. Nunca persistir credenciais duplicadas na frota.
+  D.usuarios = [];
   localStorage.setItem('frota_v3', JSON.stringify(D));   // cache local (fallback offline)
   if(fbDB){
     _fbUltimoPush = Date.now();
@@ -1238,7 +1239,7 @@ function carregar() {
         movimentacoes:d.movimentacoes||DEF.movimentacoes, agendamentos:d.agendamentos||DEF.agendamentos,
         manutencoes:d.manutencoes||DEF.manutencoes, ausencias:d.ausencias||[],
         abastecimentos:d.abastecimentos||[],
-        usuarios:d.usuarios||DEF.usuarios, solicitacoes:d.solicitacoes||[], caronas:d.caronas||[]
+        usuarios:[], solicitacoes:d.solicitacoes||[], caronas:d.caronas||[]
       };
     }
   } catch(e) {}
@@ -1291,20 +1292,6 @@ function carregarFirebaseConfig(){
 try {
   firebase.initializeApp(carregarFirebaseConfig());
 
-  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
-  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
-  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
-  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
-  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
-  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
-  try {
-    if (firebase.auth && !firebase.auth().currentUser) {
-      firebase.auth().signInAnonymously().catch(function(e){
-        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
-      });
-    }
-  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
-
   fbDB = firebase.database();
   // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento dos outros módulos
   fbDB.ref('config/personalizacao').once('value').then(function(snap) {
@@ -1339,9 +1326,8 @@ function normalizarFB(d){
     movimentacoes:_arrFB(d.movimentacoes), agendamentos:_arrFB(d.agendamentos),
     manutencoes:_arrFB(d.manutencoes), ausencias:_arrFB(d.ausencias),
     abastecimentos:_arrFB(d.abastecimentos),
-    usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
+    usuarios:[], solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
-  if(!out.usuarios.length) out.usuarios = DEF.usuarios;
   out.veiculos.forEach(function(v){ v.placa=normPlaca(v.placa); v.escalas=_arrFB(v.escalas); if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; v.mediaKmL=v.mediaKmL||0; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
@@ -2052,7 +2038,7 @@ function renderPorDestino() {
     var grid = veics.map(makeBtnVeiculo).join('');
     html += '<div class="sec-group">'+
       '<div class="sec-group-header">'+
-      '<div class="sec-group-name">📍 '+dest+'</div>'+
+      '<div class="sec-group-name">📍 '+escHtml(dest)+'</div>'+
       '<div class="sec-group-badges">'+badges+'</div>'+
       '<span style="font-size:11px;color:#999">'+veics.length+' veículo'+(veics.length!==1?'s':'')+'</span>'+
       '</div>'+
@@ -2086,7 +2072,7 @@ function renderPorSecretaria() {
     var grid = veics.map(makeBtnVeiculo).join('');
     html += '<div class="sec-group">'+
       '<div class="sec-group-header">'+
-      '<div class="sec-group-name">🏛 '+sec+'</div>'+
+      '<div class="sec-group-name">🏛 '+escHtml(sec)+'</div>'+
       '<div class="sec-group-badges">'+badges+'</div>'+
       '<span style="font-size:11px;color:#999">'+veics.length+' veículo'+(veics.length!==1?'s':'')+'</span>'+
       '</div>'+
@@ -2097,6 +2083,12 @@ function renderPorSecretaria() {
 }
 
 // ── PAINEL ───────────────────────────────────────────────────
+function escHtml(valor) {
+  return String(valor == null ? '' : valor).replace(/[&<>"']/g, function(caractere) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[caractere];
+  });
+}
+
 function makeBtnVeiculo(v) {
   var s = getStatus(v.id);
   var mov = getMovAtiva(v.id);
@@ -2131,19 +2123,19 @@ function makeBtnVeiculo(v) {
   if(isAdmin() && (s==='guardado'||s==='fora_garagem'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
     var escR = getEscalaHoje(v);
     if(escR && escR.destino) {
-      rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
+      rapidaHTML = '<div class="vbtn-rapida-btn" data-id="'+escHtml(v.id)+'" onclick="event.stopPropagation();saidaRapida(this.dataset.id)" title="Destino: '+escHtml(escR.destino)+'">⚡ Saída rápida</div>';
     }
   }
   // ⛽ Atalho "Precisa de gasolina" no card (somente veículo liberado; somente Secretário/Master)
   var gasolinaHTML = '';
   if(s==='liberado' && podeVerBotaoGasolina()) {
-    gasolinaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();irParaGasolina(\''+v.id+'\')">⛽ Precisa de gasolina</div>';
+    gasolinaHTML = '<div class="vbtn-rapida-btn" data-id="'+escHtml(v.id)+'" onclick="event.stopPropagation();irParaGasolina(this.dataset.id)">⛽ Precisa de gasolina</div>';
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
   var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
-  var titleBtn = _tip ? ' title="'+_tip+'"' : '';
-  return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
+  var titleBtn = _tip ? ' title="'+escHtml(_tip)+'"' : '';
+  return '<button class="vbtn '+classeBtn+'"'+titleBtn+' data-id="'+escHtml(v.id)+'" onclick="verVeiculo(this.dataset.id)">'+
     '<div class="vbtn-inner">'+
     '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
@@ -2153,11 +2145,11 @@ function makeBtnVeiculo(v) {
     '<span class="vplaca-pais">🇧🇷 BRASIL</span>'+
     '<span class="vplaca-br">BR</span>'+
     '</div>'+
-    '<div class="vplaca">'+fmtPlaca(v.placa)+'</div>'+
+     '<div class="vplaca">'+escHtml(fmtPlaca(v.placa))+'</div>'+
     '</div>'+
-    '<div class="vdesc">'+v.descricao+'</div>'+
-    '<div class="vsec">'+v.secretaria+'</div>'+
-    (function(){ var _d=getDestinoAtual(v); return _d!=='Sem destino definido' ? '<div class="vsec" style="opacity:.75;font-size:10px">📍 '+_d+'</div>' : ''; })()+
+     '<div class="vdesc">'+escHtml(v.descricao)+'</div>'+
+     '<div class="vsec">'+escHtml(v.secretaria)+'</div>'+
+     (function(){ var _d=getDestinoAtual(v); return _d!=='Sem destino definido' ? '<div class="vsec" style="opacity:.75;font-size:10px">📍 '+escHtml(_d)+'</div>' : ''; })()+
     // NOVO: sinaliza, no card do painel, que este veículo é de outra secretaria e
     // está aqui por empréstimo ativo — é a tela onde o secretário realmente o vê.
     (_sessao && _sessao.secretaria && v.secretaria !== _sessao.secretaria
@@ -4451,6 +4443,16 @@ function iniciarSessaoPortal(){
   renderTudo();
 }
 
+// Limpeza única dos cadastros duplicados (que podiam conter senhas antigas) na frota.
+firebase.auth().onAuthStateChanged(function(user){
+  if(!user || !firebase.functions) return;
+  user.getIdTokenResult().then(function(result){
+    if(result.claims.admin === true) {
+      return firebase.functions().httpsCallable('removeLegacyFleetCredentials')();
+    }
+  }).catch(function(e){ console.warn('Não foi possível limpar credenciais antigas da frota:', e && e.code); });
+});
+
 // ── LOGIN LOCAL (desativado — mantido como fallback) ───────────
 function tentarLogin() {
   // O login agora é único, feito no porta.html.
@@ -4461,7 +4463,7 @@ function fazerLogout() {
   if(!confirm('🚪 Deseja realmente sair do sistema?')) return;
   _sessao = null;
   localStorage.removeItem('sessao_global');
-  location.replace('porta.html');
+  firebase.auth().signOut().catch(function(){}).finally(function(){ location.replace('porta.html'); });
 }
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
