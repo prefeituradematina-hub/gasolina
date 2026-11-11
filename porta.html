@@ -582,7 +582,7 @@ async function autenticarNoFirebase(login, senha) {
     window.__etapa = 'signIn';
     return await firebase.auth().signInWithEmailAndPassword(email, senha);
   } catch (erroAuth) {
-    if (!['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-email'].includes(erroAuth.code)) throw erroAuth;
+    if (!['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/invalid-email'].includes(erroAuth.code)) throw erroAuth;
     window.__etapa = 'migrateLegacyAccount';
     var migrar = firebase.functions().httpsCallable('migrateLegacyAccount');
     await migrar({ login: login, password: senha });
