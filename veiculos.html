@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-functions-compat.js"></script>
 <script>
 /* ── GUARDA DE SESSÃO (login único via porta.html) ── */
 (function(){
@@ -434,6 +435,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <div style="width:1px;background:var(--border,#E5E7EB);height:20px"></div>
         <button class="btn" id="btn-view-todos" onclick="setView('todos')" style="font-size:11px;padding:5px 10px">Todos</button>
         <button class="btn" id="btn-view-sec" onclick="setView('secretarias')" style="font-size:11px;padding:5px 10px">Por secretaria</button>
+        <button class="btn" id="btn-view-dest" onclick="setView('destinos')" style="font-size:11px;padding:5px 10px">📍 Por destino</button>
         <div style="width:1px;background:var(--border);margin:0 2px"></div>
         <button class="btn" id="btn-ord-nome" onclick="setOrdem('nome')" style="font-size:11px;padding:5px 10px" title="Ordenar por placa/nome">A–Z</button>
         <button class="btn" id="btn-ord-status" onclick="setOrdem('status')" style="font-size:11px;padding:5px 10px" title="Agrupar por status">Por status</button>
@@ -564,6 +566,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     </div>
     <div style="font-size:12px;color:#166534;margin-bottom:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:9px 12px;line-height:1.5">
       Viagens de <b>outras secretarias</b> com lugares sobrando — já solicitadas ou aprovadas (não precisa esperar a aprovação). Reserve uma vaga para aproveitar a mesma viagem, economizando combustível e evitando mandar um segundo carro pro mesmo destino.
+    </div>
+    <div class="field" style="max-width:280px;margin-bottom:10px">
+      <label style="font-size:11px">📍 Filtrar por destino</label>
+      <select id="carona-filtro-destino" onchange="renderCaronas()">
+        <option value="">Todos os destinos</option>
+      </select>
     </div>
     <div id="lista-caronas"></div>
   </div>
@@ -1074,9 +1082,7 @@ const DEF = {
   ],
   ausencias:[],
   abastecimentos:[],
-  usuarios:[
-    {id:'u1',login:'admin',senha:'admin123',nome:'Administrador',perfil:'admin',secretaria:'',ativo:true}
-  ],
+  usuarios:[],
   solicitacoes:[],
   caronas:[]
 };
@@ -1113,6 +1119,8 @@ function salvar() {
     return;
   }
   D._salvo_em = new Date().toISOString();
+  // Contas são gerenciadas pelo sistema central. Nunca persistir credenciais duplicadas na frota.
+  D.usuarios = [];
   localStorage.setItem('frota_v3', JSON.stringify(D));   // cache local (fallback offline)
   if(fbDB){
     _fbUltimoPush = Date.now();
@@ -1231,7 +1239,7 @@ function carregar() {
         movimentacoes:d.movimentacoes||DEF.movimentacoes, agendamentos:d.agendamentos||DEF.agendamentos,
         manutencoes:d.manutencoes||DEF.manutencoes, ausencias:d.ausencias||[],
         abastecimentos:d.abastecimentos||[],
-        usuarios:d.usuarios||DEF.usuarios, solicitacoes:d.solicitacoes||[], caronas:d.caronas||[]
+        usuarios:[], solicitacoes:d.solicitacoes||[], caronas:d.caronas||[]
       };
     }
   } catch(e) {}
@@ -1284,34 +1292,7 @@ function carregarFirebaseConfig(){
 try {
   firebase.initializeApp(carregarFirebaseConfig());
 
-  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
-  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
-  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
-  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
-  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
-  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
-  try {
-    if (firebase.auth && !firebase.auth().currentUser) {
-      firebase.auth().signInAnonymously().catch(function(e){
-        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
-      });
-    }
-  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
-
   fbDB = firebase.database();
-  // ── ESPERA O LOGIN DO FIREBASE ANTES DE LER/GRAVAR ──────────────────────
-  // Corrige corrida: leituras disparadas antes do login anônimo terminar eram
-  // negadas pelas regras (auth != null) e os listeners não voltavam sozinhos
-  // (telas vazias / login falhando). Segura a conexão até o Firebase autenticar;
-  // se a autenticação não responder em 6s, libera mesmo assim (comportamento antigo).
-  (function(_d){
-    try {
-      _d.goOffline();
-      var _on = false, _go = function(){ if(_on) return; _on = true; try{ _d.goOnline(); }catch(e){} };
-      firebase.auth().onAuthStateChanged(function(u){ if(u) _go(); });
-      setTimeout(_go, 6000);
-    } catch(e) { try{ _d.goOnline(); }catch(_){} }
-  })(fbDB);
   // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento dos outros módulos
   fbDB.ref('config/personalizacao').once('value').then(function(snap) {
     var cfg = snap.val();
@@ -1345,9 +1326,8 @@ function normalizarFB(d){
     movimentacoes:_arrFB(d.movimentacoes), agendamentos:_arrFB(d.agendamentos),
     manutencoes:_arrFB(d.manutencoes), ausencias:_arrFB(d.ausencias),
     abastecimentos:_arrFB(d.abastecimentos),
-    usuarios:_arrFB(d.usuarios), solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
+    usuarios:[], solicitacoes:_arrFB(d.solicitacoes), caronas:_arrFB(d.caronas)
   };
-  if(!out.usuarios.length) out.usuarios = DEF.usuarios;
   out.veiculos.forEach(function(v){ v.placa=normPlaca(v.placa); v.escalas=_arrFB(v.escalas); if(!v.foraGaragem)v.foraGaragem=0; if(!v.manutencao)v.manutencao=0; v.mediaKmL=v.mediaKmL||0; });
   out.movimentacoes.forEach(function(m){ m.abast = _arrFB(m.abast); });
   out.agendamentos.forEach(function(a){ if(a.cancelado == null) a.cancelado = false; });
@@ -1989,9 +1969,83 @@ function setView(mode){
   _viewMode = mode;
   var btnTodos = document.getElementById('btn-view-todos');
   var btnSec = document.getElementById('btn-view-sec');
+  var btnDest = document.getElementById('btn-view-dest');
   if(btnTodos) btnTodos.style.cssText = mode==='todos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
   if(btnSec) btnSec.style.cssText = mode==='secretarias'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
+  if(btnDest) btnDest.style.cssText = mode==='destinos'?'font-size:11px;padding:5px 10px;background:#1a1a1a;color:#fff;border-color:#1a1a1a':'font-size:11px;padding:5px 10px';
+  // "Por destino" é agrupamento, assim como "Por status" — os dois não podem ficar ativos
+  // ao mesmo tempo (renderPainel() dá prioridade ao status). Ao entrar em "Por destino",
+  // desmarca "Por status" para o agrupamento por destino aparecer de fato.
+  if(mode === 'destinos' && _ordemMode === 'status'){
+    _ordemMode = 'none';
+    ['nome','status'].forEach(function(m){
+      var btnOrd = document.getElementById('btn-ord-'+m);
+      if(btnOrd){ btnOrd.style.background=''; btnOrd.style.color=''; btnOrd.style.borderColor=''; }
+    });
+  }
   renderPainel();
+}
+
+// Destino "atual" de um veículo, para agrupar/filtrar o painel por local (reaproveita o
+// campo "destino" já usado em movimentações, solicitações e escalas — não cria campo novo):
+//  1) Em viagem agora (trabalhando/irregular) → destino da movimentação em aberto
+//  2) Liberado para viagem hoje → destino da solicitação liberada
+//  3) Agendado para data futura → destino da solicitação aprovada futura
+//  4) Solicitado (aguardando aprovação) → destino da solicitação pendente
+//  5) Sem nada disso → destino da escala de hoje (se houver)
+//  6) Nada disso → "Sem destino definido"
+// Assim, veículos em viagem + liberados + agendados para o MESMO destino caem no
+// mesmo grupo em "Por destino", mesmo estando em status diferentes.
+function getDestinoAtual(v) {
+  var mov = getMovAtiva(v.id);
+  if(mov && mov.destino) return mov.destino;
+  var solLib = getSolicitacaoLiberada(v.id);
+  if(solLib && solLib.destino) return solLib.destino;
+  var solAgend = getSolicitacaoAprovadaFutura(v.id);
+  if(solAgend && solAgend.destino) return solAgend.destino;
+  var sol = getSolicitacaoPendente(v.id);
+  if(sol && sol.destino) return sol.destino;
+  var esc = getEscalaHoje(v);
+  if(esc && esc.destino) return esc.destino;
+  return 'Sem destino definido';
+}
+
+function renderPorDestino() {
+  var grupos = {};
+  getVeiculosFiltrados().forEach(function(v) {
+    var dest = getDestinoAtual(v);
+    if(!grupos[dest]) grupos[dest] = [];
+    grupos[dest].push(v);
+  });
+  var dests = Object.keys(grupos).sort(function(a,b){
+    if(a==='Sem destino definido') return 1;
+    if(b==='Sem destino definido') return -1;
+    return a.localeCompare(b);
+  });
+  var html = '';
+  dests.forEach(function(dest) {
+    var veics = grupos[dest];
+    var g=0,t=0,ir=0,au=0;
+    veics.forEach(function(v) {
+      var s=getStatus(v.id);
+      if(s==='guardado')g++;else if(s==='trabalhando')t++;else if(s==='irregular')ir++;else if(s==='ausente')au++;
+    });
+    var badges =
+      (g>0?'<span class="sec-badge g">🟢 '+g+'</span>':'')+
+      (t>0?'<span class="sec-badge y">🟡 '+t+'</span>':'')+
+      (ir>0?'<span class="sec-badge r">🔴 '+ir+'</span>':'')+
+      (au>0?'<span class="sec-badge p">❓ '+au+'</span>':'');
+    var grid = veics.map(makeBtnVeiculo).join('');
+    html += '<div class="sec-group">'+
+      '<div class="sec-group-header">'+
+      '<div class="sec-group-name">📍 '+escHtml(dest)+'</div>'+
+      '<div class="sec-group-badges">'+badges+'</div>'+
+      '<span style="font-size:11px;color:#999">'+veics.length+' veículo'+(veics.length!==1?'s':'')+'</span>'+
+      '</div>'+
+      '<div class="frota-grid">'+grid+'</div>'+
+      '</div>';
+  });
+  document.getElementById('frota-container').innerHTML = html || '<div class="empty">Nenhum veículo.</div>';
 }
 
 function renderPorSecretaria() {
@@ -2018,7 +2072,7 @@ function renderPorSecretaria() {
     var grid = veics.map(makeBtnVeiculo).join('');
     html += '<div class="sec-group">'+
       '<div class="sec-group-header">'+
-      '<div class="sec-group-name">🏛 '+sec+'</div>'+
+      '<div class="sec-group-name">🏛 '+escHtml(sec)+'</div>'+
       '<div class="sec-group-badges">'+badges+'</div>'+
       '<span style="font-size:11px;color:#999">'+veics.length+' veículo'+(veics.length!==1?'s':'')+'</span>'+
       '</div>'+
@@ -2029,6 +2083,12 @@ function renderPorSecretaria() {
 }
 
 // ── PAINEL ───────────────────────────────────────────────────
+function escHtml(valor) {
+  return String(valor == null ? '' : valor).replace(/[&<>"']/g, function(caractere) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[caractere];
+  });
+}
+
 function makeBtnVeiculo(v) {
   var s = getStatus(v.id);
   var mov = getMovAtiva(v.id);
@@ -2063,19 +2123,19 @@ function makeBtnVeiculo(v) {
   if(isAdmin() && (s==='guardado'||s==='fora_garagem'||s==='fora_horario'||s==='liberado'||s==='solicitado')) {
     var escR = getEscalaHoje(v);
     if(escR && escR.destino) {
-      rapidaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();saidaRapida(\''+v.id+'\')" title="Destino: '+escR.destino+'">⚡ Saída rápida</div>';
+      rapidaHTML = '<div class="vbtn-rapida-btn" data-id="'+escHtml(v.id)+'" onclick="event.stopPropagation();saidaRapida(this.dataset.id)" title="Destino: '+escHtml(escR.destino)+'">⚡ Saída rápida</div>';
     }
   }
   // ⛽ Atalho "Precisa de gasolina" no card (somente veículo liberado; somente Secretário/Master)
   var gasolinaHTML = '';
   if(s==='liberado' && podeVerBotaoGasolina()) {
-    gasolinaHTML = '<div class="vbtn-rapida-btn" onclick="event.stopPropagation();irParaGasolina(\''+v.id+'\')">⛽ Precisa de gasolina</div>';
+    gasolinaHTML = '<div class="vbtn-rapida-btn" data-id="'+escHtml(v.id)+'" onclick="event.stopPropagation();irParaGasolina(this.dataset.id)">⛽ Precisa de gasolina</div>';
   }
   var classeBtn = v.manutencao ? 'manutencao' : v.foraGaragem ? 'fora_garagem' : s;
   var labelBtn = LABEL[classeBtn] || LABEL[s] || LABEL['guardado'];
   var _tip = v.manutencao && v.manutencaoObs ? '🔧 '+v.manutencaoObs : (v.foraGaragem && v.foraGaraObs ? '📍 '+v.foraGaraObs : '');
-  var titleBtn = _tip ? ' title="'+_tip+'"' : '';
-  return '<button class="vbtn '+classeBtn+'"'+titleBtn+' onclick="verVeiculo(\''+v.id+'\')">'+
+  var titleBtn = _tip ? ' title="'+escHtml(_tip)+'"' : '';
+  return '<button class="vbtn '+classeBtn+'"'+titleBtn+' data-id="'+escHtml(v.id)+'" onclick="verVeiculo(this.dataset.id)">'+
     '<div class="vbtn-inner">'+
     '<div style="font-size:9px;margin-bottom:1px">'+labelBtn.toUpperCase()+'</div>'+
     '<div style="font-size:28px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">'+iconeVei(v.tipo)+'</div>'+
@@ -2085,10 +2145,11 @@ function makeBtnVeiculo(v) {
     '<span class="vplaca-pais">🇧🇷 BRASIL</span>'+
     '<span class="vplaca-br">BR</span>'+
     '</div>'+
-    '<div class="vplaca">'+fmtPlaca(v.placa)+'</div>'+
+     '<div class="vplaca">'+escHtml(fmtPlaca(v.placa))+'</div>'+
     '</div>'+
-    '<div class="vdesc">'+v.descricao+'</div>'+
-    '<div class="vsec">'+v.secretaria+'</div>'+
+     '<div class="vdesc">'+escHtml(v.descricao)+'</div>'+
+     '<div class="vsec">'+escHtml(v.secretaria)+'</div>'+
+     (function(){ var _d=getDestinoAtual(v); return _d!=='Sem destino definido' ? '<div class="vsec" style="opacity:.75;font-size:10px">📍 '+escHtml(_d)+'</div>' : ''; })()+
     // NOVO: sinaliza, no card do painel, que este veículo é de outra secretaria e
     // está aqui por empréstimo ativo — é a tela onde o secretário realmente o vê.
     (_sessao && _sessao.secretaria && v.secretaria !== _sessao.secretaria
@@ -2112,6 +2173,8 @@ function renderPainel() {
     renderFrotaPorStatus();
   } else if(_viewMode === 'secretarias') {
     renderPorSecretaria();
+  } else if(_viewMode === 'destinos') {
+    renderPorDestino();
   } else {
     var veicsVisiveis = getVeiculosFiltrados();
     if(_ordemMode === 'nome') veicsVisiveis = veicsVisiveis.slice().sort(function(a,b){return a.placa.localeCompare(b.placa);});
@@ -2935,6 +2998,7 @@ function confirmarSaida() {
   var saida = document.getElementById('s-saida').value;
   var ret   = document.getElementById('s-retorno').value;
   if(!vid||!saida||!ret) { alert('Preencha veículo, saída e retorno.'); return; }
+  var justificativaSaida = (_justifSel === 'outro' ? (document.getElementById('justif-texto')?.value || '').trim() : (_justifSel || '')).trim();
   var dest = getDestValue('s');
   if(!dest) { alert('Informe o destino.'); return; }
   // Trava de segurança: revalida no salvamento (a lista da tela pode ter sido burlada)
@@ -2959,6 +3023,7 @@ function confirmarSaida() {
     m.km_saida=parseInt(document.getElementById('s-km').value)||null;
     m.pass=pass; m.com_pass=comPass;
     m.saida=saida; m.retorno=ret; m.destino=dest;
+    if(justificativaSaida) m.justificativa=justificativaSaida;
   } else {
     var _agid = (document.getElementById('ov-saida').dataset.agid)||'';
     D.movimentacoes.push({
@@ -2968,7 +3033,7 @@ function confirmarSaida() {
       km_saida:parseInt(document.getElementById('s-km').value)||null,
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[],
-      agid:_agid||null
+      agid:_agid||null, justificativa:justificativaSaida||null
     });
     // Agendamento consumido: nao pre-preenche mais nem duplica
     if(_agid){
@@ -3039,7 +3104,8 @@ function confirmarEntrada() {
 }
 
 // ── AGENDAMENTO ───────────────────────────────────────────────
-function abrirAgenda(vid) {
+function abrirAgenda(vid, editId) {
+  _editAgId = editId || null;
   // Agendamento: o conflito é avaliado pelo período pretendido, não pelo "agora"
   _filtroDispAtual = { inicio: null, fim: null, ignorarAgId: _editAgId||null,
                        ignorarEmViagem: !!_editAgId };
@@ -3067,15 +3133,17 @@ function abrirAgenda(vid) {
   document.getElementById('ag-pass-row').style.display = 'none';
   document.getElementById('ag-hint').style.display = 'none';
   document.getElementById('ag-titulo').textContent = 'Novo agendamento';
-  _editAgId = null;
+  if(!editId) _editAgId = null;
   if(vid) document.getElementById('ag-vei').value = vid;
   abrir('ov-agenda');
 }
 
 function editarAgenda(id) {
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
   var a = getAg(id);
-  abrirAgenda(null);
+  if(!a){ toast('Agendamento não encontrado.'); return; }
   _editAgId = id;
+  abrirAgenda(null, id);
   document.getElementById('ag-titulo').textContent = 'Editar agendamento';
   document.getElementById('ag-vei').value = a.vid;
   document.getElementById('ag-mot').value = a.motid||'';
@@ -3147,6 +3215,7 @@ function registrarSaidaAgenda(agId) {
 }
 
 function cancelarAgenda(id) {
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
   var a = getAg(id);
   if(!a){ toast('Agendamento não encontrado.'); return; }
   if(a.cancelado){ toast('Este agendamento já está cancelado.'); return; }
@@ -3489,6 +3558,12 @@ function confirmarGuardadoNoite() {
   if(!hora){ toast('Informe o horário de chegada.'); return; }
   var m = getMov(_guardadoNoiteMovId);
   if(!m){ toast('Movimentação não encontrada.'); fechar('ov-guardado-noite'); return; }
+  var entradaData = new Date(hora.length === 16 ? hora + ':00' : hora);
+  var saidaData = new Date(m.saida);
+  if(!isNaN(entradaData) && !isNaN(saidaData) && entradaData < saidaData){
+    toast('🚫 O horário de entrada não pode ser anterior ao horário de saída.');
+    return;
+  }
   m.entrada_real  = hora.length === 16 ? hora + ':00' : hora;
   m.guardadoNoite = true;
   m.km_entrada    = parseInt(document.getElementById('gn-km').value)||null;
@@ -3532,7 +3607,8 @@ function abrirProrrogar(movId) {
 function prorrogarMin(min) {
   var m = getMov(_prorrogarMovId);
   if(!m) return;
-  var novo = new Date(new Date(m.retorno).getTime() + min*60000);
+  var baseRetorno = document.getElementById('prorr-novo-retorno').value || m.retorno;
+  var novo = new Date(new Date(baseRetorno).getTime() + min*60000);
   var iso  = new Date(novo.getTime()-novo.getTimezoneOffset()*60000).toISOString().slice(0,16);
   document.getElementById('prorr-novo-retorno').value = iso;
   var prev = document.getElementById('prorr-preview');
@@ -3625,10 +3701,11 @@ function renderSaidas() {
 }
 
 function editarSaida(id) {
+  if(!isAdmin()){ toast('🚫 Sem permissão.'); return; }
   var m = getMov(id);
   if(!m){ toast('Movimentação não encontrada.'); return; }
-  abrirSaida(null);
   _editMovId = id;
+  abrirSaida(null);
   document.getElementById('s-vei').value  = m.vid;
   document.getElementById('s-mot').value  = m.motid||'';
   document.getElementById('s-solic').value = m.solic||'';
@@ -4366,6 +4443,16 @@ function iniciarSessaoPortal(){
   renderTudo();
 }
 
+// Limpeza única dos cadastros duplicados (que podiam conter senhas antigas) na frota.
+firebase.auth().onAuthStateChanged(function(user){
+  if(!user || !firebase.functions) return;
+  user.getIdTokenResult().then(function(result){
+    if(result.claims.admin === true) {
+      return firebase.functions().httpsCallable('removeLegacyFleetCredentials')();
+    }
+  }).catch(function(e){ console.warn('Não foi possível limpar credenciais antigas da frota:', e && e.code); });
+});
+
 // ── LOGIN LOCAL (desativado — mantido como fallback) ───────────
 function tentarLogin() {
   // O login agora é único, feito no porta.html.
@@ -4376,7 +4463,7 @@ function fazerLogout() {
   if(!confirm('🚪 Deseja realmente sair do sistema?')) return;
   _sessao = null;
   localStorage.removeItem('sessao_global');
-  location.replace('porta.html');
+  firebase.auth().signOut().catch(function(){}).finally(function(){ location.replace('porta.html'); });
 }
 
 function isAdmin() { return _sessao && _sessao.perfil === 'admin'; }
@@ -5116,8 +5203,21 @@ function renderCaronas(){
   if(!cont) return;
   var minha = _sessao ? (_sessao.secretaria||'') : '';
   var viagens = caronasVisiveis();
+
+  // 📍 Filtro por destino (local) — popula o select com os destinos realmente disponíveis agora
+  var selDest = document.getElementById('carona-filtro-destino');
+  if(selDest){
+    var destinosUnicos = Array.from(new Set(viagens.map(function(s){return (s.destino||'').trim();}).filter(Boolean))).sort();
+    var valorAtualDest = selDest.value;
+    selDest.innerHTML = '<option value="">Todos os destinos</option>'+
+      destinosUnicos.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join('');
+    if(destinosUnicos.indexOf(valorAtualDest) > -1) selDest.value = valorAtualDest;
+  }
+  var filtroDestinoCarona = selDest ? selDest.value : '';
+  if(filtroDestinoCarona) viagens = viagens.filter(function(s){ return (s.destino||'').trim() === filtroDestinoCarona; });
+
   if(!viagens.length){
-    cont.innerHTML = '<div class="empty">Nenhuma viagem com vaga disponível no momento.</div>';
+    cont.innerHTML = '<div class="empty">Nenhuma viagem com vaga disponível'+(filtroDestinoCarona?' para este destino':' no momento')+'.</div>';
     return;
   }
   cont.innerHTML = viagens.map(function(s){
