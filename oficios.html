@@ -447,12 +447,21 @@
   const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
 
+  // Autenticação anônima (mesmo padrão dos outros módulos — regras exigem auth != null)
+  try {
+    if (firebase.auth && !firebase.auth().currentUser) {
+      firebase.auth().signInAnonymously().catch(function(e){
+        console.warn('Autenticação anônima falhou:', e && e.message);
+      });
+    }
+  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
+
   const db = firebase.database();
-  // ── ESPERA A SESSÃO DO FIREBASE ANTES DE LER/GRAVAR ─────────────────────
-  // As páginas restauram a sessão (login do portal) de forma assíncrona. Leituras
-  // disparadas antes disso eram negadas pelas regras (auth != null) e os listeners
-  // não tentavam de novo — telas vazias. Segura a conexão até o Firebase informar o
-  // usuário logado; se não responder em 6s, libera mesmo assim (comportamento atual).
+  // ── ESPERA O LOGIN DO FIREBASE ANTES DE LER/GRAVAR ──────────────────────
+  // Corrige corrida: leituras disparadas antes do login anônimo terminar eram
+  // negadas pelas regras (auth != null) e os listeners não voltavam sozinhos
+  // (telas vazias / login falhando). Segura a conexão até o Firebase autenticar;
+  // se a autenticação não responder em 6s, libera mesmo assim (comportamento antigo).
   (function(_d){
     try {
       _d.goOffline();
