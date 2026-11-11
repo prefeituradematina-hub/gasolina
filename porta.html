@@ -579,9 +579,11 @@ function emailFirebaseDoLogin(login) {
 async function autenticarNoFirebase(login, senha) {
   var email = emailFirebaseDoLogin(login);
   try {
+    window.__etapa = 'signIn';
     return await firebase.auth().signInWithEmailAndPassword(email, senha);
   } catch (erroAuth) {
     if (!['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-email'].includes(erroAuth.code)) throw erroAuth;
+    window.__etapa = 'migrateLegacyAccount';
     var migrar = firebase.functions().httpsCallable('migrateLegacyAccount');
     await migrar({ login: login, password: senha });
     return await firebase.auth().signInWithEmailAndPassword(email, senha);
@@ -635,6 +637,7 @@ async function logar(){
   travar(true);
   try {
     await autenticarNoFirebase(u, s);
+    window.__etapa = 'syncMyClaims';
     await firebase.functions().httpsCallable('syncMyClaims')();
     await firebase.auth().currentUser.getIdToken(true);
 
@@ -649,6 +652,7 @@ async function logar(){
       return;
     }
 
+    window.__etapa = 'getMyProfile';
     var perfilResult = await firebase.functions().httpsCallable('getMyProfile')();
     var user = perfilResult.data.profile;
     if (!user || user.ativo === false) {
@@ -681,7 +685,7 @@ async function logar(){
   } catch (err) {
     console.error('Falha no login/migração:', err && err.code);
     var msg = err && err.code === 'functions/failed-precondition' ? err.message : 'Usuário ou senha incorretos.';
-    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ']' : ''));
+    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ' em ' + (window.__etapa || '?') + ']' : ''));
   }
 }
 
