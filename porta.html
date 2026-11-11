@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal de Sistemas — Matina BA</title>
-<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlBvcnRhbCBkZSBTaXN0ZW1hcyAtIE1hdGluYSBCQSIsICJzaG9ydF9uYW1lIjogIlBvcnRhbCBNYXRpbmEiLCAic3RhcnRfdXJsIjogInBvcnRhLmh0bWwiLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgImJhY2tncm91bmRfY29sb3IiOiAiIzY2N2VlYSIsICJ0aGVtZV9jb2xvciI6ICIjNjY3ZWVhIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vaS5pbWd1ci5jb20vQUtNMjVXMS5wbmciLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyJ9XX0=">
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-functions-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -128,21 +126,6 @@ body{
 .modulo.bloqueado .mod-entrar{display:none}
 .modulo.bloqueado .mod-cadeado{display:inline-block}
 .hub-rodape{text-align:center;color:rgba(255,255,255,.85);font-size:12px;margin-top:18px}
-
-/* ── ATALHO NO CELULAR (PWA) ──────────────────────────────── */
-.install-pwa-banner{
-  position:fixed;bottom:0;left:0;right:0;
-  background:linear-gradient(135deg,var(--grad-a) 0%,var(--grad-b) 100%);
-  color:#fff;padding:15px 20px;display:none;align-items:center;justify-content:space-between;
-  gap:14px;flex-wrap:wrap;z-index:999;box-shadow:0 -4px 20px rgba(0,0,0,.25);
-}
-.install-pwa-banner.show{display:flex;animation:fadeUp .3s ease}
-.install-pwa-banner button{
-  background:#fff;color:var(--grad-a);border:none;padding:10px 20px;border-radius:8px;
-  font-weight:bold;cursor:pointer;font-size:12px;transition:all .3s;
-}
-.install-pwa-banner button:hover{transform:scale(1.05)}
-.install-pwa-banner .close-banner{background:transparent;color:#fff;font-size:20px;padding:5px 10px}
 
 @media (max-width:768px){
   .login-container{flex-direction:column}
@@ -271,18 +254,6 @@ body{
   <div class="hub-rodape" id="hub-rodape">Sessão válida por 12 horas · Os dois sistemas compartilham o mesmo banco de dados</div>
 </div>
 
-<!-- ── ATALHO NO CELULAR (PWA) ── -->
-<div class="install-pwa-banner" id="pwa-banner">
-  <div>
-    <strong style="font-size:14px;">📱 CRIAR ATALHO NO CELULAR</strong>
-    <div style="font-size:11px; opacity:.9; margin-top:5px;">Acesse o Portal direto da tela inicial, sem digitar o endereço</div>
-  </div>
-  <div style="display:flex; gap:10px;">
-    <button class="close-banner" onclick="fecharBannerPWA()">✕</button>
-    <button onclick="instalarPWA()">CRIAR ATALHO</button>
-  </div>
-</div>
-
 <!-- ── MODAL: CONFIGURAÇÕES GERAIS (Fase 1 — aditivo, só master) ── -->
 <div class="modal-cfg" id="modal-config-geral">
   <div class="modal-cfg-content">
@@ -369,8 +340,34 @@ function carregarFirebaseConfig(){
 }
 firebase.initializeApp(carregarFirebaseConfig());
 
+// ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
+// Garante que TODA leitura/escrita no banco seja feita por uma sessão
+// autenticada pelo Firebase. Isso permite fechar as Security Rules com
+// "auth != null", impedindo que alguém de fora acesse o banco diretamente.
+// NÃO altera o login do sistema, nem perfis, nem permissões: o login de
+// usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
+try {
+  if (firebase.auth && !firebase.auth().currentUser) {
+    firebase.auth().signInAnonymously().catch(function(e){
+      console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
+    });
+  }
+} catch(e) { console.warn('SDK de autenticação indisponível:', e); }
+
 var db = firebase.database();
-var functions = firebase.functions();
+// ── ESPERA O LOGIN DO FIREBASE ANTES DE LER/GRAVAR ──────────────────────
+// Corrige corrida: leituras disparadas antes do login anônimo terminar eram
+// negadas pelas regras (auth != null) e os listeners não voltavam sozinhos
+// (telas vazias / login falhando). Segura a conexão até o Firebase autenticar;
+// se a autenticação não responder em 6s, libera mesmo assim (comportamento antigo).
+(function(_d){
+  try {
+    _d.goOffline();
+    var _on = false, _go = function(){ if(_on) return; _on = true; try{ _d.goOnline(); }catch(e){} };
+    firebase.auth().onAuthStateChanged(function(u){ if(u) _go(); });
+    setTimeout(_go, 6000);
+  } catch(e) { try{ _d.goOnline(); }catch(_){} }
+})(db);
 var SESSAO_KEY = 'sessao_global';
 var SESSAO_DURACAO = 12 * 60 * 60 * 1000; // 12 horas
 
@@ -393,9 +390,8 @@ function aplicarConfigGeralNaTela(prefeitura, personalizacao) {
   if (prefeitura.nomePrefeitura) {
     var pLogin = document.querySelector('.login-left p');
     if (pLogin) {
-      pLogin.textContent = prefeitura.nomePrefeitura + (prefeitura.uf ? ' — ' + prefeitura.uf : '');
-      pLogin.appendChild(document.createElement('br'));
-      pLogin.appendChild(document.createTextNode('Gestão integrada de combustível, frota e diárias'));
+      pLogin.innerHTML = prefeitura.nomePrefeitura + (prefeitura.uf ? ' — ' + prefeitura.uf : '') +
+        '<br>Gestão integrada de combustível, frota e diárias';
     }
   }
   if (personalizacao.logoBase64) {
@@ -572,49 +568,32 @@ function toggleSenha(){
   inp.focus();
 }
 
-function emailFirebaseDoLogin(login) {
-  return String(login).trim().toLowerCase() + '@sistema.local';
-}
-
-async function autenticarNoFirebase(login, senha) {
-  var email = emailFirebaseDoLogin(login);
-  try {
-    window.__etapa = 'signIn';
-    return await firebase.auth().signInWithEmailAndPassword(email, senha);
-  } catch (erroAuth) {
-    if (!['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/invalid-email'].includes(erroAuth.code)) throw erroAuth;
-    window.__etapa = 'migrateLegacyAccount';
-    var migrar = firebase.functions().httpsCallable('migrateLegacyAccount');
-    await migrar({ login: login, password: senha });
-    return await firebase.auth().signInWithEmailAndPassword(email, senha);
-  }
-}
-
-// ── AUDITORIA (mesmo formato/caminho 'auditoria' usado no index.html) ──
-// Nunca pode quebrar o login: qualquer falha aqui é ignorada.
-function registrarAuditoria(acao, dados) {
-  try {
-    dados = dados || {};
-    var s = getSessao() || {};
-    var agora = new Date();
-    var registro = {
-      acao: acao,
-      usuario: dados.usuario || s.u || 'SISTEMA',
-      userRole: s.role || (dados.usuario === 'master' ? 'admin' : 'SISTEMA'),
-      timestamp: Date.now(),
-      data: agora.toISOString(),
-      dataFormatada: agora.toLocaleString('pt-BR'),
-      ip: 'N/A',
-      dispositivo: navigator.userAgent,
-      dados: dados
-    };
-    db.ref('auditoria').push(registro).catch(function (err) {
-      console.error('Erro ao registrar auditoria:', err);
-    });
-  } catch (e) {
-    console.error('Erro ao criar registro de auditoria:', e);
-  }
-  return Promise.resolve();
+// ── ETAPA C2: autenticação real no Firebase ─────────────────────────────
+// Depois que o login é validado pela regra atual do sistema (nó 'usuarios'),
+// tenta autenticar a MESMA identidade no Firebase Auth, para que o banco saiba
+// QUEM está acessando (base para as regras por perfil da Fase D).
+//
+// SEGURANÇA POR DESIGN: se qualquer coisa falhar aqui (usuário ainda não migrado,
+// senha divergente, rede instável, e-mail/senha desativado no console), o login
+// NÃO é bloqueado — cai no login anônimo e o usuário entra normalmente, como antes.
+// Assim esta etapa não pode deixar ninguém de fora do sistema.
+function autenticarNoFirebase(login, senha) {
+  return new Promise(function(resolve){
+    try {
+      if (!firebase.auth) { resolve(false); return; }
+      var email = String(login).toLowerCase().replace(/[^a-z0-9._-]/g, '_') + '@sistema.local';
+      firebase.auth().signInWithEmailAndPassword(email, String(senha))
+        .then(function(){ console.log('🔓 Autenticado no Firebase como', email); resolve(true); })
+        .catch(function(e){
+          console.warn('Autenticação nominal indisponível (' + (e && e.code) + '). ' +
+                       'Login liberado normalmente via sessão anônima.');
+          // Garante que exista ALGUMA sessão, para as regras da Fase A continuarem atendidas
+          if (!firebase.auth().currentUser) {
+            firebase.auth().signInAnonymously().catch(function(){}).then(function(){ resolve(false); });
+          } else { resolve(false); }
+        });
+    } catch(e) { resolve(false); }
+  });
 }
 
 // ── LOGIN (mesma lógica do sistema de gasolina) ──────────────
@@ -629,64 +608,76 @@ function travar(t){
   var b = document.getElementById('btn-entrar');
   b.disabled = t; b.textContent = t ? 'VERIFICANDO…' : 'ENTRAR';
 }
-async function logar(){
+function logar(){
   var u = document.getElementById('user').value.trim();
   var s = document.getElementById('senha').value.trim();
   document.getElementById('login-erro').style.display = 'none';
   if(!u || !s){ erroLogin('Preencha usuário e senha.'); return; }
   travar(true);
-  try {
-    await autenticarNoFirebase(u, s);
-    window.__etapa = 'syncMyClaims';
-    await firebase.functions().httpsCallable('syncMyClaims')();
-    await firebase.auth().currentUser.getIdToken(true);
 
-    if (u.toLowerCase() === 'master') {
-      var masterSess = salvarSessao('master', 'admin', 0, '', {
-        combustivelLiberado: 'todos', role: 'admin', permissoes: null,
-        acessoGasolina: true, acessoFrota: true, acessoLavagem: true, acessoOficios: true
-      });
-      registrarAuditoria('LOGIN', { usuario: 'master', via: 'portal' });
-      mostrarHub(masterSess);
-      travar(false);
-      return;
-    }
-
-    window.__etapa = 'getMyProfile';
-    var perfilResult = await firebase.functions().httpsCallable('getMyProfile')();
-    var user = perfilResult.data.profile;
-    if (!user || user.ativo === false) {
-      await firebase.auth().signOut();
-      erroLogin('Usuário ou senha incorretos.');
-      return;
-    }
-    if (user.role) user.role = String(user.role).trim().toLowerCase();
-    var limiteVictor = user.limiteVictor || 0;
-    var limiteMatina = user.limiteMatina || 0;
-    var limiteTotal = (limiteVictor + limiteMatina) || user.limite || 0;
-    var dados = {
-      combustivelLiberado: user.combustivelLiberado || 'todos', role: user.role,
-      limite: limiteTotal, limiteVictor: limiteVictor, limiteMatina: limiteMatina,
-      ultimoResetLimite: user.ultimoResetLimite || 0,
-      secretariaVinculada: user.secretariaVinculada || '',
-      postoVinculado: user.postoVinculado || '',
-      postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
-      acessoGasolina: user.acessoGasolina !== false,
-      acessoFrota: user.acessoFrota !== false,
-      acessoLavagem: user.acessoLavagem === true,
-      acessoOficios: user.acessoOficios === true,
-      frotaAdmin: user.frotaAdmin === undefined ? null : user.frotaAdmin,
-      permissoes: user.permissoes || null
-    };
-    var sess = salvarSessao(u.toLowerCase(), user.role, limiteTotal, user.secretariaVinculada || '', dados);
-    registrarAuditoria('LOGIN', { usuario: u.toLowerCase(), via: 'portal' });
-    mostrarHub(sess);
-    travar(false);
-  } catch (err) {
-    console.error('Falha no login/migração:', err && err.code);
-    var msg = err && err.code === 'functions/failed-precondition' ? err.message : 'Usuário ou senha incorretos.';
-    erroLogin(msg + (err && err.code !== 'functions/failed-precondition' ? ' [' + (err.code || err.name) + ' em ' + (window.__etapa || '?') + ' | ' + String(err.message || '').slice(0, 160) + ']' : ''));
+  if(u === 'master'){
+    // Senha do master fica no banco (config/masterPassword) e pode ser trocada
+    // no painel do Controle de Combustível. A original só vale se nenhuma nova
+    // senha tiver sido definida.
+    db.ref('config/masterPassword').once('value').then(function(snap){
+      var senhaMaster = snap.val() || '05048989';
+      if(s === senhaMaster){
+        var sess = salvarSessao('master','admin',0,'',{
+          combustivelLiberado:'todos', senha:senhaMaster, role:'admin', permissoes:null
+        });
+        try{ db.ref('auditoria').push({acao:'LOGIN', usuario:'master', via:'portal', em:new Date().toISOString()}); }catch(e){}
+        // C2: autentica no Firebase (não bloqueia o login se falhar)
+        autenticarNoFirebase('master', senhaMaster).then(function(){
+          mostrarHub(sess); travar(false);
+        });
+      } else {
+        erroLogin('Usuário ou senha incorretos.');
+      }
+    }).catch(function(){
+      erroLogin('Erro ao conectar ao banco de dados. Verifique sua internet.');
+    });
+    return;
   }
+
+  db.ref('usuarios/' + u).once('value').then(function(snap){
+    var user = snap.val();
+    // Normaliza o papel (usuários antigos podem ter "Autorizador" com maiúscula)
+    if(user && user.role) user.role = String(user.role).trim().toLowerCase();
+    if(user && user.senha === s){
+      var limiteVictor = user.limiteVictor || 0;
+      var limiteMatina = user.limiteMatina || 0;
+      var limiteTotal  = (limiteVictor + limiteMatina) || user.limite || 0;
+      var dados = {
+        combustivelLiberado: user.combustivelLiberado || 'todos',
+        senha: user.senha,
+        role: user.role,
+        limite: limiteTotal,
+        limiteVictor: limiteVictor,
+        limiteMatina: limiteMatina,
+        ultimoResetLimite: user.ultimoResetLimite || 0,
+        secretariaVinculada: user.secretariaVinculada || '',
+        postoVinculado: user.postoVinculado || '',
+        postosVinculados: user.postosVinculados || (user.postoVinculado ? [user.postoVinculado] : []),
+        acessoGasolina: user.acessoGasolina !== false,
+        acessoFrota: user.acessoFrota !== false,
+        acessoLavagem: user.acessoLavagem === true,
+        acessoOficios: user.acessoOficios === true,
+        frotaAdmin: (user.frotaAdmin === undefined ? null : user.frotaAdmin),
+        permissoes: user.permissoes || null
+      };
+      var sess = salvarSessao(u, user.role, limiteTotal, user.secretariaVinculada || '', dados);
+      try{ db.ref('auditoria').push({acao:'LOGIN', usuario:u, via:'portal', em:new Date().toISOString()}); }catch(e){}
+      // C2: autentica no Firebase (não bloqueia o login se falhar)
+      autenticarNoFirebase(u, s).then(function(){
+        mostrarHub(sess); travar(false);
+      });
+    } else {
+      erroLogin('Usuário ou senha incorretos.');
+    }
+  }).catch(function(err){
+    console.error(err);
+    erroLogin('Erro ao conectar ao banco de dados. Verifique sua internet.');
+  });
 }
 
 // ── HUB ──────────────────────────────────────────────────────
@@ -717,8 +708,6 @@ function mostrarHub(s){
     'Acesso ao Controle de Higienização não liberado para o seu usuário.');
   configurarCardHub(document.getElementById('card-oficios'), podeOficios, 'oficios.html',
     'Acesso ao Controle de Ofícios não liberado para o seu usuário.');
-
-  ofertarAtalhoPWA();
 }
 
 // Habilita ou bloqueia visualmente um card do hub
@@ -740,49 +729,6 @@ function configurarCardHub(card, liberado, href, msgBloqueio){
     };
   }
 }
-
-// ── ATALHO NO CELULAR (PWA) ────────────────────────────────────
-// Apenas oferece "adicionar/criar atalho" na tela inicial do celular.
-// Não interfere em login, sessão, permissões ou em nenhum outro fluxo.
-var deferredPrompt = null;
-var _pwaProntoParaMostrar = false;
-
-function verificarPWA(){
-  // Já instalado como app? Não mostra nada.
-  if (window.matchMedia('(display-mode: standalone)').matches) { return; }
-  window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault();
-    deferredPrompt = e;
-    if (_pwaProntoParaMostrar) mostrarBannerPWA();
-  });
-  window.addEventListener('appinstalled', function(){
-    deferredPrompt = null;
-    document.getElementById('pwa-banner').classList.remove('show');
-  });
-}
-
-// Chamado depois que o hub aparece (login novo ou sessão já ativa) — é aí que
-// faz sentido oferecer o atalho, e não na tela de login.
-function ofertarAtalhoPWA(){
-  _pwaProntoParaMostrar = true;
-  if (deferredPrompt) mostrarBannerPWA();
-}
-function mostrarBannerPWA(){
-  setTimeout(function(){
-    var b = document.getElementById('pwa-banner');
-    if (b) b.classList.add('show');
-  }, 1500);
-}
-function instalarPWA(){
-  if (!deferredPrompt) { fecharBannerPWA(); return; }
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
-  document.getElementById('pwa-banner').classList.remove('show');
-}
-function fecharBannerPWA(){
-  document.getElementById('pwa-banner').classList.remove('show');
-}
-verificarPWA();
 
 // Sessão ativa? Mostra o hub (frentista vê o hub com o Controle de Frota desabilitado).
 (function(){

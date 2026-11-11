@@ -431,7 +431,34 @@
   const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
 
+  // ── FASE A DE SEGURANÇA: autenticação anônima ────────────────────────────
+  // Garante que TODA leitura/escrita no banco seja feita por uma sessão
+  // autenticada pelo Firebase. Isso permite fechar as Security Rules com
+  // "auth != null", impedindo que alguém de fora acesse o banco diretamente.
+  // NÃO altera o login do sistema, nem perfis, nem permissões: o login de
+  // usuário continua exatamente como sempre foi (nó 'usuarios' + porta.html).
+  try {
+    if (firebase.auth && !firebase.auth().currentUser) {
+      firebase.auth().signInAnonymously().catch(function(e){
+        console.warn('Autenticação anônima falhou (o sistema segue funcionando se as regras ainda estiverem abertas):', e && e.message);
+      });
+    }
+  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
+
   const db = firebase.database();
+  // ── ESPERA O LOGIN DO FIREBASE ANTES DE LER/GRAVAR ──────────────────────
+  // Corrige corrida: leituras disparadas antes do login anônimo terminar eram
+  // negadas pelas regras (auth != null) e os listeners não voltavam sozinhos
+  // (telas vazias / login falhando). Segura a conexão até o Firebase autenticar;
+  // se a autenticação não responder em 6s, libera mesmo assim (comportamento antigo).
+  (function(_d){
+    try {
+      _d.goOffline();
+      var _on = false, _go = function(){ if(_on) return; _on = true; try{ _d.goOnline(); }catch(e){} };
+      firebase.auth().onAuthStateChanged(function(u){ if(u) _go(); });
+      setTimeout(_go, 6000);
+    } catch(e) { try{ _d.goOnline(); }catch(_){} }
+  })(db);
   
   // Fase 1 — Configurações Gerais (aditivo): mesmo comportamento do index.html
   db.ref('config/personalizacao').once('value').then(function(snap) {
@@ -472,7 +499,7 @@
     if (confirm("🚪 DESEJA REALMENTE SAIR DO SISTEMA?")) {
       try { db.ref('auditoria').push({ acao: 'LOGOUT', usuario: loginUser, modulo: 'lavagem', em: new Date().toISOString() }); } catch (e) {}
       localStorage.removeItem('sessao_global');
-      firebase.auth().signOut().catch(function(){}).finally(function(){ location.replace('porta.html'); });
+      setTimeout(() => location.replace('porta.html'), 300);
     }
   }
 
