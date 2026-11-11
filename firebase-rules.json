@@ -1,10 +1,23 @@
 {
   "rules": {
     "usuarios":             { ".read": "auth != null", ".write": "auth != null" },
-    "abastecimentos":       { ".read": "auth != null", ".write": "auth != null" },
+
+    "abastecimentos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["timestamp", "status"]
+    },
+
     "postos":               { ".read": "auth != null", ".write": "auth != null" },
     "pessoas_vip":          { ".read": "auth != null", ".write": "auth != null" },
-    "auditoria":            { ".read": "auth != null", ".write": "auth != null" },
+
+    "auditoria": {
+      ".read": "auth != null",
+      "$registro": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+
     "veiculos":             { ".read": "auth != null", ".write": "auth != null" },
     "motoristas":           { ".read": "auth != null", ".write": "auth != null" },
     "frota":                { ".read": "auth != null", ".write": "auth != null" },
