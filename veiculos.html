@@ -5645,5 +5645,26 @@ startCron();
 </div>
 
 </div><!-- /app -->
+<script>
+/* GUARDA ADITIVA: existe sessão local (sessao_global) mas o Firebase não tem usuário logado
+   (login do Firebase perdido). Nesse caso as leituras do banco e as Cloud Functions são
+   recusadas e as telas ficam vazias; então refaz o login pelo portal. Não altera nada
+   para quem está com o login do Firebase válido. */
+(function(){
+  try{
+    if(!localStorage.getItem('sessao_global')) return;
+    if(!window.firebase || !firebase.auth || !firebase.apps || !firebase.apps.length) return;
+    var _resolvido = false;
+    firebase.auth().onAuthStateChanged(function(u){
+      if(_resolvido) return;
+      _resolvido = true;
+      if(u) return;
+      console.warn('Sessão local sem login no Firebase — refazendo login pelo portal.');
+      try{ localStorage.removeItem('sessao_global'); }catch(e){}
+      location.replace('porta.html');
+    });
+  }catch(e){ console.warn('Guarda de sessão Firebase não executada:', e); }
+})();
+</script>
 </body>
 </html>

@@ -447,29 +447,7 @@
   const firebaseConfig = carregarFirebaseConfig();
   firebase.initializeApp(firebaseConfig);
 
-  // Autenticação anônima (mesmo padrão dos outros módulos — regras exigem auth != null)
-  try {
-    if (firebase.auth && !firebase.auth().currentUser) {
-      firebase.auth().signInAnonymously().catch(function(e){
-        console.warn('Autenticação anônima falhou:', e && e.message);
-      });
-    }
-  } catch(e) { console.warn('SDK de autenticação indisponível:', e); }
-
   const db = firebase.database();
-  // ── ESPERA O LOGIN DO FIREBASE ANTES DE LER/GRAVAR ──────────────────────
-  // Corrige corrida: leituras disparadas antes do login anônimo terminar eram
-  // negadas pelas regras (auth != null) e os listeners não voltavam sozinhos
-  // (telas vazias / login falhando). Segura a conexão até o Firebase autenticar;
-  // se a autenticação não responder em 6s, libera mesmo assim (comportamento antigo).
-  (function(_d){
-    try {
-      _d.goOffline();
-      var _on = false, _go = function(){ if(_on) return; _on = true; try{ _d.goOnline(); }catch(e){} };
-      firebase.auth().onAuthStateChanged(function(u){ if(u) _go(); });
-      setTimeout(_go, 6000);
-    } catch(e) { try{ _d.goOnline(); }catch(_){} }
-  })(db);
 
   db.ref('config/personalizacao').once('value').then(function(snap) {
     const cfg = snap.val();
@@ -846,6 +824,27 @@
     } catch (e) { mostrarNotificacao('❌ ERRO: ' + e.message, 'error'); }
   }
   window.ajustarContadorManual = ajustarContadorManual;
+</script>
+<script>
+/* GUARDA ADITIVA: existe sessão local (sessao_global) mas o Firebase não tem usuário logado
+   (login do Firebase perdido). Nesse caso as leituras do banco e as Cloud Functions são
+   recusadas e as telas ficam vazias; então refaz o login pelo portal. Não altera nada
+   para quem está com o login do Firebase válido. */
+(function(){
+  try{
+    if(!localStorage.getItem('sessao_global')) return;
+    if(!window.firebase || !firebase.auth || !firebase.apps || !firebase.apps.length) return;
+    var _resolvido = false;
+    firebase.auth().onAuthStateChanged(function(u){
+      if(_resolvido) return;
+      _resolvido = true;
+      if(u) return;
+      console.warn('Sessão local sem login no Firebase — refazendo login pelo portal.');
+      try{ localStorage.removeItem('sessao_global'); }catch(e){}
+      location.replace('porta.html');
+    });
+  }catch(e){ console.warn('Guarda de sessão Firebase não executada:', e); }
+})();
 </script>
 </body>
 </html>
