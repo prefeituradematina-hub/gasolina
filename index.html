@@ -4588,7 +4588,7 @@
     </p>
 
     <!-- Cadastro de nova autorização -->
-    <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
+    <div id="cpfaut-card-nova" style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
       <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--primary);">➕ NOVA AUTORIZAÇÃO</h4>
       <div class="grid-form">
         <div>
@@ -6283,6 +6283,11 @@
     document.getElementById('edit-cpfaut-veiculo').value = a.veiculo || '';
     document.getElementById('edit-cpfaut-status').value = a.status || 'Ativo';
     document.getElementById('edit-cpfaut-obs').value = a.observacao || '';
+    // ADITIVO: quem não gerencia CPFs (administrador) só pode alterar a placa
+    const _soPlacaModal = !_podeGerenciarCPFAut();
+    ['edit-cpfaut-cpf','edit-cpfaut-nome','edit-cpfaut-secretaria','edit-cpfaut-status','edit-cpfaut-obs'].forEach(function(i){
+      const el = document.getElementById(i); if (el) el.disabled = _soPlacaModal;
+    });
     document.getElementById('modal-edit-cpfautorizado').style.display = 'flex';
   }
   
@@ -6291,16 +6296,61 @@
   }
   
   // Salva as alterações feitas no modal de edição.
+  // ADITIVO: quem gerencia CPFs autorizados (como antes) = master ou permissão 'gerenciar_usuarios'.
+  function _podeGerenciarCPFAut() {
+    return loginUser === 'master' || temPermissao('gerenciar_usuarios');
+  }
+  // ADITIVO: o administrador também pode corrigir a PLACA vinculada a um CPF autorizado.
+  function _podeEditarPlacaCPFAut() {
+    return _podeGerenciarCPFAut() || userRole === 'admin';
+  }
+  function _placaExisteNoCadastro(placa) {
+    const n = normPlaca(placa);
+    return !!n && (veiculos || []).some(v => normPlaca(v.placa) === n);
+  }
+  // Salva SOMENTE o campo veículo (placa) — usado pelo administrador sem 'gerenciar_usuarios'.
+  function _salvarSomentePlacaCPFAutorizado(id) {
+    const a = cpfAutorizadosCache.find(x => x.id === id);
+    if (!id || !a) { mostrarNotificacao("❌ AUTORIZAÇÃO NÃO ENCONTRADA!", "error"); return; }
+    const nova = (document.getElementById('edit-cpfaut-veiculo').value || '').trim().toUpperCase();
+    const anterior = a.veiculo || '';
+    if (normPlaca(nova) === normPlaca(anterior)) {
+      mostrarNotificacao("ℹ️ NENHUMA ALTERAÇÃO NA PLACA.", "info");
+      fecharModalEditCPFAutorizado();
+      return;
+    }
+    if (nova && !_placaExisteNoCadastro(nova)) {
+      mostrarNotificacao("❌ PLACA NÃO ENCONTRADA NO CADASTRO DE VEÍCULOS! Escolha uma placa cadastrada.", "error");
+      return;
+    }
+    db.ref('cpfAutorizados/' + id).update({ veiculo: nova }).then(() => {
+      registrarAuditoria('CPF_AUTORIZADO_PLACA_EDITADA', { id: id, cpf: a.cpf || '', veiculoAnterior: anterior, veiculo: nova });
+      mostrarNotificacao("✅ PLACA DA AUTORIZAÇÃO ATUALIZADA!", "success");
+      fecharModalEditCPFAutorizado();
+    }).catch(err => {
+      console.error('Erro ao editar placa do CPF autorizado:', err);
+      mostrarNotificacao("❌ ERRO AO ATUALIZAR PLACA! " + (err && err.message ? err.message : ''), "error");
+    });
+  }
+
   function salvarEdicaoCPFAutorizado() {
-    if (!temPermissao('gerenciar_usuarios') && loginUser !== 'master') {
+    if (!_podeEditarPlacaCPFAut()) {
       mostrarNotificacao("❌ SEM PERMISSÃO PARA GERENCIAR CPF AUTORIZADOS!", "error");
       return;
     }
     const id = document.getElementById('edit-cpfaut-id').value;
+    if (!_podeGerenciarCPFAut()) { _salvarSomentePlacaCPFAutorizado(id); return; }
     const cpf = document.getElementById('edit-cpfaut-cpf').value.trim();
     const nome = document.getElementById('edit-cpfaut-nome').value.trim().toUpperCase();
     const secretaria = document.getElementById('edit-cpfaut-secretaria').value;
     const veiculo = document.getElementById('edit-cpfaut-veiculo').value;
+    {
+      const _antCpfAut = cpfAutorizadosCache.find(x => x.id === id);
+      if (veiculo && normPlaca(veiculo) !== normPlaca(_antCpfAut && _antCpfAut.veiculo) && !_placaExisteNoCadastro(veiculo)) {
+        mostrarNotificacao("❌ PLACA NÃO ENCONTRADA NO CADASTRO DE VEÍCULOS! Escolha uma placa cadastrada.", "error");
+        return;
+      }
+    }
     const status = document.getElementById('edit-cpfaut-status').value;
     const observacao = document.getElementById('edit-cpfaut-obs').value.trim();
     
@@ -6968,7 +7018,7 @@
       (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
     
     document.getElementById('btn-tab-cpfautorizados').style.display = 
-      (loginUser === 'master' || temPermissao('gerenciar_usuarios')) ? 'block' : 'none';
+      (loginUser === 'master' || temPermissao('gerenciar_usuarios') || userRole === 'admin') ? 'block' : 'none';
     
     document.getElementById('btn-tab-notas').style.display = 
       (temPermissao('acessar_notas')) ? 'block' : 'none';
@@ -15596,6 +15646,13 @@
       document.getElementById('btn-tab-cpfautorizados').classList.add('active');
       popularVeiculosCPFAutorizado('cpfaut-veiculo');
       popularVeiculosCPFAutorizado('edit-cpfaut-veiculo');
+      // ADITIVO: administrador sem 'gerenciar_usuarios' só edita a placa (esconde cadastro novo, ativar/inativar e excluir)
+      try {
+        const _ger = _podeGerenciarCPFAut();
+        const _novo = document.getElementById('cpfaut-card-nova');
+        if (_novo) _novo.style.display = _ger ? '' : 'none';
+        document.body.classList.toggle('cpfaut-so-placa', !_ger);
+      } catch (e) {}
       renderCPFAutorizados();
     } else if (tab === 'notas') {
       document.getElementById('tab-notas').style.display = 'block';
@@ -22197,6 +22254,11 @@ entrar = function(u, role, limit, sec, dadosExtras){
   }, 300);
 })();
 </script>
+<style>
+/* ADITIVO: administrador (sem 'gerenciar_usuarios') só edita a placa em CPF autorizados */
+body.cpfaut-so-placa #tab-cpfautorizados tbody button[onclick^="alternarStatusCPFAutorizado"],
+body.cpfaut-so-placa #tab-cpfautorizados tbody button[onclick^="excluirCPFAutorizado"] { display: none !important; }
+</style>
 <script>
 /* GUARDA ADITIVA: existe sessão local (sessao_global) mas o Firebase não tem usuário logado
    (login do Firebase perdido). Nesse caso as leituras do banco e as Cloud Functions são
