@@ -7405,7 +7405,7 @@
 
     const fonte = (typeof cacheCompleto === 'function') ? cacheCompleto() : cache;
     const ult = (fonte || [])
-      .filter(x => x && normPlaca(x.placa) === placa && (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) && Number(x.km) > 0)
+      .filter(x => x && normPlaca(x.placa) === placa && (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) && Number(x.km) > 0 && Number(x.km) < 10000000)  // ignora KM absurdo (erro de digitação com 8+ dígitos)
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
 
     box.style.display = 'block';
