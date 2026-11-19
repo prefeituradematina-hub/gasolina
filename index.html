@@ -7411,30 +7411,34 @@
       box.appendChild(document.createTextNode('⏳ Última KM indisponível: os abastecimentos ainda não foram carregados.'));
       return;
     }
+    const LIMITE_KM_REAL = 10000000; // 8+ dígitos = hodômetro impossível (erro de digitação)
+    const fmt = k => (Number(k) >= 1e15 ? String(k) : Number(k).toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+    const quandoDe = r => (r.timestamp ? new Date(r.timestamp).toLocaleDateString('pt-BR') : (r.data || ''));
+    const sufixo = r => (r.status === STATUS.AGUARDANDO ? ' · aguardando autorização' : '');
+    const linha = (texto, css) => { const d = document.createElement('div'); d.style.cssText = css || ''; d.textContent = texto; box.appendChild(d); return d; };
+
+    // Registros do veículo (autorizados ou aguardando), do mais recente para o mais antigo
     const doVeiculo = fonte
       .filter(x => x && normPlaca(x.placa) === placa && (x.status === STATUS.AUTORIZADO || x.status === STATUS.AGUARDANDO) && Number(x.km) > 0)
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    // Registro mais recente do veículo (a última KM digitada). KM absurdo (8+ dígitos) é erro de digitação:
-    // não é exibido como valor — avisa e mostra o anterior válido.
-    const ultimoDigitado = doVeiculo[0];
-    const ult = doVeiculo.find(x => Number(x.km) < 10000000);
-    if (ultimoDigitado && ultimoDigitado !== ult) {
-      const aviso = document.createElement('div');
-      aviso.style.cssText = 'font-size:11px; color:#b91c1c;';
-      aviso.textContent = '⚠️ O registro mais recente deste veículo tem KM inválido (' + String(ultimoDigitado.km).slice(0, 12) + '). Peça para corrigir.';
-      box.appendChild(aviso);
-    }
-    if (!ult) {
-      box.appendChild(document.createTextNode('ℹ️ Nenhuma quilometragem anterior registrada'));
+    const ultimo = doVeiculo[0];   // = a última KM digitada para este veículo
+    if (!ultimo) { linha('ℹ️ Nenhuma quilometragem anterior registrada'); return; }
+
+    const plausivel = Number(ultimo.km) < LIMITE_KM_REAL;
+    if (plausivel) {
+      linha('📍 Última KM registrada: ' + fmt(ultimo.km) + ' km');
+      linha(('em ' + quandoDe(ultimo) + sufixo(ultimo)).trim(), 'font-size:10px; font-weight:normal; color:#475569;');
       return;
     }
-    const kmTxt = Number(ult.km).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-    box.appendChild(document.createTextNode('📍 Última KM registrada: ' + kmTxt + ' km'));
-    const detalhe = document.createElement('div');
-    detalhe.style.cssText = 'font-size:10px; font-weight:normal; color:#475569;';
-    const quando = ult.timestamp ? new Date(ult.timestamp).toLocaleDateString('pt-BR') : (ult.data || '');
-    detalhe.textContent = (quando ? 'em ' + quando : '') + (ult.status === STATUS.AGUARDANDO ? ' · aguardando autorização' : '');
-    if (detalhe.textContent) box.appendChild(detalhe);
+    // A última KM digitada é impossível: mostra o que foi digitado, avisa, e informa a última KM válida anterior (se houver)
+    linha('⚠️ Última KM digitada (provável erro): ' + fmt(ultimo.km) + ' km', 'color:#b91c1c;');
+    linha(('em ' + quandoDe(ultimo) + sufixo(ultimo)).trim(), 'font-size:10px; font-weight:normal; color:#475569;');
+    const anterior = doVeiculo.find(x => Number(x.km) < LIMITE_KM_REAL);
+    if (anterior) {
+      linha('📍 Última KM válida: ' + fmt(anterior.km) + ' km (' + quandoDe(anterior) + sufixo(anterior) + ')', 'margin-top:4px;');
+    } else {
+      linha('ℹ️ Nenhuma KM válida anterior registrada', 'margin-top:4px;');
+    }
   }
   window.mostrarUltimaKmDestaque = mostrarUltimaKmDestaque;
   (function ligarUltimaKmDestaque() {
