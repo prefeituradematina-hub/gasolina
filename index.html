@@ -3768,6 +3768,8 @@
               <th>MOTORISTA</th>
               <th>CPF</th>
               <th>DESTINO</th>
+              <th>KM DIGITADA</th>
+              <th>KM ANTERIOR</th>
               <th>COMBUSTÍVEL</th>
               <th>LITROS</th>
               <th>VALOR</th>
@@ -8870,6 +8872,7 @@
       
       await db.ref('abastecimentos').push({
         ...dados,
+        ...camposKmParaGravar(dados.placa, dados.km),
         status: status,
         solicitadoPor: loginUser.toUpperCase(),
         timestamp: Date.now(),
@@ -11587,6 +11590,77 @@
       `).join('');
   }
 
+  // ── KM DIGITADA × KM ANTERIOR (aditivo) ─────────────────────────────────────────
+  // Ajuda o administrador a autorizar com a quilometragem à vista. Só INFORMA: não bloqueia,
+  // não altera nem rejeita nada. 8+ dígitos = hodômetro impossível (erro de digitação).
+  const LIMITE_KM_PLAUSIVEL = 10000000;
+  function formatarKmPendente(k) {
+    const n = Number(k);
+    if (!isFinite(n)) return String(k);
+    return n >= 1e15 ? String(k) : n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  }
+  // Agrupa uma vez por placa os registros (autorizados ou aguardando) com KM > 0, do mais recente ao mais antigo.
+  function montarIndiceKmPorPlaca() {
+    const fonte = (typeof cacheCompleto === 'function') ? cacheCompleto() : cache;
+    const idx = {};
+    (fonte || []).forEach(x => {
+      if (!x || !(Number(x.km) > 0)) return;
+      if (x.status !== STATUS.AUTORIZADO && x.status !== STATUS.AGUARDANDO) return;
+      const pl = normPlaca(x.placa);
+      if (!pl) return;
+      (idx[pl] = idx[pl] || []).push(x);
+    });
+    Object.keys(idx).forEach(pl => idx[pl].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+    return idx;
+  }
+  // Última KM VÁLIDA anterior a um registro (ou a "agora", se não houver registro de referência).
+  function kmAnteriorValido(placa, idx, antesDeTimestamp, ignorarId) {
+    const lista = (idx || {})[normPlaca(placa)] || [];
+    return lista.find(r => (!ignorarId || r.id !== ignorarId) &&
+                           (antesDeTimestamp == null || (r.timestamp || 0) < antesDeTimestamp) &&
+                           Number(r.km) < LIMITE_KM_PLAUSIVEL) || null;
+  }
+  // Duas <td> (KM DIGITADA e KM ANTERIOR) para a linha da tabela de pendentes.
+  function celulasKmPendente(d, idx) {
+    const km = Number(d.km);
+    const ant = kmAnteriorValido(d.placa, idx, d.timestamp || null, d.id);
+    const kmAnt = ant ? Number(ant.km) : (Number(d.kmAnterior) > 0 ? Number(d.kmAnterior) : null);
+    const avisos = [];
+    let cor = '';
+    if (!(km > 0)) {
+      avisos.push('⚠️ SEM KM'); cor = 'color:#b45309;';
+    } else if (km >= LIMITE_KM_PLAUSIVEL) {
+      avisos.push('🚨 KM IMPOSSÍVEL (erro de digitação)'); cor = 'color:#b91c1c;font-weight:700;';
+    } else if (kmAnt != null) {
+      if (km < kmAnt) { avisos.push('🚨 MENOR QUE A ANTERIOR'); cor = 'color:#b91c1c;font-weight:700;'; }
+      else if (km === kmAnt) { avisos.push('⚠️ IGUAL À ANTERIOR'); cor = 'color:#b45309;font-weight:700;'; }
+      else { avisos.push('+' + formatarKmPendente(km - kmAnt) + ' km rodados'); }
+    } else {
+      avisos.push('ℹ️ 1º registro'); 
+    }
+    const cel1 = '<td style="' + cor + '">' + (km > 0 ? '<b>' + formatarKmPendente(km) + '</b>' : '---') +
+      avisos.map(a => '<div style="font-size:10px;font-weight:600;">' + a + '</div>').join('') + '</td>';
+    let cel2 = '<td>---</td>';
+    if (kmAnt != null) {
+      const quando = ant && ant.timestamp ? new Date(ant.timestamp).toLocaleDateString('pt-BR') : '';
+      const aguard = ant && ant.status === STATUS.AGUARDANDO ? ' · aguardando' : '';
+      cel2 = '<td><b>' + formatarKmPendente(kmAnt) + '</b>' +
+        (quando ? '<div style="font-size:10px;color:#64748b;">' + quando + aguard + '</div>' : '') + '</td>';
+    }
+    return cel1 + cel2;
+  }
+  // Campos gravados nos NOVOS abastecimentos: KM anterior válida e KM rodados desde ela.
+  function camposKmParaGravar(placa, kmDigitado) {
+    try {
+      const ant = kmAnteriorValido(placa, montarIndiceKmPorPlaca(), null, null);
+      if (!ant) return {};
+      const campos = { kmAnterior: Number(ant.km) };
+      const km = Number(kmDigitado);
+      if (km > 0 && km < LIMITE_KM_PLAUSIVEL && km >= campos.kmAnterior) campos.kmRodados = km - campos.kmAnterior;
+      return campos;
+    } catch (e) { console.warn('KM anterior não calculado:', e); return {}; }
+  }
+
   function atualizarPendentes() {
     const pendentesTotais = filtrarCachePorPosto(cache.filter(x => x.status === STATUS.AGUARDANDO));
     // ADITIVO (diagnóstico): mostra no console quantos pendentes existem e se este usuário pode autorizar
@@ -11629,10 +11703,11 @@
     
     if (pendentes.length === 0) {
       tbody.innerHTML = filtroPostoPendentes
-        ? `<tr><td colspan="13" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE EM ${filtroPostoPendentes}</td></tr>`
-        : '<tr><td colspan="12" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
+        ? `<tr><td colspan="15" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE EM ${filtroPostoPendentes}</td></tr>`
+        : '<tr><td colspan="15" style="text-align:center; padding:40px;">✅ NENHUMA SOLICITAÇÃO PENDENTE</td></tr>';
       return;
     }
+    const _idxKmPendentes = montarIndiceKmPorPlaca();
     tbody.innerHTML = pendentes.map(d => `
       <tr>
         <td>${d.data.split('-').reverse().join('/')}</td>
@@ -11648,6 +11723,7 @@
         <td>${d.motorista}</td>
         <td>${d.cpf || d.cpfBeneficiado || '---'}</td>
         <td>${d.destino || '---'}</td>
+        ${celulasKmPendente(d, _idxKmPendentes)}
         <td>${d.tipo}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : (formatarLitros(d.litro))}</td>
         <td>${d.tanqueCheio ? '<em>Pendente</em>' : ('R$ ' + formatarMoeda(d.valor))}</td>
