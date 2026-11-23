@@ -1268,6 +1268,25 @@ setTimeout(function(){
 
 // ── FIREBASE — banco compartilhado com o sistema de gasolina ──
 var fbDB = null, _fbUltimoPush = 0, _fbInicializado = false;
+// Releitura de segurança: o listener de frota/dados descarta atualizações que chegam até
+// 4 s depois de uma gravação própria (e durante o registro de entrada). Antes, o que
+// chegava nessa janela era perdido e o navegador ficava com dados velhos até a próxima
+// mudança de outra pessoa — e a próxima gravação daqui apagava o lançamento do outro.
+// Agora, ao fim da janela, o estado atual é relido e aplicado pelo MESMO tratamento.
+var _frotaSnapHandler = null, _releituraFrotaTimer = null, _releituraFrotaTentativas = 0;
+function _agendarReleituraFrota(){
+  if(_releituraFrotaTimer || !fbDB || !_frotaSnapHandler) return;
+  var espera = Math.max(400, 4300 - (Date.now() - _fbUltimoPush));
+  _releituraFrotaTimer = setTimeout(function(){
+    _releituraFrotaTimer = null;
+    if(Date.now() - _fbUltimoPush < 4000 || window._entradaEmAndamento){
+      if(++_releituraFrotaTentativas > 8){ _releituraFrotaTentativas = 0; return; }
+      _agendarReleituraFrota(); return;
+    }
+    _releituraFrotaTentativas = 0;
+    fbDB.ref('frota/dados').once('value').then(function(snap){ _frotaSnapHandler(snap); }).catch(function(e){ console.warn('[Sync] Releitura falhou:', e); });
+  }, espera);
+}
 // Fase 3: configuração do Firebase vem de firebase-config.json (se existir), com fallback total.
 function carregarFirebaseConfig(){
   var fallback = {
@@ -1345,7 +1364,7 @@ if(fbDB){
 
   carregarNotasCompartilhadas();
 
-  fbDB.ref('frota/dados').on('value', function(snap){
+  fbDB.ref('frota/dados').on('value', _frotaSnapHandler = function(snap){
     _fbPrimeiraLeitura = true;
     var val = snap.val();
     if(!val){
@@ -1366,8 +1385,8 @@ if(fbDB){
     }
     _fbInicializado = true;
     setFbStatus('sincronizado');
-    if(D.veiculos.length > 0 && Date.now() - _fbUltimoPush < 4000) return;
-    if(window._entradaEmAndamento) return;
+    if(D.veiculos.length > 0 && Date.now() - _fbUltimoPush < 4000){ _agendarReleituraFrota(); return; }
+    if(window._entradaEmAndamento){ _agendarReleituraFrota(); return; }
     var _novo = normalizarFB(val);
     if(_novo.veiculos.length === 0 && D.veiculos.length > 0) {
       console.warn('Firebase retornou veiculos[] vazio — ignorado');
@@ -1396,8 +1415,8 @@ if(fbDB){
     } catch(e) { console.warn('[Sync] Falha ao preservar entradas locais:', e); }
 
     D = _novo;
-    localStorage.setItem('frota_v3', JSON.stringify(D));
-    if(_sessao && typeof renderTudo === 'function') renderTudo();
+    _gravarCacheFrotaAdiado();
+    if(_sessao && typeof _renderRemotoAgrupado === 'function') _renderRemotoAgrupado();
   }, function(err){
     console.error('Erro de leitura do Firebase — usando cache local:', err);
     if(_ehErroPermissao(err)){
@@ -1495,8 +1514,30 @@ function getAus(id) { return D.ausencias.find(function(a){return a.id===id;}); }
 // registrar a entrada da viagem de hoje o veículo voltava a "irregular",
 // parecendo que a entrada não tinha sido salva.
 // Agora devolve sempre a MAIS RECENTE em aberto, que é a viagem de fato em curso.
+// DESEMPENHO (aditivo): durante UMA renderização (renderTudo) os dados não mudam, mas
+// getStatus() era chamado várias vezes por veículo e cada chamada varria TODAS as
+// movimentações e solicitações (veículos × solicitações × movimentações). Dentro de
+// renderTudo os índices abaixo são montados uma vez e descartados no fim; fora dela
+// (salvar, confirmar saída etc.) tudo continua sendo calculado direto dos dados, como antes.
+var _idxAtivo = false, _idxAbertas = null, _idxSaidas = null, _idxSols = null;
+function _movsAbertasDe(vid){
+  if(!_idxAtivo) return D.movimentacoes.filter(function(m){ return m.vid===vid && !m.entrada_real; });
+  if(!_idxAbertas){
+    _idxAbertas = {};
+    D.movimentacoes.forEach(function(m){ if(m && !m.entrada_real){ (_idxAbertas[m.vid] = _idxAbertas[m.vid] || []).push(m); } });
+  }
+  return _idxAbertas[vid] || [];
+}
+function _solsDe(vid){
+  if(!_idxAtivo) return D.solicitacoes;
+  if(!_idxSols){
+    _idxSols = {};
+    D.solicitacoes.forEach(function(x){ if(x){ (_idxSols[x.vid] = _idxSols[x.vid] || []).push(x); } });
+  }
+  return _idxSols[vid] || [];
+}
 function getMovAtiva(vid) {
-  var abertas = D.movimentacoes.filter(function(m){ return m.vid===vid && !m.entrada_real; });
+  var abertas = _movsAbertasDe(vid);
   if(!abertas.length) return null;
   if(abertas.length === 1) return abertas[0];
   return abertas.slice().sort(function(a,b){
@@ -1624,6 +1665,13 @@ function solicitacaoJaSaiu(s){
   if(s.saida_registrada) return true;
   var d = s.data_viagem ? String(s.data_viagem).slice(0,10) : '';
   if(!d) return false;
+  if(_idxAtivo){
+    if(!_idxSaidas){
+      _idxSaidas = {};
+      (D.movimentacoes||[]).forEach(function(m){ if(m && m.saida) _idxSaidas[m.vid+'|'+String(m.saida).slice(0,10)] = true; });
+    }
+    return _idxSaidas[s.vid+'|'+d] === true;
+  }
   return (D.movimentacoes||[]).some(function(m){
     return m.vid===s.vid && m.saida && String(m.saida).slice(0,10)===d;
   });
@@ -1631,7 +1679,7 @@ function solicitacaoJaSaiu(s){
 function getSolicitacaoLiberada(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
-  return D.solicitacoes.find(function(s){
+  return _solsDe(vid).find(function(s){
     if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
     if(!s.data_viagem) return true;
     return s.data_viagem.slice(0,10) === hoje;
@@ -1640,14 +1688,14 @@ function getSolicitacaoLiberada(vid) {
 
 function getSolicitacaoPendente(vid) {
   if(!D.solicitacoes) return null;
-  return D.solicitacoes.find(function(s){
+  return _solsDe(vid).find(function(s){
     return s.vid===vid && s.status==='pendente';
   }) || null;
 }
 function getSolicitacaoAprovadaFutura(vid) {
   if(!D.solicitacoes) return null;
   var hoje = now().toISOString().slice(0,10);
-  return D.solicitacoes.find(function(s){
+  return _solsDe(vid).find(function(s){
     if(s.vid!==vid || s.status!=='aprovada' || solicitacaoJaSaiu(s)) return false;
     if(!s.data_viagem) return false;
     return s.data_viagem.slice(0,10) > hoje;
@@ -2975,6 +3023,10 @@ function abrirSaida(vid) {
         document.getElementById('s-pass').value = qp;
       }
       document.getElementById('s-solic').value = solAp.solicitante || '';
+      // A secretaria que solicitou passa a constar na saída (antes ficava vazia e a viagem
+      // caía na secretaria cadastrada no veículo — invisível para quem solicitou um
+      // veículo compartilhado/emprestado). O administrador ainda pode trocar o campo.
+      if(solAp.sec){ var _selSecSol = document.getElementById('s-sec'); if(_selSecSol) _selSecSol.value = solAp.sec; }
     } catch(erroPreFill) {
       console.error('⚠️ Erro ao pré-preencher dados da solicitação liberada (a tela de saída abre normalmente mesmo assim):', erroPreFill);
     }
@@ -3124,7 +3176,7 @@ function confirmarSaida() {
     D.movimentacoes.push({
       id:uid('m'), vid:vid, motid:motid, motorista:motNome,
       solic:document.getElementById('s-solic').value.trim(),
-      sec:document.getElementById('s-sec').value,
+      sec:document.getElementById('s-sec').value || ((getSolicitacaoLiberada(vid)||{}).sec) || '',
       km_saida:parseInt(document.getElementById('s-km').value)||null,
       km_entrada:null, pass:pass, com_pass:comPass,
       saida:saida, retorno:ret, entrada_real:null, destino:dest, abast:[],
@@ -4681,6 +4733,13 @@ function _temEmprestimoAtivoParaMinhaSecretaria(v) {
     return true;
   });
 }
+// Compara secretarias ignorando maiúsculas/minúsculas e espaços nas pontas — a MESMA
+// normalização que _podeVerRegistro já usa. Antes, Solicitações, o contador e Caronas
+// comparavam o texto exato e escondiam a solicitação do próprio secretário por diferença
+// mínima de grafia.
+function _mesmaSec(a, b) {
+  return String(a||'').trim().toLowerCase() === String(b||'').trim().toLowerCase();
+}
 function _podeVerRegistro(reg) {
   if(!isSecretario()) return true;
   if(!_sessao) return false;
@@ -4844,7 +4903,7 @@ function viagensComVaga(){
 function caronasVisiveis(){
   var minha = _sessao ? (_sessao.secretaria||'') : '';
   return viagensComVaga().filter(function(s){
-    return veTudo() || (s.sec||'') !== minha;
+    return veTudo() || !_mesmaSec(s.sec, minha);
   }).sort(function(a,b){ return String(a.data_viagem||'').localeCompare(String(b.data_viagem||'')); });
 }
 
@@ -5187,7 +5246,7 @@ function renderSolicitacoes() {
   if(!el) return;
   var sols = (D.solicitacoes||[]).filter(function(s){
     if(veTudo()) return true;
-    return s.sec === (_sessao?_sessao.secretaria:'');
+    return _mesmaSec(s.sec, _sessao?_sessao.secretaria:'');
   }).slice().reverse();
   if(!sols.length) { el.innerHTML='<div class="empty">Nenhuma solicitação.</div>'; return; }
   el.innerHTML = sols.map(function(s){
@@ -5427,6 +5486,8 @@ function atualizarBadgeCaronas(){
 }
 
 function renderTudo() {
+  _idxAtivo = true; _idxAbertas = _idxSaidas = _idxSols = null;
+  try {
   renderPainel();
   renderSaidas();
   renderAgendamentos();
@@ -5441,7 +5502,51 @@ function renderTudo() {
   atualizarBadgeSolicitacoes();
   renderCaronas();
   atualizarBadgeCaronas();
+  } finally { _idxAtivo = false; _idxAbertas = _idxSaidas = _idxSols = null; }
 }
+
+// ── ATUALIZAÇÃO VINDA DO BANCO (outro usuário gravou) ─────────────────────────
+// Antes: cada mudança de qualquer pessoa redesenhava as 13 áreas, inclusive abas
+// escondidas, e regravava o bloco inteiro no localStorage na hora. Agora:
+//  • várias atualizações seguidas viram um único redesenho (≈120 ms);
+//  • só a aba aberta é redesenhada (as outras são redesenhadas ao abrir — aba() já
+//    chama renderTudo()); os contadores/alerta sonoro de solicitações continuam sempre;
+//  • o cache local é gravado depois, protegido contra erro de cota.
+var _renderRemotoTimer = null, _cacheFrotaTimer = null;
+function _renderRemotoAgrupado(){
+  if(_renderRemotoTimer) return;
+  _renderRemotoTimer = setTimeout(function(){
+    _renderRemotoTimer = null;
+    if(!_sessao) return;
+    var ativa = document.querySelector('.section.active');
+    var id = ativa ? String(ativa.id).replace('aba-','') : 'painel';
+    var mapa = { painel:renderPainel, saidas:renderSaidas, agendamentos:renderAgendamentos,
+      solicitacoes:renderSolicitacoes, motoristas:renderMotoristas, manutencao:renderManutencao,
+      veiculos:renderVeiculos, relatorio:renderRelatorio, indicadores:renderIndicadores,
+      backup:renderBackup, usuarios:renderUsuarios, caronas:renderCaronas };
+    if(!mapa[id]){ renderTudo(); return; }   // aba desconhecida (ex.: notas): comportamento antigo
+    _idxAtivo = true; _idxAbertas = _idxSaidas = _idxSols = null;
+    try {
+      mapa[id]();
+      atualizarBadgeSolicitacoes();
+      atualizarBadgeCaronas();
+    } finally { _idxAtivo = false; _idxAbertas = _idxSaidas = _idxSols = null; }
+  }, 120);
+}
+function _gravarCacheFrotaAdiado(){
+  if(_cacheFrotaTimer) return;
+  _cacheFrotaTimer = setTimeout(function(){
+    _cacheFrotaTimer = null;
+    try { localStorage.setItem('frota_v3', JSON.stringify(D)); }
+    catch(e){ console.warn('[Cache] Não foi possível gravar o cache local:', e); }
+  }, 1500);
+}
+window.addEventListener('pagehide', function(){
+  if(_cacheFrotaTimer){
+    clearTimeout(_cacheFrotaTimer); _cacheFrotaTimer = null;
+    try { localStorage.setItem('frota_v3', JSON.stringify(D)); } catch(e){}
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════
 // ALERTA DE NOVA SOLICITAÇÃO (aditivo)
@@ -5502,7 +5607,7 @@ function atualizarBadgeSolicitacoes() {
   var n = (D.solicitacoes||[]).filter(function(s){
     if(s.status !== 'pendente') return false;
     if(veTudo()) return true;
-    return s.sec === (_sessao ? _sessao.secretaria : '');
+    return _mesmaSec(s.sec, _sessao ? _sessao.secretaria : '');
   }).length;
   if(n > 0){ b.textContent = n > 99 ? '99+' : n; b.style.display = 'inline-flex'; }
   else { b.style.display = 'none'; }

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico da Frota</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+<style>
+  body{font-family:'Segoe UI',sans-serif;background:#f1f5f9;margin:0;padding:16px;color:#1e293b}
+  .box{max-width:900px;margin:0 auto;background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb}
+  h1{font-size:18px;margin:0 0 4px}
+  .linha{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:14px;border-left:5px solid #94a3b8;background:#f8fafc;word-break:break-word;white-space:pre-wrap}
+  .ok{border-color:#22c55e;background:#f0fdf4}
+  .erro{border-color:#ef4444;background:#fef2f2}
+  .aviso{border-color:#f59e0b;background:#fffbeb}
+  table{border-collapse:collapse;width:100%;font-size:12px;margin-top:6px}
+  td,th{border:1px solid #e2e8f0;padding:4px 6px;text-align:left}
+  button{padding:12px 20px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-weight:bold;cursor:pointer;margin:10px 8px 0 0}
+  .conclusao{margin-top:16px;padding:14px;border-radius:10px;background:#0f172a;color:#fff;font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🩺 Diagnóstico da Frota (solicitações, viagens e tamanho dos dados)</h1>
+  <div style="font-size:12px;color:#64748b">Somente leitura — não grava nada e não faz login. Abra no mesmo navegador em que você está logado no sistema, com este arquivo na mesma pasta do veiculos.html.</div>
+  <button onclick="rodar()">▶ EXECUTAR</button>
+  <button onclick="copiar()" style="background:#0f766e">📋 COPIAR RESULTADO</button>
+  <div id="saida"></div>
+  <div id="conclusao"></div>
+</div>
+<script>
+function norm(s){ return String(s||'').trim().toLowerCase(); }
+
+// ── ANÁLISE (função pura: recebe o bloco frota/dados e devolve os achados) ──
+function arr(x){
+  if(!x) return [];
+  if(Array.isArray(x)) return x.filter(function(i){return i!=null;});
+  var o=[]; for(var k in x){ if(x[k]==null) continue; var it=x[k]; if(typeof it==='object'&&!it.id) it=Object.assign({},it,{id:k}); o.push(it); } return o;
+}
+function analisar(d, agora){
+  agora = agora || Date.now();
+  var vs=arr(d.veiculos), movs=arr(d.movimentacoes), sols=arr(d.solicitacoes), ags=arr(d.agendamentos), abs=arr(d.abastecimentos), cars=arr(d.caronas);
+  var vById={}; vs.forEach(function(v){ vById[v.id]=v; });
+  var r={contagem:{veiculos:vs.length,movimentacoes:movs.length,solicitacoes:sols.length,agendamentos:ags.length,abastecimentos:abs.length,caronas:cars.length}};
+  var json=JSON.stringify(d); r.tamanhoKB=Math.round(json.length/1024);
+  // solicitações
+  r.solPorStatus={}; sols.forEach(function(s){ r.solPorStatus[s.status||'?']=(r.solPorStatus[s.status||'?']||0)+1; });
+  r.solSemSec=sols.filter(function(s){ return !norm(s.sec); });
+  var secsVeic={}; vs.forEach(function(v){ if(norm(v.secretaria)) secsVeic[norm(v.secretaria)]=v.secretaria; });
+  r.solSecDesconhecida=sols.filter(function(s){ return norm(s.sec) && !secsVeic[norm(s.sec)]; });
+  // mesmo nome com grafia diferente (exata ≠ normalizada)
+  var grafias={}; sols.concat(movs).forEach(function(x){ var k=norm(x.sec); if(!k) return; (grafias[k]=grafias[k]||{})[x.sec]=1; });
+  vs.forEach(function(v){ var k=norm(v.secretaria); if(!k) return; (grafias[k]=grafias[k]||{})[v.secretaria]=1; });
+  r.grafiasDiferentes=Object.keys(grafias).filter(function(k){return Object.keys(grafias[k]).length>1;}).map(function(k){return Object.keys(grafias[k]);});
+  r.solVeiculoInexistente=sols.filter(function(s){ return !vById[s.vid]; });
+  // movimentações
+  var abertas=movs.filter(function(m){ return !m.entrada_real; });
+  r.movAbertas=abertas.length;
+  var porV={}; abertas.forEach(function(m){ (porV[m.vid]=porV[m.vid]||[]).push(m); });
+  r.veiculosComVariasAbertas=Object.keys(porV).filter(function(k){return porV[k].length>1;}).map(function(k){ var v=vById[k]; return {placa:v?v.placa:k, qtd:porV[k].length}; });
+  r.movOrfas=abertas.filter(function(m){ var t=new Date(m.retorno||m.saida||0).getTime(); return t && (agora-t) > 3*86400000; });
+  r.movSecDivergente=movs.filter(function(m){ var v=vById[m.vid]; return v && norm(m.sec) && norm(v.secretaria) && norm(m.sec)!==norm(v.secretaria); });
+  r.movSemSec=movs.filter(function(m){ return !norm(m.sec); }).length;
+  // solicitações abertas para veículo que está em viagem agora
+  r.solParaVeiculoEmViagem=sols.filter(function(s){ return (s.status==='pendente'||s.status==='aprovada') && porV[s.vid]; });
+  // custo: simula o cálculo de status que a tela faz (veículos × solicitações × movimentações)
+  var t0=(typeof performance!=='undefined'?performance.now():Date.now());
+  var ops=0;
+  vs.forEach(function(v){
+    sols.forEach(function(s){
+      if(s.vid!==v.id||s.status!=='aprovada') return;
+      var dd=s.data_viagem?String(s.data_viagem).slice(0,10):'';
+      movs.some(function(m){ ops++; return m.vid===s.vid && m.saida && String(m.saida).slice(0,10)===dd; });
+    });
+    movs.filter(function(m){ ops++; return m.vid===v.id && !m.entrada_real; });
+  });
+  r.custoMs=Math.round((typeof performance!=='undefined'?performance.now():Date.now())-t0); r.custoOps=ops;
+  return r;
+}
+if(typeof module!=='undefined') module.exports={analisar:analisar};
+
+// ── PÁGINA ──
+function cfg(){
+  var fb={apiKey:"AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",authDomain:"tabela-gasolina.firebaseapp.com",
+    databaseURL:"https://tabela-gasolina-default-rtdb.firebaseio.com",projectId:"tabela-gasolina"};
+  try{var x=new XMLHttpRequest();x.open('GET','firebase-config.json',false);x.send(null);
+    if(x.status===200){var c=JSON.parse(x.responseText);if(c&&c.apiKey&&c.databaseURL)return c;}}catch(e){}
+  return fb;
+}
+var saida, relatorio=[];
+function log(t,cls){ relatorio.push(t); var d=document.createElement('div'); d.className='linha '+(cls||''); d.textContent=t; saida.appendChild(d); }
+function tabela(cab,linhas){
+  relatorio.push(cab.join(' | ')); linhas.forEach(function(l){relatorio.push(l.join(' | '));});
+  var t=document.createElement('table'); t.innerHTML='<tr>'+cab.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr>';
+  linhas.forEach(function(l){var tr=document.createElement('tr');l.forEach(function(v){var td=document.createElement('td');td.textContent=String(v);tr.appendChild(td);});t.appendChild(tr);});
+  saida.appendChild(t);
+}
+function comTimeout(p,ms){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej({code:'TIMEOUT',message:'sem resposta em '+ms/1000+'s'});},ms);})]);}
+function copiar(){
+  var txt=relatorio.join('\n');
+  (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(function(){alert('Resultado copiado. Cole na conversa.');},function(){
+    var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');alert('Resultado copiado. Cole na conversa.');}catch(e){alert('Selecione o texto da página e copie manualmente.');}document.body.removeChild(ta);});
+}
+function primeiroEstado(){
+  return new Promise(function(res){
+    var feito=false, off=firebase.auth().onAuthStateChanged(function(u){ if(feito)return; feito=true; try{off();}catch(e){} res(u); });
+    setTimeout(function(){ if(feito)return; feito=true; res(firebase.auth().currentUser); },8000);
+  });
+}
+async function rodar(){
+  saida=document.getElementById('saida'); saida.innerHTML=''; relatorio=[]; document.getElementById('conclusao').innerHTML='';
+  if(!firebase.apps.length) firebase.initializeApp(cfg());
+  var u=await primeiroEstado();
+  if(!u){ log('1) Login no Firebase: NÃO HÁ USUÁRIO LOGADO neste navegador. Entre pelo porta.html e rode de novo.','erro'); finalizar('Sem login: não foi possível ler o banco.'); return; }
+  log('1) Login no Firebase: '+(u.isAnonymous?'ANÔNIMO':'conta '+(u.email||'(sem email)')),'ok');
+  var snap;
+  try{ var t0=Date.now(); snap=await comTimeout(firebase.database().ref('frota/dados').once('value'),60000);
+    log('2) Leitura de frota/dados: OK em '+(Date.now()-t0)+' ms','ok'); }
+  catch(e){ log('2) Leitura de frota/dados: NEGADA/ERRO — '+(e.code||e.message),'erro'); finalizar('Não foi possível ler frota/dados.'); return; }
+  var d=snap.val();
+  if(!d){ log('   frota/dados está vazio.','aviso'); finalizar('Banco da frota vazio.'); return; }
+  var r=analisar(d);
+  log('3) Tamanho do bloco frota/dados: '+r.tamanhoKB+' KB (é isso que cada usuário baixa a CADA alteração de qualquer pessoa, e que cada gravação reenvia inteiro).', r.tamanhoKB>1500?'erro':(r.tamanhoKB>500?'aviso':'ok'));
+  log('   Registros: '+Object.keys(r.contagem).map(function(k){return k+'='+r.contagem[k];}).join(', '),'');
+  log('   Custo medido do cálculo de status (veículos × solicitações × movimentações): '+r.custoOps.toLocaleString('pt-BR')+' operações em '+r.custoMs+' ms neste computador (a tela refaz isso a cada atualização).', r.custoMs>150?'aviso':'ok');
+  log('4) Solicitações por status: '+Object.keys(r.solPorStatus).map(function(k){return k+'='+r.solPorStatus[k];}).join(', '),'');
+  log('   Solicitações SEM secretaria: '+r.solSemSec.length+(r.solSemSec.length?' (o secretário não as vê na aba Solicitações; só o administrador vê)':''), r.solSemSec.length?'erro':'ok');
+  log('   Solicitações com secretaria que não existe em nenhum veículo: '+r.solSecDesconhecida.length, r.solSecDesconhecida.length?'aviso':'ok');
+  log('   Solicitações de veículo inexistente/removido: '+r.solVeiculoInexistente.length, r.solVeiculoInexistente.length?'aviso':'ok');
+  log('   Mesma secretaria escrita de formas diferentes (maiúscula/espaço): '+r.grafiasDiferentes.length, r.grafiasDiferentes.length?'erro':'ok');
+  r.grafiasDiferentes.forEach(function(g){ log('      → '+g.map(function(x){return '«'+x+'»';}).join('  ≠  '),'aviso'); });
+  log('5) Viagens em aberto agora (sem entrada): '+r.movAbertas, '');
+  log('   Veículos com MAIS DE UMA viagem aberta: '+r.veiculosComVariasAbertas.length, r.veiculosComVariasAbertas.length?'erro':'ok');
+  if(r.veiculosComVariasAbertas.length) tabela(['placa','viagens abertas'], r.veiculosComVariasAbertas.map(function(x){return [x.placa,x.qtd];}));
+  log('   Viagens abertas há mais de 3 dias após o retorno previsto (saídas "órfãs"): '+r.movOrfas.length+(r.movOrfas.length?' — essas travam o veículo como "em viagem" para novos lançamentos até serem encerradas pelo master':''), r.movOrfas.length?'aviso':'ok');
+  if(r.movOrfas.length){ var vById={}; arr(d.veiculos).forEach(function(v){vById[v.id]=v;}); tabela(['placa','saída','retorno previsto'], r.movOrfas.slice(0,15).map(function(m){var v=vById[m.vid];return [v?v.placa:m.vid,m.saida||'',m.retorno||''];})); }
+  log('   Viagens cuja secretaria difere da secretaria do veículo (somem para a secretaria dona do veículo OU para a solicitante): '+r.movSecDivergente.length, r.movSecDivergente.length?'aviso':'ok');
+  log('   Viagens sem secretaria preenchida (herdam a do veículo): '+r.movSemSec, '');
+  log('   Solicitações pendentes/aprovadas de veículos que JÁ estão em viagem: '+r.solParaVeiculoEmViagem.length, r.solParaVeiculoEmViagem.length?'aviso':'ok');
+  var concl=[];
+  if(r.solSemSec.length) concl.push('Há <b>'+r.solSemSec.length+' solicitação(ões) sem secretaria</b>: o secretário não as enxerga na própria lista.');
+  if(r.grafiasDiferentes.length) concl.push('A secretaria aparece escrita de formas diferentes: a lista de Solicitações compara texto exato e esconde registros.');
+  if(r.movSecDivergente.length) concl.push('<b>'+r.movSecDivergente.length+' viagem(ns)</b> com secretaria diferente da do veículo: ficam invisíveis para um dos lados.');
+  if(r.veiculosComVariasAbertas.length) concl.push('Há veículo com mais de uma viagem aberta (lançamento duplicado já aconteceu).');
+  if(r.tamanhoKB>500) concl.push('O bloco da frota tem <b>'+r.tamanhoKB+' KB</b> — cada alteração de qualquer usuário baixa isso para todos, e cada gravação reenvia tudo. Isso explica lentidão e é a causa da perda de lançamentos simultâneos.');
+  finalizar(concl.length?concl.join('<br><br>'):'Nada anormal nos dados. Se um lançamento sumiu, a causa mais provável é gravação simultânea (um usuário sobrescreveu o outro), que a correção da sincronização trata.');
+}
+function finalizar(c){
+  relatorio.push('CONCLUSÃO: '+c.replace(/<[^>]+>/g,''));
+  document.getElementById('conclusao').innerHTML='<div class="conclusao">'+c+'</div>';
+}
+</script>
+</body>
+</html>
