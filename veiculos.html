@@ -1784,6 +1784,91 @@ function bloquearSeIndisponivel(vid, opts, contexto) {
 }
 // ══════════════════════════════════════════════════════════════════
 
+// ── TRAVA DE VEÍCULO EM VIAGEM NO MOMENTO DE GRAVAR (aditivo) ───────────────
+// Regra: veículo com viagem em andamento (movimentação sem entrada_real) NÃO pode
+// receber novo lançamento. A checagem é feita contra o estado REAL do banco, dentro
+// de uma transação em frota/dados: se dois secretários lançam o mesmo veículo ao
+// mesmo tempo, só o primeiro grava; o segundo recebe o aviso. Veículo disponível ou
+// com viagens anteriores já finalizadas continua liberado normalmente.
+var MSG_VEICULO_EM_VIAGEM = 'Este veículo já está em viagem e não pode ser utilizado em um novo lançamento.';
+var _gravandoTrava = false;
+function _avisoVeiculoEmViagem(vids){
+  var linhas = (vids||[]).map(function(vid){
+    var v = getV(vid);
+    return v ? (fmtPlaca(v.placa) + ' — ' + (v.descricao||'')) : String(vid);
+  }).join('\n');
+  alert('🚫 Veículo em viagem\n\n' + (linhas ? linhas + '\n\n' : '') + MSG_VEICULO_EM_VIAGEM);
+}
+// cfg: { novas:[solicitações], editar:{id, campos}|null, aoConcluir(res) }
+//      res = { gravadas:[ids], ocupados:[vids que ficaram de fora] }
+function gravarSolicitacoesComTrava(cfg){
+  if(_gravandoTrava) return;   // evita duplo clique
+  if(!fbDB || !_fbConectado){
+    alert('Sem conexão com o banco de dados.\n\nO veículo precisa ser validado no banco antes do lançamento. Tente novamente quando a conexão voltar.');
+    return;
+  }
+  var livres = [], ocupados = [], motivo = '', finalizou = false;
+  _gravandoTrava = true;
+  var timer = setTimeout(function(){
+    if(finalizou) return;
+    finalizou = true; _gravandoTrava = false;
+    alert('Não foi possível confirmar o lançamento (conexão lenta).\n\nConfira em Solicitações se ele foi registrado antes de tentar novamente.');
+  }, 20000);
+  fbDB.ref('frota/dados').transaction(function(atual){
+    livres = []; ocupados = []; motivo = '';
+    if(finalizou) return;                       // tempo esgotado: não grava mais nada
+    if(atual === null || typeof atual !== 'object'){ motivo = 'sem_dados'; return atual; }  // cache vazio: o SDK repete com o valor real
+    var movs = _arrFB(atual.movimentacoes);
+    var sols = _arrFB(atual.solicitacoes);
+    function emViagem(vid){ return movs.some(function(m){ return m && m.vid === vid && !m.entrada_real; }); }
+    if(cfg.editar){
+      var alvo = sols.find(function(x){ return x && x.id === cfg.editar.id; });
+      if(!alvo){ motivo = 'nao_encontrada'; return; }
+      if(alvo.status !== 'pendente'){ motivo = 'nao_pendente'; return; }
+      if(cfg.editar.campos.vid !== alvo.vid && emViagem(cfg.editar.campos.vid)){ ocupados.push(cfg.editar.campos.vid); return; }
+      Object.assign(alvo, cfg.editar.campos);
+      livres.push(alvo.id);
+    } else {
+      (cfg.novas || []).forEach(function(n){
+        if(sols.some(function(x){ return x && x.id === n.id; })){ livres.push(n.id); return; }  // já gravada (repetição da transação)
+        if(emViagem(n.vid)) ocupados.push(n.vid);
+        else { sols.push(n); livres.push(n.id); }
+      });
+      if(!livres.length) return;                // todos ocupados: aborta sem gravar
+    }
+    atual.solicitacoes = sols;
+    atual._salvo_em = new Date().toISOString();
+    return atual;
+  }, undefined, false).then(function(res){
+    if(finalizou) return;
+    finalizou = true; clearTimeout(timer); _gravandoTrava = false;
+    if(!res.committed){
+      if(ocupados.length){ _avisoVeiculoEmViagem(ocupados); return; }
+      if(motivo === 'nao_pendente'){ alert('Só é possível editar solicitações que ainda estão aguardando aprovação.'); return; }
+      if(motivo === 'nao_encontrada'){ alert('Solicitação não encontrada.'); return; }
+      alert('Não foi possível gravar agora. Tente novamente.');
+      return;
+    }
+    var val = res.snapshot.val();
+    if(!val){ alert('Não foi possível gravar agora. Tente novamente.'); return; }
+    // Atualiza o cache local com o estado real do banco (já inclui o lançamento)
+    try {
+      var novo = normalizarFB(val);
+      if(novo.veiculos.length > 0){ D = novo; localStorage.setItem('frota_v3', JSON.stringify(D)); }
+    } catch(e) { console.warn('[Trava] Falha ao atualizar cache local:', e); }
+    _fbUltimoPush = Date.now();
+    setFbStatus('sincronizado');
+    cfg.aoConcluir({ gravadas: livres, ocupados: ocupados });
+    if(ocupados.length && !cfg.semAvisoFinal) setTimeout(function(){ _avisoVeiculoEmViagem(ocupados); }, 60);
+  }).catch(function(e){
+    if(finalizou) return;
+    finalizou = true; clearTimeout(timer); _gravandoTrava = false;
+    console.error('[Trava] Erro na transação:', e);
+    if(_ehErroPermissao(e)){ alert('🚫 Sem permissão para gravar no banco. Saia e entre novamente no sistema.'); }
+    else { alert('Não foi possível gravar agora. Tente novamente.'); }
+  });
+}
+
 function popVeis(ids, filtro) {
   // filtro: quando informado, lista só os veículos disponíveis para viagem.
   // Sem filtro, mantém o comportamento original (usado pela manutenção).
@@ -4866,6 +4951,16 @@ function confirmarSolicitacao(eGasolina) {
     var s = getS(editId);
     if(!s) { alert('Solicitação não encontrada.'); return; }
     if(s.status !== 'pendente') { alert('Só é possível editar solicitações que ainda estão aguardando aprovação.'); return; }
+    // TRAVA: se o veículo foi trocado, o novo veículo não pode estar em viagem (checado no banco)
+    if(s.vid !== vid){
+      if(getMovAtiva(vid)){ _avisoVeiculoEmViagem([vid]); return; }
+      gravarSolicitacoesComTrava({
+        editar: { id: editId, campos: { vid:vid, motorista:mot, destino:dest, data_viagem:data, obs:obs,
+                  hora_retirada:hora, qtd_passageiros:qtd, passageiros:pessoas, editado_em:now().toISOString() } },
+        aoConcluir: function(){ fechar('ov-solicitacao'); toast('✏️ Solicitação atualizada!'); renderTudo(); }
+      });
+      return;
+    }
     s.vid=vid; s.motorista=mot; s.destino=dest; s.data_viagem=data; s.obs=obs;
     s.hora_retirada=hora;
     s.qtd_passageiros=qtd; s.passageiros=pessoas; s.editado_em=now().toISOString();
@@ -4883,8 +4978,10 @@ function confirmarSolicitacao(eGasolina) {
     status:'pendente', criado_em:now().toISOString(),
     aprovado_em:null, saida_registrada:false
   };
-  D.solicitacoes.push(novaSol);
-  salvar(); fechar('ov-solicitacao');
+  // TRAVA: veículo em viagem não pode ser lançado (checagem local rápida + transação no banco)
+  if(getMovAtiva(vid)){ _avisoVeiculoEmViagem([vid]); return; }
+  gravarSolicitacoesComTrava({ novas:[novaSol], aoConcluir: function(){
+  fechar('ov-solicitacao');
 
   // ⛽ "Solicitar viagem e abastecer": a viagem é solicitada normalmente (segue
   // pendente de aprovação do administrador) e o usuário é só encaminhado ao
@@ -4903,6 +5000,7 @@ function confirmarSolicitacao(eGasolina) {
 
   toast('✅ Solicitação enviada! Aguarde aprovação do administrador.');
   renderTudo();
+  }});
 }
 
 // ── SOLICITAÇÃO EM LOTE ───────────────────────────────────────
@@ -4931,9 +5029,9 @@ function abrirSolicitacaoLote(){
   }).join('');
   lista.innerHTML = veics.map(function(v, i){
     return '<div class="card" style="margin-bottom:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-      '<input type="checkbox" class="sll-chk" data-vid="'+v.id+'" data-i="'+i+'" onchange="sllContador()" style="width:18px;height:18px">'+
+      '<input type="checkbox" class="sll-chk" data-vid="'+v.id+'" data-i="'+i+'" onchange="sllContador()" style="width:18px;height:18px"'+(getMovAtiva(v.id)?' disabled title="Veículo em viagem"':'')+'>'+
       '<div style="flex:1;min-width:140px">'+
-        '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+'</div>'+
+        '<div style="font-weight:700;font-size:13px">'+v.placa+' — '+v.descricao+(getMovAtiva(v.id)?' <span style="color:#B45309;font-size:11px;font-weight:600">🚗 em viagem — indisponível</span>':'')+'</div>'+
         '<div style="font-size:11px;color:#888">'+(v.secretaria||'')+'</div>'+
       '</div>'+
       '<select id="sll-mot-'+i+'" onchange="sllMotManual('+i+')" style="font-size:12px;padding:5px 8px;max-width:160px">'+motOpts+'</select>'+
@@ -4976,7 +5074,7 @@ function confirmarSolicitacaoLote(){
   });
   if(faltaPass){ alert('Informe a quantidade de passageiros (mínimo 1) em cada veículo selecionado.'); return; }
   if(!D.solicitacoes) D.solicitacoes = [];
-  var n = 0;
+  var n = 0, _novasLote = [], _ocupadosLote = [];
   chks.forEach(function(chk){
     var i = chk.getAttribute('data-i');
     var vid = chk.getAttribute('data-vid');
@@ -4988,7 +5086,9 @@ function confirmarSolicitacaoLote(){
     var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
     if(isNaN(qtd)||qtd<0) qtd=0;
     var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
-    D.solicitacoes.push({
+    // TRAVA: veículo em viagem fica de fora (checagem local; o banco confirma na gravação)
+    if(getMovAtiva(vid)){ _ocupadosLote.push(vid); return; }
+    _novasLote.push({
       id:uid_s(), vid:vid, motorista:motNomeFinal, destino:dest, data_viagem:data,
       hora_retirada:hora,
       obs:obs, sec:sec, solicitante:_sessao?_sessao.nome:'',
@@ -4996,11 +5096,16 @@ function confirmarSolicitacaoLote(){
       status:'pendente', criado_em:now().toISOString(),
       aprovado_em:null, saida_registrada:false
     });
-    n++;
   });
-  salvar(); fechar('ov-solicitacao-lote');
-  toast('✅ '+n+' solicitaç'+(n>1?'ões enviadas':'ão enviada')+'! Aguarde aprovação.');
-  renderTudo();
+  if(!_novasLote.length){ _avisoVeiculoEmViagem(_ocupadosLote); return; }
+  gravarSolicitacoesComTrava({ novas:_novasLote, aoConcluir: function(res){
+    n = res.gravadas.length;
+    fechar('ov-solicitacao-lote');
+    toast('✅ '+n+' solicitaç'+(n>1?'ões enviadas':'ão enviada')+'! Aguarde aprovação.');
+    renderTudo();
+    var _todosOcupados = _ocupadosLote.concat(res.ocupados.filter(function(x){ return _ocupadosLote.indexOf(x) < 0; }));
+    if(_todosOcupados.length) setTimeout(function(){ _avisoVeiculoEmViagem(_todosOcupados); }, 60);
+  }, semAvisoFinal:true });
 }
 
 function aprovarSolicitacao(id) {
