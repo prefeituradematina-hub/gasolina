@@ -124,6 +124,18 @@ async function rodar(){
   var r=analisar(d);
   log('3) Tamanho do bloco frota/dados: '+r.tamanhoKB+' KB (é isso que cada usuário baixa a CADA alteração de qualquer pessoa, e que cada gravação reenvia inteiro).', r.tamanhoKB>1500?'erro':(r.tamanhoKB>500?'aviso':'ok'));
   log('   Registros: '+Object.keys(r.contagem).map(function(k){return k+'='+r.contagem[k];}).join(', '),'');
+  // PESO POR COLEÇÃO / POR CAMPO e idade dos registros (para decidir o que arquivar) — somente leitura
+  try{
+    var kb=function(o){ try{return Math.round(JSON.stringify(o).length/1024);}catch(e){return 0;} };
+    log('   Peso por coleção (KB): '+Object.keys(d).map(function(k){return [k,kb(d[k])];}).sort(function(a,b){return b[1]-a[1];}).map(function(x){return x[0]+'='+x[1];}).join(', '),'');
+    ['movimentacoes','solicitacoes','abastecimentos','agendamentos','caronas'].forEach(function(col){
+      var itens=arr(d[col]); if(!itens.length) return;
+      var campos={}; itens.forEach(function(it){ Object.keys(it).forEach(function(c){ var n; try{n=JSON.stringify(it[c]).length;}catch(e){n=0;} campos[c]=(campos[c]||0)+n; }); });
+      var top=Object.keys(campos).sort(function(a,b){return campos[b]-campos[a];}).slice(0,4).map(function(c){return c+'='+Math.round(campos[c]/1024)+'KB';});
+      var corte=Date.now()-180*86400000, antigos=itens.filter(function(it){ var t=Date.parse(it.saida||it.data_viagem||it.data||it.criado_em||it.criadoEm||it.ts||''); return t&&t<corte; });
+      log('   '+col+': '+itens.length+' registros, campos mais pesados: '+top.join(', ')+' — com mais de 6 meses: '+antigos.length+' ('+kb(antigos)+' KB)','');
+    });
+  }catch(e){ log('   (peso por coleção indisponível: '+e.message+')','aviso'); }
   log('   Custo medido do cálculo de status (veículos × solicitações × movimentações): '+r.custoOps.toLocaleString('pt-BR')+' operações em '+r.custoMs+' ms neste computador (a tela refaz isso a cada atualização).', r.custoMs>150?'aviso':'ok');
   log('4) Solicitações por status: '+Object.keys(r.solPorStatus).map(function(k){return k+'='+r.solPorStatus[k];}).join(', '),'');
   log('   Solicitações SEM secretaria: '+r.solSemSec.length+(r.solSemSec.length?' (o secretário não as vê na aba Solicitações; só o administrador vê)':''), r.solSemSec.length?'erro':'ok');
