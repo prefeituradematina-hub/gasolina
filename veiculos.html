@@ -608,6 +608,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <p>Verifica se os dados estão sincronizando com o banco compartilhado entre os computadores.</p>
         <button class="btn primary" onclick="testarConexaoBanco()">Testar conexão</button>
       </div>
+      <div class="backup-card" id="card-sec-vazia" style="display:none;border-color:#BAE6FD;background:#F0F9FF">
+        <h3>🏷️ Preencher secretaria vazia</h3>
+        <p>Somente master. Lista solicitações sem secretaria (o secretário não as vê) e preenche com a secretaria do veículo. Não apaga nada.</p>
+        <button class="btn primary" onclick="abrirSecVazia()">Abrir lista</button>
+      </div>
       <div class="backup-card" id="card-regularizar-orfas" style="display:none;border-color:#FDE68A;background:#FFFBEB">
         <h3>🧹 Regularizar saídas antigas</h3>
         <p>Somente master. Lista as viagens abertas há mais de 3 dias após o retorno previsto, que prendem o veículo como "em viagem". Não apaga nada.</p>
@@ -718,6 +723,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="actions">
       <button class="btn success" onclick="confirmarEntrada()">✓ Confirmar entrada</button>
       <button class="btn" onclick="fechar('ov-entrada')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PREENCHER SECRETARIA VAZIA (somente master) -->
+<div class="overlay" id="ov-secvazia">
+  <div class="modal" style="max-width:860px">
+    <h2>🏷️ Preencher secretaria vazia</h2>
+    <div style="font-size:12px;color:#075985;background:#F0F9FF;border:1.5px solid #7DD3FC;padding:9px 11px;border-radius:8px;margin-bottom:.75rem;line-height:1.6">
+      Cada solicitação marcada receberá a <strong>secretaria cadastrada no veículo</strong>. Nenhum outro dado é alterado e nada é apagado.
+      Solicitações de veículo removido do cadastro (ou veículo sem secretaria) não podem ser preenchidas.
+    </div>
+    <div id="sv-resumo" style="font-size:12px;margin-bottom:.5rem"></div>
+    <div id="sv-lista" style="max-height:48vh;overflow:auto;border:1px solid #e5e5e0;border-radius:8px"></div>
+    <div class="actions" style="flex-wrap:wrap">
+      <button class="btn" onclick="baixarBackupSecVazia()">⬇ 1) Baixar backup antes</button>
+      <button class="btn success" id="sv-confirmar" onclick="aplicarSecVazia()" disabled>✓ 2) Preencher marcadas</button>
+      <button class="btn" onclick="fechar('ov-secvazia')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1681,6 +1704,77 @@ function regularizarOrfasSelecionadas(){
   setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
   renderListaOrfas();
   toast('✅ '+feitas+' saída(s) regularizada(s).');
+}
+
+// ── PREENCHER SECRETARIA VAZIA DAS SOLICITAÇÕES (somente master) ────────────────
+var _svBackupOk = false;
+function _solsSemSecretaria(){
+  return (D.solicitacoes||[]).filter(function(s){ return s && !String(s.sec||'').trim(); })
+    .sort(function(a,b){ return String(a.criado_em||'').localeCompare(String(b.criado_em||'')); });
+}
+function abrirSecVazia(){
+  if(!isMasterFrota()){ toast('🔒 Somente o master pode fazer esta correção.'); return; }
+  _svBackupOk = false;
+  var btn = document.getElementById('sv-confirmar'); if(btn) btn.disabled = true;
+  renderSecVazia();
+  abrir('ov-secvazia');
+}
+function renderSecVazia(){
+  var lista = _solsSemSecretaria();
+  var el = document.getElementById('sv-lista');
+  var aplicaveis = lista.filter(function(s){ var v = getV(s.vid); return v && String(v.secretaria||'').trim(); }).length;
+  document.getElementById('sv-resumo').innerHTML =
+    'Solicitações sem secretaria: <strong>'+lista.length+'</strong> · podem ser preenchidas: <strong>'+aplicaveis+'</strong>. '+
+    '<a href="#" onclick="marcarSecVazia(true);return false">marcar todas</a> · <a href="#" onclick="marcarSecVazia(false);return false">desmarcar todas</a> · <span id="sv-contagem"></span>';
+  if(!lista.length){ el.innerHTML = '<div style="padding:16px;text-align:center;color:#065F46">✅ Nenhuma solicitação sem secretaria.</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<tr style="background:#f0f0ee;text-align:left"><th style="padding:6px"></th><th style="padding:6px">Veículo</th><th style="padding:6px">Data da viagem</th><th style="padding:6px">Status</th><th style="padding:6px">Solicitante</th><th style="padding:6px">Secretaria que será gravada</th></tr>'+
+    lista.map(function(s){
+      var v = getV(s.vid), proposta = v ? String(v.secretaria||'').trim() : '';
+      var pode = !!proposta;
+      return '<tr style="border-top:1px solid #eee">'+
+        '<td style="padding:6px"><input type="checkbox" class="sv-chk" value="'+_orfEsc(s.id)+'" '+(pode?'checked':'disabled')+' onchange="contarSecVazia()"></td>'+
+        '<td style="padding:6px">'+(v ? _orfEsc(v.placa) : '<span style="color:#B91C1C">veículo removido do cadastro</span>')+'</td>'+
+        '<td style="padding:6px">'+_orfEsc(s.data_viagem||'—')+'</td>'+
+        '<td style="padding:6px">'+_orfEsc(s.status||'—')+'</td>'+
+        '<td style="padding:6px">'+_orfEsc(s.solicitante||'—')+'</td>'+
+        '<td style="padding:6px">'+(pode ? _orfEsc(proposta) : '<span style="color:#B91C1C">— (não é possível)</span>')+'</td></tr>';
+    }).join('')+'</table>';
+  contarSecVazia();
+}
+function marcarSecVazia(sim){
+  document.querySelectorAll('.sv-chk').forEach(function(c){ if(!c.disabled) c.checked = !!sim; });
+  contarSecVazia();
+}
+function contarSecVazia(){
+  var n = document.querySelectorAll('.sv-chk:checked').length;
+  var el = document.getElementById('sv-contagem'); if(el) el.innerHTML = '<strong>'+n+'</strong> marcada(s)';
+}
+function baixarBackupSecVazia(){
+  baixarBackup();
+  _svBackupOk = true;
+  var btn = document.getElementById('sv-confirmar'); if(btn) btn.disabled = false;
+}
+function aplicarSecVazia(){
+  if(!isMasterFrota()){ toast('🔒 Somente o master pode fazer esta correção.'); return; }
+  if(!_svBackupOk){ toast('Baixe o backup antes de preencher.'); return; }
+  var ids = [].slice.call(document.querySelectorAll('.sv-chk:checked')).map(function(c){ return c.value; });
+  if(!ids.length){ toast('Nenhuma solicitação marcada.'); return; }
+  if(!confirm('Preencher a secretaria de '+ids.length+' solicitação(ões) com a secretaria do veículo?\n\nNenhum outro dado é alterado e nada é apagado.')) return;
+  var feitas = 0, agora = new Date().toISOString();
+  ids.forEach(function(id){
+    var s = getS(id); if(!s) return;
+    if(String(s.sec||'').trim()) return;                 // alguém já preencheu nesse meio-tempo
+    var v = getV(s.vid), proposta = v ? String(v.secretaria||'').trim() : '';
+    if(!proposta) return;
+    s.sec = v.secretaria;
+    s.sec_ajustada_em = agora;
+    feitas++;
+  });
+  renderTudo();
+  salvar();
+  renderSecVazia();
+  toast('✅ '+feitas+' solicitação(ões) atualizada(s).');
 }
 
 function getMovsAbertas(vid) {
@@ -4293,6 +4387,8 @@ function renderBackup() {
   el.innerHTML = html;
   var _cardOrf = document.getElementById('card-regularizar-orfas');
   if(_cardOrf) _cardOrf.style.display = isMasterFrota() ? '' : 'none';
+  var _cardSv = document.getElementById('card-sec-vazia');
+  if(_cardSv) _cardSv.style.display = isMasterFrota() ? '' : 'none';
 }
 
 function baixarBackup() {
@@ -5107,6 +5203,9 @@ function confirmarSolicitacao(eGasolina) {
   var hora = document.getElementById('sol-hora-retirada').value;
   var obs  = document.getElementById('sol-obs').value.trim();
   var sec  = document.getElementById('sol-sec') ? document.getElementById('sol-sec').value : (_sessao?_sessao.secretaria:'');
+  // Sem secretaria na sessão (ex.: administrador): usa a secretaria do veículo, para a
+  // solicitação não ficar invisível na lista do secretário responsável.
+  if(!String(sec||'').trim()){ var _vSolSec = getV(vid); sec = (_vSolSec && _vSolSec.secretaria) || ''; }
   // Pessoas: remove nomes em branco
   var pessoas = _solPessoas.map(function(n){return (n||'').trim();}).filter(function(n){return n;});
   var qtd = parseInt(document.getElementById('sol-qtd-pass').value,10);
@@ -5257,6 +5356,7 @@ function confirmarSolicitacaoLote(){
     var qtd = parseInt(document.getElementById('sll-pass-'+i).value,10);
     if(isNaN(qtd)||qtd<0) qtd=0;
     var sec = isAdmin() ? (v.secretaria||'') : (_sessao.secretaria||'');
+    if(!String(sec||'').trim()) sec = (v && v.secretaria) || '';
     // TRAVA: veículo em viagem fica de fora (checagem local; o banco confirma na gravação)
     if(getMovAtiva(vid)){ _ocupadosLote.push(vid); return; }
     _novasLote.push({
