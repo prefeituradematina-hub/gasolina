@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backup da Frota</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+<style>
+  body{font-family:'Segoe UI',sans-serif;background:#f1f5f9;margin:0;padding:16px;color:#1e293b}
+  .box{max-width:760px;margin:0 auto;background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb}
+  h1{font-size:18px;margin:0 0 4px}
+  .linha{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:14px;border-left:5px solid #94a3b8;background:#f8fafc;word-break:break-word}
+  .ok{border-color:#22c55e;background:#f0fdf4}
+  .erro{border-color:#ef4444;background:#fef2f2}
+  button{padding:12px 20px;border:none;border-radius:8px;background:#0f766e;color:#fff;font-weight:bold;cursor:pointer;margin:10px 8px 0 0}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>💾 Backup da Frota (cópia do banco)</h1>
+  <div style="font-size:12px;color:#64748b">Somente leitura — não grava nada no banco. Baixa um arquivo .json com todo o bloco <b>frota/dados</b>. Abra este arquivo pelo mesmo endereço do sistema (GitHub Pages), depois de entrar pelo porta.html.</div>
+  <button onclick="baixar()">⬇ BAIXAR BACKUP AGORA</button>
+  <div id="saida"></div>
+</div>
+<script>
+function cfg(){
+  var fb={apiKey:"AIzaSyDsEQ8L_hWgacZ8xweY3DR9OYt2t151kZE",authDomain:"tabela-gasolina.firebaseapp.com",
+    databaseURL:"https://tabela-gasolina-default-rtdb.firebaseio.com",projectId:"tabela-gasolina"};
+  try{var x=new XMLHttpRequest();x.open('GET','firebase-config.json',false);x.send(null);
+    if(x.status===200){var c=JSON.parse(x.responseText);if(c&&c.apiKey&&c.databaseURL)return c;}}catch(e){}
+  return fb;
+}
+var saida=document.getElementById('saida');
+function log(t,cls){ var d=document.createElement('div'); d.className='linha '+(cls||''); d.textContent=t; saida.appendChild(d); }
+function comTimeout(p,ms){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej({code:'TIMEOUT',message:'sem resposta em '+ms/1000+'s'});},ms);})]);}
+function primeiroEstado(){
+  return new Promise(function(res){
+    var feito=false, off=firebase.auth().onAuthStateChanged(function(u){ if(feito)return; feito=true; try{off();}catch(e){} res(u); });
+    setTimeout(function(){ if(feito)return; feito=true; res(firebase.auth().currentUser); },8000);
+  });
+}
+function arr(x){ if(!x) return []; if(Array.isArray(x)) return x.filter(Boolean); return Object.keys(x).map(function(k){return x[k];}).filter(Boolean); }
+function nomeArquivo(){ var d=new Date(), p=function(n){return String(n).padStart(2,'0');};
+  return 'frota_backup_nuvem_'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+'-'+p(d.getMinutes())+'.json'; }
+function salvarArquivo(texto, nome){
+  var blob=new Blob([texto],{type:'application/json'}), url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=nome; document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1000);
+}
+async function baixar(){
+  saida.innerHTML='';
+  if(!firebase.apps.length) firebase.initializeApp(cfg());
+  var u=await primeiroEstado();
+  if(!u){ log('1) NÃO HÁ USUÁRIO LOGADO neste navegador. Entre pelo porta.html (pelo mesmo endereço do sistema) e tente de novo.','erro'); return; }
+  log('1) Login no Firebase: '+(u.isAnonymous?'ANÔNIMO':'conta '+(u.email||'(sem email)')),'ok');
+  var snap;
+  try{ var t0=Date.now(); snap=await comTimeout(firebase.database().ref('frota/dados').once('value'),90000);
+    log('2) Leitura de frota/dados: OK em '+(Date.now()-t0)+' ms','ok'); }
+  catch(e){ log('2) Leitura NEGADA/ERRO — '+(e.code||e.message)+'. Nada foi baixado.','erro'); return; }
+  var d=snap.val();
+  if(!d){ log('frota/dados está vazio — nada para baixar.','erro'); return; }
+  var texto=JSON.stringify(d,null,2);
+  var nome=nomeArquivo();
+  salvarArquivo(texto,nome);
+  log('3) Arquivo gerado: '+nome+' — '+Math.round(texto.length/1024)+' KB. Veículos='+arr(d.veiculos).length+', movimentações='+arr(d.movimentacoes).length+', solicitações='+arr(d.solicitacoes).length+', agendamentos='+arr(d.agendamentos).length+'.','ok');
+  log('Guarde este arquivo em local seguro. É uma cópia fiel do que está no banco. Se precisar restaurar, envie-o para mim: a restauração deve ser feita com cuidado.','');
+}
+</script>
+</body>
+</html>

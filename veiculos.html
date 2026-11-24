@@ -608,6 +608,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
         <p>Verifica se os dados estão sincronizando com o banco compartilhado entre os computadores.</p>
         <button class="btn primary" onclick="testarConexaoBanco()">Testar conexão</button>
       </div>
+      <div class="backup-card" id="card-regularizar-orfas" style="display:none;border-color:#FDE68A;background:#FFFBEB">
+        <h3>🧹 Regularizar saídas antigas</h3>
+        <p>Somente master. Lista as viagens abertas há mais de 3 dias após o retorno previsto, que prendem o veículo como "em viagem". Não apaga nada.</p>
+        <button class="btn warn" onclick="abrirRegularizarOrfas()">Abrir lista</button>
+      </div>
     </div>
     <div id="bk-status"></div>
   </div>
@@ -713,6 +718,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
     <div class="actions">
       <button class="btn success" onclick="confirmarEntrada()">✓ Confirmar entrada</button>
       <button class="btn" onclick="fechar('ov-entrada')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGULARIZAR SAÍDAS ANTIGAS (somente master) -->
+<div class="overlay" id="ov-orfas">
+  <div class="modal" style="max-width:860px">
+    <h2>🧹 Regularizar saídas antigas</h2>
+    <div style="font-size:12px;color:#78350F;background:#FFFBEB;border:1.5px solid #F59E0B;padding:9px 11px;border-radius:8px;margin-bottom:.75rem;line-height:1.6">
+      Cada viagem marcada receberá a <strong>entrada na data do retorno previsto</strong> (ou da saída, se não houver retorno) e ficará marcada como <strong>regularizada pelo master</strong>.
+      Nenhum registro é apagado. Confira a lista: marque só as que realmente já terminaram.
+    </div>
+    <div id="orf-resumo" style="font-size:12px;margin-bottom:.5rem"></div>
+    <div id="orf-lista" style="max-height:48vh;overflow:auto;border:1px solid #e5e5e0;border-radius:8px"></div>
+    <div class="actions" style="flex-wrap:wrap">
+      <button class="btn" onclick="baixarBackupOrfas()">⬇ 1) Baixar backup antes</button>
+      <button class="btn success" id="orf-confirmar" onclick="regularizarOrfasSelecionadas()" disabled>✓ 2) Regularizar marcadas</button>
+      <button class="btn" onclick="fechar('ov-orfas')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1571,6 +1594,93 @@ function encerrarSaidaOrfa(movId) {
   toast('✅ Saída regularizada.');
   salvar();
   setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
+}
+
+// ── REGULARIZAR SAÍDAS ANTIGAS EM LOTE (somente master) ────────────────────────
+// Faz exatamente o que encerrarSaidaOrfa() faz para uma viagem, mas para várias de uma
+// vez, com lista para conferência e backup obrigatório antes. NÃO apaga registros.
+var _orfBackupOk = false;
+function _orfEsc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Viagem aberta (sem entrada) há mais de 3 dias após o retorno previsto (ou da saída, se não houver retorno)
+function _movsOrfasAntigas(){
+  var agora = Date.now();
+  return D.movimentacoes.filter(function(m){
+    if(!m || m.entrada_real) return false;
+    var t = new Date(m.retorno || m.saida || 0).getTime();
+    return t && (agora - t) > 3*86400000;
+  }).sort(function(a,b){ return new Date(a.saida||0) - new Date(b.saida||0); });
+}
+function _orfEntradaDe(m){
+  var r = m.retorno || m.saida, sa = m.saida;
+  if(r && sa && new Date(r) < new Date(sa)) return sa;   // retorno previsto anterior à saída: usa a saída (evita duração negativa)
+  return r || sa;
+}
+function abrirRegularizarOrfas(){
+  if(!isMasterFrota()){ toast('🔒 Somente o master pode regularizar saídas antigas.'); return; }
+  _orfBackupOk = false;
+  var btn = document.getElementById('orf-confirmar'); if(btn) btn.disabled = true;
+  renderListaOrfas();
+  abrir('ov-orfas');
+}
+function renderListaOrfas(){
+  var lista = _movsOrfasAntigas();
+  var el = document.getElementById('orf-lista');
+  var abertasTotal = D.movimentacoes.filter(function(m){ return m && !m.entrada_real; }).length;
+  document.getElementById('orf-resumo').innerHTML =
+    'Viagens abertas no sistema: <strong>'+abertasTotal+'</strong> · antigas (candidatas): <strong>'+lista.length+'</strong>. '+
+    '<a href="#" onclick="marcarOrfas(true);return false">marcar todas</a> · <a href="#" onclick="marcarOrfas(false);return false">desmarcar todas</a> · '+
+    '<span id="orf-contagem"></span>';
+  if(!lista.length){ el.innerHTML = '<div style="padding:16px;text-align:center;color:#065F46">✅ Nenhuma saída antiga pendente.</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<tr style="background:#f0f0ee;text-align:left"><th style="padding:6px"></th><th style="padding:6px">Veículo</th><th style="padding:6px">Saída</th><th style="padding:6px">Retorno previsto</th><th style="padding:6px">Motorista / destino</th></tr>'+
+    lista.map(function(m){
+      var v = getV(m.vid);
+      var nome = v ? _orfEsc(v.placa)+' <span style="color:#666">'+_orfEsc(v.nome||v.modelo||'')+'</span>'
+                   : '<span style="color:#B91C1C">'+(m.vid ? 'veículo removido do cadastro' : 'registro sem veículo')+'</span>';
+      return '<tr style="border-top:1px solid #eee">'+
+        '<td style="padding:6px"><input type="checkbox" class="orf-chk" value="'+_orfEsc(m.id)+'" checked onchange="contarOrfas()"></td>'+
+        '<td style="padding:6px">'+nome+'</td>'+
+        '<td style="padding:6px">'+fmtDT(m.saida)+'</td>'+
+        '<td style="padding:6px">'+fmtDT(m.retorno)+'</td>'+
+        '<td style="padding:6px">'+_orfEsc(m.motorista||'—')+(m.destino?' → '+_orfEsc(m.destino):'')+'</td></tr>';
+    }).join('')+'</table>';
+  contarOrfas();
+}
+function marcarOrfas(sim){
+  document.querySelectorAll('.orf-chk').forEach(function(c){ c.checked = !!sim; });
+  contarOrfas();
+}
+function contarOrfas(){
+  var n = document.querySelectorAll('.orf-chk:checked').length;
+  var el = document.getElementById('orf-contagem'); if(el) el.innerHTML = '<strong>'+n+'</strong> marcada(s)';
+}
+function baixarBackupOrfas(){
+  baixarBackup();
+  _orfBackupOk = true;
+  var btn = document.getElementById('orf-confirmar'); if(btn) btn.disabled = false;
+}
+function regularizarOrfasSelecionadas(){
+  if(!isMasterFrota()){ toast('🔒 Somente o master pode regularizar saídas antigas.'); return; }
+  if(!_orfBackupOk){ toast('Baixe o backup antes de regularizar.'); return; }
+  var ids = [].slice.call(document.querySelectorAll('.orf-chk:checked')).map(function(c){ return c.value; });
+  if(!ids.length){ toast('Nenhuma viagem marcada.'); return; }
+  if(!confirm('Regularizar '+ids.length+' saída(s) antiga(s)?\n\nCada uma receberá entrada na data do retorno previsto e ficará marcada como regularizada pelo master. Nada é apagado.')) return;
+  var feitas = 0, quem = (_sessao && _sessao.login) || 'master', agora = new Date().toISOString();
+  ids.forEach(function(id){
+    var m = getMov(id);
+    if(!m || m.entrada_real) return;           // já resolvida por outra pessoa nesse meio-tempo
+    m.entrada_real    = _orfEntradaDe(m);
+    m.regularizada    = true;
+    m.regularizadaPor = quem;
+    m.regularizadaEm  = agora;
+    feitas++;
+  });
+  window._entradaEmAndamento = true;
+  renderTudo();
+  salvar();
+  setTimeout(function(){ window._entradaEmAndamento = false; }, 30000);
+  renderListaOrfas();
+  toast('✅ '+feitas+' saída(s) regularizada(s).');
 }
 
 function getMovsAbertas(vid) {
@@ -4181,6 +4291,8 @@ function renderBackup() {
     }).join('');
   }
   el.innerHTML = html;
+  var _cardOrf = document.getElementById('card-regularizar-orfas');
+  if(_cardOrf) _cardOrf.style.display = isMasterFrota() ? '' : 'none';
 }
 
 function baixarBackup() {
