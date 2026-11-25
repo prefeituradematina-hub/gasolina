@@ -4950,11 +4950,30 @@
     var login = parts.shift() || '';
     var subPath = parts.join('/');
     function call(name, data) { return firebase.functions().httpsCallable(name)(data || {}).then(function(r){ return r.data; }); }
+    // ADITIVO: se o servidor seguro (Cloud Functions) não atender — navegador com login anônimo, função não
+    // publicada, sem permissão ou fora do ar — volta a ler/gravar direto em 'usuarios', como o sistema fazia
+    // antes. Erros de regra de negócio da função (dados inválidos etc.) continuam sendo mostrados normalmente.
+    function _falhaDeInfra(e) {
+      var c = String((e && (e.code || e.message)) || '').replace(/^functions\//, '');
+      return /unauthenticated|permission-denied|not-found|unavailable|internal|unknown|deadline-exceeded|failed to fetch|network|cors/i.test(c);
+    }
+    function _legacyRef() { return db.ref('usuarios' + (login ? '/' + login : '')); }
+    function readLegacy() {
+      return _legacyRef().once('value').then(function(snap){
+        var value = snap.val();
+        if (subPath && value) subPath.split('/').forEach(function(k){ value = value == null ? null : value[k]; });
+        return value == null ? null : value;
+      });
+    }
     function readValue() {
       return call('getUserProfiles', login ? { login: login } : {}).then(function(result){
         var value = login ? result.users[login] : result.users;
         if (subPath && value) subPath.split('/').forEach(function(k){ value = value == null ? null : value[k]; });
         return value == null ? null : value;
+      }).catch(function(e){
+        if (!_falhaDeInfra(e)) throw e;
+        console.warn('[usuarios] Servidor seguro indisponível (' + ((e && (e.code || e.message)) || e) + ') — lendo direto do banco.');
+        return readLegacy();
       });
     }
     function wrap(value, key) {
@@ -4974,7 +4993,13 @@
       var profile = Object.assign({}, value || {});
       var password = profile.senha;
       delete profile.senha;
-      return call('saveUserProfile', { login: login, profile: profile, password: password || '', replace: !!replace });
+      return call('saveUserProfile', { login: login, profile: profile, password: password || '', replace: !!replace })
+        .catch(function(e){
+          if (!_falhaDeInfra(e)) throw e;
+          console.warn('[usuarios] Servidor seguro indisponível (' + ((e && (e.code || e.message)) || e) + ') — gravando direto no banco.');
+          var legado = Object.assign({}, value || {});
+          return replace ? _legacyRef().set(legado) : _legacyRef().update(legado);
+        });
     }
     return {
       once: function(event, callback) {
@@ -4993,7 +5018,11 @@
       update: function(value) { return save(value, false); },
       remove: function() {
         if (!login || subPath) return Promise.reject(new Error('Caminho de usuário inválido.'));
-        return call('deleteUserProfile', { login: login });
+        return call('deleteUserProfile', { login: login }).catch(function(e){
+          if (!_falhaDeInfra(e)) throw e;
+          console.warn('[usuarios] Servidor seguro indisponível (' + ((e && (e.code || e.message)) || e) + ') — excluindo direto no banco.');
+          return _legacyRef().remove();
+        });
       }
     };
   }
@@ -14094,6 +14123,12 @@
           `;
         });
       });
+    }).catch(function(err){
+      // ADITIVO: antes, uma falha aqui deixava a lista vazia sem nenhum aviso.
+      console.error('[usuarios] Falha ao carregar a lista:', err);
+      var tb = document.getElementById('user-body');
+      if (tb) tb.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#b91c1c;">⚠️ Não foi possível carregar os usuários: ' +
+        escapeHtmlForUserList((err && (err.message || err.code)) || err) + '<br><small>Saia e entre novamente pelo portal. Se continuar, avise o suporte.</small></td></tr>';
     });
   }
   
