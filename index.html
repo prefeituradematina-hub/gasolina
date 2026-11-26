@@ -8436,6 +8436,13 @@
         tanqueCheio: document.getElementById('f-tanque-cheio').checked
       };
   
+      // 🚗 KM × ÚLTIMO ABASTECIMENTO — REGRA 1 (bloqueio). Antes da validação geral para exibir o popup padrão.
+      if (!(await bloquearSeKmAbaixoDoUltimo(dados.placa, dados.km, dados.tipo, 'NORMAL'))) {
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+
       // 🔍 Validação
       const erros = validarAbastecimento(dados);
       if (erros.length > 0) {
@@ -8857,6 +8864,13 @@
       }
 
       // NOVO: 🔍 Validar média do veículo antes de registrar
+      // 🚗 KM × ÚLTIMO ABASTECIMENTO — REGRA 2 (alerta com confirmação, não bloqueia)
+      if (!(await confirmarSeKmMuitoAcimaDoUltimo(dados.placa, dados.km, dados.tipo, 'NORMAL'))) {
+        btnRegistrar.disabled = false;
+        btnRegistrar.innerHTML = textoOriginal;
+        return;
+      }
+
       if (!dados.tanqueCheio) { // Tanque cheio não calcula média agora
         const validacaoMedia = validarMediaVeiculo(dados);
         
@@ -11618,6 +11632,78 @@
         </button>
       `).join('');
   }
+
+  // ── VALIDAÇÃO DE KM × ÚLTIMO ABASTECIMENTO EFETIVADO (aditivo) ─────────────────────────────
+  // REGRA 1: KM informada <= última KM do veículo  → BLOQUEIA (popup, mesmo padrão do bloqueio por CPF).
+  // REGRA 2: KM informada > última + 500 km        → ALERTA com confirmação (não bloqueia).
+  // REGRA 3: acima da última e até +500 km          → segue sem alerta.
+  // "Último abastecimento": somente registros AUTORIZADOS (pendentes/rejeitados não contam), do MESMO veículo
+  // (placa), com KM plausível. Veículo sem histórico (na janela carregada) segue normalmente.
+  // Usa a mesma chave de Configurações → Regras de Negócio ("validar KM"): desligada, nada disso é aplicado.
+  const LIMITE_SALTO_KM = 500;
+  function obterUltimoKmEfetivado(placa) {
+    const pl = normPlaca(placa);
+    if (!pl) return null;
+    const fonte = (typeof cacheCompleto === 'function') ? cacheCompleto() : cache;
+    let melhor = null;
+    (fonte || []).forEach(x => {
+      if (!x || x.status !== STATUS.AUTORIZADO || normPlaca(x.placa) !== pl) return;
+      const km = Number(x.km);
+      if (!(km > 0) || km >= LIMITE_KM_PLAUSIVEL) return;   // ignora KM vazia ou impossível (erro de digitação antigo)
+      if (!melhor || (x.timestamp || 0) > (melhor.timestamp || 0)) melhor = x;
+    });
+    return melhor;
+  }
+  // Pura (testável): { nivel: 'ok' | 'bloqueio' | 'confirmar', ultimo, diferenca }
+  function avaliarKmContraUltimo(placa, km, tipo) {
+    const semAvaliacao = { nivel: 'ok', ultimo: null, diferenca: null };
+    if (regrasNegocio.validarKm === false) return semAvaliacao;
+    if (tipo === 'GAS' || tipo === 'GÁS') return semAvaliacao;
+    const kmNovo = Number(km);
+    if (!normPlaca(placa) || !(kmNovo > 0)) return semAvaliacao;   // KM vazia: regras atuais já tratam
+    const ult = obterUltimoKmEfetivado(placa);
+    if (!ult) return semAvaliacao;
+    const ultimo = Number(ult.km), diferenca = kmNovo - ultimo;
+    if (diferenca <= 0) return { nivel: 'bloqueio', ultimo: ultimo, diferenca: diferenca };
+    if (diferenca > LIMITE_SALTO_KM) return { nivel: 'confirmar', ultimo: ultimo, diferenca: diferenca };
+    return { nivel: 'ok', ultimo: ultimo, diferenca: diferenca };
+  }
+  // Retorna true se pode seguir; false se bloqueou (popup já exibido).
+  async function bloquearSeKmAbaixoDoUltimo(placa, km, tipo, origem) {
+    const r = avaliarKmContraUltimo(placa, km, tipo);
+    if (r.nivel !== 'bloqueio') return true;
+    try { registrarAuditoria('KM_ABAIXO_ULTIMO_BLOQUEADO', { placa: normPlaca(placa), kmInformado: Number(km), ultimoKm: r.ultimo, origem: origem || 'NORMAL' }); } catch (e) {}
+    await mostrarModalSeguranca({
+      variante : 'bloqueio',
+      icone    : '🚫',
+      titulo   : 'KM INVÁLIDA PARA ESTE VEÍCULO',
+      subtitulo: 'Abastecimento bloqueado pelo sistema',
+      destaque : normPlaca(placa),
+      msg      : 'KM abaixo a do Último abastecimento',
+      alerta   : '🔒 A quilometragem deve ser maior que a do último abastecimento deste veículo.',
+      sub      : 'Último KM registrado: <strong>' + formatarKmPendente(r.ultimo) + '</strong><br>' +
+                 'KM informada: <strong>' + formatarKmPendente(Number(km)) + '</strong><br>' +
+                 'Corrija a quilometragem e tente novamente.',
+      textoBotao: '✅ ENTENDIDO — FECHAR'
+    });
+    return false;
+  }
+  // Retorna true se pode seguir (sem alerta ou usuário confirmou); false se o usuário cancelou.
+  async function confirmarSeKmMuitoAcimaDoUltimo(placa, km, tipo, origem) {
+    const r = avaliarKmContraUltimo(placa, km, tipo);
+    if (r.nivel !== 'confirmar') return true;
+    const ok = await confirmarAcaoMobile(
+      'KM muito acima do último abastecimento, isto está correto?\n\n' +
+      'Veículo: ' + normPlaca(placa) + '\n' +
+      'Último KM registrado: ' + formatarKmPendente(r.ultimo) + '\n' +
+      'KM informada: ' + formatarKmPendente(Number(km)) + '\n' +
+      'Diferença: ' + formatarKmPendente(r.diferenca) + ' km',
+      { textoConfirmar: 'SIM, ESTÁ CORRETO', textoCancelar: 'CORRIGIR KM' }
+    );
+    try { registrarAuditoria(ok ? 'KM_ACIMA_ULTIMO_CONFIRMADO' : 'KM_ACIMA_ULTIMO_CANCELADO', { placa: normPlaca(placa), kmInformado: Number(km), ultimoKm: r.ultimo, diferenca: r.diferenca, origem: origem || 'NORMAL' }); } catch (e) {}
+    return !!ok;
+  }
+  window.avaliarKmContraUltimo = avaliarKmContraUltimo;
 
   // ── KM DIGITADA × KM ANTERIOR (aditivo) ─────────────────────────────────────────
   // Ajuda o administrador a autorizar com a quilometragem à vista. Só INFORMA: não bloqueia,
@@ -18741,6 +18827,9 @@
       return;
     }
     // KM é opcional para abastecimentos VIP
+    // 🚗 KM × ÚLTIMO ABASTECIMENTO (só quando a KM foi informada): bloqueio / confirmação
+    if (!(await bloquearSeKmAbaixoDoUltimo(placa, km, combustivel, 'DIVERSAS'))) return;
+    if (!(await confirmarSeKmMuitoAcimaDoUltimo(placa, km, combustivel, 'DIVERSAS'))) return;
     
     const valor = litros * preco;
     
